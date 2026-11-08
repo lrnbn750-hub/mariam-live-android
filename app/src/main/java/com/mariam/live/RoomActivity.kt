@@ -7,7 +7,6 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
-import android.view.View
 import android.widget.*
 
 class RoomActivity : Activity() {
@@ -104,6 +103,7 @@ class RoomActivity : Activity() {
         }
 
         info.addView(text("👑", 27f), LinearLayout.LayoutParams(45, 45))
+
         val details = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
@@ -111,6 +111,7 @@ class RoomActivity : Activity() {
         details.addView(text("المضيف: Mariam  •  🟢 مفتوحة", 12f, Color.LTGRAY))
         info.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
         info.addView(text("👥  128", 13f, white, true))
+
         val infoParams = LinearLayout.LayoutParams(-1, 76)
         infoParams.topMargin = 18
         root.addView(info, infoParams)
@@ -126,7 +127,9 @@ class RoomActivity : Activity() {
                     Color.rgb(17, 12, 29),
                     Color.rgb(65, 20, 65)
                 )
-            ).apply { cornerRadius = 22f }
+            ).apply {
+                cornerRadius = 22f
+            }
             setPadding(8, 14, 8, 14)
         }
 
@@ -137,12 +140,17 @@ class RoomActivity : Activity() {
             gravity = Gravity.CENTER
         }
 
-        fun seat(avatar: String, name: String, crown: Boolean = false): LinearLayout {
+        fun seat(
+            avatar: String,
+            name: String,
+            crown: Boolean = false
+        ): LinearLayout {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(8, 8, 8, 8)
             }
+
             val picture = TextView(this).apply {
                 text = avatar
                 textSize = 34f
@@ -155,8 +163,11 @@ class RoomActivity : Activity() {
                     setStroke(3, Color.rgb(255, 205, 120))
                 }
             }
+
             item.addView(picture, LinearLayout.LayoutParams(66, 66))
-            item.addView(text(if (crown) "👑 $name" else name, 12f, white, true))
+            item.addView(
+                text(if (crown) "👑 $name" else name, 12f, white, true)
+            )
             return item
         }
 
@@ -164,7 +175,9 @@ class RoomActivity : Activity() {
         mainSeats.addView(seat("👨🏻", "ضيف 2"))
         stage.addView(mainSeats)
 
-        stage.addView(text("────────  المقاعد الصوتية  ────────", 11f, Color.LTGRAY))
+        stage.addView(
+            text("────────  المقاعد الصوتية  ────────", 11f, Color.LTGRAY)
+        )
 
         // Eight seats
         val grid = GridLayout(this).apply {
@@ -176,22 +189,29 @@ class RoomActivity : Activity() {
 
         for (i in 1..8) {
             val occupied = i == 1 || i == 4
+
             val cell = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 background = shape(Color.rgb(48, 36, 65), 18f)
                 setPadding(4, 10, 4, 10)
             }
+
             cell.addView(text(if (occupied) "🎙" else "＋", 25f))
-            cell.addView(text(if (occupied) "متحدث" else "مقعد $i", 10f, Color.LTGRAY))
+            cell.addView(
+                text(if (occupied) "متحدث" else "مقعد $i", 10f, Color.LTGRAY)
+            )
+
             val params = GridLayout.LayoutParams().apply {
                 width = 0
                 height = 82
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                 setMargins(4, 5, 4, 5)
             }
+
             grid.addView(cell, params)
         }
+
         stage.addView(grid)
 
         val stageParams = LinearLayout.LayoutParams(-1, 0, 1f)
@@ -200,10 +220,12 @@ class RoomActivity : Activity() {
         root.addView(stage, stageParams)
 
         // Chat area
-        root.addView(text("المحادثة", 17f, white, true).apply {
-            gravity = Gravity.RIGHT
-            setPadding(0, 4, 8, 8)
-        })
+        root.addView(
+            text("المحادثة", 17f, white, true).apply {
+                gravity = Gravity.RIGHT
+                setPadding(0, 4, 8, 8)
+            }
+        )
 
         val chat = TextView(this).apply {
             text = "👑 Mariam: أهلاً وسهلاً بالجميع ❤️\n\n🎧 مرحباً بالجميع!"
@@ -212,6 +234,7 @@ class RoomActivity : Activity() {
             setPadding(14, 12, 14, 12)
             background = shape(Color.rgb(36, 28, 51), 18f)
         }
+
         root.addView(chat, LinearLayout.LayoutParams(-1, 75))
 
         // Message bar
@@ -225,11 +248,15 @@ class RoomActivity : Activity() {
             textSize = 14f
             setTextColor(white)
             setHintTextColor(Color.LTGRAY)
-            singleLine = true
+            setSingleLine(true)
             background = shape(Color.rgb(39, 30, 55), 30f)
             setPadding(15, 4, 15, 4)
         }
-        messageRow.addView(message, LinearLayout.LayoutParams(0, 48, 1f))
+
+        messageRow.addView(
+            message,
+            LinearLayout.LayoutParams(0, 48, 1f)
+        )
 
         val send = TextView(this).apply {
             text = "إرسال"
@@ -237,40 +264,64 @@ class RoomActivity : Activity() {
             setTextColor(white)
             gravity = Gravity.CENTER
             background = shape(purple, 30f)
+
             setOnClickListener {
                 if (message.text.toString().isNotBlank()) {
-                    Toast.makeText(this@RoomActivity, "واجهة تجريبية - الدردشة تحتاج سيرفر", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@RoomActivity,
+                        "الدردشة تحتاج ربط السيرفر",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     message.text.clear()
                 }
             }
         }
+
         val sendParams = LinearLayout.LayoutParams(75, 48)
         sendParams.marginStart = 8
         messageRow.addView(send, sendParams)
+
         val messageParams = LinearLayout.LayoutParams(-1, 52)
         messageParams.topMargin = 8
         root.addView(messageRow, messageParams)
 
         // Bottom controls
-        root.addView(text("أدوات الغرفة", 16f, white, true).apply {
-            gravity = Gravity.RIGHT
-            setPadding(0, 12, 8, 8)
-        })
+        root.addView(
+            text("أدوات الغرفة", 16f, white, true).apply {
+                gravity = Gravity.RIGHT
+                setPadding(0, 12, 8, 8)
+            }
+        )
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
 
-        controls.addView(button("🎙", "المايك", Color.rgb(104, 55, 210)) {
-            Toast.makeText(this@RoomActivity, "الميكروفون يحتاج ربط خدمة صوتية", Toast.LENGTH_SHORT).show()
-        }, LinearLayout.LayoutParams(0, 58, 1f))
+        controls.addView(
+            button("🎙", "المايك", Color.rgb(104, 55, 210)) {
+                Toast.makeText(
+                    this@RoomActivity,
+                    "الميكروفون يحتاج ربط خدمة صوتية",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            LinearLayout.LayoutParams(0, 58, 1f)
+        )
 
         val soundParams = LinearLayout.LayoutParams(0, 58, 1f)
         soundParams.marginStart = 8
-        controls.addView(button("🔊", "السماعة", Color.rgb(43, 35, 59)) {
-            Toast.makeText(this@RoomActivity, "زر السماعة تجريبي", Toast.LENGTH_SHORT).show()
-        }, soundParams)
+
+        controls.addView(
+            button("🔊", "السماعة", Color.rgb(43, 35, 59)) {
+                Toast.makeText(
+                    this@RoomActivity,
+                    "زر السماعة تجريبي",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            soundParams
+        )
 
         root.addView(controls)
 
@@ -280,10 +331,16 @@ class RoomActivity : Activity() {
             setTextColor(white)
             gravity = Gravity.CENTER
             background = shape(pink, 30f)
+
             setOnClickListener {
-                Toast.makeText(this@RoomActivity, "نظام الهدايا يحتاج ربط السيرفر", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@RoomActivity,
+                    "نظام الهدايا يحتاج ربط السيرفر",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
+
         val giftParams = LinearLayout.LayoutParams(-1, 54)
         giftParams.topMargin = 8
         root.addView(gift, giftParams)
