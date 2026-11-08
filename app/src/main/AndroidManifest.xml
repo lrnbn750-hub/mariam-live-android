@@ -10,6 +10,10 @@
         android:usesCleartextTraffic="true">
 
         <activity
+            android:name=".RoomActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true">
 
@@ -19,6 +23,7 @@
             </intent-filter>
 
         </activity>
+
     </application>
 
 </manifest>
