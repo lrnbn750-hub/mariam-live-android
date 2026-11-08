@@ -2,6 +2,7 @@ package com.mariam.live
 
 import android.app.Activity
 import android.os.Bundle
+import android.content.Intent
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
@@ -35,16 +36,23 @@ class MainActivity : Activity() {
             setPadding(20, 20, 20, 20)
         }
 
-        fun addSection(title: String, description: String) {
+        fun addSection(
+            title: String,
+            description: String,
+            action: (() -> Unit)? = null
+        ) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(20, 18, 20, 18)
                 setBackgroundColor(Color.WHITE)
+                if (action != null) {
+                    setOnClickListener { action() }
+                }
             }
 
             val name = TextView(this).apply {
                 text = title
-                textSize = 20f
+                textSize = 21f
                 setTextColor(purple)
             }
 
@@ -59,18 +67,43 @@ class MainActivity : Activity() {
             card.addView(info)
 
             content.addView(card)
+
             content.addView(
                 TextView(this).apply { text = " " }
             )
         }
 
-        addSection("غرف صوتية", "اكتشف الغرف وتواصل مع الآخرين")
-        addSection("الرسائل", "محادثاتك الخاصة")
-        addSection("الأصدقاء", "ابحث عن أصدقاء جدد")
-        addSection("الهدايا والعملات", "رصيدك وهداياك")
-        addSection("ملفي الشخصي", "إعدادات حسابك")
+        addSection(
+            "غرف صوتية",
+            "اضغط للدخول إلى الغرفة الصوتية"
+        ) {
+            startActivity(
+                Intent(this, RoomActivity::class.java)
+            )
+        }
+
+        addSection(
+            "الرسائل",
+            "محادثاتك الخاصة"
+        )
+
+        addSection(
+            "الأصدقاء",
+            "ابحث عن أصدقاء جدد"
+        )
+
+        addSection(
+            "الهدايا والعملات",
+            "رصيدك وهداياك"
+        )
+
+        addSection(
+            "ملفي الشخصي",
+            "إعدادات حسابك"
+        )
 
         scroll.addView(content)
+
         root.addView(
             scroll,
             LinearLayout.LayoutParams(
