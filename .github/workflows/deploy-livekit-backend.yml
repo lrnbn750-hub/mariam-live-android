@@ -2,6 +2,11 @@ name: Deploy Mariam Live audio token API
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/mariam-live-development
+    paths:
+      - .github/workflows/deploy-livekit-backend.yml
 
 permissions:
   contents: read
