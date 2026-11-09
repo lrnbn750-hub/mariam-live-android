@@ -1,4 +1,3 @@
-
 package com.mariam.live
 
 import android.app.Activity
@@ -16,8 +15,6 @@ import java.util.concurrent.Executors
 class RegisterActivity : Activity() {
 
     private val executor = Executors.newSingleThreadExecutor()
-
-    // عنوان السيرفر الحالي
     private val server = "http://185.174.252.118:3000"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,8 +91,9 @@ class RegisterActivity : Activity() {
 
             executor.execute {
                 try {
-                    val url = URL("$server/api/auth/register")
-                    val connection = url.openConnection() as HttpURLConnection
+                    val connection = URL(
+                        "$server/api/auth/register"
+                    ).openConnection() as HttpURLConnection
 
                     connection.requestMethod = "POST"
                     connection.connectTimeout = 15000
@@ -130,37 +128,63 @@ class RegisterActivity : Activity() {
 
                     val result = JSONObject(response)
 
-                    runOnUiThread {
-                        if (code == 201 || code == 200) {
-                            val token = result.optString("token")
+                    if (code == 200 || code == 201) {
+                        val token = result.optString("token", "")
 
-                            getSharedPreferences(
-                                "MariamLive", MODE_PRIVATE
-                            ).edit()
-                                .putString("token", token)
-                                .apply()
+                        if (token.isBlank() || token == "null") {
+                            runOnUiThread {
+                                message.text =
+                                    "تم إنشاء الحساب، سجّل الدخول للمتابعة"
+                                register.isEnabled = true
+                            }
+                            return@execute
+                        }
 
+                        getSharedPreferences(
+                            "MariamLive", MODE_PRIVATE
+                        ).edit()
+                            .putString("token", token)
+                            .apply()
+
+                        runOnUiThread {
                             Toast.makeText(
                                 this,
                                 "تم إنشاء الحساب بنجاح",
                                 Toast.LENGTH_SHORT
                             ).show()
 
-                            startActivity(
-                                Intent(this, HomeActivity::class.java)
+                            val intent = Intent(
+                                this,
+                                HomeActivity::class.java
                             )
+
+                            intent.flags =
+                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+                            startActivity(intent)
                             finish()
-                        } else {
-                            message.text = result.optString(
-                                "message", "تعذر إنشاء الحساب"
+                        }
+
+                    } else {
+                        val error = result.optString(
+                            "error",
+                            result.optString(
+                                "message",
+                                "تعذر إنشاء الحساب"
                             )
+                        )
+
+                        runOnUiThread {
+                            message.text = error
                             register.isEnabled = true
                         }
                     }
 
                 } catch (e: Exception) {
                     runOnUiThread {
-                        message.text = "تعذر الاتصال بالسيرفر: ${e.message}"
+                        message.text =
+                            "تعذر الاتصال بالسيرفر: ${e.message}"
                         register.isEnabled = true
                     }
                 }
