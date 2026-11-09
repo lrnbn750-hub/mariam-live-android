@@ -2,10 +2,10 @@
 package com.mariam.live
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.graphics.Color
 import android.view.Gravity
-import android.view.View
 import android.widget.*
 
 class LoginActivity : Activity() {
@@ -38,14 +38,12 @@ class LoginActivity : Activity() {
 
         val email = EditText(this).apply {
             hint = "البريد الإلكتروني"
-            textSize = 16f
             inputType = 33
             setSingleLine()
         }
 
         val password = EditText(this).apply {
             hint = "كلمة المرور"
-            textSize = 16f
             inputType = 129
             setSingleLine()
         }
@@ -54,10 +52,11 @@ class LoginActivity : Activity() {
             text = "تسجيل الدخول"
             setBackgroundColor(purple)
             setTextColor(Color.WHITE)
+
             setOnClickListener {
                 Toast.makeText(
                     this@LoginActivity,
-                    "سيتم ربط تسجيل الدخول بالسيرفر",
+                    "سنربط تسجيل الدخول بالسيرفر",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -69,12 +68,11 @@ class LoginActivity : Activity() {
             setTextColor(purple)
             gravity = Gravity.CENTER
             setPadding(0, 25, 0, 10)
+
             setOnClickListener {
-                Toast.makeText(
-                    this@LoginActivity,
-                    "سننشئ صفحة التسجيل في الخطوة التالية",
-                    Toast.LENGTH_SHORT
-                ).show()
+                startActivity(
+                    Intent(this@LoginActivity, RegisterActivity::class.java)
+                )
             }
         }
 
@@ -83,11 +81,11 @@ class LoginActivity : Activity() {
         layout.addView(email)
         layout.addView(password)
 
-        layout.addView(login, LinearLayout.LayoutParams(
-            -1, 60
-        ).apply {
-            topMargin = 25
-        })
+        layout.addView(login,
+            LinearLayout.LayoutParams(-1, 60).apply {
+                topMargin = 25
+            }
+        )
 
         layout.addView(register)
 
