@@ -7,13 +7,16 @@ on:
       - feature/mariam-live-development
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mariam-live-development
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
@@ -24,24 +27,35 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Read backend structure and API routes
+      - name: Read backend source without secrets
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 'bash -s' > backend-inspection.txt <<'REMOTE'
           set -eu
           cd /opt/mariam-live/backend
           echo "===== PACKAGE.JSON ====="
           cat package.json
           echo "===== SOURCE FILES ====="
-          find src -maxdepth 4 -type f -not -path "*/node_modules/*" -printf "%p (%s bytes)\n" | sort
-          echo "===== ROUTES AND SOCKETS ====="
-          grep -RInE "router\.(get|post|put|patch|delete)|app\.(get|post|put|patch|delete)|io\.on|socket\.on|createServer|listen\(" src --include='*.js' --include='*.ts' || true
-          echo "===== DATABASE MIGRATIONS ====="
-          find /opt/mariam-live/database -maxdepth 2 -type f -name '*.sql' -print
+          find src -maxdepth 5 -type f -not -path "*/node_modules/*" -printf "%p (%s bytes)\n" | sort
+          echo "===== SOURCE CONTENTS ====="
+          find src -maxdepth 5 -type f \( -name '*.js' -o -name '*.ts' -o -name '*.json' \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
+            echo "--- FILE: $f"
+            sed -n '1,280p' "$f"
+          done
+          echo "===== MIGRATIONS ====="
           for f in /opt/mariam-live/database/*.sql; do
             [ -f "$f" ] || continue
-            echo "--- $f"
-            sed -n '1,240p' "$f"
+            echo "--- FILE: $f"
+            sed -n '1,280p' "$f"
           done
-          echo "===== PM2 STATUS ====="
+          echo "===== SERVICE STATUS ====="
           pm2 list
           REMOTE
+      - name: Publish inspection report to development branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend-inspection.txt
+          git commit -m "Add read-only backend inspection report" || exit 0
+          git push origin HEAD:feature/mariam-live-development
