@@ -5,8 +5,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object AuthApi {
-    // Temporary HTTP endpoint. Switch to HTTPS as soon as the API domain and TLS certificate are configured.
-    private const val BASE_URL = "http://185.174.252.118:3000"
+    // HTTPS API endpoint protected by Caddy TLS.
+    private const val BASE_URL = "https://nokiraq.duckdns.org"
 
     data class Result(val status: Int, val body: JSONObject)
 
