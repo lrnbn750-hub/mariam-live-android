@@ -187,6 +187,24 @@ class HomeActivity : Activity() {
             scroll.smoothScrollTo(0, dp(650))
         }
 
+        val createRoomButton = makeButton(
+            "＋ إنشاء غرفتي الصوتية",
+            Color.rgb(255, 255, 255),
+            darkPurple
+        ).apply {
+            setPadding(dp(15), dp(12), dp(15), dp(12))
+        }
+        val createRoomParams = LinearLayout.LayoutParams(-1, dp(44))
+        createRoomParams.topMargin = dp(10)
+        banner.addView(createRoomButton, createRoomParams)
+
+        createRoomButton.setOnClickListener {
+            val intent = Intent(this@HomeActivity, RoomActivity::class.java)
+            intent.putExtra("room_name", "غرفتي الصوتية")
+            intent.putExtra("is_owner", true)
+            startActivity(intent)
+        }
+
         val bannerParams = LinearLayout.LayoutParams(-1, -2)
         bannerParams.bottomMargin = dp(25)
         content.addView(banner, bannerParams)
