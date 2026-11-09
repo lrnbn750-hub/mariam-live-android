@@ -23,6 +23,7 @@ class HomeActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var account: TextView
     private lateinit var profileDetails: TextView
+    private lateinit var roomsContainer: LinearLayout
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -80,10 +81,18 @@ class HomeActivity : Activity() {
         status = label("لم يتم تحميل الغرف بعد.", 14f, gray)
         status.setPadding(0, dp(12), 0, dp(12))
         roomsCard.addView(status)
-        roomsCard.addView(label(
-            "لن نعرض غرفاً أو مستخدمين تجريبيين. ستظهر الغرف هنا بعد ربط واجهة الغرف الحقيقية بالخادم.",
-            13f, gray
-        ))
+        roomsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        roomsContainer.setPadding(0, dp(12), 0, 0)
+        roomsCard.addView(roomsContainer)
+        val createRoom = Button(this).apply {
+            text = "＋ إنشاء غرفة صوتية"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(purple)
+            setOnClickListener { showCreateRoomDialog() }
+        }
+        val createParams = LinearLayout.LayoutParams(-1, dp(48))
+        createParams.topMargin = dp(12)
+        roomsCard.addView(createRoom, createParams)
         val cardParams = LinearLayout.LayoutParams(-1, -2)
         cardParams.topMargin = dp(22)
         root.addView(roomsCard, cardParams)
@@ -92,7 +101,7 @@ class HomeActivity : Activity() {
             text = "إعادة التحقق من الحساب"
             setTextColor(Color.WHITE)
             setBackgroundColor(purple)
-            setOnClickListener { verifyAccount() }
+            setOnClickListener { verifyAccount(); loadRooms() }
         }
         val refreshParams = LinearLayout.LayoutParams(-1, dp(52))
         refreshParams.topMargin = dp(18)
@@ -113,8 +122,10 @@ class HomeActivity : Activity() {
             }
         }
         root.addView(logout)
-        setContentView(root)
+        val scroll = ScrollView(this).apply { isFillViewport = true; addView(root) }
+        setContentView(scroll)
         verifyAccount()
+        loadRooms()
     }
 
     private fun verifyAccount() {
@@ -165,6 +176,123 @@ class HomeActivity : Activity() {
                 runOnUiThread {
                     account.text = "الخادم غير متاح حالياً. تحقق من اتصال الإنترنت."
                 }
+            }
+        }
+    }
+
+    private fun loadRooms() {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        status.text = "جارٍ تحميل الغرف..."
+        executor.execute {
+            try {
+                val result = AuthApi.get("/api/voice-rooms", token)
+                val rooms = result.body.optJSONArray("rooms")
+                runOnUiThread {
+                    roomsContainer.removeAllViews()
+                    if (result.status !in 200..299 || rooms == null) {
+                        status.text = "تعذر تحميل الغرف (HTTP ${result.status})."
+                        return@runOnUiThread
+                    }
+                    status.text = if (rooms.length() == 0) "لا توجد غرف نشطة حالياً." else "الغرف النشطة: ${rooms.length()}"
+                    for (i in 0 until rooms.length()) {
+                        val room = rooms.optJSONObject(i) ?: continue
+                        val id = room.optString("id")
+                        val name = room.optString("name", "غرفة صوتية")
+                        val count = room.optInt("member_count", 0)
+                        val max = room.optInt("max_members", 8)
+                        val item = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(12), dp(12), dp(12), dp(12))
+                            background = GradientDrawable().apply {
+                                setColor(Color.rgb(247, 246, 252))
+                                cornerRadius = dp(14).toFloat()
+                            }
+                        }
+                        item.addView(label(name, 16f, dark, true))
+                        item.addView(label("المشاركون: $count / $max", 13f, gray).apply {
+                            setPadding(0, dp(5), 0, dp(8))
+                        })
+                        val join = Button(this).apply {
+                            text = "دخول الغرفة"
+                            setOnClickListener { joinRoom(id, name) }
+                        }
+                        item.addView(join)
+                        val itemParams = LinearLayout.LayoutParams(-1, -2)
+                        itemParams.bottomMargin = dp(10)
+                        roomsContainer.addView(item, itemParams)
+                    }
+                }
+            } catch (_: Exception) {
+                runOnUiThread { status.text = "تعذر الاتصال بالخادم لتحميل الغرف." }
+            }
+        }
+    }
+
+    private fun showCreateRoomDialog() {
+        val input = EditText(this).apply {
+            hint = "اسم الغرفة"
+            setSingleLine(true)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("إنشاء غرفة صوتية")
+            .setView(input)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("إنشاء") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.length < 2) {
+                    Toast.makeText(this, "اكتب اسماً من حرفين على الأقل", Toast.LENGTH_SHORT).show()
+                } else {
+                    createRoom(name)
+                }
+            }
+            .show()
+    }
+
+    private fun createRoom(name: String) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        status.text = "جارٍ إنشاء الغرفة..."
+        executor.execute {
+            try {
+                val payload = JSONObject().put("name", name).put("max_members", 8)
+                val result = AuthApi.post("/api/voice-rooms", payload, token)
+                runOnUiThread {
+                    if (result.status in 200..299) {
+                        Toast.makeText(this, "تم إنشاء الغرفة", Toast.LENGTH_SHORT).show()
+                        loadRooms()
+                    } else {
+                        val message = result.body.optString("error", "تعذر إنشاء الغرفة")
+                        status.text = message
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (_: Exception) {
+                runOnUiThread { status.text = "تعذر الاتصال بالخادم لإنشاء الغرفة." }
+            }
+        }
+    }
+
+    private fun joinRoom(id: String, name: String) {
+        if (id.isBlank()) return
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        status.text = "جارٍ الانضمام إلى الغرفة..."
+        executor.execute {
+            try {
+                val result = AuthApi.post("/api/voice-rooms/$id/join", JSONObject(), token)
+                runOnUiThread {
+                    if (result.status in 200..299) {
+                        startActivity(Intent(this, RoomActivity::class.java).apply {
+                            putExtra("room_id", id)
+                            putExtra("room_name", name)
+                        })
+                    } else {
+                        val message = result.body.optString("error", "تعذر دخول الغرفة")
+                        status.text = message
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                        loadRooms()
+                    }
+                }
+            } catch (_: Exception) {
+                runOnUiThread { status.text = "تعذر الاتصال بالخادم لدخول الغرفة." }
             }
         }
     }
