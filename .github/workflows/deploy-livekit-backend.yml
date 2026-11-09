@@ -54,7 +54,7 @@ jobs:
             printf '\nLIVEKIT_API_KEY=mariam_live\n' >> .env
           fi
           if ! grep -q '^LIVEKIT_API_SECRET=' .env; then
-            LIVEKIT_SECRET="$(sed -n 's/^[[:space:]]*mariam_live:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' /opt/livekit/livekit.yaml | head -n 1)"
+            LIVEKIT_SECRET="$(sudo sed -n 's/^[[:space:]]*mariam_live:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' /opt/livekit/livekit.yaml | head -n 1)"
             test -n "$LIVEKIT_SECRET"
             printf 'LIVEKIT_API_SECRET=%s\n' "$LIVEKIT_SECRET" >> .env
             unset LIVEKIT_SECRET
