@@ -22,6 +22,7 @@ class HomeActivity : Activity() {
     private val gray = Color.rgb(125, 127, 143)
     private lateinit var status: TextView
     private lateinit var account: TextView
+    private lateinit var profileDetails: TextView
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -66,6 +67,9 @@ class HomeActivity : Activity() {
         })
         account = label("جارٍ التحقق من حسابك...", 14f, gray)
         root.addView(account)
+        profileDetails = label("", 13f, gray)
+        profileDetails.setPadding(0, dp(6), 0, 0)
+        root.addView(profileDetails)
 
         val roomsCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -114,39 +118,63 @@ class HomeActivity : Activity() {
     }
 
     private fun verifyAccount() {
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val token = prefs.getString("token", null)
         if (token.isNullOrBlank()) {
             account.text = "لا توجد جلسة دخول صالحة."
+            profileDetails.text = ""
+            openLogin()
             return
         }
+
         account.text = "جارٍ الاتصال بالخادم..."
+        profileDetails.text = ""
         executor.execute {
-            var connection: HttpURLConnection? = null
             try {
-                connection = (URL("$server/api/auth/me").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 12000
-                    readTimeout = 12000
-                    setRequestProperty("Authorization", "Bearer $token")
-                }
-                val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val body = stream.bufferedReader().use { it.readText() }
-                if (code in 200..299) {
-                    val json = JSONObject(body)
-                    val user = json.optJSONObject("user") ?: json
-                    val name = user.optString("displayName",
-                        user.optString("username", "مستخدم Mariam Live"))
-                    runOnUiThread { account.text = "تم التحقق من الحساب: $name" }
+                val result = AuthApi.get("/api/auth/me", token)
+                if (result.status in 200..299) {
+                    val user = result.body.optJSONObject("user") ?: result.body
+                    val displayName = user.optString("display_name")
+                        .takeIf { it.isNotBlank() }
+                        ?: user.optString("username", "مستخدم Mariam Live")
+                    val username = user.optString("username")
+                    val email = user.optString("email")
+                    runOnUiThread {
+                        account.text = "أهلاً، $displayName"
+                        profileDetails.text = buildString {
+                            if (username.isNotBlank()) append("@$username")
+                            if (email.isNotBlank()) {
+                                if (isNotEmpty()) append("  •  ")
+                                append(email)
+                            }
+                        }
+                    }
+                } else if (result.status == 401 || result.status == 403 || result.status == 404) {
+                    prefs.edit().remove("token").apply()
+                    runOnUiThread {
+                        account.text = "انتهت صلاحية الجلسة. سجّل الدخول مجدداً."
+                        profileDetails.text = ""
+                        openLogin()
+                    }
                 } else {
-                    runOnUiThread { account.text = "تعذر التحقق من الجلسة (HTTP $code). سجّل الدخول مجدداً إذا انتهت صلاحيتها." }
+                    runOnUiThread {
+                        account.text = "تعذر تحميل بيانات الحساب (HTTP ${result.status})."
+                    }
                 }
             } catch (e: Exception) {
-                runOnUiThread { account.text = "الخادم غير متاح حالياً: ${e.message ?: "خطأ اتصال"}" }
-            } finally {
-                connection?.disconnect()
+                runOnUiThread {
+                    account.text = "الخادم غير متاح حالياً. تحقق من اتصال الإنترنت."
+                }
             }
         }
+    }
+
+    private fun openLogin() {
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
     }
 
     override fun onDestroy() {
