@@ -70,9 +70,9 @@ jobs:
           let source = fs.readFileSync(file, "utf8");
           const registration = 'require("./routes/livekit")(app, db, authenticateToken);';
           if (!source.includes(registration)) {
-            const marker = "// Register";
-            if (!source.includes(marker)) throw new Error("Could not locate safe route registration point in server.js");
-            source = source.replace(marker, registration + "\n\n" + marker);
+            const listen = source.search(/\bapp\.listen\s*\(/);
+            if (listen < 0) throw new Error("Could not find app.listen() in src/server.js");
+            source = source.slice(0, listen) + registration + "\n\n" + source.slice(listen);
             fs.writeFileSync(file, source);
           }
           NODE
@@ -87,7 +87,7 @@ jobs:
           done < <(systemctl list-unit-files --type=service --no-legend)
 
           if [ -n "$SERVICE" ]; then
-            systemctl restart "$SERVICE"
+            sudo -n systemctl restart "$SERVICE"
             echo "Restarted backend service: $SERVICE"
           else
             echo "Backend files installed, but no matching systemd service was found. API process was not restarted."
