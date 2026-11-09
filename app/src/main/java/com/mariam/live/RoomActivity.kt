@@ -8,8 +8,13 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import org.json.JSONObject
+import java.util.concurrent.Executors
 
 class RoomActivity : Activity() {
+    private val executor = Executors.newSingleThreadExecutor()
+    private var leaving = false
     private val backgroundColor = Color.rgb(17, 13, 29)
     private val purple = Color.rgb(151, 91, 255)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -77,7 +82,7 @@ class RoomActivity : Activity() {
                 setColor(purple)
                 cornerRadius = dp(14).toFloat()
             }
-            setOnClickListener { finish() }
+            setOnClickListener { leaveRoom() }
         }
         val closeParams = LinearLayout.LayoutParams(-1, dp(50))
         closeParams.topMargin = dp(20)
@@ -85,4 +90,41 @@ class RoomActivity : Activity() {
 
         setContentView(root)
     }
-}
+
+    private fun leaveRoom() {
+        if (leaving) return
+        val roomId = intent.getStringExtra("room_id")
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        if (roomId.isNullOrBlank() || token.isNullOrBlank()) {
+            finish()
+            return
+        }
+        leaving = true
+        executor.execute {
+            try {
+                val result = AuthApi.post("/api/voice-rooms/$roomId/leave", JSONObject(), token)
+                runOnUiThread {
+                    if (result.status !in 200..299 && result.status != 404) {
+                        Toast.makeText(this, "تعذر مغادرة الغرفة من الخادم", Toast.LENGTH_SHORT).show()
+                    }
+                    finish()
+                }
+            } catch (_: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "انقطع الاتصال؛ أُغلقت الشاشة فقط", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
+    }
+
+    @Deprecated("Deprecated in Android")
+    override fun onBackPressed() {
+        leaveRoom()
+    }
+
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
+    }
+}}
