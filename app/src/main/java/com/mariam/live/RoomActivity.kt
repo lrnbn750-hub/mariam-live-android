@@ -142,7 +142,7 @@ class RoomActivity : Activity() {
         scope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
-                    AuthApi.get("/api/voice-rooms/$roomId/token", authToken)
+                    AuthApi.post("/api/voice-rooms/$roomId/token", JSONObject(), authToken)
                 }
                 if (response.status !in 200..299) {
                     throw IllegalStateException(response.body.optString("error", "تعذر إصدار رمز دخول الصوت"))
