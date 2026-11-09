@@ -27,6 +27,24 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Run read-only API and database smoke tests
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set +e
+          echo "===== API ROOT ====="
+          curl -sS --max-time 8 -i http://127.0.0.1:3000/
+          echo
+          echo "===== API HEALTH AND DATABASE ====="
+          curl -sS --max-time 8 -i http://127.0.0.1:3000/api/health
+          echo
+          echo "===== PM2 FOR mariam-admin ====="
+          pm2 list
+          echo "===== SYSTEM SERVICES ====="
+          systemctl --no-pager --type=service --state=running | grep -Ei 'mariam|node|postgres' || true
+          echo "===== LISTENING PORT 3000 ====="
+          sudo ss -lntp | grep ':3000' || true
+          REMOTE
       - name: Read backend source without secrets
         run: |
           set -euo pipefail
