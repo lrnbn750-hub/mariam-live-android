@@ -29,7 +29,7 @@ src/routes/livekit.js (1778 bytes)
 src/routes/messages.js (6860 bytes)
 src/routes/profile.js (2880 bytes)
 src/routes/voice-rooms.js (4716 bytes)
-src/server.js (6396 bytes)
+src/server.js (6454 bytes)
 src/server.js.backup (997 bytes)
 src/server.js.bak.messages (6276 bytes)
 src/server.js.save (6161 bytes)
@@ -1211,4 +1211,4 @@ CREATE INDEX idx_room_members_user ON room_members(user_id);
 ┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 └────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 4.8% | ram usage: 6.2% | eth0: ⇓ 41kb/s ⇑ 2kb/s | disk: ⇓ 0mb/s ⇑ 416kb/s
+host metrics | cpu: 1.6% | ram usage: 6.2% | eth0: ⇓ 1kb/s ⇑ 1kb/s | disk: ⇓ 0mb/s ⇑ 34kb/s
