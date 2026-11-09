@@ -1,7 +1,9 @@
+
 package com.mariam.live
 
 import android.app.Activity
 import android.os.Bundle
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -21,10 +23,7 @@ class HomeActivity : Activity() {
         return (value * resources.displayMetrics.density).toInt()
     }
 
-    private fun rounded(
-        color: Int,
-        radius: Int
-    ): GradientDrawable {
+    private fun rounded(color: Int, radius: Int): GradientDrawable {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
@@ -50,11 +49,7 @@ class HomeActivity : Activity() {
             text = value
             textSize = size
             setTextColor(color)
-            typeface = if (bold) {
-                Typeface.DEFAULT_BOLD
-            } else {
-                Typeface.DEFAULT
-            }
+            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
             gravity = Gravity.CENTER_VERTICAL
         }
     }
@@ -69,6 +64,13 @@ class HomeActivity : Activity() {
             background = rounded(color, 14)
             setPadding(dp(15), dp(10), dp(15), dp(10))
         }
+    }
+
+    // فتح غرفة الصوت
+    private fun openRoom(roomName: String) {
+        val intent = Intent(this, RoomActivity::class.java)
+        intent.putExtra("room_name", roomName)
+        startActivity(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,7 +89,6 @@ class HomeActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        // منطقة المحتوى
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -113,10 +114,7 @@ class HomeActivity : Activity() {
             background = gradient()
         }
 
-        header.addView(
-            logo,
-            LinearLayout.LayoutParams(dp(48), dp(48))
-        )
+        header.addView(logo, LinearLayout.LayoutParams(dp(48), dp(48)))
 
         val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -126,10 +124,7 @@ class HomeActivity : Activity() {
         brand.addView(text("Mariam Live", 21f, purple, true))
         brand.addView(text("عالمك.. أصدقاء.. وأصوات", 11f, gray))
 
-        header.addView(
-            brand,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
+        header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
 
         val notification = TextView(this).apply {
             text = "♧"
@@ -138,17 +133,10 @@ class HomeActivity : Activity() {
             background = rounded(Color.WHITE, 15)
         }
 
-        header.addView(
-            notification,
-            LinearLayout.LayoutParams(dp(46), dp(46))
-        )
+        header.addView(notification, LinearLayout.LayoutParams(dp(46), dp(46)))
 
         notification.setOnClickListener {
-            Toast.makeText(
-                this,
-                "الإشعارات قريباً",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "الإشعارات قريباً", Toast.LENGTH_SHORT).show()
         }
 
         content.addView(header)
@@ -159,16 +147,9 @@ class HomeActivity : Activity() {
             setPadding(0, dp(28), 0, dp(18))
         }
 
+        welcome.addView(text("مرحباً بك في مريم لايف ❤️", 22f, dark, true))
         welcome.addView(
-            text("مرحباً بك في مريم لايف ❤️", 22f, dark, true)
-        )
-
-        welcome.addView(
-            text(
-                "اكتشف أصدقاء جدد وشاركهم أجمل الأوقات",
-                13f,
-                gray
-            )
+            text("اكتشف أصدقاء جدد وشاركهم أجمل الأوقات", 13f, gray)
         )
 
         content.addView(welcome)
@@ -180,9 +161,7 @@ class HomeActivity : Activity() {
             setPadding(dp(20), dp(19), dp(20), dp(19))
         }
 
-        banner.addView(
-            text("✨ عالمك يبدأ من هنا", 21f, Color.WHITE, true)
-        )
+        banner.addView(text("✨ عالمك يبدأ من هنا", 21f, Color.WHITE, true))
 
         val bannerDescription = text(
             "ادخل الغرف الصوتية وتعرّف على أشخاص جدد",
@@ -205,11 +184,7 @@ class HomeActivity : Activity() {
         )
 
         discoverButton.setOnClickListener {
-            Toast.makeText(
-                this,
-                "اكتشاف الغرف قريباً",
-                Toast.LENGTH_SHORT
-            ).show()
+            scroll.smoothScrollTo(0, dp(650))
         }
 
         val bannerParams = LinearLayout.LayoutParams(-1, -2)
@@ -227,10 +202,7 @@ class HomeActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        activeHeader.addView(
-            text("عرض الكل", 12f, purple, true)
-        )
-
+        activeHeader.addView(text("عرض الكل", 12f, purple, true))
         content.addView(activeHeader)
 
         val usersScroll = HorizontalScrollView(this).apply {
@@ -262,7 +234,6 @@ class HomeActivity : Activity() {
         )
 
         users.forEachIndexed { index, user ->
-
             val userColumn = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -309,10 +280,7 @@ class HomeActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        roomHeader.addView(
-            text("عرض الكل ←", 12f, purple, true)
-        )
-
+        roomHeader.addView(text("عرض الكل ←", 12f, purple, true))
         content.addView(roomHeader)
 
         // الغرف الصوتية
@@ -340,7 +308,6 @@ class HomeActivity : Activity() {
                 text = listOf("🌙", "☕", "🎵", "💜")[index]
                 textSize = 25f
                 gravity = Gravity.CENTER
-
                 background = rounded(
                     listOf(
                         0xFFF0EAFF.toInt(),
@@ -362,9 +329,7 @@ class HomeActivity : Activity() {
                 setPadding(dp(12), 0, 0, 0)
             }
 
-            roomInfo.addView(
-                text(room.first, 15f, dark, true)
-            )
+            roomInfo.addView(text(room.first, 15f, dark, true))
 
             roomInfo.addView(
                 text(room.second, 11f, gray).apply {
@@ -372,14 +337,8 @@ class HomeActivity : Activity() {
                 }
             )
 
-            top.addView(
-                roomInfo,
-                LinearLayout.LayoutParams(0, -2, 1f)
-            )
-
-            top.addView(
-                text("● مباشر", 11f, Color.rgb(235, 65, 100), true)
-            )
+            top.addView(roomInfo, LinearLayout.LayoutParams(0, -2, 1f))
+            top.addView(text("● مباشر", 11f, Color.rgb(235, 65, 100), true))
 
             card.addView(top)
 
@@ -390,7 +349,6 @@ class HomeActivity : Activity() {
             val sepParams = LinearLayout.LayoutParams(-1, dp(1))
             sepParams.topMargin = dp(13)
             sepParams.bottomMargin = dp(11)
-
             card.addView(separator, sepParams)
 
             val bottom = LinearLayout(this).apply {
@@ -403,33 +361,23 @@ class HomeActivity : Activity() {
                 LinearLayout.LayoutParams(0, -2, 1f)
             )
 
-            val join = makeButton(
-                "دخول الغرفة",
-                purple,
-                Color.WHITE
-            )
-
+            val join = makeButton("دخول الغرفة", purple, Color.WHITE)
             bottom.addView(join)
 
+            // التعديل المهم: فتح غرفة الصوت بدلاً من رسالة قريباً
             join.setOnClickListener {
-                Toast.makeText(
-                    this@HomeActivity,
-                    "سيتم تفعيل الغرف الصوتية في الخطوة القادمة",
-                    Toast.LENGTH_SHORT
-                ).show()
+                openRoom(room.first)
             }
 
             card.addView(bottom)
 
             val cardParams = LinearLayout.LayoutParams(-1, -2)
             cardParams.topMargin = dp(12)
-
             content.addView(card, cardParams)
         }
 
         scroll.addView(content)
 
-        // إصلاح عرض منطقة المحتوى: -1 يعني عرض الشاشة بالكامل
         root.addView(
             scroll,
             LinearLayout.LayoutParams(-1, 0, 1f)
