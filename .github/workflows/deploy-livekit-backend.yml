@@ -1,0 +1,91 @@
+name: Deploy Mariam Live audio token API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mariam-live-development
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload authenticated LiveKit token route
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/livekit-route.js mariam-admin@185.174.252.118:/tmp/mariam-livekit-route.js
+
+      - name: Install route, keep existing LiveKit key, and restart API service
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live
+
+          install -d -o mariam-admin -g mariam-admin /opt/mariam-live/backend/src/routes
+          install -o mariam-admin -g mariam-admin -m 640 /tmp/mariam-livekit-route.js /opt/mariam-live/backend/src/routes/livekit.js
+          rm -f /tmp/mariam-livekit-route.js
+
+          cd /opt/mariam-live/backend
+          npm install --save livekit-server-sdk
+
+          if ! grep -q '^LIVEKIT_API_KEY=' .env; then
+            printf '\nLIVEKIT_API_KEY=mariam_live\n' >> .env
+          fi
+          if ! grep -q '^LIVEKIT_API_SECRET=' .env; then
+            LIVEKIT_SECRET="$(sed -n 's/^[[:space:]]*mariam_live:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' /opt/livekit/livekit.yaml | head -n 1)"
+            test -n "$LIVEKIT_SECRET"
+            printf 'LIVEKIT_API_SECRET=%s\n' "$LIVEKIT_SECRET" >> .env
+            unset LIVEKIT_SECRET
+          fi
+          if ! grep -q '^LIVEKIT_URL=' .env; then
+            printf 'LIVEKIT_URL=wss://voicenokiraq.duckdns.org\n' >> .env
+          fi
+          chmod 600 .env
+
+          node <<'NODE'
+          const fs = require("fs");
+          const file = "src/server.js";
+          let source = fs.readFileSync(file, "utf8");
+          const registration = 'require("./routes/livekit")(app, db, authenticateToken);';
+          if (!source.includes(registration)) {
+            const marker = "// Register";
+            if (!source.includes(marker)) throw new Error("Could not locate safe route registration point in server.js");
+            source = source.replace(marker, registration + "\n\n" + marker);
+            fs.writeFileSync(file, source);
+          }
+          NODE
+
+          SERVICE=""
+          while read -r UNIT _; do
+            [ -n "$UNIT" ] || continue
+            EXEC="$(systemctl show -p ExecStart --value "$UNIT" 2>/dev/null || true)"
+            case "$EXEC" in
+              *"/opt/mariam-live/backend"*|*"src/server.js"*) SERVICE="$UNIT"; break ;;
+            esac
+          done < <(systemctl list-unit-files --type=service --no-legend)
+
+          if [ -n "$SERVICE" ]; then
+            systemctl restart "$SERVICE"
+            echo "Restarted backend service: $SERVICE"
+          else
+            echo "Backend files installed, but no matching systemd service was found. API process was not restarted."
+            exit 2
+          fi
+          REMOTE
