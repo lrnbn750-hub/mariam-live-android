@@ -1,209 +1,78 @@
-
 package com.mariam.live
 
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.graphics.Color
-import android.view.Gravity
+import android.text.InputType
+import android.view.View
 import android.widget.*
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.io.OutputStreamWriter
 import java.util.concurrent.Executors
 
 class LoginActivity : Activity() {
-
     private val executor = Executors.newSingleThreadExecutor()
-    private val server = "http://185.174.252.118:3000"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val purple = Color.rgb(112, 78, 255)
-
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(32, 40, 32, 40)
-            setBackgroundColor(Color.rgb(246, 247, 251))
+        val page = AuthUi.page(this)
+        page.addView(AuthUi.brand(this, "عالمك، أصدقاؤك، وصوتك في مكان واحد"))
+        val card = AuthUi.card(this)
+        card.addView(AuthUi.heading(this, "أهلاً بعودتك 👋"))
+        card.addView(AuthUi.hint(this, "سجّل دخولك وارجع لأصدقائك وغرفك المفضلة"))
+        card.addView(AuthUi.label(this, "اسم المستخدم أو البريد الإلكتروني"))
+        val identifier = AuthUi.field(this, "أدخل اسم المستخدم أو البريد", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        card.addView(identifier)
+        card.addView(AuthUi.label(this, "كلمة المرور"))
+        val password = AuthUi.field(this, "أدخل كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        card.addView(password)
+        val show = CheckBox(this).apply {
+            text = "إظهار كلمة المرور"; textSize = 12f; setTextColor(0xFF77748B.toInt())
+            buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
+            setOnCheckedChangeListener { _, checked ->
+                val pos = password.selectionStart
+                password.inputType = if (checked) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                password.setSelection(pos.coerceAtLeast(0))
+            }
         }
-
-        val title = TextView(this).apply {
-            text = "Mariam Live"
-            textSize = 34f
-            setTextColor(purple)
-            gravity = Gravity.CENTER
-        }
-
-        val subtitle = TextView(this).apply {
-            text = "مرحباً بعودتك ❤️"
-            textSize = 19f
-            gravity = Gravity.CENTER
-            setPadding(0, 15, 0, 35)
-        }
-
-        val identifier = EditText(this).apply {
-            hint = "البريد الإلكتروني أو اسم المستخدم"
-            textSize = 16f
-            setSingleLine()
-        }
-
-        val password = EditText(this).apply {
-            hint = "كلمة المرور"
-            textSize = 16f
-            inputType = 129
-            setSingleLine()
-        }
-
-        val login = Button(this).apply {
-            text = "تسجيل الدخول"
-            setBackgroundColor(purple)
-            setTextColor(Color.WHITE)
-        }
-
-        val message = TextView(this).apply {
-            gravity = Gravity.CENTER
-            textSize = 14f
-        }
-
+        card.addView(show)
+        val message = AuthUi.message(this); card.addView(message)
+        val login = AuthUi.primaryButton(this, "تسجيل الدخول"); card.addView(login)
         login.setOnClickListener {
-
             val user = identifier.text.toString().trim()
             val pass = password.text.toString()
-
-            if (user.isEmpty() || pass.isEmpty()) {
-                message.text = "يرجى إدخال بيانات الدخول"
-                return@setOnClickListener
+            if (user.isBlank() || pass.isBlank()) {
+                AuthUi.showMessage(message, "يرجى إدخال اسم المستخدم وكلمة المرور"); return@setOnClickListener
             }
-
-            login.isEnabled = false
-            message.text = "جارٍ تسجيل الدخول..."
-
+            login.isEnabled = false; login.text = "جارٍ التحقق من بياناتك..."; message.visibility = View.GONE
             executor.execute {
                 try {
-                    val connection = URL(
-                        "$server/api/auth/login"
-                    ).openConnection() as HttpURLConnection
-
-                    connection.requestMethod = "POST"
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 15000
-                    connection.doOutput = true
-
-                    connection.setRequestProperty(
-                        "Content-Type", "application/json"
-                    )
-
-                    val data = JSONObject().apply {
-                        put("identifier", user)
-                        put("password", pass)
-                    }
-
-                    OutputStreamWriter(
-                        connection.outputStream
-                    ).use {
-                        it.write(data.toString())
-                    }
-
-                    val code = connection.responseCode
-
-                    val stream = if (code in 200..299)
-                        connection.inputStream
-                    else
-                        connection.errorStream
-
-                    val response = stream.bufferedReader().use {
-                        it.readText()
-                    }
-
-                    connection.disconnect()
-
-                    val result = JSONObject(response)
-
-                    if (code == 200) {
-
-                        val token = result.optString("token")
-
-                        if (token.isBlank() || token == "null") {
-                            throw Exception("لم يصل رمز الدخول من السيرفر")
-                        }
-
-                        getSharedPreferences(
-                            "MariamLive", MODE_PRIVATE
-                        ).edit()
-                            .putString("token", token)
-                            .apply()
-
-                        runOnUiThread {
-                            startActivity(
-                                Intent(
-                                    this,
-                                    HomeActivity::class.java
-                                )
-                            )
-                            finish()
-                        }
-
+                    val result = AuthApi.post("/api/auth/login", JSONObject().apply { put("identifier", user); put("password", pass) })
+                    if (result.status in 200..299) {
+                        val token = result.body.optString("token")
+                        if (token.isBlank() || token == "null") throw Exception("لم يصل رمز الدخول من الخادم")
+                        val data = result.body.optJSONObject("user") ?: JSONObject()
+                        getSharedPreferences("MariamLive", MODE_PRIVATE).edit()
+                            .putString("token", token).putString("user_id", data.optString("id"))
+                            .putString("username", data.optString("username")).putString("email", data.optString("email")).apply()
+                        runOnUiThread { startActivity(Intent(this, HomeActivity::class.java)); finish() }
                     } else {
-                        val error = result.optString(
-                            "error",
-                            "بيانات الدخول غير صحيحة"
-                        )
-
-                        runOnUiThread {
-                            message.text = error
-                            login.isEnabled = true
+                        val friendly = when (result.status) {
+                            401 -> "اسم المستخدم أو كلمة المرور غير صحيحة"
+                            403 -> "هذا الحساب غير نشط، تواصل مع الدعم"
+                            else -> result.body.optString("error", "تعذر تسجيل الدخول")
                         }
+                        runOnUiThread { AuthUi.showMessage(message, friendly); login.isEnabled = true; login.text = "تسجيل الدخول" }
                     }
-
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        message.text =
-                            "فشل الاتصال: ${e.message}"
-                        login.isEnabled = true
-                    }
+                } catch (_: Exception) {
+                    runOnUiThread { AuthUi.showMessage(message, "تعذر الاتصال بالخادم. تحقق من الإنترنت وحاول مجدداً."); login.isEnabled = true; login.text = "تسجيل الدخول" }
                 }
             }
         }
-
-        val register = TextView(this).apply {
-            text = "ليس لديك حساب؟ إنشاء حساب جديد"
-            textSize = 16f
-            setTextColor(purple)
-            gravity = Gravity.CENTER
-            setPadding(0, 25, 0, 10)
-
-            setOnClickListener {
-                startActivity(
-                    Intent(
-                        this@LoginActivity,
-                        RegisterActivity::class.java
-                    )
-                )
-            }
-        }
-
-        layout.addView(title)
-        layout.addView(subtitle)
-        layout.addView(identifier)
-        layout.addView(password)
-
-        layout.addView(login,
-            LinearLayout.LayoutParams(-1, 60).apply {
-                topMargin = 25
-            }
-        )
-
-        layout.addView(message)
-        layout.addView(register)
-
-        setContentView(layout)
+        val register = AuthUi.link(this, "مستخدم جديد؟ أنشئ حسابك الآن")
+        register.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
+        page.addView(card); page.addView(register)
+        AuthUi.background(this, AuthUi.scroll(this, page))
     }
 
-    override fun onDestroy() {
-        executor.shutdown()
-        super.onDestroy()
-    }
+    override fun onDestroy() { executor.shutdown(); super.onDestroy() }
 }
