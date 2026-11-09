@@ -1,42 +1,50 @@
+
 package com.mariam.live
 
 import android.app.Activity
+import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.cardview.widget.CardView
 
 class RoomActivity : Activity() {
 
-    // الألوان المستخدمة في التصميم
-    private val bgColor = Color.parseColor("#0D0714")
-    private val purpleGlow = Color.parseColor("#9141FF")
-    private val pinkGlow = Color.parseColor("#DA379B")
-    private val goldColor = Color.parseColor("#FFD700")
-    private val darkBox = Color.parseColor("#2A1E3D")
-    private val lightText = Color.parseColor("#E0E0E0")
+    private val bg = Color.rgb(13, 7, 24)
+    private val purple = Color.rgb(145, 65, 255)
+    private val pink = Color.rgb(218, 55, 155)
+    private val gold = Color.rgb(255, 215, 0)
+    private val panel = Color.rgb(42, 30, 61)
 
-    private fun createGradient(color1: Int, color2: Int, radius: Float, strokeColor: Int? = null): GradientDrawable {
-        return GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(color1, color2)).apply {
-            cornerRadius = radius
-            if (strokeColor != null) setStroke(2, strokeColor)
-        }
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
 
-    private fun createSolidShape(color: Int, radius: Float, strokeColor: Int? = null): GradientDrawable {
+    private fun shape(color: Int, radius: Int): GradientDrawable {
         return GradientDrawable().apply {
             setColor(color)
-            cornerRadius = radius
-            if (strokeColor != null) setStroke(2, strokeColor)
+            cornerRadius = dp(radius).toFloat()
         }
     }
 
-    private fun createText(value: String, size: Float, color: Int = Color.WHITE, bold: Boolean = false): TextView {
+    private fun gradient(): GradientDrawable {
+        return GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(85, 35, 145), Color.rgb(35, 18, 58))
+        ).apply {
+            cornerRadius = dp(22).toFloat()
+        }
+    }
+
+    private fun text(
+        value: String,
+        size: Float,
+        color: Int = Color.WHITE,
+        bold: Boolean = false
+    ): TextView {
         return TextView(this).apply {
             text = value
             textSize = size
@@ -46,347 +54,252 @@ class RoomActivity : Activity() {
         }
     }
 
+    private fun button(
+        icon: String,
+        label: String,
+        color: Int,
+        action: () -> Unit
+    ): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = shape(color, 18)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            addView(text(icon, 23f))
+            addView(text(label, 12f))
+            setOnClickListener { action() }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // الحاوية الرئيسية
-        val root = ConstraintLayout(this).apply {
-            setBackgroundColor(bgColor)
-            setPadding(24, 40, 24, 24)
-        }
+        val scroll = ScrollView(this)
+        scroll.setBackgroundColor(bg)
 
-        // 1. الشريط العلوي (Header)
-        val headerLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            id = View.generateViewId()
-        }
-
-        val userInfo = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = createGradient(Color.parseColor("#4A148C"), Color.parseColor("#7B1FA2"), 50f)
-            setPadding(16, 8, 16, 8)
-        }
-        
-        val crownIcon = createText("👑", 20f)
-        userInfo.addView(crownIcon)
-        
-        val userDetails = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(8, 0, 0, 0)
+            setPadding(dp(14), dp(20), dp(14), dp(20))
         }
-        userDetails.addView(createText("MARIAM LIVE ✔", 14f, Color.WHITE, true))
-        userDetails.addView(createText("ID: 100886", 10f, lightText))
-        userInfo.addView(userDetails)
 
-        headerLayout.addView(userInfo, LinearLayout.LayoutParams(0, -2, 1f))
-
-        val topIcons = LinearLayout(this).apply {
+        // الشريط العلوي
+        val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        topIcons.addView(createText("👥 123", 14f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#332244"), 20f)
-            setPadding(16, 8, 16, 8)
-        })
-        
-        val closeBtn = createText("✕", 20f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#332244"), 50f)
-            setPadding(16, 8, 16, 8)
+
+        val roomTitle = text("MARIAM LIVE", 20f, Color.WHITE, true)
+        header.addView(roomTitle, LinearLayout.LayoutParams(0, dp(55), 1f))
+
+        val close = text("✕", 25f).apply {
+            background = shape(Color.rgb(55, 45, 65), 50)
             setOnClickListener { finish() }
         }
-        val closeParams = LinearLayout.LayoutParams(-2, -2).apply { marginStart = 8 }
-        topIcons.addView(closeBtn, closeParams)
+        header.addView(close, LinearLayout.LayoutParams(dp(48), dp(48)))
+        root.addView(header)
 
-        headerLayout.addView(topIcons)
-        root.addView(headerLayout)
-
-        // 2. معلومات الغرفة (Room Info)
-        val infoLayout = LinearLayout(this).apply {
+        // معلومات الغرفة
+        val info = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = createSolidShape(Color.parseColor("#1A1128"), 25f)
-            setPadding(16, 8, 16, 8)
-            id = View.generateViewId()
-        }
-        
-        infoLayout.addView(createText("🔥 32.6K", 12f, Color.parseColor("#FF5252")))
-        
-        val timer = createText("💎 09:28", 12f, goldColor).apply {
-            setPadding(16, 0, 16, 0)
-        }
-        infoLayout.addView(timer)
-        
-        infoLayout.addView(createText("🏆 متصدر الغرفة", 12f, lightText))
-
-        // 3. المسرح (Stage) - يحتوي على الصورة والخلفية
-        val stageLayout = ConstraintLayout(this).apply {
-            id = View.generateViewId()
-            background = createGradient(Color.parseColor("#2D143D"), Color.parseColor("#0D0714"), 30f, Color.parseColor("#5A2D6B"))
-            setPadding(16, 16, 16, 16)
+            background = gradient()
+            setPadding(dp(14), dp(15), dp(14), dp(15))
         }
 
-        // محاكاة صورة السيارة في المنتصف (استخدم صورة حقيقية هنا)
-        val carImagePlaceholder = View(this).apply {
-            // في حال وجود صورة: setBackgroundResource(R.drawable.your_car_image)
-            background = createGradient(Color.parseColor("#FF5722"), Color.parseColor("#9C27B0"), 20f)
-            alpha = 0.3f
-        }
-        stageLayout.addView(carImagePlaceholder, ConstraintLayout.LayoutParams(0, 200).apply {
-            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+        info.addView(text("🔥 32.6K", 13f, gold))
+        info.addView(text("  💎 09:28  ", 13f, gold))
+        info.addView(text("🏆 الغرفة الرئيسية", 14f))
+        root.addView(info, LinearLayout.LayoutParams(-1, dp(58)).apply {
+            topMargin = dp(12)
         })
 
-        // المضيف (الملكة)
-        val hostLayout = LinearLayout(this).apply {
+        // المسرح
+        val stage = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            id = View.generateViewId()
+            background = gradient()
+            setPadding(dp(12), dp(20), dp(12), dp(18))
         }
-        
-        val hostAvatar = TextView(this).apply {
-            text = "👩🏻"
-            textSize = 40f
+
+        val versus = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            background = createGradient(purpleGlow, pinkGlow, 100f, goldColor)
-            val params = LinearLayout.LayoutParams(100, 100)
-            layoutParams = params
         }
-        hostLayout.addView(hostAvatar)
-        
-        val hostBadge = createText("المضيف", 12f, Color.WHITE).apply {
-            background = createSolidShape(purpleGlow, 20f)
-            setPadding(16, 4, 16, 4)
-            val params = LinearLayout.LayoutParams(-2, -2).apply { topMargin = -10 }
-            layoutParams = params
-        }
-        hostLayout.addView(hostBadge)
-        hostLayout.addView(createText("Mariam 💜", 14f, Color.WHITE, true))
-        hostLayout.addView(createText("🎁 3.2M", 12f, goldColor))
 
-        stageLayout.addView(hostLayout, ConstraintLayout.LayoutParams(-2, -2).apply {
-            topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            topMargin = 16
-        })
-
-        // المنافس (الدرع)
-        val opponentLayout = LinearLayout(this).apply {
+        val host = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
         }
-        opponentLayout.addView(createText("🛡️", 60f)) // استبدلها بصورة الدرع
-        opponentLayout.addView(createText("✨ أمير", 14f, Color.WHITE, true))
-        opponentLayout.addView(createText("🎁 2.1M", 12f, goldColor))
+        host.addView(text("👑", 38f))
+        host.addView(text("Mariam", 15f, Color.WHITE, true))
+        host.addView(text("🎁 3.2M", 12f, gold))
 
-        stageLayout.addView(opponentLayout, ConstraintLayout.LayoutParams(-2, -2).apply {
-            topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            topMargin = 16
-            marginEnd = 16
+        val opponent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        opponent.addView(text("🛡️", 38f))
+        opponent.addView(text("أمير", 15f, Color.WHITE, true))
+        opponent.addView(text("🎁 2.1M", 12f, gold))
+
+        versus.addView(host, LinearLayout.LayoutParams(0, -2, 1f))
+        versus.addView(text("VS", 20f, gold, true))
+        versus.addView(opponent, LinearLayout.LayoutParams(0, -2, 1f))
+        stage.addView(versus)
+
+        stage.addView(text("مقاعد المتحدثين", 16f, Color.WHITE, true).apply {
+            setPadding(0, dp(24), 0, dp(12))
         })
 
-        // 4. شبكة المقاعد (المقاعد 3 إلى 10)
-        val seatsContainer = GridLayout(this).apply {
+        // ثمانية مقاعد
+        val seats = GridLayout(this).apply {
             columnCount = 4
-            rowCount = 2
-            alignmentMode = GridLayout.ALIGN_BOUNDS
-            useDefaultMargins = true
-            id = View.generateViewId()
+            useDefaultMargins = false
         }
 
-        for (i in 3..10) {
-            val isLocked = (i == 4 || i == 6 || i == 8 || i == 10)
-            
-            val seatCard = CardView(this).apply {
-                radius = 50f
-                cardElevation = 0f
-                setCardBackgroundColor(if (isLocked) Color.parseColor("#1A1128") else Color.parseColor("#2A1E3D"))
-                
-                val seatContent = LinearLayout(this@RoomActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    gravity = Gravity.CENTER
-                    
-                    if (isLocked) {
-                        addView(createText("🔒", 24f, lightText))
-                        if (i == 4) { // علامة التاج للمقعد الرابع
-                             addView(createText("👑", 12f, purpleGlow).apply { translationY = -10f })
-                        }
-                    } else {
-                        addView(createText("➕", 24f, Color.WHITE))
-                    }
-                    addView(createText("$i", 12f, lightText))
+        for (i in 1..8) {
+            val locked = i == 4 || i == 6 || i == 8
+
+            val seat = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = shape(
+                    if (locked) Color.rgb(27, 19, 42) else panel,
+                    18
+                )
+                setPadding(dp(4), dp(12), dp(4), dp(12))
+
+                addView(text(if (locked) "🔒" else "＋", 25f))
+                addView(text("مقعد $i", 11f, Color.LTGRAY))
+                setOnClickListener {
+                    Toast.makeText(
+                        this@RoomActivity,
+                        if (locked) "المقعد مغلق" else "طلب الانضمام للمقعد",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                addView(seatContent)
             }
 
             val params = GridLayout.LayoutParams().apply {
                 width = 0
-                height = 150
+                height = dp(92)
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(8, 8, 8, 8)
+                setMargins(dp(4), dp(4), dp(4), dp(4))
             }
-            seatsContainer.addView(seatCard, params)
+            seats.addView(seat, params)
         }
 
-        stageLayout.addView(seatsContainer, ConstraintLayout.LayoutParams(0, -2).apply {
-            topToBottom = hostLayout.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            topMargin = 32
+        stage.addView(seats)
+        root.addView(stage, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(14)
         })
 
-        // 5. شريط الإعلانات (Announcement)
-        val announcementLayout = LinearLayout(this).apply {
+        // الإعلان
+        val announcement = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = createGradient(Color.parseColor("#4A148C"), Color.parseColor("#7B1FA2"), 25f)
-            setPadding(24, 12, 24, 12)
-            id = View.generateViewId()
+            background = shape(Color.rgb(65, 35, 100), 16)
+            setPadding(dp(15), dp(12), dp(15), dp(12))
+            addView(text("📢 إعلان الغرفة", 13f, gold, true))
+            addView(text("أهلاً وسهلاً بكم في Mariam Live", 14f))
         }
-        announcementLayout.addView(createText("📢 إعلان الغرفة", 12f, goldColor, true).apply { gravity = Gravity.START })
-        announcementLayout.addView(createText("🤍 مرحباً بكم في غرفة Mariam Live 🤍", 14f, Color.WHITE).apply { gravity = Gravity.START })
-        
-        // 6. الدردشة (Chat)
-        val chatLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            id = View.generateViewId()
-        }
-        
-        chatLayout.addView(createChatMessage("👩🏻 Mariam: أهلاً وسهلاً بالجميع ❤️", Color.parseColor("#9141FF")))
-        chatLayout.addView(createChatMessage("👨🏻 أحمد: مرحباً بالجميع!", Color.parseColor("#00BCD4")))
-        chatLayout.addView(createChatMessage("👩🏻 سارة: شو أخباركم اليوم؟", Color.parseColor("#00BCD4")))
+        root.addView(announcement, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(14)
+        })
 
-        // 7. شريط الرسائل (Message Bar)
-        val messageBar = LinearLayout(this).apply {
+        // المحادثة
+        root.addView(text("المحادثة", 18f, Color.WHITE, true).apply {
+            gravity = Gravity.START
+            setPadding(0, dp(20), 0, dp(10))
+        })
+
+        val chat = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = shape(Color.rgb(31, 23, 46), 16)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+
+        chat.addView(text("👑 Mariam: أهلاً وسهلاً بالجميع ❤️", 14f))
+        chat.addView(text("🎧 مرحباً بالجميع!", 14f, Color.LTGRAY).apply {
+            setPadding(0, dp(10), 0, dp(4))
+        })
+        root.addView(chat)
+
+        // حقل الرسالة
+        val messageRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = createSolidShape(Color.parseColor("#1A1128"), 30f)
-            setPadding(16, 8, 16, 8)
-            id = View.generateViewId()
         }
-        
-        val menuIcon = createText("☰", 24f, Color.WHITE)
-        messageBar.addView(menuIcon)
-        
-        val editText = EditText(this).apply {
+
+        val input = EditText(this).apply {
             hint = "اكتب رسالة..."
             setHintTextColor(Color.GRAY)
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
+            textSize = 14f
             setSingleLine(true)
-            val params = LinearLayout.LayoutParams(0, -2, 1f)
-            params.marginStart = 16
-            params.marginEnd = 16
-            layoutParams = params
-        }
-        messageBar.addView(editText)
-        
-        messageBar.addView(createText("😊", 24f, Color.WHITE))
-        messageBar.addView(createText("🎁", 24f, pinkGlow).apply { setPadding(16, 0, 16, 0) })
-        messageBar.addView(createText("⊞", 24f, Color.WHITE))
-
-        // 8. أزرار التحكم السفلية (أدوات الصوت)
-        val bottomControls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            id = View.generateViewId()
+            background = shape(panel, 30)
+            setPadding(dp(15), 0, dp(15), 0)
         }
 
-        val micBtn = createText("🎙️", 24f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#DA379B"), 50f)
-            setPadding(24, 24, 24, 24)
+        messageRow.addView(input, LinearLayout.LayoutParams(0, dp(50), 1f))
+
+        val send = text("إرسال", 14f, Color.WHITE, true).apply {
+            background = shape(purple, 30)
+            setPadding(dp(15), dp(14), dp(15), dp(14))
             setOnClickListener {
-                Toast.makeText(this@RoomActivity, "المايك مكتوم", Toast.LENGTH_SHORT).show()
+                val message = input.text.toString().trim()
+                if (message.isNotEmpty()) {
+                    Toast.makeText(
+                        this@RoomActivity,
+                        "تم تجهيز الرسالة للربط بالسيرفر",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    input.text.clear()
+                }
             }
         }
-        
-        val soundBtn = createText("🔊", 24f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#1A1128"), 50f)
-            setPadding(24, 24, 24, 24)
-        }
-
-        val giftBtn = createText("🎁", 24f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#9141FF"), 50f)
-            setPadding(24, 24, 24, 24)
-        }
-
-        bottomControls.addView(micBtn)
-        bottomControls.addView(soundBtn, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 16, marginEnd = 16 })
-        bottomControls.addView(giftBtn)
-
-
-        // ===== إضافة العناصر إلى ConstraintLayout الرئيسي =====
-        root.addView(infoLayout, ConstraintLayout.LayoutParams(0, -2).apply {
-            topToBottom = headerLayout.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            topMargin = 16
+        messageRow.addView(send, LinearLayout.LayoutParams(-2, -2).apply {
+            marginStart = dp(8)
+        })
+        root.addView(messageRow, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(12)
         })
 
-        root.addView(stageLayout, ConstraintLayout.LayoutParams(0, 0).apply {
-            topToBottom = infoLayout.id
-            bottomToTop = messageBar.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            topMargin = 16
-            bottomMargin = 16
-        })
-
-        root.addView(announcementLayout, ConstraintLayout.LayoutParams(0, -2).apply {
-            bottomToTop = chatLayout.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            bottomMargin = 8
-        })
-
-        root.addView(chatLayout, ConstraintLayout.LayoutParams(0, -2).apply {
-            bottomToTop = messageBar.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            bottomMargin = 8
-        })
-
-        root.addView(messageBar, ConstraintLayout.LayoutParams(0, 60).apply {
-            bottomToTop = bottomControls.id
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            bottomMargin = 16
-        })
-
-        root.addView(bottomControls, ConstraintLayout.LayoutParams(-2, -2).apply {
-            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-        })
-
-        setContentView(root)
-    }
-
-    // دالة مساعدة لإنشاء رسالة دردشة
-    private fun createChatMessage(text: String, badgeColor: Int): LinearLayout {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 4, 0, 4)
-        }
-        
-        val avatar = createText("👤", 14f, Color.WHITE).apply {
-            background = createSolidShape(badgeColor, 50f)
-            setPadding(8, 4, 8, 4)
-        }
-        
-        val messageText = createText(text, 14f, Color.WHITE).apply {
-            background = createSolidShape(Color.parseColor("#1A1128"), 20f)
-            setPadding(16, 8, 16, 8)
+        // أدوات التحكم
+        root.addView(text("أدوات التحكم", 18f, Color.WHITE, true).apply {
             gravity = Gravity.START
+            setPadding(0, dp(22), 0, dp(12))
+        })
+
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        
-        row.addView(avatar)
-        row.addView(messageText, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 8 })
-        
-        return row
+
+        val mic = button("🎙️", "الميكروفون", pink) {
+            Toast.makeText(this@RoomActivity, "الميكروفون يحتاج ربط صوت حقيقي", Toast.LENGTH_SHORT).show()
+        }
+
+        val sound = button("🔊", "الصوت", panel) {
+            Toast.makeText(this@RoomActivity, "زر الصوت", Toast.LENGTH_SHORT).show()
+        }
+
+        val gift = button("🎁", "إرسال هدية", purple) {
+            Toast.makeText(this@RoomActivity, "نظام الهدايا يحتاج ربط السيرفر", Toast.LENGTH_SHORT).show()
+        }
+
+        controls.addView(mic, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
+            setMargins(dp(3), 0, dp(3), 0)
+        })
+        controls.addView(sound, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
+            setMargins(dp(3), 0, dp(3), 0)
+        })
+        controls.addView(gift, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
+            setMargins(dp(3), 0, dp(3), 0)
+        })
+
+        root.addView(controls)
+
+        scroll.addView(root)
+        setContentView(scroll)
     }
 }
