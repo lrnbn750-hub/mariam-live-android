@@ -8,7 +8,6 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import android.content.res.ColorStateList
 
 class HomeActivity : Activity() {
 
@@ -18,20 +17,17 @@ class HomeActivity : Activity() {
     private val dark = Color.rgb(35, 35, 50)
     private val gray = Color.rgb(135, 137, 153)
 
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
 
     private fun rounded(
         color: Int,
-        radius: Int,
-        stroke: Int = 0
+        radius: Int
     ): GradientDrawable {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
-            if (stroke > 0) {
-                setStroke(dp(1), stroke)
-            }
         }
     }
 
@@ -54,7 +50,11 @@ class HomeActivity : Activity() {
             text = value
             textSize = size
             setTextColor(color)
-            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            typeface = if (bold) {
+                Typeface.DEFAULT_BOLD
+            } else {
+                Typeface.DEFAULT
+            }
             gravity = Gravity.CENTER_VERTICAL
         }
     }
@@ -76,6 +76,7 @@ class HomeActivity : Activity() {
 
         window.statusBarColor = backgroundColor
         window.navigationBarColor = Color.WHITE
+
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
             View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
@@ -86,15 +87,15 @@ class HomeActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        // الصفحة القابلة للتمرير
+        // منطقة المحتوى
         val scroll = ScrollView(this).apply {
-            isFillViewport = false
+            isFillViewport = true
             overScrollMode = View.OVER_SCROLL_NEVER
         }
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(20))
+            setPadding(dp(18), dp(15), dp(18), dp(20))
         }
 
         // رأس الصفحة
@@ -155,17 +156,24 @@ class HomeActivity : Activity() {
         // الترحيب
         val welcome = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(28), 0, dp(15))
+            setPadding(0, dp(28), 0, dp(18))
         }
 
-        welcome.addView(text("مرحباً بك في مريم لايف ❤️", 22f, dark, true))
         welcome.addView(
-            text("اكتشف أصدقاء جدد وشاركهم أجمل الأوقات", 13f, gray)
+            text("مرحباً بك في مريم لايف ❤️", 22f, dark, true)
+        )
+
+        welcome.addView(
+            text(
+                "اكتشف أصدقاء جدد وشاركهم أجمل الأوقات",
+                13f,
+                gray
+            )
         )
 
         content.addView(welcome)
 
-        // بطاقة مميزة
+        // البطاقة الرئيسية
         val banner = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = gradient()
@@ -186,7 +194,7 @@ class HomeActivity : Activity() {
         banner.addView(bannerDescription)
 
         val discoverButton = makeButton(
-            "اكتشف الغرف  ←",
+            "اكتشف الغرف ←",
             Color.WHITE,
             darkPurple
         )
@@ -197,13 +205,14 @@ class HomeActivity : Activity() {
         )
 
         discoverButton.setOnClickListener {
-            Toast.makeText(this, "اكتشاف الغرف قريباً", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "اكتشاف الغرف قريباً",
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
-        val bannerParams = LinearLayout.LayoutParams(
-            -1,
-            -2
-        )
+        val bannerParams = LinearLayout.LayoutParams(-1, -2)
         bannerParams.bottomMargin = dp(25)
         content.addView(banner, bannerParams)
 
@@ -214,11 +223,13 @@ class HomeActivity : Activity() {
         }
 
         activeHeader.addView(
-            text("🟢  متصلون الآن", 18f, dark, true),
+            text("🟢 متصلون الآن", 18f, dark, true),
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        activeHeader.addView(text("عرض الكل", 12f, purple, true))
+        activeHeader.addView(
+            text("عرض الكل", 12f, purple, true)
+        )
 
         content.addView(activeHeader)
 
@@ -278,8 +289,10 @@ class HomeActivity : Activity() {
                 }
             )
 
-            val params = LinearLayout.LayoutParams(dp(68), -2)
-            usersRow.addView(userColumn, params)
+            usersRow.addView(
+                userColumn,
+                LinearLayout.LayoutParams(dp(68), -2)
+            )
         }
 
         usersScroll.addView(usersRow)
@@ -292,15 +305,17 @@ class HomeActivity : Activity() {
         }
 
         roomHeader.addView(
-            text("🎙️  الغرف الصوتية", 19f, dark, true),
+            text("🎙️ الغرف الصوتية", 19f, dark, true),
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        roomHeader.addView(text("عرض الكل ←", 12f, purple, true))
+        roomHeader.addView(
+            text("عرض الكل ←", 12f, purple, true)
+        )
 
         content.addView(roomHeader)
 
-        // بطاقة الغرف الصوتية
+        // الغرف الصوتية
         val rooms = listOf(
             Triple("سهرات مريم 🌙", "دردشة وأصدقاء من كل مكان", "12"),
             Triple("قهوة الصباح ☕", "تعرف على أصدقاء جدد", "8"),
@@ -325,6 +340,7 @@ class HomeActivity : Activity() {
                 text = listOf("🌙", "☕", "🎵", "💜")[index]
                 textSize = 25f
                 gravity = Gravity.CENTER
+
                 background = rounded(
                     listOf(
                         0xFFF0EAFF.toInt(),
@@ -346,7 +362,10 @@ class HomeActivity : Activity() {
                 setPadding(dp(12), 0, 0, 0)
             }
 
-            roomInfo.addView(text(room.first, 15f, dark, true))
+            roomInfo.addView(
+                text(room.first, 15f, dark, true)
+            )
+
             roomInfo.addView(
                 text(room.second, 11f, gray).apply {
                     setPadding(0, dp(5), 0, 0)
@@ -358,8 +377,9 @@ class HomeActivity : Activity() {
                 LinearLayout.LayoutParams(0, -2, 1f)
             )
 
-            val live = text("● مباشر", 11f, Color.rgb(235, 65, 100), true)
-            top.addView(live)
+            top.addView(
+                text("● مباشر", 11f, Color.rgb(235, 65, 100), true)
+            )
 
             card.addView(top)
 
@@ -370,6 +390,7 @@ class HomeActivity : Activity() {
             val sepParams = LinearLayout.LayoutParams(-1, dp(1))
             sepParams.topMargin = dp(13)
             sepParams.bottomMargin = dp(11)
+
             card.addView(separator, sepParams)
 
             val bottom = LinearLayout(this).apply {
@@ -402,27 +423,23 @@ class HomeActivity : Activity() {
 
             val cardParams = LinearLayout.LayoutParams(-1, -2)
             cardParams.topMargin = dp(12)
+
             content.addView(card, cardParams)
         }
 
-        // مساحة أسفل الصفحة
-        content.addView(
-            View(this),
-            LinearLayout.LayoutParams(1, dp(15))
-        )
-
         scroll.addView(content)
 
+        // إصلاح عرض منطقة المحتوى: -1 يعني عرض الشاشة بالكامل
         root.addView(
             scroll,
-            LinearLayout.LayoutParams(0, 0, 1f)
+            LinearLayout.LayoutParams(-1, 0, 1f)
         )
 
         // شريط التنقل السفلي
         val navigation = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            background = rounded(Color.WHITE, 0)
+            setBackgroundColor(Color.WHITE)
             elevation = dp(12).toFloat()
             setPadding(0, dp(9), 0, dp(8))
         }
@@ -437,6 +454,8 @@ class HomeActivity : Activity() {
 
         navItems.forEachIndexed { index, item ->
 
+            val selected = index == 0
+
             val itemLayout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -447,7 +466,7 @@ class HomeActivity : Activity() {
                 text(
                     item.first,
                     25f,
-                    if (index == 0) purple else gray,
+                    if (selected) purple else gray,
                     true
                 ).apply {
                     gravity = Gravity.CENTER
@@ -458,8 +477,8 @@ class HomeActivity : Activity() {
                 text(
                     item.second,
                     10f,
-                    if (index == 0) purple else gray,
-                    index == 0
+                    if (selected) purple else gray,
+                    selected
                 ).apply {
                     gravity = Gravity.CENTER
                     setPadding(0, dp(3), 0, 0)
@@ -471,8 +490,8 @@ class HomeActivity : Activity() {
                     scroll.smoothScrollTo(0, 0)
                 } else {
                     Toast.makeText(
-                        this,
-                        "${item.second} - قريباً",
+                        this@HomeActivity,
+                        "${item.second} قريباً",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
