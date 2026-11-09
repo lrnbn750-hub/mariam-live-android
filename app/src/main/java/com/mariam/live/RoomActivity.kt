@@ -1,305 +1,400 @@
 
 package com.mariam.live
 
-import android.app.Activity
 import android.os.Bundle
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.view.Gravity
-import android.view.View
-import android.widget.*
-import androidx.cardview.widget.CardView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-class RoomActivity : Activity() {
+private val Background = Color(0xFF10091B)
+private val Panel = Color(0xFF211632)
+private val Purple = Color(0xFF873CFF)
+private val Pink = Color(0xFFE23C9A)
+private val Gold = Color(0xFFFFD76A)
+private val White = Color(0xFFF8F5FF)
+private val Muted = Color(0xFFB8ADC9)
 
-    private val bg = Color.rgb(13, 7, 24)
-    private val purple = Color.rgb(145, 65, 255)
-    private val pink = Color.rgb(218, 55, 155)
-    private val gold = Color.rgb(255, 215, 0)
-    private val panel = Color.rgb(42, 30, 61)
-
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
-
-    private fun shape(color: Int, radius: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-        }
-    }
-
-    private fun gradient(): GradientDrawable {
-        return GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(85, 35, 145), Color.rgb(35, 18, 58))
-        ).apply {
-            cornerRadius = dp(22).toFloat()
-        }
-    }
-
-    private fun text(
-        value: String,
-        size: Float,
-        color: Int = Color.WHITE,
-        bold: Boolean = false
-    ): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            gravity = Gravity.CENTER
-            if (bold) typeface = Typeface.DEFAULT_BOLD
-        }
-    }
-
-    private fun button(
-        icon: String,
-        label: String,
-        color: Int,
-        action: () -> Unit
-    ): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            background = shape(color, 18)
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            addView(text(icon, 23f))
-            addView(text(label, 12f))
-            setOnClickListener { action() }
-        }
-    }
-
+class RoomActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val scroll = ScrollView(this)
-        scroll.setBackgroundColor(bg)
+        window.statusBarColor = android.graphics.Color.rgb(16, 9, 27)
+        window.navigationBarColor = android.graphics.Color.rgb(16, 9, 27)
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(20), dp(14), dp(20))
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides LayoutDirection.Rtl
+                ) {
+                    RoomScreen(onClose = { finish() })
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun RoomScreen(onClose: () -> Unit) {
+    var muted by remember { mutableStateOf(true) }
+    var message by remember { mutableStateOf("") }
+    var messages by remember {
+        mutableStateOf(listOf("Mariam: أهلاً وسهلاً بالجميع ❤️"))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+    ) {
+        Spacer(Modifier.height(12.dp))
 
         // الشريط العلوي
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(
+                onClick = {},
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Panel, CircleShape)
+            ) {
+                Icon(Icons.Default.MoreVert, null, tint = White)
+            }
+
+            Text(
+                "MARIAM LIVE",
+                color = White,
+                fontSize = 23.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.sp
+            )
+
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Panel, CircleShape)
+            ) {
+                Icon(Icons.Default.Close, null, tint = White)
+            }
         }
 
-        val roomTitle = text("MARIAM LIVE", 20f, Color.WHITE, true)
-        header.addView(roomTitle, LinearLayout.LayoutParams(0, dp(55), 1f))
-
-        val close = text("✕", 25f).apply {
-            background = shape(Color.rgb(55, 45, 65), 50)
-            setOnClickListener { finish() }
-        }
-        header.addView(close, LinearLayout.LayoutParams(dp(48), dp(48)))
-        root.addView(header)
+        Spacer(Modifier.height(18.dp))
 
         // معلومات الغرفة
-        val info = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = gradient()
-            setPadding(dp(14), dp(15), dp(14), dp(15))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color(0xFF54208F), Color(0xFF29143F))
+                    ),
+                    RoundedCornerShape(22.dp)
+                )
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    "الغرفة الصوتية الرئيسية",
+                    color = White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(7.dp))
+                Text("المضيف: Mariam", color = Muted, fontSize = 13.sp)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🔥 32.6K", color = Gold, fontWeight = FontWeight.Bold)
+                Text("💎 09:28", color = White, fontSize = 12.sp)
+            }
         }
 
-        info.addView(text("🔥 32.6K", 13f, gold))
-        info.addView(text("  💎 09:28  ", 13f, gold))
-        info.addView(text("🏆 الغرفة الرئيسية", 14f))
-        root.addView(info, LinearLayout.LayoutParams(-1, dp(58)).apply {
-            topMargin = dp(12)
-        })
+        Spacer(Modifier.height(22.dp))
 
-        // المسرح
-        val stage = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            background = gradient()
-            setPadding(dp(12), dp(20), dp(12), dp(18))
+        // المتنافسان
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF482071), Color(0xFF251437))
+                    ),
+                    RoundedCornerShape(24.dp)
+                )
+                .padding(vertical = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("👑", fontSize = 48.sp)
+                Text("Mariam", color = White, fontWeight = FontWeight.Bold)
+                Text("🎁 3.2M", color = Gold, fontSize = 13.sp)
+            }
+
+            Text("VS", color = Gold, fontSize = 25.sp, fontWeight = FontWeight.Black)
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🛡️", fontSize = 48.sp)
+                Text("أمير", color = White, fontWeight = FontWeight.Bold)
+                Text("🎁 2.1M", color = Gold, fontSize = 13.sp)
+            }
         }
 
-        val versus = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
+        Spacer(Modifier.height(24.dp))
 
-        val host = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-        host.addView(text("👑", 38f))
-        host.addView(text("Mariam", 15f, Color.WHITE, true))
-        host.addView(text("🎁 3.2M", 12f, gold))
+        Text(
+            "مقاعد المتحدثين",
+            color = White,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
 
-        val opponent = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-        opponent.addView(text("🛡️", 38f))
-        opponent.addView(text("أمير", 15f, Color.WHITE, true))
-        opponent.addView(text("🎁 2.1M", 12f, gold))
-
-        versus.addView(host, LinearLayout.LayoutParams(0, -2, 1f))
-        versus.addView(text("VS", 20f, gold, true))
-        versus.addView(opponent, LinearLayout.LayoutParams(0, -2, 1f))
-        stage.addView(versus)
-
-        stage.addView(text("مقاعد المتحدثين", 16f, Color.WHITE, true).apply {
-            setPadding(0, dp(24), 0, dp(12))
-        })
+        Spacer(Modifier.height(14.dp))
 
         // ثمانية مقاعد
-        val seats = GridLayout(this).apply {
-            columnCount = 4
-            useDefaultMargins = false
+        for (row in 0..1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                for (column in 0..3) {
+                    val number = row * 4 + column + 1
+                    val locked = number == 4 || number == 6 || number == 8
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(112.dp)
+                            .background(
+                                if (locked) Color(0xFF191023) else Panel,
+                                RoundedCornerShape(20.dp)
+                            )
+                            .clickable {
+                                if (!locked) {
+                                    messages = messages + "تم طلب الانضمام إلى المقعد $number"
+                                }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        if (locked) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Gold,
+                                modifier = Modifier.size(27.dp)
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                tint = White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "مقعد $number",
+                            color = Muted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
         }
 
-        for (i in 1..8) {
-            val locked = i == 4 || i == 6 || i == 8
+        Spacer(Modifier.height(14.dp))
 
-            val seat = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                background = shape(
-                    if (locked) Color.rgb(27, 19, 42) else panel,
-                    18
+        // إعلان الغرفة
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color(0xFF482071), Color(0xFF321747))
+                    ),
+                    RoundedCornerShape(20.dp)
                 )
-                setPadding(dp(4), dp(12), dp(4), dp(12))
+                .padding(18.dp)
+        ) {
+            Text("📢 إعلان الغرفة", color = Gold, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "أهلاً وسهلاً بكم في Mariam Live 💜",
+                color = White,
+                fontSize = 15.sp
+            )
+        }
 
-                addView(text(if (locked) "🔒" else "＋", 25f))
-                addView(text("مقعد $i", 11f, Color.LTGRAY))
-                setOnClickListener {
-                    Toast.makeText(
-                        this@RoomActivity,
-                        if (locked) "المقعد مغلق" else "طلب الانضمام للمقعد",
-                        Toast.LENGTH_SHORT
-                    ).show()
+        Spacer(Modifier.height(22.dp))
+
+        Text(
+            "المحادثة",
+            color = White,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Panel, RoundedCornerShape(20.dp))
+                .padding(14.dp)
+        ) {
+            messages.takeLast(8).forEach { item ->
+                Text(
+                    item,
+                    color = White,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(vertical = 5.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // كتابة الرسالة
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(Panel, RoundedCornerShape(28.dp))
+                    .padding(horizontal = 18.dp, vertical = 16.dp)
+            ) {
+                if (message.isEmpty()) {
+                    Text("اكتب رسالة...", color = Muted)
                 }
+                BasicTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = White,
+                        fontSize = 15.sp
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
-            val params = GridLayout.LayoutParams().apply {
-                width = 0
-                height = dp(92)
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(dp(4), dp(4), dp(4), dp(4))
-            }
-            seats.addView(seat, params)
-        }
+            Spacer(Modifier.width(9.dp))
 
-        stage.addView(seats)
-        root.addView(stage, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(14)
-        })
-
-        // الإعلان
-        val announcement = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = shape(Color.rgb(65, 35, 100), 16)
-            setPadding(dp(15), dp(12), dp(15), dp(12))
-            addView(text("📢 إعلان الغرفة", 13f, gold, true))
-            addView(text("أهلاً وسهلاً بكم في Mariam Live", 14f))
-        }
-        root.addView(announcement, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(14)
-        })
-
-        // المحادثة
-        root.addView(text("المحادثة", 18f, Color.WHITE, true).apply {
-            gravity = Gravity.START
-            setPadding(0, dp(20), 0, dp(10))
-        })
-
-        val chat = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = shape(Color.rgb(31, 23, 46), 16)
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-
-        chat.addView(text("👑 Mariam: أهلاً وسهلاً بالجميع ❤️", 14f))
-        chat.addView(text("🎧 مرحباً بالجميع!", 14f, Color.LTGRAY).apply {
-            setPadding(0, dp(10), 0, dp(4))
-        })
-        root.addView(chat)
-
-        // حقل الرسالة
-        val messageRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val input = EditText(this).apply {
-            hint = "اكتب رسالة..."
-            setHintTextColor(Color.GRAY)
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            setSingleLine(true)
-            background = shape(panel, 30)
-            setPadding(dp(15), 0, dp(15), 0)
-        }
-
-        messageRow.addView(input, LinearLayout.LayoutParams(0, dp(50), 1f))
-
-        val send = text("إرسال", 14f, Color.WHITE, true).apply {
-            background = shape(purple, 30)
-            setPadding(dp(15), dp(14), dp(15), dp(14))
-            setOnClickListener {
-                val message = input.text.toString().trim()
-                if (message.isNotEmpty()) {
-                    Toast.makeText(
-                        this@RoomActivity,
-                        "تم تجهيز الرسالة للربط بالسيرفر",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    input.text.clear()
-                }
+            Button(
+                onClick = {
+                    if (message.isNotBlank()) {
+                        messages = messages + "أنت: $message"
+                        message = ""
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Purple),
+                shape = CircleShape,
+                contentPadding = PaddingValues(horizontal = 19.dp, vertical = 15.dp)
+            ) {
+                Icon(Icons.Default.Send, null, tint = White)
             }
         }
-        messageRow.addView(send, LinearLayout.LayoutParams(-2, -2).apply {
-            marginStart = dp(8)
-        })
-        root.addView(messageRow, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(12)
-        })
 
-        // أدوات التحكم
-        root.addView(text("أدوات التحكم", 18f, Color.WHITE, true).apply {
-            gravity = Gravity.START
-            setPadding(0, dp(22), 0, dp(12))
-        })
+        Spacer(Modifier.height(22.dp))
 
-        val controls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+        Text(
+            "أدوات التحكم",
+            color = White,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // أزرار التحكم
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ControlButton(
+                modifier = Modifier.weight(1f),
+                icon = if (muted) Icons.Default.MicOff else Icons.Default.Mic,
+                label = if (muted) "المايك مكتوم" else "المايك",
+                color = Purple
+            ) {
+                muted = !muted
+            }
+
+            ControlButton(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.VolumeUp,
+                label = "السماعة",
+                color = Panel
+            ) {}
         }
 
-        val mic = button("🎙️", "الميكروفون", pink) {
-            Toast.makeText(this@RoomActivity, "الميكروفون يحتاج ربط صوت حقيقي", Toast.LENGTH_SHORT).show()
-        }
+        Spacer(Modifier.height(10.dp))
 
-        val sound = button("🔊", "الصوت", panel) {
-            Toast.makeText(this@RoomActivity, "زر الصوت", Toast.LENGTH_SHORT).show()
-        }
+        ControlButton(
+            modifier = Modifier.fillMaxWidth(),
+            icon = Icons.Default.CardGiftcard,
+            label = "إرسال هدية",
+            color = Pink
+        ) {}
 
-        val gift = button("🎁", "إرسال هدية", purple) {
-            Toast.makeText(this@RoomActivity, "نظام الهدايا يحتاج ربط السيرفر", Toast.LENGTH_SHORT).show()
-        }
+        Spacer(Modifier.height(30.dp))
+    }
+}
 
-        controls.addView(mic, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
-            setMargins(dp(3), 0, dp(3), 0)
-        })
-        controls.addView(sound, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
-            setMargins(dp(3), 0, dp(3), 0)
-        })
-        controls.addView(gift, LinearLayout.LayoutParams(0, dp(76), 1f).apply {
-            setMargins(dp(3), 0, dp(3), 0)
-        })
-
-        root.addView(controls)
-
-        scroll.addView(root)
-        setContentView(scroll)
+@Composable
+private fun ControlButton(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(54.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color),
+        shape = RoundedCornerShape(18.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = White)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            color = White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
