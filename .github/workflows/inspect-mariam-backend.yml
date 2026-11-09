@@ -38,6 +38,12 @@ jobs:
           echo "===== API HEALTH AND DATABASE ====="
           curl -sS --max-time 8 -i http://127.0.0.1:3000/api/health
           echo
+          echo "===== AUTH LOGIN ROUTE (READ ONLY, EXPECT 401) ====="
+          curl -sS --max-time 8 -w "\\nHTTP_STATUS:%{http_code}\\n" -H "Content-Type: application/json" -d '{"identifier":"mariam-live-smoke-test-invalid","password":"not-a-real-password"}' http://127.0.0.1:3000/api/auth/login
+          echo "===== AUTH ME WITHOUT TOKEN (EXPECT 401) ====="
+          curl -sS --max-time 8 -w "\\nHTTP_STATUS:%{http_code}\\n" http://127.0.0.1:3000/api/auth/me
+          echo "===== NODE PROCESS ====="
+          pgrep -a -u mariam-admin node || true
           echo "===== PM2 FOR mariam-admin ====="
           pm2 list
           echo "===== SYSTEM SERVICES ====="
