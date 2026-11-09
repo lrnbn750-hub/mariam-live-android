@@ -77,20 +77,7 @@ jobs:
           }
           NODE
 
-          SERVICE=""
-          while read -r UNIT _; do
-            [ -n "$UNIT" ] || continue
-            EXEC="$(systemctl show -p ExecStart --value "$UNIT" 2>/dev/null || true)"
-            case "$EXEC" in
-              *"/opt/mariam-live/backend"*|*"src/server.js"*) SERVICE="$UNIT"; break ;;
-            esac
-          done < <(systemctl list-unit-files --type=service --no-legend)
-
-          if [ -n "$SERVICE" ]; then
-            sudo -n systemctl restart "$SERVICE"
-            echo "Restarted backend service: $SERVICE"
-          else
-            echo "Backend files installed, but no matching systemd service was found. API process was not restarted."
-            exit 2
-          fi
+          # Mariam Live API is managed by the root-owned PM2 daemon (process ID 0).
+          sudo -n env PM2_HOME=/root/.pm2 pm2 restart 0 --update-env
+          echo "Restarted Mariam Live API through root PM2."
           REMOTE
