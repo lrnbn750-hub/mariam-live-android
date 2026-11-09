@@ -78,6 +78,6 @@ jobs:
           NODE
 
           # Mariam Live API is managed by the root-owned PM2 daemon (process ID 0).
-          sudo -n env PM2_HOME=/root/.pm2 pm2 restart 0 --update-env
+          sudo -n /usr/local/sbin/restart-mariam-live
           echo "Restarted Mariam Live API through root PM2."
           REMOTE
