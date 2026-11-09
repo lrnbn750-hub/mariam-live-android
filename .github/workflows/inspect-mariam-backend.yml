@@ -2,6 +2,9 @@ name: Inspect Mariam Live backend (read only)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/mariam-live-development
 
 permissions:
   contents: read
