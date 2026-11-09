@@ -43,8 +43,8 @@ jobs:
           set -euo pipefail
           cd /opt/mariam-live
 
-          install -d -o mariam-admin -g mariam-admin /opt/mariam-live/backend/src/routes
-          install -o mariam-admin -g mariam-admin -m 640 /tmp/mariam-livekit-route.js /opt/mariam-live/backend/src/routes/livekit.js
+          mkdir -p /opt/mariam-live/backend/src/routes
+          install -m 640 /tmp/mariam-livekit-route.js /opt/mariam-live/backend/src/routes/livekit.js
           rm -f /tmp/mariam-livekit-route.js
 
           cd /opt/mariam-live/backend
