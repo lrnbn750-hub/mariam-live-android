@@ -42,14 +42,16 @@ jobs:
           curl -sS --max-time 8 -w "\\nHTTP_STATUS:%{http_code}\\n" -H "Content-Type: application/json" -d '{"identifier":"mariam-live-smoke-test-invalid","password":"not-a-real-password"}' http://127.0.0.1:3000/api/auth/login
           echo "===== AUTH ME WITHOUT TOKEN (EXPECT 401) ====="
           curl -sS --max-time 8 -w "\\nHTTP_STATUS:%{http_code}\\n" http://127.0.0.1:3000/api/auth/me
-          echo "===== NODE PROCESS ====="
-          pgrep -a -u mariam-admin node || true
+          echo "===== NODE PROCESS (ALL USERS) ====="
+          ps -eo user,pid,ppid,args | grep -E '[n]ode|[p]m2'
+          echo "===== PROCESS ON PORT 3000 ====="
+          fuser -v 3000/tcp 2>&1 || true
           echo "===== PM2 FOR mariam-admin ====="
           pm2 list
-          echo "===== SYSTEM SERVICES ====="
-          systemctl --no-pager --type=service --state=running | grep -Ei 'mariam|node|postgres' || true
-          echo "===== LISTENING PORT 3000 ====="
-          sudo ss -lntp | grep ':3000' || true
+          echo "===== ALL SYSTEMD SERVICES MATCHING APP ====="
+          systemctl list-units --all --type=service --no-pager | grep -Ei 'mariam|node|pm2|postgres' || true
+          echo "===== SERVICE FILES MATCHING APP ====="
+          systemctl list-unit-files --type=service --no-pager | grep -Ei 'mariam|node|pm2' || true
           REMOTE
       - name: Read backend source without secrets
         run: |
