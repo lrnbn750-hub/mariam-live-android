@@ -3,216 +3,109 @@ package com.mariam.live
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.graphics.Color
-import android.view.Gravity
+import android.text.InputType
+import android.view.View
 import android.widget.*
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.io.OutputStreamWriter
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 
 class RegisterActivity : Activity() {
-
     private val executor = Executors.newSingleThreadExecutor()
-    private val server = "http://185.174.252.118:3000"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val purple = Color.rgb(112, 78, 255)
-
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(32, 30, 32, 30)
-            setBackgroundColor(Color.rgb(246, 247, 251))
+        val page = AuthUi.page(this)
+        page.addView(AuthUi.brand(this, "انضم إلى مجتمع Mariam Live"))
+        val card = AuthUi.card(this)
+        card.addView(AuthUi.heading(this, "أنشئ حسابك ✨"))
+        card.addView(AuthUi.hint(this, "خطوات بسيطة وتكون جزءاً من مجتمعنا"))
+        card.addView(AuthUi.label(this, "اسم المستخدم"))
+        val username = AuthUi.field(this, "مثال: mariam_123", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
+        card.addView(username)
+        card.addView(AuthUi.hint(this, "3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام وشرطة سفلية فقط"))
+        card.addView(AuthUi.label(this, "الاسم الظاهر"))
+        val displayName = AuthUi.field(this, "الاسم الذي سيظهر للآخرين", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+        card.addView(displayName)
+        card.addView(AuthUi.label(this, "البريد الإلكتروني"))
+        val email = AuthUi.field(this, "name@example.com", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        card.addView(email)
+        card.addView(AuthUi.label(this, "كلمة المرور"))
+        val password = AuthUi.field(this, "8 أحرف على الأقل", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        card.addView(password)
+        card.addView(AuthUi.label(this, "تأكيد كلمة المرور"))
+        val confirm = AuthUi.field(this, "أعد كتابة كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        card.addView(confirm)
+        val show = CheckBox(this).apply {
+            text = "إظهار كلمات المرور"; textSize = 12f; setTextColor(0xFF77748B.toInt())
+            buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
+            setOnCheckedChangeListener { _, checked ->
+                val type = if (checked) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                val p = password.selectionStart; val c = confirm.selectionStart
+                password.inputType = type; confirm.inputType = type
+                password.setSelection(p.coerceAtLeast(0)); confirm.setSelection(c.coerceAtLeast(0))
+            }
         }
-
-        val title = TextView(this).apply {
-            text = "Mariam Live"
-            textSize = 32f
-            setTextColor(purple)
-            gravity = Gravity.CENTER
-        }
-
-        val username = EditText(this).apply {
-            hint = "اسم المستخدم"
-            setSingleLine()
-        }
-
-        val displayName = EditText(this).apply {
-            hint = "الاسم الظاهر"
-            setSingleLine()
-        }
-
-        val email = EditText(this).apply {
-            hint = "البريد الإلكتروني"
-            inputType = 33
-            setSingleLine()
-        }
-
-        val password = EditText(this).apply {
-            hint = "كلمة المرور"
-            inputType = 129
-            setSingleLine()
-        }
-
-        val register = Button(this).apply {
-            text = "إنشاء الحساب"
-            setBackgroundColor(purple)
-            setTextColor(Color.WHITE)
-        }
-
-        val message = TextView(this).apply {
-            gravity = Gravity.CENTER
-            textSize = 14f
-        }
-
-        register.setOnClickListener {
-            val name = username.text.toString().trim()
+        card.addView(show)
+        val message = AuthUi.message(this); card.addView(message)
+        val submit = AuthUi.primaryButton(this, "إنشاء حساب جديد"); card.addView(submit)
+        submit.setOnClickListener {
+            val name = username.text.toString().trim().lowercase()
             val display = displayName.text.toString().trim()
-            val mail = email.text.toString().trim()
+            val mail = email.text.toString().trim().lowercase()
             val pass = password.text.toString()
-
-            if (name.isEmpty() || display.isEmpty() ||
-                mail.isEmpty() || pass.isEmpty()) {
-                message.text = "يرجى ملء جميع الحقول"
-                return@setOnClickListener
+            val repeated = confirm.text.toString()
+            val validation = when {
+                !Regex("^[a-z0-9_]{3,30}$").matches(name) -> "اسم المستخدم يجب أن يكون 3–30 حرفاً إنجليزياً صغيراً أو رقماً أو _"
+                display.isBlank() || display.length > 60 -> "أدخل اسماً ظاهراً لا يتجاوز 60 حرفاً"
+                !android.util.Patterns.EMAIL_ADDRESS.matcher(mail).matches() -> "أدخل بريداً إلكترونياً صحيحاً"
+                pass.length < 8 || pass.toByteArray(StandardCharsets.UTF_8).size > 72 -> "كلمة المرور يجب أن تكون 8 أحرف على الأقل وبحد أقصى 72 بايت"
+                pass != repeated -> "كلمتا المرور غير متطابقتين"
+                else -> null
             }
-
-            if (pass.length < 8) {
-                message.text = "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
-                return@setOnClickListener
-            }
-
-            register.isEnabled = false
-            message.text = "جارٍ إنشاء الحساب..."
-
+            if (validation != null) { AuthUi.showMessage(message, validation); return@setOnClickListener }
+            submit.isEnabled = false; submit.text = "جارٍ إنشاء حسابك..."; message.visibility = View.GONE
             executor.execute {
                 try {
-                    val connection = URL(
-                        "$server/api/auth/register"
-                    ).openConnection() as HttpURLConnection
-
-                    connection.requestMethod = "POST"
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 15000
-                    connection.doOutput = true
-                    connection.setRequestProperty(
-                        "Content-Type", "application/json"
-                    )
-
-                    val data = JSONObject().apply {
-                        put("username", name)
-                        put("email", mail)
-                        put("password", pass)
-                        put("displayName", display)
-                    }
-
-                    OutputStreamWriter(connection.outputStream).use {
-                        it.write(data.toString())
-                    }
-
-                    val code = connection.responseCode
-                    val stream = if (code in 200..299)
-                        connection.inputStream
-                    else
-                        connection.errorStream
-
-                    val response = stream.bufferedReader().use {
-                        it.readText()
-                    }
-
-                    connection.disconnect()
-
-                    val result = JSONObject(response)
-
-                    if (code == 200 || code == 201) {
-                        val token = result.optString("token", "")
-
-                        if (token.isBlank() || token == "null") {
-                            runOnUiThread {
-                                message.text =
-                                    "تم إنشاء الحساب، سجّل الدخول للمتابعة"
-                                register.isEnabled = true
-                            }
-                            return@execute
-                        }
-
-                        getSharedPreferences(
-                            "MariamLive", MODE_PRIVATE
-                        ).edit()
-                            .putString("token", token)
-                            .apply()
-
+                    val result = AuthApi.post("/api/auth/register", JSONObject().apply {
+                        put("username", name); put("displayName", display); put("email", mail); put("password", pass)
+                    })
+                    if (result.status in 200..299) {
+                        val token = result.body.optString("token")
+                        if (token.isBlank() || token == "null") throw Exception("لم يصل رمز الدخول من الخادم")
+                        val data = result.body.optJSONObject("user") ?: JSONObject()
+                        getSharedPreferences("MariamLive", MODE_PRIVATE).edit()
+                            .putString("token", token).putString("user_id", data.optString("id"))
+                            .putString("username", data.optString("username")).putString("email", data.optString("email")).apply()
                         runOnUiThread {
-                            Toast.makeText(
-                                this,
-                                "تم إنشاء الحساب بنجاح",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            val intent = Intent(
-                                this,
-                                HomeActivity::class.java
-                            )
-
-                            intent.flags =
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_CLEAR_TASK
-
-                            startActivity(intent)
+                            Toast.makeText(this, "أهلاً بك في Mariam Live 🎉", Toast.LENGTH_LONG).show()
+                            startActivity(Intent(this, HomeActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
                             finish()
                         }
-
                     } else {
-                        val error = result.optString(
-                            "error",
-                            result.optString(
-                                "message",
-                                "تعذر إنشاء الحساب"
-                            )
-                        )
-
-                        runOnUiThread {
-                            message.text = error
-                            register.isEnabled = true
+                        val raw = result.body.optString("error", "تحقق من البيانات المدخلة")
+                        val friendly = when (result.status) {
+                            409 -> "اسم المستخدم أو البريد الإلكتروني مستخدم مسبقاً"
+                            400 -> when (raw) {
+                                "Username must be 3-30 characters" -> "اسم المستخدم غير صالح"
+                                "Invalid email address" -> "البريد الإلكتروني غير صحيح"
+                                "Password must be 8-72 bytes" -> "كلمة المرور يجب أن تكون بين 8 و72 بايت"
+                                else -> raw
+                            }
+                            else -> raw
                         }
+                        runOnUiThread { AuthUi.showMessage(message, friendly); submit.isEnabled = true; submit.text = "إنشاء حساب جديد" }
                     }
-
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        message.text =
-                            "تعذر الاتصال بالسيرفر: ${e.message}"
-                        register.isEnabled = true
-                    }
+                } catch (_: Exception) {
+                    runOnUiThread { AuthUi.showMessage(message, "تعذر الاتصال بالخادم. حاول مرة أخرى."); submit.isEnabled = true; submit.text = "إنشاء حساب جديد" }
                 }
             }
         }
-
-        val back = TextView(this).apply {
-            text = "لديك حساب؟ تسجيل الدخول"
-            gravity = Gravity.CENTER
-            setTextColor(purple)
-            setPadding(0, 20, 0, 10)
-            setOnClickListener { finish() }
-        }
-
-        layout.addView(title)
-        layout.addView(username)
-        layout.addView(displayName)
-        layout.addView(email)
-        layout.addView(password)
-        layout.addView(register)
-        layout.addView(message)
-        layout.addView(back)
-
-        setContentView(layout)
+        val back = AuthUi.link(this, "لديك حساب بالفعل؟ سجّل الدخول")
+        back.setOnClickListener { finish() }
+        page.addView(card); page.addView(back)
+        AuthUi.background(this, AuthUi.scroll(this, page))
     }
 
-    override fun onDestroy() {
-        executor.shutdown()
-        super.onDestroy()
-    }
+    override fun onDestroy() { executor.shutdown(); super.onDestroy() }
 }
