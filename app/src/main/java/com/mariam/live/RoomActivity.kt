@@ -1,6 +1,8 @@
 package com.mariam.live
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
@@ -9,20 +11,43 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.content.Intent
+import android.provider.Settings
 import org.json.JSONObject
-import java.util.concurrent.Executors
+import io.livekit.android.LiveKit
+import io.livekit.android.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class RoomActivity : Activity() {
-    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var room: Room
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var leaving = false
+    private var connected = false
+    private var microphoneEnabled = true
+    private var roomId: String = ""
+    private var authToken: String = ""
+
     private val backgroundColor = Color.rgb(17, 13, 29)
     private val purple = Color.rgb(151, 91, 255)
+    private lateinit var state: TextView
+    private lateinit var micButton: TextView
+    private lateinit var leaveButton: TextView
+
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = backgroundColor
         window.navigationBarColor = backgroundColor
+
+        roomId = intent.getStringExtra("room_id").orEmpty()
+        authToken = getSharedPreferences("MariamLive", MODE_PRIVATE)
+            .getString("token", null).orEmpty()
 
         val roomName = intent.getStringExtra("room_name")
             ?.takeIf { it.isNotBlank() } ?: "غرفة صوتية"
@@ -52,16 +77,16 @@ class RoomActivity : Activity() {
                 cornerRadius = dp(18).toFloat()
             }
         }
-        val state = TextView(this).apply {
-            text = "البث الصوتي غير متاح حالياً"
-            textSize = 18f
+        state = TextView(this).apply {
+            text = "جارٍ تجهيز الاتصال الصوتي..."
+            textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         }
         stateCard.addView(state)
         val details = TextView(this).apply {
-            text = "لم يتم ربط خدمة الصوت المباشر وخدمة الغرف بالخادم بعد. لن نعرض مقاعد أو مستمعين أو رسائل وهمية، ولن ندّعي أن المايك يعمل قبل اكتمال الربط."
+            text = "الصوت يعمل عبر خادم Mariam Live الخاص"
             textSize = 14f
             setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
@@ -72,59 +97,140 @@ class RoomActivity : Activity() {
         params.topMargin = dp(26)
         root.addView(stateCard, params)
 
-        val close = TextView(this).apply {
-            text = "العودة"
-            textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                setColor(purple)
-                cornerRadius = dp(14).toFloat()
-            }
-            setOnClickListener { leaveRoom() }
-        }
-        val closeParams = LinearLayout.LayoutParams(-1, dp(50))
-        closeParams.topMargin = dp(20)
-        root.addView(close, closeParams)
+        micButton = actionButton("🎙 إيقاف المايك")
+        micButton.setOnClickListener { toggleMicrophone() }
+        val micParams = LinearLayout.LayoutParams(-1, dp(52))
+        micParams.topMargin = dp(22)
+        root.addView(micButton, micParams)
+
+        leaveButton = actionButton("مغادرة الغرفة")
+        leaveButton.setOnClickListener { leaveRoom() }
+        val leaveParams = LinearLayout.LayoutParams(-1, dp(50))
+        leaveParams.topMargin = dp(12)
+        root.addView(leaveButton, leaveParams)
 
         setContentView(root)
-    }
 
-    private fun leaveRoom() {
-        if (leaving) return
-        val roomId = intent.getStringExtra("room_id")
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
-        if (roomId.isNullOrBlank() || token.isNullOrBlank()) {
-            finish()
+        if (roomId.isBlank() || authToken.isBlank()) {
+            state.text = "بيانات الغرفة أو تسجيل الدخول غير متوفرة"
+            micButton.isEnabled = false
             return
         }
-        leaving = true
-        executor.execute {
+
+        room = LiveKit.create(applicationContext)
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            connectToVoiceRoom()
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MICROPHONE)
+        }
+    }
+
+    private fun actionButton(textValue: String) = TextView(this).apply {
+        text = textValue
+        textSize = 16f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        background = GradientDrawable().apply {
+            setColor(purple)
+            cornerRadius = dp(14).toFloat()
+        }
+    }
+
+    private fun connectToVoiceRoom() {
+        state.text = "جارٍ الاتصال بخادم الصوت..."
+        scope.launch {
             try {
-                val result = AuthApi.post("/api/voice-rooms/$roomId/leave", JSONObject(), token)
-                runOnUiThread {
-                    if (result.status !in 200..299 && result.status != 404) {
-                        Toast.makeText(this, "تعذر مغادرة الغرفة من الخادم", Toast.LENGTH_SHORT).show()
-                    }
-                    finish()
+                val response = withContext(Dispatchers.IO) {
+                    AuthApi.get("/api/voice-rooms/$roomId/token", authToken)
                 }
-            } catch (_: Exception) {
-                runOnUiThread {
-                    Toast.makeText(this, "انقطع الاتصال؛ أُغلقت الشاشة فقط", Toast.LENGTH_SHORT).show()
-                    finish()
+                if (response.status !in 200..299) {
+                    throw IllegalStateException(response.body.optString("error", "تعذر إصدار رمز دخول الصوت"))
                 }
+
+                val serverUrl = response.body.optString("serverUrl")
+                val participantToken = response.body.optString("participantToken")
+                if (serverUrl.isBlank() || participantToken.isBlank()) {
+                    throw IllegalStateException("استجابة رمز الصوت غير مكتملة")
+                }
+
+                room.connect(serverUrl, participantToken)
+                room.localParticipant.setMicrophoneEnabled(true)
+                connected = true
+                microphoneEnabled = true
+                state.text = "أنت متصل بالغرفة الصوتية"
+                micButton.text = "🎙 إيقاف المايك"
+            } catch (error: Exception) {
+                state.text = error.message ?: "تعذر الاتصال الصوتي"
+                micButton.isEnabled = false
+                Toast.makeText(this@RoomActivity, state.text, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun toggleMicrophone() {
+        if (!connected) return
+        scope.launch {
+            try {
+                microphoneEnabled = !microphoneEnabled
+                room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
+                micButton.text = if (microphoneEnabled) "🎙 إيقاف المايك" else "🔇 تشغيل المايك"
+                state.text = if (microphoneEnabled) "المايك يعمل" else "المايك متوقف"
+            } catch (error: Exception) {
+                microphoneEnabled = !microphoneEnabled
+                Toast.makeText(this@RoomActivity, "تعذر تغيير حالة المايك", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     @Deprecated("Deprecated in Android")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_MICROPHONE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                connectToVoiceRoom()
+            } else {
+                state.text = "يجب السماح باستخدام المايك للدخول الصوتي"
+                Toast.makeText(this, "اسمح للتطبيق باستخدام المايك", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun leaveRoom() {
+        if (leaving) return
+        leaving = true
+        scope.launch {
+            try {
+                if (connected) room.disconnect()
+                withContext(Dispatchers.IO) {
+                    AuthApi.post("/api/voice-rooms/$roomId/leave", JSONObject(), authToken)
+                }
+            } catch (_: Exception) {
+                // Close locally even if the API is temporarily unreachable.
+            } finally {
+                connected = false
+                finish()
+            }
+        }
+    }
+
     override fun onBackPressed() {
         leaveRoom()
     }
 
     override fun onDestroy() {
-        executor.shutdownNow()
+        if (!leaving && connected) {
+            room.disconnect()
+        }
+        scope.cancel()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val REQUEST_MICROPHONE = 4102
     }
 }
