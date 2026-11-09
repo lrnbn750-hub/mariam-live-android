@@ -21,12 +21,17 @@ class RoomActivity : Activity() {
     private val white = Color.WHITE
     private var micEnabled = false
     private var handRaised = false
+    private var isRoomOwner = false
 
     private lateinit var micButton: TextView
     private lateinit var handButton: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val roomName = intent.getStringExtra("room_name")
+            ?.takeIf { it.isNotBlank() } ?: "غرفة مريم الصوتية"
+        isRoomOwner = intent.getBooleanExtra("is_owner", false)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -50,14 +55,14 @@ class RoomActivity : Activity() {
         }
 
         roomInfo.addView(text(
-            "سهرات مريم 🌙",
+            roomName,
             21,
             white,
             true
         ))
 
         roomInfo.addView(text(
-            "رقم الغرفة: 100086",
+            if (isRoomOwner) "أنت مالك هذه الغرفة" else "غرفة صوتية تجريبية",
             12,
             Color.LTGRAY
         ))
