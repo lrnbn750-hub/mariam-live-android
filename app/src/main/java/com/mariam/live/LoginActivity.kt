@@ -25,7 +25,7 @@ class LoginActivity : Activity() {
 
         val emailChoice = AuthUi.primaryButton(this, "✉   المتابعة باستخدام البريد الإلكتروني")
         emailChoice.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this, 54)).apply {
-            topMargin = AuthUi.dp(this, 12)
+            topMargin = AuthUi.dp(this@LoginActivity, 12)
         }
         choices.addView(emailChoice)
 
