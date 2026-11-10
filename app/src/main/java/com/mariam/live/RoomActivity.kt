@@ -46,7 +46,12 @@ class RoomActivity : Activity() {
   val page=LinearLayout(this).apply{orientation=1;minimumHeight=resources.displayMetrics.heightPixels;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,39,58),bg,Color.rgb(8,24,39)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(label("MARIAM LIVE",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
-  top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)));page.addView(top)
+  top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)))
+  top.addView(label("×",30f,Color.WHITE,true).apply{
+   setOnClickListener{leaveRoom()}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(112,43,60));setStroke(dp(1),Color.rgb(204,83,104))}
+  },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8)})
+  page.addView(top)
   page.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
   page.addView(label("غرفة صوتية مباشرة  •  8 مقاعد",12f,Color.LTGRAY).apply{setPadding(0,0,0,dp(14))})
   val host=LinearLayout(this).apply{
@@ -69,15 +74,16 @@ class RoomActivity : Activity() {
   page.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
-   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(245)).apply{topMargin=dp(12)})
+   val screenDp=(resources.displayMetrics.heightPixels/resources.displayMetrics.density).toInt()
+   val chatHeight=(screenDp-465).coerceAtLeast(245)
+   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(chatHeight)).apply{topMargin=dp(12)})
   status=label("جارٍ الاتصال...",12f,Color.LTGRAY).apply{setPadding(0,dp(12),0,dp(8))};page.addView(status)
   val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(4),0,dp(4))}
     val share=action("مشاركة","share",Color.rgb(35,83,105),Color.rgb(65,160,180)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
   mic=action("إيقاف المايك","mic",Color.rgb(22,112,137),Color.rgb(50,190,204)){toggleMic()}
   mic.visibility=View.GONE
   val gift=action("الهدايا","gift",Color.rgb(126,69,91),Color.rgb(207,105,133)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
-  val exit=action("مغادرة","leave",Color.rgb(112,43,60),Color.rgb(204,83,104)){leaveRoom()}
-  listOf(share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})}
+  listOf(share,mic,gift).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})}
   val contentScroll=ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)}
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
   roomRoot.addView(contentScroll,LinearLayout.LayoutParams(-1,0,1f))
@@ -324,7 +330,15 @@ mic.visibility=if(isSeated)View.VISIBLE else View.GONE
  }
  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
   if(uid==null){claimSeat(n);return}
-  if(uid==currentUserId){Toast.makeText(this,"أنت جالس على هذا المقعد",Toast.LENGTH_SHORT).show();return}
+  if(uid==currentUserId){
+   AlertDialog.Builder(this)
+    .setTitle("إدارة مقعدك")
+    .setItems(arrayOf(if(microphoneEnabled)"كتم صوت المايك" else "تشغيل المايك","مغادرة المقعد")){_,which->
+     if(which==0)toggleMic() else leaveSeat(n)
+    }
+    .setNegativeButton("إغلاق",null).show()
+   return
+  }
   if(!isOwner){Toast.makeText(this,"هذا المقعد مشغول",Toast.LENGTH_SHORT).show();return}
   val muted=s.optBoolean("is_muted")
   AlertDialog.Builder(this).setTitle(name)
@@ -342,6 +356,21 @@ mic.visibility=if(isSeated)View.VISIBLE else View.GONE
      }
     }
    }.setNegativeButton("إغلاق",null).show()
+ }
+ private fun leaveSeat(n:Int){
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){AuthApi.delete("/api/voice-rooms/$roomId/seats/$n",authToken)}
+    if(result.status in 200..299){
+     try{room.disconnect()}catch(_:Exception){}
+     connected=false;isSeated=false;microphoneEnabled=false
+     loadSeats();connect()
+     Toast.makeText(this@RoomActivity,"غادرت المقعد، يمكنك البقاء مستمعاً",Toast.LENGTH_SHORT).show()
+    }else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر مغادرة المقعد"),Toast.LENGTH_SHORT).show()
+   }catch(_:Exception){
+    Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
+   }
+  }
  }
  private fun claimSeat(n:Int){
   if(!connected){Toast.makeText(this,"انتظر اتصال الغرفة ثم حاول مجدداً",Toast.LENGTH_SHORT).show();return}
