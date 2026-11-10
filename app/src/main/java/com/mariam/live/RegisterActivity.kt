@@ -101,6 +101,9 @@ class RegisterActivity : Activity() {
                 }
             }
         }
+        card.addView(AuthUi.socialDivider(this))
+        card.addView(AuthUi.socialButton(this, "إنشاء حساب باستخدام Google", "G"))
+        card.addView(AuthUi.socialButton(this, "التسجيل برقم الهاتف", "☎"))
         val back = AuthUi.link(this, "لديك حساب بالفعل؟ سجّل الدخول")
         back.setOnClickListener { finish() }
         page.addView(card); page.addView(back)
