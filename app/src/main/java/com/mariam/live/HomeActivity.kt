@@ -133,8 +133,8 @@ class HomeActivity : Activity() {
             card.addView(row,FrameLayout.LayoutParams(-1,-1))
             return card
         }
-        slider.addView(promoSlide(false),ViewFlipper.LayoutParams(-1,-1))
-        slider.addView(promoSlide(true),ViewFlipper.LayoutParams(-1,-1))
+        slider.addView(promoSlide(false),FrameLayout.LayoutParams(-1,-1))
+        slider.addView(promoSlide(true),FrameLayout.LayoutParams(-1,-1))
         sliderWrap.addView(slider,LinearLayout.LayoutParams(-1,dp(184)))
         val dots=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR;setPadding(0,dp(7),0,0)}
         val dotViews=(0..1).map{index->TextView(this).apply{
