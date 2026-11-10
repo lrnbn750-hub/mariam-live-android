@@ -26,15 +26,8 @@ class HomeActivity : Activity() {
     private val muted = Color.rgb(139,139,153)
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
-    private data class DemoRoom(val title:String,val tag:String,val count:Int,val image:String)
-    private val demos = listOf(
-        DemoRoom("سهرة الأصدقاء 🎙","دردشة",28,"https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=700&h=700&fit=crop"),
-        DemoRoom("مجلس الموسيقى 🎵","موسيقى",19,"https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=700&h=700&fit=crop"),
-        DemoRoom("تعرف وتواصل","عشوائي",34,"https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=700&h=700&fit=crop"),
-        DemoRoom("ليلة عربية ✨","مباشر",12,"https://images.unsplash.com/photo-1506157786151-b8491531f063?w=700&h=700&fit=crop"),
-        DemoRoom("أصدقاء حول العالم","دردشة",21,"https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=700&h=700&fit=crop"),
-        DemoRoom("استراحة ووناسة","عشوائي",16,"https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=700&h=700&fit=crop")
-    )
+    private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
+    private val liveRooms= mutableListOf<RoomItem>()
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun shape(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat()}
     private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{
@@ -92,7 +85,7 @@ class HomeActivity : Activity() {
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
         roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
-        buildCards()
+        roomStatus.text="جارٍ تحميل الغرف الحقيقية..."
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
         fun navItem(symbol:String,title:String,selected:Boolean=false)=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
@@ -158,19 +151,34 @@ class HomeActivity : Activity() {
     }
     private fun buildCards(){
         grid.removeAllViews()
-        val availableWidth=(resources.displayMetrics.widthPixels-dp(32));val w=availableWidth/2;val imageHeight=(w*0.78f).toInt()
-        demos.forEachIndexed{i,r->
-            val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(9))}
-            val frame=FrameLayout(this).apply{background=shape(Color.rgb(232,227,243),13);clipToOutline=true}
-            val image=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(Color.rgb(225,220,239))}
-            frame.addView(image,FrameLayout.LayoutParams(-1,imageHeight))
-            frame.addView(TextView(this).apply{text=r.tag;textSize=10f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=shape(if(i%2==0)Color.rgb(0,174,190)else purple,7);setPadding(dp(8),dp(5),dp(8),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply{setMargins(0,0,dp(7),dp(7))})
-            frame.addView(TextView(this).apply{text="＋  ◉ ◉ ◉ ◉  •••";textSize=11f;setTextColor(Color.WHITE);background=shape(0x99000000.toInt(),18);setPadding(dp(7),dp(5),dp(7),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(7),0,0,dp(7))})
+        val width=(resources.displayMetrics.widthPixels-dp(32))/2
+        val imageHeight=(width*0.78f).toInt()
+        if(liveRooms.isEmpty()){
+            roomStatus.text="لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
+            return
+        }
+        roomStatus.text="الغرف النشطة: ${liveRooms.size}"
+        liveRooms.forEach { room ->
+            val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(10));isClickable=true}
+            val frame=FrameLayout(this).apply{
+                background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(117,78,211),Color.rgb(36,31,62))).apply{cornerRadius=dp(13).toFloat()}
+                clipToOutline=true
+            }
+            val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP}
+            frame.addView(cover,FrameLayout.LayoutParams(-1,imageHeight))
+            val overlay=TextView(this).apply{
+                text="🎙  ${room.count}/${room.max}";textSize=12f;setTextColor(Color.WHITE)
+                setPadding(dp(9),dp(6),dp(9),dp(6));background=shape(0x99000000.toInt(),16)
+            }
+            frame.addView(overlay,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
+            if(!room.imageUrl.isNullOrBlank()){
+                executor.execute{try{val con=URL(room.imageUrl).openConnection();con.connectTimeout=8000;con.readTimeout=8000;val bmp=con.getInputStream().use{BitmapFactory.decodeStream(it)};runOnUiThread{cover.setImageBitmap(bmp)}}catch(_:Exception){}}
+            }
             card.addView(frame)
-            card.addView(label(r.title,13f,ink,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(4),dp(7),dp(4),0)})
-            card.addView(label("●  ${r.count} متصل الآن",10f,Color.rgb(26,169,113)).apply{setPadding(dp(4),dp(4),0,0)})
-            grid.addView(card,GridLayout.LayoutParams().apply{width=w;height=-2;setMargins(dp(3),dp(3),dp(3),dp(5))})
-            executor.execute{try{val conn=URL(r.image).openConnection();conn.connectTimeout=8000;conn.readTimeout=8000;val bmp=conn.getInputStream().use{BitmapFactory.decodeStream(it)};runOnUiThread{image.setImageBitmap(bmp)}}catch(_:Exception){}}
+            card.addView(label(room.name,14f,ink,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(4),dp(7),dp(4),0)})
+            card.addView(label("●  ${room.count} متصل الآن",11f,Color.rgb(26,169,113)).apply{setPadding(dp(4),dp(4),0,0)})
+            card.setOnClickListener{joinRoom(room.id,room.name)}
+            grid.addView(card,GridLayout.LayoutParams().apply{this.width=width;height=-2;setMargins(dp(3),dp(3),dp(3),dp(5))})
         }
     }
     private fun verifyAccount(){
@@ -178,8 +186,45 @@ class HomeActivity : Activity() {
         executor.execute{try{val r=AuthApi.get("/api/auth/me",token);if(r.status==401||r.status==403){getSharedPreferences("MariamLive",MODE_PRIVATE).edit().remove("token").apply();runOnUiThread{openLogin()}}}catch(_:Exception){}}
     }
     private fun loadRooms(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
+        if(token.isNullOrBlank()){roomStatus.text="سجّل الدخول لعرض الغرف";return}
+        roomStatus.text="جارٍ تحميل الغرف الحقيقية..."
+        executor.execute{
+            try{
+                val result=AuthApi.get("/api/voice-rooms",token)
+                val array=result.body.optJSONArray("rooms")
+                val parsed= mutableListOf<RoomItem>()
+                if(result.status in 200..299 && array!=null){
+                    for(i in 0 until array.length()){
+                        val item=array.optJSONObject(i)?:continue
+                        parsed.add(RoomItem(
+                            item.optString("id"),
+                            item.optString("name","غرفة صوتية"),
+                            item.optInt("member_count",0),
+                            item.optInt("max_members",8),
+                            item.optString("image_url").takeIf{it.isNotBlank()&&it!="null"}
+                        ))
+                    }
+                }
+                runOnUiThread{
+                    liveRooms.clear();liveRooms.addAll(parsed);buildCards()
+                    if(result.status !in 200..299)roomStatus.text=result.body.optString("error","تعذر تحميل الغرف")
+                }
+            }catch(_:Exception){runOnUiThread{liveRooms.clear();buildCards();roomStatus.text="تعذر الاتصال بالخادم"}}
+        }
+    }
+    private fun joinRoom(id:String,name:String){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
-        executor.execute{try{val r=AuthApi.get("/api/voice-rooms",token);val rooms=r.body.optJSONArray("rooms");runOnUiThread{roomStatus.text=if(r.status in 200..299&&rooms!=null)"الغرف الفعلية المتاحة: ${rooms.length()}  •  الصور أعلاه تجريبية" else "صور تجريبية للمعاينة — تعذّر تحديث الغرف"}}catch(_:Exception){runOnUiThread{roomStatus.text="صور تجريبية للمعاينة — لا يوجد اتصال بالغرف"}}}
+        executor.execute{
+            try{
+                val result=AuthApi.post("/api/voice-rooms/$id/join",JSONObject(),token)
+                runOnUiThread{
+                    if(result.status in 200..299){
+                        startActivity(Intent(this,RoomActivity::class.java).putExtra("room_id",id).putExtra("room_name",name))
+                    }else Toast.makeText(this,result.body.optString("error","تعذر دخول الغرفة"),Toast.LENGTH_LONG).show()
+                }
+            }catch(_:Exception){runOnUiThread{Toast.makeText(this,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}}
+        }
     }
     private fun showSearchDialog(){
         val input=EditText(this).apply{
@@ -197,11 +242,28 @@ class HomeActivity : Activity() {
     }
     private fun showCreateRoomDialog(){
         val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
-        android.app.AlertDialog.Builder(this).setTitle("إنشاء غرفة صوتية").setView(input).setNegativeButton("إلغاء",null).setPositiveButton("إنشاء"){_,_->val n=input.text.toString().trim();if(n.length<2)Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show()else createRoom(n)}.show()
+        android.app.AlertDialog.Builder(this).setTitle("إنشاء غرفة صوتية")
+            .setMessage("اختر اسماً للغرفة. إضافة صورة للغرفة ستحتاج تفعيل رفع الصور على الخادم.")
+            .setView(input).setNegativeButton("إلغاء",null)
+            .setPositiveButton("إنشاء"){_,_->
+                val name=input.text.toString().trim()
+                if(name.length<2)Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show()
+                else createRoom(name)
+            }.show()
     }
     private fun createRoom(name:String){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
-        executor.execute{try{val r=AuthApi.post("/api/voice-rooms",JSONObject().put("name",name).put("max_members",8),token);runOnUiThread{Toast.makeText(this,if(r.status in 200..299)"تم إنشاء الغرفة" else r.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show();loadRooms()}}catch(_:Exception){runOnUiThread{Toast.makeText(this,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}}}
+        executor.execute{
+            try{
+                val result=AuthApi.post("/api/voice-rooms",JSONObject().put("name",name).put("max_members",8),token)
+                runOnUiThread{
+                    if(result.status in 200..299){
+                        Toast.makeText(this,"تم إنشاء الغرفة",Toast.LENGTH_SHORT).show()
+                        loadRooms()
+                    }else Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
+                }
+            }catch(_:Exception){runOnUiThread{Toast.makeText(this,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}}
+        }
     }
     private fun openLogin(){startActivity(Intent(this,LoginActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK});finish()}
     override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
