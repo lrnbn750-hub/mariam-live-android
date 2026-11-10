@@ -71,6 +71,9 @@ jobs:
           const publicId="u.public_id";
           s=s.replace('         u.id,\n         u.username,','         u.id,\n         u.public_id,\n         u.username,');
           s=s.replace('        id: user.id,\n        username: user.username,','        id: user.id,\n        public_id: user.public_id,\n        username: user.username,');
+          s=s.replace("RETURNING id, username, email, created_at","RETURNING id, public_id, username, email, created_at");
+          s=s.replace("SELECT id, username, email, password_hash, status","SELECT id, public_id, username, email, password_hash, status");
+          s=s.replace("          u.id,\\n         u.username,","          u.id,\\n         u.public_id,\\n         u.username,");
           fs.writeFileSync(file,s);
           NODE
           sudo -n /usr/local/sbin/restart-mariam-live
