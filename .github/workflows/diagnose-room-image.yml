@@ -1,0 +1,44 @@
+name: Diagnose Mariam Live room image
+on:
+  push:
+    branches:
+      - feature/mariam-live-development
+    paths:
+      - .github/workflows/diagnose-room-image.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Read-only room image diagnostics
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          test -n "$DB_NAME"
+          echo "=== matching room records ==="
+          sudo -n -u postgres psql -X -A -F '|' -v ON_ERROR_STOP=1 -d "$DB_NAME" -c "SELECT id, name, COALESCE(image_url,''), created_at FROM public.voice_rooms WHERE lower(name)=lower('jj') ORDER BY created_at DESC LIMIT 5;"
+          echo "=== image storage ==="
+          if [ -d /opt/mariam-live/uploads/rooms ]; then
+            find /opt/mariam-live/uploads/rooms -maxdepth 1 -type f -printf '%f|%s bytes\n' | tail -n 20
+          else
+            echo "ROOM_UPLOAD_DIRECTORY_MISSING"
+          fi
+          echo "=== static route configuration ==="
+          grep -n 'app.use("/uploads"' src/server.js || true
+          echo "=== health endpoint ==="
+          curl -sS -o /dev/null -w 'HTTP %{http_code}\n' https://nokiraq.duckdns.org/api/health || true
+          REMOTE
