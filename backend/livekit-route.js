@@ -24,7 +24,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
 
   async function getRoom(roomId) {
     const result = await db.query(
-      "SELECT id, owner_id, status FROM voice_rooms WHERE id = $1 LIMIT 1",
+      "SELECT id, owner_id, status, room_background_url FROM voice_rooms WHERE id = $1 LIMIT 1",
       [roomId]
     );
     return result.rows[0] || null;
@@ -126,7 +126,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         occupied.get(i + 1) || { seat_number: i + 1, user_id: null, is_muted: false, display_name: null }
       );
       const room = await getRoom(roomId);
-      return res.json({ seats: eightSeats, handRaises: hands.rows, ownerId: room && room.owner_id });
+      return res.json({ seats: eightSeats, handRaises: hands.rows, ownerId: room && room.owner_id, backgroundUrl: room && room.room_background_url });
     } catch (error) {
       console.error("List voice seats:", error.message);
       return res.status(500).json({ error: "Could not load voice seats" });
