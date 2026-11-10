@@ -123,10 +123,10 @@ class HomeActivity : Activity() {
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)));setContentView(root)
         verifyAccount();loadRooms()
     }
-    private fun iconView(kind:String,color:Int):View = object:View(this){
+    private fun iconView(kind:String,tint:Int):View = object:View(this){
         private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{
             style=Paint.Style.STROKE;strokeWidth=dp(2).toFloat()
-            strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=color
+            strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;setColor(tint)
         }
         override fun onDraw(canvas:Canvas){
             super.onDraw(canvas)
