@@ -42,6 +42,60 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
   }
 
+
+  // Room text chat: members only, newest 50 messages returned in chronological order.
+  app.get("/api/voice-rooms/:roomId/messages", authenticateToken, async (req, res) => {
+    try {
+      const roomId = req.params.roomId;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
+      const result = await db.query(`
+        SELECT * FROM (
+          SELECT m.id, m.room_id, m.user_id, m.message, m.created_at,
+                 COALESCE(p.display_name, u.username) AS display_name, u.username
+          FROM voice_room_messages m
+          JOIN users u ON u.id = m.user_id
+          LEFT JOIN user_profiles p ON p.user_id = u.id
+          WHERE m.room_id = $1
+          ORDER BY m.id DESC
+          LIMIT 50
+        ) recent
+        ORDER BY id ASC
+      `, [roomId]);
+      return res.json({ messages: result.rows });
+    } catch (error) {
+      console.error("List room messages:", error.message);
+      return res.status(500).json({ error: "Could not load room messages" });
+    }
+  });
+
+  app.post("/api/voice-rooms/:roomId/messages", authenticateToken, async (req, res) => {
+    try {
+      const roomId = req.params.roomId;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
+      const message = String(req.body && req.body.message || "").trim();
+      if (!message || message.length > 500) {
+        return res.status(400).json({ error: "Message must contain 1-500 characters" });
+      }
+      const recent = await db.query(
+        "SELECT created_at FROM voice_room_messages WHERE room_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1",
+        [roomId, req.userId]
+      );
+      if (recent.rows.length && Date.now() - new Date(recent.rows[0].created_at).getTime() < 700) {
+        return res.status(429).json({ error: "Please wait before sending another message" });
+      }
+      const result = await db.query(
+        "INSERT INTO voice_room_messages(room_id,user_id,message) VALUES($1,$2,$3) RETURNING id, room_id, user_id, message, created_at",
+        [roomId, req.userId, message]
+      );
+      return res.status(201).json({ message: "Message sent", item: result.rows[0] });
+    } catch (error) {
+      console.error("Send room message:", error.message);
+      return res.status(500).json({ error: "Could not send room message" });
+    }
+  });
+
   app.get("/api/voice-rooms/:roomId/seats", authenticateToken, async (req, res) => {
     try {
       await ensureVoiceSchema();
