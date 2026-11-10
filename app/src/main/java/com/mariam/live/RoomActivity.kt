@@ -26,7 +26,7 @@ class RoomActivity : Activity() {
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
- private var handRaised=false; private var isOwner=false
+ private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
  private val bg=Color.rgb(9,17,31); private val purple=Color.rgb(54,190,210); private val gold=Color.rgb(111,231,220); private val mutedText=Color.rgb(178,202,215)
@@ -272,8 +272,27 @@ class RoomActivity : Activity() {
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
-mic.visibility=if(isSeated)View.VISIBLE else View.GONE
-
+    val ownerSeat=seats.optJSONObject(0)
+    val ownerSeatUser=ownerSeat?.optString("user_id").orEmpty()
+    if(isOwner && !ownerSeatSetupDone){
+     ownerSeatSetupDone=true
+     if(ownerSeatUser.isBlank() || ownerSeatUser=="null"){
+      val claim=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/seats/1/claim",JSONObject(),authToken)}
+      if(claim.status in 200..299){
+       isSeated=true
+       if(connected){try{room.disconnect()}catch(_:Exception){};connected=false;connect()}
+       else if(!connected && checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) connect()
+      }else{
+       ownerSeatSetupDone=false
+       Toast.makeText(this@RoomActivity,claim.body.optString("error","تعذر حجز المقعد الأول للمالك"),Toast.LENGTH_LONG).show()
+      }
+     }else if(ownerSeatUser==currentUserId){
+      isSeated=true
+     }else{
+      Toast.makeText(this@RoomActivity,"المقعد الأول محجوز؛ يرجى مراجعة حالة الغرفة",Toast.LENGTH_LONG).show()
+     }
+    }
+    mic.visibility=if(isSeated)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
@@ -408,7 +427,71 @@ mic.visibility=if(isSeated)View.VISIBLE else View.GONE
  }
  private fun toggleMic(){if(!connected)return;scope.launch{try{microphoneEnabled=!microphoneEnabled;room.localParticipant.setMicrophoneEnabled(microphoneEnabled);status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"}catch(_:Exception){}}}
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
- private fun leaveRoom(){if(leaving)return;leaving=true;scope.launch{try{if(connected)room.disconnect();stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java));withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject(),authToken)}}catch(_:Exception){}finally{finish()}}}
+ private fun leaveRoom(){
+  if(leaving)return
+  if(isOwner){
+   AlertDialog.Builder(this)
+    .setTitle("إدارة الغرفة")
+    .setMessage("هل تريد إبقاء الغرفة مفتوحة والعودة إليها لاحقاً، أم إغلاقها نهائياً؟")
+    .setPositiveButton("إبقاء الغرفة"){_,_->leaveRoomNow(false)}
+    .setNegativeButton("إغلاق الغرفة نهائياً"){_,_->closeRoomNow()}
+    .setNeutralButton("إلغاء",null)
+    .show()
+  }else{
+   AlertDialog.Builder(this)
+    .setTitle("مغادرة الغرفة")
+    .setMessage("هل تريد الخروج من الغرفة؟")
+    .setPositiveButton("مغادرة"){_,_->leaveRoomNow(false)}
+    .setNegativeButton("إلغاء",null)
+    .show()
+  }
+ }
+ private fun leaveRoomNow(closeRoom:Boolean){
+  if(leaving)return
+  leaving=true
+  scope.launch{
+   try{
+    if(connected)room.disconnect()
+    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+    withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",!closeRoom),authToken)
+    }
+   }catch(_:Exception){}
+   finally{finish()}
+  }
+ }
+ private fun closeRoomNow(){
+  if(leaving)return
+  AlertDialog.Builder(this)
+   .setTitle("إغلاق الغرفة نهائياً؟")
+   .setMessage("سيتم إنهاء البث وإخراج جميع الموجودين. لا يمكن إعادة فتح هذه الجلسة.")
+   .setPositiveButton("تأكيد الإغلاق"){_,_->
+    leaving=true
+    scope.launch{
+     try{
+      if(connected)room.disconnect()
+      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+      val result=withContext(Dispatchers.IO){
+       AuthApi.post("/api/voice-rooms/$roomId/close",JSONObject(),authToken)
+      }
+      if(result.status !in 200..299){
+       leaving=false
+       Toast.makeText(this@RoomActivity,result.body.optString("error","خادم الغرف لا يدعم الإغلاق النهائي بعد"),Toast.LENGTH_LONG).show()
+       if(!isFinishing)connect()
+       return@launch
+      }
+     }catch(_:Exception){
+      leaving=false
+      Toast.makeText(this@RoomActivity,"تعذر إغلاق الغرفة من الخادم",Toast.LENGTH_LONG).show()
+      if(!isFinishing)connect()
+      return@launch
+     }
+     finish()
+    }
+   }
+   .setNegativeButton("رجوع",null).show()
+ }
+
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){scope.cancel();super.onDestroy()}
 }
