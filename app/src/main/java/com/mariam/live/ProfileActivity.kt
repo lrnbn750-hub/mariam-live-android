@@ -59,6 +59,24 @@ class ProfileActivity : Activity() {
         card.addView(status)
         val save=TextView(this).apply{text="حفظ التعديلات";textSize=15f;gravity=Gravity.CENTER;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=android.graphics.drawable.GradientDrawable().apply{setColor(purple);cornerRadius=dp(14).toFloat()};setPadding(0,dp(15),0,dp(15));setOnClickListener{saveProfile()}}
         card.addView(save,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+        val logout=TextView(this).apply{
+            text="تسجيل الخروج";textSize=15f;gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(190,48,65))
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.rgb(255,242,244));cornerRadius=dp(14).toFloat()
+                setStroke(dp(1),Color.rgb(245,210,216))
+            }
+            setPadding(0,dp(15),0,dp(15))
+            setOnClickListener{
+                android.app.AlertDialog.Builder(this@ProfileActivity)
+                    .setTitle("تسجيل الخروج")
+                    .setMessage("هل تريد تسجيل الخروج من حسابك؟")
+                    .setNegativeButton("إلغاء",null)
+                    .setPositiveButton("تسجيل الخروج"){_,_->performLogout()}
+                    .show()
+            }
+        }
+        card.addView(logout,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
         root.addView(card,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
         setContentView(ScrollView(this).apply{addView(root)})
         loadProfile(idView)
@@ -101,6 +119,13 @@ class ProfileActivity : Activity() {
                 runOnUiThread{status.text=if(result.status in 200..299)"تم حفظ الملف الشخصي بنجاح" else result.body.optString("error","تعذر حفظ التعديلات")}
             }catch(_:Exception){runOnUiThread{status.text="تعذر الاتصال بالخادم"}}
         }
+    }
+    private fun performLogout(){
+        getSharedPreferences("MariamLive",MODE_PRIVATE).edit().clear().apply()
+        startActivity(Intent(this,LoginActivity::class.java).apply{
+            flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
+        finish()
     }
     override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
 }
