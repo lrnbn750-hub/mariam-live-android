@@ -75,7 +75,7 @@ class RoomActivity : Activity() {
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
    page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
-  status=label("جارٍ الاتصال...",11f,Color.LTGRAY).apply{setPadding(0,dp(5),0,dp(3))};page.addView(status,LinearLayout.LayoutParams(-1,dp(25)))
+  status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
   val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(2),0,dp(2))}
   mic=action("المايك","mic",Color.rgb(22,112,137),Color.rgb(50,190,204)){toggleMic()}
   mic.visibility=View.GONE
