@@ -52,29 +52,12 @@ class HomeActivity : Activity() {
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val header=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(8))
+            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(18),dp(10),dp(18),dp(10))
             setBackgroundColor(cream)
         }
-        fun headerTab(title:String,selected:Boolean)=TextView(this).apply{
-            text=title;textSize=16f;gravity=Gravity.CENTER
-            setTextColor(if(selected)ink else muted)
-            typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            setSingleLine(true)
-        }
-        header.addView(headerTab("متصل",false),LinearLayout.LayoutParams(0,dp(48),1f))
-        header.addView(headerTab("شعبي",true),LinearLayout.LayoutParams(0,dp(48),1f))
-        header.addView(headerTab("المجاورون",false),LinearLayout.LayoutParams(0,dp(48),1.15f))
-        val searchButton=TextView(this).apply{
-            text="⌕";textSize=29f;gravity=Gravity.CENTER;setTextColor(ink)
-            background=shape(Color.WHITE,24)
-        }
-        header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginStart=dp(7)})
-        val logo=TextView(this).apply{
-            text="M";textSize=19f;typeface=Typeface.DEFAULT_BOLD;gravity=Gravity.CENTER
-            setTextColor(Color.WHITE);background=shape(purple,13)
-        }
-        header.addView(logo,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(7)})
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(68)))
+        header.addView(label("الغرف الاجتماعية",19f,ink,true),LinearLayout.LayoutParams(0,dp(48),1f))
+        header.addView(label("اكتشف المزيد  ›",13f,purple,true))
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(62)))
         val banner=FrameLayout(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
@@ -89,9 +72,6 @@ class HomeActivity : Activity() {
             chips.addView(TextView(this).apply{text=s;textSize=12f;gravity=Gravity.CENTER;setTextColor(if(i==0)Color.rgb(31,160,100)else muted);background=shape(if(i==0)Color.rgb(226,248,236)else Color.WHITE,24);setPadding(dp(17),dp(10),dp(17),dp(10))},LinearLayout.LayoutParams(-2,dp(42)).apply{marginEnd=dp(8)})
         }
         hsv.addView(chips);content.addView(hsv)
-        val heading=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(18),dp(15),dp(18),dp(10))}
-        heading.addView(label("الغرف والمجتمعات",18f,ink,true),LinearLayout.LayoutParams(0,dp(34),1f))
-        heading.addView(label("اكتشف المزيد  ›",12f,purple,true));content.addView(heading)
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
         roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
@@ -117,7 +97,6 @@ class HomeActivity : Activity() {
             addView(circle,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         }
         nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(navItem("star","المفضلة"),LinearLayout.LayoutParams(0,dp(68),1f))
         nav.addView(navItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
         nav.addView(navItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)));setContentView(root)
