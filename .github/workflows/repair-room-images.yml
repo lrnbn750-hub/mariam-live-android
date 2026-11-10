@@ -54,7 +54,18 @@ jobs:
           rm -f /tmp/mariam-voice-rooms.js /tmp/mariam-profile-id.sql
           sudo -n /usr/local/sbin/restart-mariam-live
           echo "=== HEALTH ==="
-          curl -fsS --max-time 10 https://nokiraq.duckdns.org/api/health
+          for attempt in $(seq 1 15); do
+  if curl -fsS --max-time 8 https://nokiraq.duckdns.org/api/health; then
+    echo
+    break
+  fi
+  if [ "$attempt" -eq 15 ]; then
+    echo "HEALTH_CHECK_FAILED_AFTER_RETRIES"
+    exit 1
+  fi
+  echo "Health endpoint not ready yet (attempt $attempt/15); waiting 2 seconds..."
+  sleep 2
+done
           echo
           echo "=== STATIC ROUTE ==="
           grep -n 'app.use("/uploads"' src/server.js
