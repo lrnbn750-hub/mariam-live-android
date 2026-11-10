@@ -61,4 +61,33 @@ jobs:
           grep -n 'app.use("/uploads"' src/server.js
           echo "=== JSON LIMIT ==="
           grep -n 'express.json' src/server.js
+          echo "=== ROOM IMAGE DIAGNOSTICS ==="
+          node <<'NODE'
+          require("dotenv").config();
+          const { Client } = require("pg");
+          const fs = require("fs");
+          const path = require("path");
+          (async () => {
+            const db = new Client({
+              host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432),
+              database: process.env.DB_NAME, user: process.env.DB_USER,
+              password: process.env.DB_PASSWORD
+            });
+            await db.connect();
+            try {
+              const q = await db.query("SELECT id, name, image_url FROM public.voice_rooms ORDER BY created_at DESC LIMIT 5");
+              for (const r of q.rows) {
+                const u = r.image_url || "";
+                const filename = u.split("/").pop();
+                const file = filename ? path.join("/opt/mariam-live/uploads/rooms", filename) : "";
+                console.log(JSON.stringify({room_id:r.id, name:r.name, has_image_url:!!u, image_url:u || null, file_exists:!!file && fs.existsSync(file), file_size:!!file && fs.existsSync(file) ? fs.statSync(file).size : 0}));
+                if (u) {
+                  const { execFileSync } = require("child_process");
+                  try { console.log("IMAGE_HTTP " + execFileSync("curl", ["-sS","-o","/dev/null","-w","%{http_code} %{content_type}","--max-time","8",u], {encoding:"utf8"})); }
+                  catch(e) { console.log("IMAGE_HTTP_FAILED " + e.message); }
+                }
+              }
+            } finally { await db.end(); }
+          })().catch(e => { console.error("ROOM_DIAGNOSTIC_FAILED", e.message); process.exit(1); });
+          NODE
           REMOTE
