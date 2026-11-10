@@ -34,7 +34,7 @@ class MalakWelcomeActivity : Activity() {
             contentDescription = "مرحباً بك حبيبتي ملاك"
         }
         setContentView(image)
-        handler.postDelayed(continueToHome, 3000L)
+        handler.postDelayed(continueToHome, 5000L)
     }
 
     override fun onDestroy() {
