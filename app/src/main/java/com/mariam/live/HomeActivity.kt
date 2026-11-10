@@ -386,17 +386,7 @@ class HomeActivity : Activity() {
             .setPositiveButton("بحث"){_,_->searchQuery=input.text.toString().trim();buildCards()}.show()
     }
     private fun showCreateRoomDialog(){
-        val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
-        android.app.AlertDialog.Builder(this).setTitle("إنشاء غرفة صوتية")
-            .setMessage("اختر صورة من هاتفك لتظهر على بطاقة الغرفة في الصفحة الرئيسية.")
-            .setView(input).setNegativeButton("إلغاء",null)
-            .setPositiveButton("اختيار الصورة"){_,_->
-                val name=input.text.toString().trim()
-                if(name.length<2){Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show();return@setPositiveButton}
-                pendingRoomName=name
-                val pick=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{type="image/*";addCategory(Intent.CATEGORY_OPENABLE)}
-                startActivityForResult(pick,roomImagePicker)
-            }.show()
+        startActivity(Intent(this,RoomSetupActivity::class.java))
     }
     @Deprecated("Deprecated in Android API; retained for broad device compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
