@@ -4,6 +4,10 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -48,11 +52,11 @@ class HomeActivity : Activity() {
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val header=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(6),dp(12),dp(6))
+            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(8))
             setBackgroundColor(cream)
         }
         fun headerTab(title:String,selected:Boolean)=TextView(this).apply{
-            text=title;textSize=14f;gravity=Gravity.CENTER
+            text=title;textSize=16f;gravity=Gravity.CENTER
             setTextColor(if(selected)ink else muted)
             typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
             setSingleLine(true)
@@ -64,13 +68,13 @@ class HomeActivity : Activity() {
             text="⌕";textSize=29f;gravity=Gravity.CENTER;setTextColor(ink)
             background=shape(Color.WHITE,24)
         }
-        header.addView(searchButton,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(7)})
+        header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginStart=dp(7)})
         val logo=TextView(this).apply{
             text="M";textSize=19f;typeface=Typeface.DEFAULT_BOLD;gravity=Gravity.CENTER
             setTextColor(Color.WHITE);background=shape(purple,13)
         }
-        header.addView(logo,LinearLayout.LayoutParams(dp(40),dp(40)).apply{marginStart=dp(7)})
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
+        header.addView(logo,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(7)})
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(68)))
         val banner=FrameLayout(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
@@ -96,31 +100,66 @@ class HomeActivity : Activity() {
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
         fun navItem(symbol:String,title:String,selected:Boolean=false)=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+            addView(iconView(symbol,if(selected)purple else ink),LinearLayout.LayoutParams(dp(28),dp(30)))
             addView(TextView(this@HomeActivity).apply{
-                text=symbol;textSize=if(symbol=="＋")27f else 21f;gravity=Gravity.CENTER
-                setTextColor(if(selected||symbol=="＋")purple else ink)
-            },LinearLayout.LayoutParams(-1,dp(28)))
-            if(title.isNotEmpty()) addView(TextView(this@HomeActivity).apply{
-                text=title;textSize=10f;gravity=Gravity.CENTER
+                text=title;textSize=12f;gravity=Gravity.CENTER
                 setTextColor(if(selected)purple else muted);setSingleLine(true)
-            },LinearLayout.LayoutParams(-1,dp(17)))
+            },LinearLayout.LayoutParams(-1,dp(20)))
         }
-        nav.addView(navItem("♙","حسابي"),LinearLayout.LayoutParams(0,dp(58),1f))
-        nav.addView(navItem("☏","رسائل"),LinearLayout.LayoutParams(0,dp(58),1f))
+        nav.addView(navItem("profile","حسابي"),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("message","رسائل"),LinearLayout.LayoutParams(0,dp(68),1f))
         val addRoom=FrameLayout(this).apply{
             val circle=TextView(this@HomeActivity).apply{
-                text="＋";textSize=30f;gravity=Gravity.CENTER
-                setTextColor(Color.WHITE);background=shape(purple,30);elevation=dp(5).toFloat()
+                text="+";textSize=31f;gravity=Gravity.CENTER
+                setTextColor(Color.WHITE);background=shape(purple,30);elevation=dp(6).toFloat()
                 setOnClickListener{showCreateRoomDialog()}
             }
-            addView(circle,FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
+            addView(circle,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         }
-        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(60),1f))
-        nav.addView(navItem("☆","المفضلة"),LinearLayout.LayoutParams(0,dp(58),1f))
-        nav.addView(navItem("◎","اكتشف"),LinearLayout.LayoutParams(0,dp(58),1f))
-        nav.addView(navItem("⌂","الرئيسية",true),LinearLayout.LayoutParams(0,dp(58),1f))
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(76)));setContentView(root)
+        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("star","المفضلة"),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)));setContentView(root)
         verifyAccount();loadRooms()
+    }
+    private fun iconView(kind:String,color:Int):View = object:View(this){
+        private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+            style=Paint.Style.STROKE;strokeWidth=dp(2).toFloat()
+            strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=color
+        }
+        override fun onDraw(canvas:Canvas){
+            super.onDraw(canvas)
+            val side=dp(26).toFloat();val x=(width-side)/2f;val y=(height-side)/2f
+            canvas.save();canvas.translate(x,y);canvas.scale(side/24f,side/24f)
+            when(kind){
+                "profile"->{
+                    canvas.drawCircle(12f,7f,4f,p)
+                    canvas.drawArc(RectF(4f,13f,20f,25f),180f,180f,false,p)
+                }
+                "message"->{
+                    val r=RectF(2.5f,3f,21.5f,18f);canvas.drawRoundRect(r,5f,5f,p)
+                    val tail=Path().apply{moveTo(7f,18f);lineTo(5f,22f);lineTo(12f,18f)}
+                    canvas.drawPath(tail,p)
+                    canvas.drawCircle(8f,10.5f,0.8f,p);canvas.drawCircle(12f,10.5f,0.8f,p);canvas.drawCircle(16f,10.5f,0.8f,p)
+                }
+                "star"->{
+                    val path=Path()
+                    for(i in 0..9){val a=Math.PI/2+i*Math.PI/5;val r=if(i%2==0)10.5 else 4.8;val px=(12+Math.cos(a)*r).toFloat();val py=(12-Math.sin(a)*r).toFloat();if(i==0)path.moveTo(px,py)else path.lineTo(px,py)}
+                    path.close();canvas.drawPath(path,p)
+                }
+                "compass"->{
+                    canvas.drawCircle(12f,12f,9.5f,p)
+                    val needle=Path().apply{moveTo(15.5f,7f);lineTo(13f,13f);lineTo(8f,16.5f);lineTo(10.5f,10.5f);close()}
+                    canvas.drawPath(needle,p)
+                }
+                "home"->{
+                    val path=Path().apply{moveTo(2f,11f);lineTo(12f,3f);lineTo(22f,11f);moveTo(5f,10f);lineTo(5f,21f);lineTo(19f,21f);lineTo(19f,10f);moveTo(10f,21f);lineTo(10f,15f);lineTo(14f,15f);lineTo(14f,21f)}
+                    canvas.drawPath(path,p)
+                }
+            }
+            canvas.restore()
+        }
     }
     private fun buildCards(){
         grid.removeAllViews()
