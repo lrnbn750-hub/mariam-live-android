@@ -23,7 +23,7 @@ import kotlinx.coroutines.*
 class RoomActivity : Activity() {
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
- private var connected=false; private var leaving=false; private var microphoneEnabled=true
+ private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
  private var handRaised=false; private var isOwner=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
@@ -57,6 +57,7 @@ class RoomActivity : Activity() {
   val share=action("مشاركة","share",Color.rgb(65,58,105),Color.rgb(117,103,190)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
   hand=action("رفع اليد","hand",Color.rgb(104,53,153),purple){toggleHand()}
   mic=action("إيقاف المايك","mic",Color.rgb(83,48,125),Color.rgb(169,91,221)){toggleMic()}
+  mic.visibility=View.GONE
   val gift=action("الهدايا","gift",Color.rgb(111,43,104),Color.rgb(190,76,151)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
   val exit=action("مغادرة","leave",Color.rgb(125,39,66),Color.rgb(208,70,103)){leaveRoom()}
   listOf(chat,share,hand,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
@@ -83,7 +84,23 @@ class RoomActivity : Activity() {
  }
  private fun loadIdentity(){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)};currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")}catch(_:Exception){};loadSeats()}}
  private fun emptySeats(){seats=JSONArray();for(i in 1..8)seats.put(JSONObject().put("seat_number",i));drawSeats()}
- private fun loadSeats(){if(roomId.isBlank())return;scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/seats",authToken)};if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch};seats=r.body.optJSONArray("seats")?:JSONArray();hands=r.body.optJSONArray("handRaises")?:JSONArray();isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId");handRaised=(0 until hands.length()).any{hands.optJSONObject(it)?.optString("user_id")==currentUserId};drawSeats();drawQueue()}catch(_:Exception){status.text="تعذر تحديث الغرفة"}}}
+ private fun loadSeats(){
+  if(roomId.isBlank())return
+  scope.launch{
+   try{
+    val r=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/seats",authToken)}
+    if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
+    seats=r.body.optJSONArray("seats")?:JSONArray()
+    hands=r.body.optJSONArray("handRaises")?:JSONArray()
+    isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
+    isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
+    handRaised=(0 until hands.length()).any{hands.optJSONObject(it)?.optString("user_id")==currentUserId}
+    mic.visibility=if(isSeated)View.VISIBLE else View.GONE
+    hand.visibility=if(isSeated)View.GONE else View.VISIBLE
+    drawSeats();drawQueue()
+   }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
+  }
+ }
  private fun drawSeats(){grid.removeAllViews();for(row in 0..1){val line=LinearLayout(this);for(col in 0..3){val i=row*4+col;val s=seats.optJSONObject(i)?:JSONObject();val uid=s.optString("user_id").takeIf{it.isNotBlank()&&it!="null"};val name=s.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid==null)"مقعد فارغ" else "متحدث";val tile=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(2),dp(8),dp(2),dp(7));background=panel(if(uid==null)Color.rgb(34,21,49) else Color.rgb(65,34,85),15)}
   tile.addView(label(if(uid==null)"+" else name.take(1).uppercase(),24f,if(uid==null)purple else gold,true).apply{background=GradientDrawable().apply{shape=1;setColor(Color.rgb(53,31,72));setStroke(dp(2),if(uid==null)purple else gold)}},LinearLayout.LayoutParams(dp(50),dp(50)))
   tile.addView(label(name,10f,Color.WHITE,true));tile.addView(label(if(s.optBoolean("is_muted"))"مكتوم" else if(uid==null)"متاح" else "على المايك",9f,Color.LTGRAY))
