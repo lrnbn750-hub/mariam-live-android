@@ -95,7 +95,7 @@ class HomeActivity : Activity() {
                 setTextColor(if(selected)purple else muted);setSingleLine(true)
             },LinearLayout.LayoutParams(-1,dp(20)))
         }
-        nav.addView(navItem("profile","حسابي"),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("profile","حسابي").apply{setOnClickListener{startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))}},LinearLayout.LayoutParams(0,dp(68),1f))
         nav.addView(navItem("message","رسائل"),LinearLayout.LayoutParams(0,dp(68),1f))
         val addRoom=FrameLayout(this).apply{
             val circle=TextView(this@HomeActivity).apply{
