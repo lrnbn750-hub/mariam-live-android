@@ -58,7 +58,7 @@ class RoomActivity : Activity() {
   val gift=action("الهدايا","gift",Color.rgb(126,43,106)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
   val exit=action("مغادرة","leave",Color.rgb(143,40,68)){leaveRoom()}
   listOf(chat,share,hand,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(64),1f).apply{setMargins(dp(2),0,dp(2),0)})};page.addView(bar)
-  setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page,ScrollView.LayoutParams(-1,-2))})
+  setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)})
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
@@ -85,7 +85,31 @@ class RoomActivity : Activity() {
  private fun post(path:String,data:JSONObject){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.post(path,data,authToken)};Toast.makeText(this@RoomActivity,if(r.status in 200..299)"تم تنفيذ العملية" else r.body.optString("error","فشلت العملية"),Toast.LENGTH_SHORT).show();if(r.status in 200..299)loadSeats()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال",Toast.LENGTH_SHORT).show()}}}
  private fun del(path:String){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.delete(path,authToken)};if(r.status in 200..299)loadSeats() else Toast.makeText(this@RoomActivity,r.body.optString("error","فشلت العملية"),Toast.LENGTH_SHORT).show()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال",Toast.LENGTH_SHORT).show()}}}
  private fun toggleHand(){if(!connected)return;scope.launch{try{val r=withContext(Dispatchers.IO){if(handRaised)AuthApi.delete("/api/voice-rooms/$roomId/hand-raise",authToken) else AuthApi.post("/api/voice-rooms/$roomId/hand-raise",JSONObject(),authToken)};if(r.status in 200..299){handRaised=!handRaised;Toast.makeText(this@RoomActivity,if(handRaised)"تم إرسال طلبك" else "تم إلغاء الطلب",Toast.LENGTH_SHORT).show();loadSeats()}else Toast.makeText(this@RoomActivity,r.body.optString("error","تعذر رفع اليد"),Toast.LENGTH_SHORT).show()}catch(_:Exception){}}}
- private fun connect(){status.text="جارٍ الاتصال بخادم الصوت...";val service=Intent(this,VoiceForegroundService::class.java);if(Build.VERSION.SDK_INT>=26)startForegroundService(service) else startService(service);scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/token",JSONObject(),authToken)};if(r.status !in 200..299){val detail=r.body.optString("stage");val code=r.body.optString("code");throw Exception(r.body.optString("error","تعذر إصدار رمز الصوت")+if(detail.isNotBlank())" ($detail/$code)" else " (HTTP ${r.status})")}room.connect(r.body.optString("serverUrl"),r.body.optString("participantToken"));microphoneEnabled=r.body.optBoolean("canPublish",false);room.localParticipant.setMicrophoneEnabled(microphoneEnabled);connected=true;status.text=if(microphoneEnabled)"متصل • المايك جاهز" else "متصل كمستمع • ارفع يدك ليقبلك المضيف";loadSeats()}catch(e:Exception){status.text=e.message?:"تعذر الاتصال";stopService(service)}}}
+ private fun connect(){
+  status.text="جارٍ الاتصال بخادم الصوت..."
+  val service=Intent(this,VoiceForegroundService::class.java)
+  if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
+  scope.launch {
+   try {
+    val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/token",JSONObject(),authToken)}
+    if(r.status !in 200..299){
+     val detail=r.body.optString("stage")
+     val code=r.body.optString("code")
+     val reason=r.body.optString("error","تعذر إصدار رمز الصوت")
+     throw Exception(reason + if(detail.isNotBlank()) " ($detail/$code)" else " (HTTP ${r.status})")
+    }
+    room.connect(r.body.optString("serverUrl"),r.body.optString("participantToken"))
+    microphoneEnabled=r.body.optBoolean("canPublish",false)
+    room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
+    connected=true
+    status.text=if(microphoneEnabled) "متصل • المايك جاهز" else "متصل كمستمع • ارفع يدك ليقبلك المضيف"
+    loadSeats()
+   } catch(e:Exception) {
+    status.text=e.message?:"تعذر الاتصال"
+    stopService(service)
+   }
+  }
+ }
  private fun toggleMic(){if(!connected)return;scope.launch{try{microphoneEnabled=!microphoneEnabled;room.localParticipant.setMicrophoneEnabled(microphoneEnabled);status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"}catch(_:Exception){}}}
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
  private fun leaveRoom(){if(leaving)return;leaving=true;scope.launch{try{if(connected)room.disconnect();stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java));withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject(),authToken)}}catch(_:Exception){}finally{finish()}}}
