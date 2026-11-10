@@ -54,7 +54,7 @@ class LoginActivity : Activity() {
                         getSharedPreferences("MariamLive", MODE_PRIVATE).edit()
                             .putString("token", token).putString("user_id", data.optString("id"))
                             .putString("username", data.optString("username")).putString("email", data.optString("email")).apply()
-                        runOnUiThread { startActivity(Intent(this, HomeActivity::class.java)); finish() }
+                        runOnUiThread { startActivity(Intent(this, MalakWelcomeActivity::class.java)); finish() }
                     } else {
                         val friendly = when (result.status) {
                             401 -> "اسم المستخدم أو كلمة المرور غير صحيحة"
