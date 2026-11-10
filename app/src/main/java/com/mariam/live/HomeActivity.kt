@@ -18,6 +18,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.view.View
 import android.widget.*
 import org.json.JSONObject
@@ -168,6 +170,27 @@ class HomeActivity : Activity() {
                 setPadding(dp(9),dp(6),dp(9),dp(6));background=shape(0x99000000.toInt(),16)
             }
             frame.addView(overlay,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
+            val topBadge=LinearLayout(this).apply{
+                orientation=LinearLayout.HORIZONTAL
+                layoutDirection=View.LAYOUT_DIRECTION_LTR
+                gravity=Gravity.CENTER
+                setPadding(dp(8),dp(4),dp(8),dp(4))
+                background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(255,91,45),Color.rgb(225,43,36))).apply{cornerRadius=dp(14).toFloat()}
+                elevation=dp(3).toFloat()
+                isClickable=false
+            }
+            topBadge.addView(TextView(this).apply{
+                text="TOP";textSize=11f;typeface=Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE);gravity=Gravity.CENTER
+            })
+            val fire=TextView(this).apply{
+                text=" 🔥";textSize=13f;gravity=Gravity.CENTER
+                setPadding(dp(2),0,0,0)
+            }
+            topBadge.addView(fire)
+            frame.addView(topBadge,FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.RIGHT).apply{setMargins(0,dp(8),dp(8),0)})
+            ObjectAnimator.ofFloat(fire,View.SCALE_X,1f,1.28f).apply{duration=480;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+            ObjectAnimator.ofFloat(fire,View.SCALE_Y,1f,1.28f).apply{duration=480;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
             if(!room.imageUrl.isNullOrBlank()){
                 loadRoomCover(cover,room.imageUrl)
             }
