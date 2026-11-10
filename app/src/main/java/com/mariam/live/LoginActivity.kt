@@ -31,7 +31,7 @@ class LoginActivity : Activity() {
 
         fun comingSoonButton(title: String, symbol: String): TextView =
             TextView(this).apply {
-                text = "$symbol   $title                         قريباً"
+                text = "$title     •     قريباً"
                 textSize = 14f
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
                 gravity = android.view.Gravity.CENTER
@@ -48,8 +48,34 @@ class LoginActivity : Activity() {
                 alpha = 0.78f
             }
 
-        choices.addView(comingSoonButton("المتابعة باستخدام Google", "G"))
-        choices.addView(comingSoonButton("تسجيل الدخول برقم الهاتف", "☎"))
+        choices.addView(comingSoonButton("المتابعة باستخدام Google", ""))
+        choices.addView(comingSoonButton("تسجيل الدخول برقم الهاتف", ""))
+
+        // Email route: choose sign-in or create account
+        val emailPanel = AuthUi.card(this).apply { visibility = View.GONE }
+        emailPanel.addView(AuthUi.heading(this, "المتابعة بالبريد الإلكتروني"))
+        emailPanel.addView(AuthUi.hint(this, "اختر ما تريد فعله للمتابعة"))
+        val loginOption = AuthUi.primaryButton(this, "تسجيل الدخول")
+        emailPanel.addView(loginOption)
+        val registerOption = TextView(this).apply {
+            text = "إنشاء حساب جديد"
+            textSize = 15f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            setTextColor(0xFF7957F6.toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xFFF4F0FF.toInt())
+                cornerRadius = AuthUi.dp(this@LoginActivity, 15).toFloat()
+                setStroke(AuthUi.dp(this@LoginActivity, 1), 0xFFE5DDFB.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 54)).apply {
+                topMargin = AuthUi.dp(this@LoginActivity, 12)
+            }
+        }
+        emailPanel.addView(registerOption)
+        val emailBack = AuthUi.link(this, "العودة إلى الخيارات الرئيسية")
+        emailBack.setOnClickListener { emailPanel.visibility = View.GONE; choices.visibility = View.VISIBLE }
+        emailPanel.addView(emailBack)
 
         val loginCard = AuthUi.card(this).apply { visibility = View.GONE }
         loginCard.addView(AuthUi.heading(this, "تسجيل الدخول بالبريد"))
@@ -105,24 +131,28 @@ class LoginActivity : Activity() {
             }
         }
 
-        val back = AuthUi.link(this, "العودة إلى خيارات تسجيل الدخول")
+        val back = AuthUi.link(this, "العودة")
         back.setOnClickListener {
             loginCard.visibility = View.GONE
-            choices.visibility = View.VISIBLE
+            emailPanel.visibility = View.VISIBLE
         }
         loginCard.addView(back)
 
         emailChoice.setOnClickListener {
             choices.visibility = View.GONE
+            emailPanel.visibility = View.VISIBLE
+        }
+        loginOption.setOnClickListener {
+            emailPanel.visibility = View.GONE
             loginCard.visibility = View.VISIBLE
         }
-
-        val register = AuthUi.link(this, "مستخدم جديد؟ أنشئ حسابك الآن")
-        register.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
+        registerOption.setOnClickListener {
+            startActivity(Intent(this, RegisterActivity::class.java))
+        }
 
         page.addView(choices)
+        page.addView(emailPanel)
         page.addView(loginCard)
-        page.addView(register)
         AuthUi.background(this, AuthUi.scroll(this, page))
     }
 
