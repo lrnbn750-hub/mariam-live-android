@@ -14,17 +14,52 @@ class LoginActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val page = AuthUi.page(this)
         page.addView(AuthUi.brand(this, "عالمك، أصدقاؤك، وصوتك في مكان واحد"))
-        val card = AuthUi.card(this)
-        card.addView(AuthUi.heading(this, "أهلاً بعودتك 👋"))
-        card.addView(AuthUi.hint(this, "سجّل دخولك وارجع لأصدقائك وغرفك المفضلة"))
-        card.addView(AuthUi.label(this, "اسم المستخدم أو البريد الإلكتروني"))
+
+        // شاشة اختيار طريقة تسجيل الدخول التي تظهر أولاً
+        val choices = AuthUi.card(this)
+        choices.addView(AuthUi.heading(this, "اختر طريقة تسجيل الدخول"))
+        choices.addView(AuthUi.hint(this, "اختر الطريقة المناسبة للمتابعة إلى حسابك"))
+
+        val emailChoice = AuthUi.primaryButton(this, "✉   المتابعة باستخدام البريد الإلكتروني")
+        emailChoice.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this, 54)).apply {
+            topMargin = AuthUi.dp(this, 12)
+        }
+        choices.addView(emailChoice)
+
+        fun comingSoonButton(title: String, symbol: String): TextView =
+            TextView(this).apply {
+                text = "$symbol   $title                         قريباً"
+                textSize = 14f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                gravity = android.view.Gravity.CENTER
+                setTextColor(0xFF77748B.toInt())
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(0xFFF3F1F8.toInt())
+                    cornerRadius = AuthUi.dp(this@LoginActivity, 14).toFloat()
+                    setStroke(AuthUi.dp(this@LoginActivity, 1), 0xFFE8E4F0.toInt())
+                }
+                layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 50)).apply {
+                    topMargin = AuthUi.dp(this@LoginActivity, 10)
+                }
+                isEnabled = false
+                alpha = 0.78f
+            }
+
+        choices.addView(comingSoonButton("المتابعة باستخدام Google", "G"))
+        choices.addView(comingSoonButton("تسجيل الدخول برقم الهاتف", "☎"))
+
+        val loginCard = AuthUi.card(this).apply { visibility = View.GONE }
+        loginCard.addView(AuthUi.heading(this, "تسجيل الدخول بالبريد"))
+        loginCard.addView(AuthUi.hint(this, "أدخل بيانات حسابك للمتابعة"))
+        loginCard.addView(AuthUi.label(this, "اسم المستخدم أو البريد الإلكتروني"))
         val identifier = AuthUi.field(this, "أدخل اسم المستخدم أو البريد", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        card.addView(identifier)
-        card.addView(AuthUi.label(this, "كلمة المرور"))
+        loginCard.addView(identifier)
+        loginCard.addView(AuthUi.label(this, "كلمة المرور"))
         val password = AuthUi.field(this, "أدخل كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        card.addView(password)
+        loginCard.addView(password)
         val show = CheckBox(this).apply {
             text = "إظهار كلمة المرور"; textSize = 12f; setTextColor(0xFF77748B.toInt())
             buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
@@ -34,9 +69,10 @@ class LoginActivity : Activity() {
                 password.setSelection(pos.coerceAtLeast(0))
             }
         }
-        card.addView(show)
-        val message = AuthUi.message(this); card.addView(message)
-        val login = AuthUi.primaryButton(this, "تسجيل الدخول"); card.addView(login)
+        loginCard.addView(show)
+        val message = AuthUi.message(this); loginCard.addView(message)
+        val login = AuthUi.primaryButton(this, "تسجيل الدخول"); loginCard.addView(login)
+
         login.setOnClickListener {
             val user = identifier.text.toString().trim()
             val pass = password.text.toString()
@@ -68,12 +104,25 @@ class LoginActivity : Activity() {
                 }
             }
         }
-        card.addView(AuthUi.socialDivider(this))
-        card.addView(AuthUi.socialButton(this, "المتابعة باستخدام Google", "G"))
-        card.addView(AuthUi.socialButton(this, "تسجيل الدخول برقم الهاتف", "☎"))
+
+        val back = AuthUi.link(this, "العودة إلى خيارات تسجيل الدخول")
+        back.setOnClickListener {
+            loginCard.visibility = View.GONE
+            choices.visibility = View.VISIBLE
+        }
+        loginCard.addView(back)
+
+        emailChoice.setOnClickListener {
+            choices.visibility = View.GONE
+            loginCard.visibility = View.VISIBLE
+        }
+
         val register = AuthUi.link(this, "مستخدم جديد؟ أنشئ حسابك الآن")
         register.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
-        page.addView(card); page.addView(register)
+
+        page.addView(choices)
+        page.addView(loginCard)
+        page.addView(register)
         AuthUi.background(this, AuthUi.scroll(this, page))
     }
 
