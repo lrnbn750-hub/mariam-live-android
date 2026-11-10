@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.PorterDuff
+import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -25,7 +27,7 @@ class RoomActivity : Activity() {
  private var handRaised=false; private var isOwner=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
- private val bg=Color.rgb(16,10,28); private val purple=Color.rgb(164,76,239); private val gold=Color.rgb(255,195,83)
+ private val bg=Color.rgb(16,10,28); private val purple=Color.rgb(164,76,239); private val gold=Color.rgb(255,195,83); private val mutedText=Color.rgb(207,190,220)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout; private lateinit var queue:LinearLayout
  private lateinit var mic:LinearLayout; private lateinit var hand:LinearLayout
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -50,24 +52,34 @@ class RoomActivity : Activity() {
   page.addView(label("طلبات رفع اليد",16f,Color.WHITE,true).apply{setPadding(0,dp(15),0,dp(8))})
   queue=LinearLayout(this).apply{orientation=1};page.addView(queue)
   status=label("جارٍ الاتصال...",12f,Color.LTGRAY).apply{setPadding(0,dp(12),0,dp(8))};page.addView(status)
-  val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0}
-  val chat=action("دردشة","chat",Color.rgb(70,48,94)){Toast.makeText(this,"الدردشة النصية ستُربط بالرسائل",Toast.LENGTH_SHORT).show()}
-  val share=action("مشاركة","share",Color.rgb(70,48,94)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
-  hand=action("رفع اليد","hand",purple){toggleHand()}
-  mic=action("إيقاف المايك","mic",Color.rgb(105,57,147)){toggleMic()}
-  val gift=action("الهدايا","gift",Color.rgb(126,43,106)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
-  val exit=action("مغادرة","leave",Color.rgb(143,40,68)){leaveRoom()}
-  listOf(chat,share,hand,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(64),1f).apply{setMargins(dp(2),0,dp(2),0)})};page.addView(bar)
+  val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(4),0,dp(4))}
+  val chat=action("دردشة","chat",Color.rgb(75,54,104),Color.rgb(137,89,190)){Toast.makeText(this,"الدردشة النصية ستُربط بالرسائل",Toast.LENGTH_SHORT).show()}
+  val share=action("مشاركة","share",Color.rgb(65,58,105),Color.rgb(117,103,190)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
+  hand=action("رفع اليد","hand",Color.rgb(104,53,153),purple){toggleHand()}
+  mic=action("إيقاف المايك","mic",Color.rgb(83,48,125),Color.rgb(169,91,221)){toggleMic()}
+  val gift=action("الهدايا","gift",Color.rgb(111,43,104),Color.rgb(190,76,151)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
+  val exit=action("مغادرة","leave",Color.rgb(125,39,66),Color.rgb(208,70,103)){leaveRoom()}
+  listOf(chat,share,hand,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
   setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)})
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
- private fun action(title:String,icon:String,color:Int,click:()->Unit)=LinearLayout(this).apply{
-  orientation=1;gravity=Gravity.CENTER;background=panel(color,15);isClickable=true;isFocusable=true;elevation=dp(3).toFloat()
-  addView(TextView(this@RoomActivity).apply{gravity=Gravity.CENTER;setCompoundDrawablesWithIntrinsicBounds(null,VectorIcon(icon,Color.WHITE,dp(24)),null,null)},LinearLayout.LayoutParams(-1,dp(36)))
-  addView(label(title,10f,Color.WHITE,true));setOnClickListener{click()}
+ private fun action(title:String,icon:String,color:Int,accent:Int,click:()->Unit)=LinearLayout(this).apply{
+  orientation=1;gravity=Gravity.CENTER;isClickable=true;isFocusable=true;elevation=dp(4).toFloat()
+  background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(
+   Color.red(color)+((255-Color.red(color))*0.08f).toInt(),
+   Color.green(color)+((255-Color.green(color))*0.08f).toInt(),
+   Color.blue(color)+((255-Color.blue(color))*0.08f).toInt()),color)).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.argb(105,accent.red(),accent.green(),accent.blue()))}
+  val iconWrap=FrameLayout(this@RoomActivity).apply{
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(42,accent.red(),accent.green(),accent.blue()));setStroke(dp(1),Color.argb(125,accent.red(),accent.green(),accent.blue()))}
+   val iv=ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)));setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN);scaleType=ImageView.ScaleType.FIT_CENTER}
+   addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
+  }
+  addView(iconWrap,LinearLayout.LayoutParams(dp(43),dp(43)).apply{bottomMargin=dp(5)})
+  addView(label(title,10.5f,Color.WHITE,true))
+  setOnClickListener{click()}
  }
  private fun loadIdentity(){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)};currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")}catch(_:Exception){};loadSeats()}}
  private fun emptySeats(){seats=JSONArray();for(i in 1..8)seats.put(JSONObject().put("seat_number",i));drawSeats()}
