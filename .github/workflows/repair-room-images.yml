@@ -1,0 +1,75 @@
+name: Repair Mariam Live room image backend
+on:
+  push:
+    branches:
+      - feature/mariam-live-development
+    paths:
+      - .github/workflows/repair-room-images.yml
+permissions:
+  contents: read
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy room API and apply compatible migration
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/voice-rooms.js mariam-admin@185.174.252.118:/tmp/mariam-voice-rooms.js
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/profile-id-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-profile-id.sql
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          cp -a src/server.js "src/server.js.backup-room-images-$(date +%Y%m%d%H%M%S)"
+          cp -a src/routes/voice-rooms.js "src/routes/voice-rooms.js.backup-room-images-$(date +%Y%m%d%H%M%S)"
+          install -m 640 /tmp/mariam-voice-rooms.js src/routes/voice-rooms.js
+          node <<'NODE'
+          require("dotenv").config();
+          const { Client } = require("pg");
+          (async () => {
+            const db = new Client({
+              host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432),
+              database: process.env.DB_NAME, user: process.env.DB_USER,
+              password: process.env.DB_PASSWORD
+            });
+            await db.connect();
+            try {
+              await db.query("ALTER TABLE public.voice_rooms ADD COLUMN IF NOT EXISTS image_url TEXT");
+              console.log("ROOM_IMAGE_COLUMN_OK");
+            } finally { await db.end(); }
+          })().catch(e => { console.error("ROOM_IMAGE_MIGRATION_FAILED:", e.message); process.exit(1); });
+          NODE
+          mkdir -p /opt/mariam-live/uploads/rooms
+          chmod 750 /opt/mariam-live/uploads /opt/mariam-live/uploads/rooms
+          node <<'NODE'
+          const fs = require("fs");
+          const file = "src/server.js";
+          let source = fs.readFileSync(file, "utf8");
+          source = source.replace('express.json({ limit: "2mb" })', 'express.json({ limit: "8mb" })');
+          const staticRoute = 'app.use("/uploads", express.static("/opt/mariam-live/uploads", { maxAge: "7d", immutable: true }));';
+          if (!source.includes(staticRoute)) {
+            const marker = "app.use(cors());";
+            if (!source.includes(marker)) throw new Error("CORS middleware marker missing");
+            source = source.replace(marker, marker + "\\n" + staticRoute);
+          }
+          fs.writeFileSync(file, source);
+          NODE
+          rm -f /tmp/mariam-voice-rooms.js /tmp/mariam-profile-id.sql
+          sudo -n /usr/local/sbin/restart-mariam-live
+          echo "=== HEALTH ==="
+          curl -fsS --max-time 10 https://nokiraq.duckdns.org/api/health
+          echo
+          echo "=== STATIC ROUTE ==="
+          grep -n 'app.use("/uploads"' src/server.js
+          echo "=== JSON LIMIT ==="
+          grep -n 'express.json' src/server.js
+          REMOTE
