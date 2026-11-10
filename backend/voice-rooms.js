@@ -139,6 +139,10 @@ module.exports = (app, db, authenticateToken) => {
   // Leave voice room
   app.post("/api/voice-rooms/:roomId/leave", authenticateToken, async (req, res) => {
     try {
+      await db.query(
+        "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
+        [req.params.roomId, req.userId]
+      );
       const result = await db.query(
         `DELETE FROM room_members
          WHERE room_id = $1 AND user_id = $2
