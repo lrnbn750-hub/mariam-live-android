@@ -28,7 +28,8 @@ class RoomSetupActivity : Activity() {
     private lateinit var titleInput: EditText
     private lateinit var preview: ImageView
     private lateinit var startButton: TextView
-    private lateinit var imageUri: Uri
+    private var imageUri: Uri? = null
+    private val imagePickerRequest = 7315
     private var selectedCategory = "عام"
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -47,7 +48,7 @@ class RoomSetupActivity : Activity() {
         window.statusBarColor = Color.rgb(75, 76, 238)
         window.navigationBarColor = Color.rgb(45, 35, 170)
         window.decorView.systemUiVisibility = 0
-        imageUri = Uri.parse(intent.getStringExtra("image_uri").orEmpty())
+        imageUri = intent.getStringExtra("image_uri")?.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
         val initialName = intent.getStringExtra("room_name").orEmpty()
 
         val root = LinearLayout(this).apply {
@@ -85,7 +86,11 @@ class RoomSetupActivity : Activity() {
             background = rounded(Color.rgb(36, 54, 155), 14, Color.WHITE)
             clipToOutline = true
         }
+        preview.setOnClickListener { chooseRoomImage() }
+        preview.contentDescription = "اختيار صورة الغرفة"
         imageRow.addView(preview, LinearLayout.LayoutParams(dp(66), dp(66)))
+        preview.setBackgroundColor(Color.rgb(36, 54, 155))
+        preview.setImageDrawable(ChairPlaceholder())
         val titleColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
@@ -106,6 +111,11 @@ class RoomSetupActivity : Activity() {
         titleColumn.addView(titleInput, LinearLayout.LayoutParams(-1, dp(42)))
         imageRow.addView(titleColumn, LinearLayout.LayoutParams(0, -2, 1f))
         setupCard.addView(imageRow)
+        setupCard.addView(text("＋ اختر صورة الغرفة", 12f, Color.rgb(224, 229, 255), true).apply {
+            gravity = Gravity.START
+            setPadding(0, dp(8), 0, 0)
+            setOnClickListener { chooseRoomImage() }
+        })
         setupCard.addView(text("غرفة عامة  •  8 مقاعد صوتية", 12f, Color.rgb(220, 226, 255)).apply {
             gravity = Gravity.START; setPadding(0, dp(9), 0, 0)
         })
@@ -179,17 +189,54 @@ class RoomSetupActivity : Activity() {
             setMargins(dp(20), dp(7), dp(20), dp(12))
         })
         setContentView(root)
-        try {
-            contentResolver.openInputStream(imageUri)?.use { input ->
-                preview.setImageBitmap(BitmapFactory.decodeStream(input))
+        imageUri?.let { uri ->
+            try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    preview.setImageBitmap(BitmapFactory.decodeStream(input))
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun chooseRoomImage() {
+        val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "image/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(pick, imagePickerRequest)
+    }
+
+    @Deprecated("Deprecated in Android API; retained for broad device compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == imagePickerRequest && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            imageUri = uri
+            try {
+                val flags = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
+                contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: Exception) {}
+            try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    preview.setImageBitmap(BitmapFactory.decodeStream(input))
+                }
+            } catch (_: Exception) {
+                Toast.makeText(this, "تعذر فتح الصورة، اختر صورة أخرى", Toast.LENGTH_SHORT).show()
             }
-        } catch (_: Exception) {}
+        }
     }
 
     private fun createAndStart() {
         val name = titleInput.text.toString().trim()
         if (name.length < 2) {
             Toast.makeText(this, "اكتب عنواناً من حرفين على الأقل", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val selectedImage = imageUri
+        if (selectedImage == null) {
+            Toast.makeText(this, "اختر صورة للغرفة أولاً", Toast.LENGTH_SHORT).show()
+            chooseRoomImage()
             return
         }
         startButton.isEnabled = false
@@ -201,7 +248,7 @@ class RoomSetupActivity : Activity() {
         }
         executor.execute {
             try {
-                val source = contentResolver.openInputStream(imageUri)?.use { BitmapFactory.decodeStream(it) }
+                val source = contentResolver.openInputStream(selectedImage)?.use { BitmapFactory.decodeStream(it) }
                     ?: throw Exception("تعذر قراءة صورة الغرفة")
                 val maxSide = 1280
                 val scale = minOf(1f, maxSide.toFloat() / maxOf(source.width, source.height))
@@ -244,6 +291,21 @@ class RoomSetupActivity : Activity() {
     override fun onDestroy() {
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    private inner class ChairPlaceholder : android.graphics.drawable.Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = dp(25).toFloat()
+            textAlign = Paint.Align.CENTER
+        }
+        override fun draw(canvas: Canvas) {
+            val b = bounds
+            canvas.drawText("＋", b.exactCenterX(), b.exactCenterY() + dp(9), paint)
+        }
+        override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+        override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+        override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
     }
 
     private inner class ChairIcon : View(this@RoomSetupActivity) {
