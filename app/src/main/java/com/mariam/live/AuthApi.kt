@@ -49,6 +49,25 @@ object AuthApi {
         }
     }
 
+
+    fun delete(path: String, token: String): Result {
+        val connection = (URL("$BASE_URL$path").openConnection() as HttpURLConnection).apply {
+            requestMethod = "DELETE"
+            connectTimeout = 15000
+            readTimeout = 15000
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+        return try {
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun post(path: String, payload: JSONObject): Result {
         val connection = (URL("$BASE_URL$path").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
