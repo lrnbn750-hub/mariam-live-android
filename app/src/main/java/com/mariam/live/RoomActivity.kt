@@ -28,8 +28,8 @@ class RoomActivity : Activity() {
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
  private val bg=Color.rgb(16,10,28); private val purple=Color.rgb(164,76,239); private val gold=Color.rgb(255,195,83); private val mutedText=Color.rgb(207,190,220)
- private lateinit var status:TextView; private lateinit var grid:LinearLayout; private lateinit var queue:LinearLayout
- private lateinit var mic:LinearLayout; private lateinit var hand:LinearLayout
+ private lateinit var status:TextView; private lateinit var grid:LinearLayout
+ private lateinit var mic:LinearLayout
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;if(b)typeface=android.graphics.Typeface.DEFAULT_BOLD}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(111,67,145))}
@@ -49,18 +49,15 @@ class RoomActivity : Activity() {
   page.addView(host,LinearLayout.LayoutParams(-1,dp(118)))
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
-  page.addView(label("طلبات رفع اليد",16f,Color.WHITE,true).apply{setPadding(0,dp(15),0,dp(8))})
-  queue=LinearLayout(this).apply{orientation=1};page.addView(queue)
   status=label("جارٍ الاتصال...",12f,Color.LTGRAY).apply{setPadding(0,dp(12),0,dp(8))};page.addView(status)
   val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(4),0,dp(4))}
   val chat=action("دردشة","chat",Color.rgb(75,54,104),Color.rgb(137,89,190)){Toast.makeText(this,"الدردشة النصية ستُربط بالرسائل",Toast.LENGTH_SHORT).show()}
   val share=action("مشاركة","share",Color.rgb(65,58,105),Color.rgb(117,103,190)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
-  hand=action("رفع اليد","hand",Color.rgb(104,53,153),purple){toggleHand()}
   mic=action("إيقاف المايك","mic",Color.rgb(83,48,125),Color.rgb(169,91,221)){toggleMic()}
   mic.visibility=View.GONE
   val gift=action("الهدايا","gift",Color.rgb(111,43,104),Color.rgb(190,76,151)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
   val exit=action("مغادرة","leave",Color.rgb(125,39,66),Color.rgb(208,70,103)){leaveRoom()}
-  listOf(chat,share,hand,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
+  listOf(chat,share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
   setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)})
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
@@ -94,10 +91,8 @@ class RoomActivity : Activity() {
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
-    handRaised=(0 until hands.length()).any{hands.optJSONObject(it)?.optString("user_id")==currentUserId}
-    mic.visibility=if(isSeated)View.VISIBLE else View.GONE
-    hand.visibility=if(isSeated)View.GONE else View.VISIBLE
-    drawSeats();drawQueue()
+mic.visibility=if(isSeated)View.VISIBLE else View.GONE
+    drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
@@ -107,13 +102,32 @@ class RoomActivity : Activity() {
   tile.setOnClickListener{seatClick(s,i+1,uid,name)}
   line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{setMargins(dp(2),dp(3),dp(2),dp(5))})
  };grid.addView(line)}}
- private fun drawQueue(){queue.removeAllViews();if(hands.length()==0){queue.addView(label("لا توجد طلبات حالياً",12f,Color.LTGRAY));return};for(i in 0 until hands.length()){val h=hands.optJSONObject(i)?:continue;val uid=h.optString("user_id");val row=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;background=panel(Color.rgb(49,29,66),12);setPadding(dp(10),dp(6),dp(10),dp(6))};row.addView(label(h.optString("display_name","مستخدم"),13f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(40),1f));if(isOwner)row.addView(label("قبول",12f,Color.WHITE,true).apply{background=panel(purple,10);setPadding(dp(14),dp(7),dp(14),dp(7));setOnClickListener{assignFirst(uid)}});queue.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})}}
- private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){if(!isOwner){Toast.makeText(this,if(uid==null)"مقعد فارغ" else name,Toast.LENGTH_SHORT).show();return};if(uid==null){val arr=(0 until hands.length()).mapNotNull{hands.optJSONObject(it)};if(arr.isEmpty()){Toast.makeText(this,"لا توجد طلبات رفع يد",Toast.LENGTH_SHORT).show();return};AlertDialog.Builder(this).setTitle("اختيار متحدث للمقعد $n").setItems(arr.map{it.optString("display_name","مستخدم")}.toTypedArray()){_,which->assign(n,arr[which].optString("user_id"))}.setNegativeButton("إلغاء",null).show()}else{val muted=s.optBoolean("is_muted");AlertDialog.Builder(this).setTitle(name).setItems(arrayOf(if(muted)"إلغاء الكتم" else "كتم المتحدث","إزالة من المقعد")){_,which->if(which==0)post("/api/voice-rooms/$roomId/seats/$n/mute",JSONObject().put("muted",!muted)) else del("/api/voice-rooms/$roomId/seats/$n")}.setNegativeButton("إغلاق",null).show()}}
- private fun assignFirst(uid:String){val s=(0 until seats.length()).mapNotNull{seats.optJSONObject(it)}.firstOrNull{it.isNull("user_id")||it.optString("user_id")=="null"};if(s==null)Toast.makeText(this,"كل المقاعد ممتلئة",Toast.LENGTH_SHORT).show() else assign(s.optInt("seat_number"),uid)}
- private fun assign(n:Int,uid:String)=post("/api/voice-rooms/$roomId/seats/$n/assign",JSONObject().put("userId",uid))
- private fun post(path:String,data:JSONObject){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.post(path,data,authToken)};Toast.makeText(this@RoomActivity,if(r.status in 200..299)"تم تنفيذ العملية" else r.body.optString("error","فشلت العملية"),Toast.LENGTH_SHORT).show();if(r.status in 200..299)loadSeats()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال",Toast.LENGTH_SHORT).show()}}}
- private fun del(path:String){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.delete(path,authToken)};if(r.status in 200..299)loadSeats() else Toast.makeText(this@RoomActivity,r.body.optString("error","فشلت العملية"),Toast.LENGTH_SHORT).show()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال",Toast.LENGTH_SHORT).show()}}}
- private fun toggleHand(){if(!connected)return;scope.launch{try{val r=withContext(Dispatchers.IO){if(handRaised)AuthApi.delete("/api/voice-rooms/$roomId/hand-raise",authToken) else AuthApi.post("/api/voice-rooms/$roomId/hand-raise",JSONObject(),authToken)};if(r.status in 200..299){handRaised=!handRaised;Toast.makeText(this@RoomActivity,if(handRaised)"تم إرسال طلبك" else "تم إلغاء الطلب",Toast.LENGTH_SHORT).show();loadSeats()}else Toast.makeText(this@RoomActivity,r.body.optString("error","تعذر رفع اليد"),Toast.LENGTH_SHORT).show()}catch(_:Exception){}}}
+ private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
+  if(uid==null){claimSeat(n);return}
+  if(uid==currentUserId){Toast.makeText(this,"أنت جالس على هذا المقعد",Toast.LENGTH_SHORT).show();return}
+  if(!isOwner){Toast.makeText(this,"هذا المقعد مشغول",Toast.LENGTH_SHORT).show();return}
+  val muted=s.optBoolean("is_muted")
+  AlertDialog.Builder(this).setTitle(name)
+   .setItems(arrayOf(if(muted)"إلغاء الكتم" else "كتم المتحدث","إزالة من المقعد")){_,which->
+    if(which==0)post("/api/voice-rooms/$roomId/seats/$n/mute",JSONObject().put("muted",!muted))
+    else del("/api/voice-rooms/$roomId/seats/$n")
+   }.setNegativeButton("إغلاق",null).show()
+ }
+ private fun claimSeat(n:Int){
+  if(!connected){Toast.makeText(this,"انتظر اتصال الغرفة ثم حاول مجدداً",Toast.LENGTH_SHORT).show();return}
+  scope.launch{
+   try{
+    val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/seats/$n/claim",JSONObject(),authToken)}
+    if(r.status in 200..299){
+     Toast.makeText(this@RoomActivity,"جلست على المقعد $n",Toast.LENGTH_SHORT).show()
+     try{room.disconnect()}catch(_:Exception){}
+     connected=false
+     isSeated=true
+     connect()
+    }else Toast.makeText(this@RoomActivity,r.body.optString("error","تعذر الجلوس على المقعد"),Toast.LENGTH_SHORT).show()
+   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+  }
+ }
  private fun connect(){
   status.text="جارٍ الاتصال بخادم الصوت..."
   val service=Intent(this,VoiceForegroundService::class.java)
@@ -131,7 +145,7 @@ class RoomActivity : Activity() {
     microphoneEnabled=r.body.optBoolean("canPublish",false)
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     connected=true
-    status.text=if(microphoneEnabled) "متصل • المايك جاهز" else "متصل كمستمع • ارفع يدك ليقبلك المضيف"
+    status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
