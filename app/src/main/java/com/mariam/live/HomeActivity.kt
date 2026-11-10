@@ -70,7 +70,7 @@ class HomeActivity : Activity() {
         content.addView(sectionTitle,LinearLayout.LayoutParams(-1,dp(54)))
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
-        roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
+        roomStatus=label("جارٍ تحميل الغرف...",12f,muted).apply{gravity=Gravity.CENTER}
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
         roomStatus.text="جارٍ تحميل الغرف الحقيقية..."
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
@@ -141,7 +141,7 @@ class HomeActivity : Activity() {
         val width=(resources.displayMetrics.widthPixels-dp(32))/2
         val imageHeight=(width*0.78f).toInt()
         val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
-        val visible=if(filterMode=="popular")filtered.sortedByDescending{it.count}else filtered.sortedByDescending{it.count>0}
+        val visible=if(filterMode=="popular")filtered.sortedByDescending{it.count}else filtered.filter{it.count>0}
         if(visible.isEmpty()){
             roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
             return
