@@ -19,6 +19,7 @@
             android:exported="false"
             android:stopWithTask="false"
             android:foregroundServiceType="microphone" />
+        <activity android:name=".RoomSetupActivity" android:exported="false" />
         <activity android:name=".RoomActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
