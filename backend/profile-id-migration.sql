@@ -1,0 +1,10 @@
+BEGIN;
+CREATE SEQUENCE IF NOT EXISTS public.users_public_id_seq START WITH 10000000;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS public_id BIGINT;
+UPDATE public.users SET public_id = nextval('public.users_public_id_seq') WHERE public_id IS NULL;
+ALTER TABLE public.users ALTER COLUMN public_id SET DEFAULT nextval('public.users_public_id_seq');
+ALTER TABLE public.users ALTER COLUMN public_id SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_unique ON public.users(public_id);
+SELECT setval('public.users_public_id_seq', GREATEST(COALESCE((SELECT MAX(public_id) FROM public.users), 9999999), 9999999), true);
+ALTER TABLE public.voice_rooms ADD COLUMN IF NOT EXISTS image_url TEXT;
+COMMIT;
