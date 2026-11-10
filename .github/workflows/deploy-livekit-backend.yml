@@ -51,6 +51,35 @@ jobs:
           cd /opt/mariam-live/backend
           npm install --save livekit-server-sdk
 
+          # Install room-seat tables with the PostgreSQL administrator. The API
+          # database role intentionally does not need CREATE privileges.
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME"
+          test -n "$DB_USER"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" <<'SQL'
+          CREATE TABLE IF NOT EXISTS public.voice_room_seats (
+            room_id UUID NOT NULL REFERENCES public.voice_rooms(id) ON DELETE CASCADE,
+            seat_number SMALLINT NOT NULL CHECK (seat_number BETWEEN 1 AND 8),
+            user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+            is_muted BOOLEAN NOT NULL DEFAULT FALSE,
+            assigned_at TIMESTAMPTZ,
+            PRIMARY KEY (room_id, seat_number),
+            UNIQUE (room_id, user_id)
+          );
+          CREATE TABLE IF NOT EXISTS public.voice_room_hand_raises (
+            room_id UUID NOT NULL REFERENCES public.voice_rooms(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+            requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (room_id, user_id)
+          );
+          GRANT USAGE ON SCHEMA public TO :"app_role";
+          GRANT SELECT, INSERT, UPDATE, DELETE ON public.voice_room_seats, public.voice_room_hand_raises TO :"app_role";
+          INSERT INTO public.voice_room_seats(room_id, seat_number, user_id, assigned_at)
+          SELECT id, 1, owner_id, NOW() FROM public.voice_rooms
+          ON CONFLICT (room_id, seat_number) DO NOTHING;
+          SQL
+
           if ! grep -q '^LIVEKIT_API_KEY=' .env; then
             printf '\nLIVEKIT_API_KEY=mariam_live\n' >> .env
           fi
