@@ -66,18 +66,34 @@ class RoomActivity : Activity() {
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
  private fun action(title:String,icon:String,color:Int,accent:Int,click:()->Unit)=LinearLayout(this).apply{
-  orientation=1;gravity=Gravity.CENTER;isClickable=true;isFocusable=true;elevation=dp(4).toFloat()
-  background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(
-   Color.red(color)+((255-Color.red(color))*0.08f).toInt(),
-   Color.green(color)+((255-Color.green(color))*0.08f).toInt(),
-   Color.blue(color)+((255-Color.blue(color))*0.08f).toInt()),color)).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.argb(105,Color.red(accent),Color.green(accent),Color.blue(accent)))}
+  orientation=1;gravity=Gravity.CENTER;isClickable=true;isFocusable=true
+  elevation=dp(5).toFloat()
+  val base=Color.rgb(
+   (Color.red(color)*0.82f+Color.red(accent)*0.18f).toInt(),
+   (Color.green(color)*0.82f+Color.green(accent)*0.18f).toInt(),
+   (Color.blue(color)*0.82f+Color.blue(accent)*0.18f).toInt())
+  background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(
+   Color.rgb(
+    (Color.red(base)*0.78f+255*0.22f).toInt(),
+    (Color.green(base)*0.78f+255*0.22f).toInt(),
+    (Color.blue(base)*0.78f+255*0.22f).toInt()),base)).apply{
+    cornerRadius=dp(21).toFloat()
+    setStroke(dp(1),Color.argb(150,Color.red(accent),Color.green(accent),Color.blue(accent)))
+  }
   val iconWrap=FrameLayout(this@RoomActivity).apply{
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(42,Color.red(accent),Color.green(accent),Color.blue(accent)));setStroke(dp(1),Color.argb(125,Color.red(accent),Color.green(accent),Color.blue(accent)))}
-   val iv=ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)));setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN);scaleType=ImageView.ScaleType.FIT_CENTER}
+   background=GradientDrawable().apply{
+    shape=GradientDrawable.OVAL
+    setColor(Color.argb(48,255,255,255))
+    setStroke(dp(1),Color.argb(155,255,255,255))
+  }
+   val iv=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)))
+    scaleType=ImageView.ScaleType.FIT_CENTER
+   }
    addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
   }
-  addView(iconWrap,LinearLayout.LayoutParams(dp(43),dp(43)).apply{bottomMargin=dp(5)})
-  addView(label(title,10.5f,Color.WHITE,true))
+  addView(iconWrap,LinearLayout.LayoutParams(dp(47),dp(47)).apply{bottomMargin=dp(7)})
+  addView(label(title,11f,Color.WHITE,true))
   setOnClickListener{click()}
  }
  private fun loadIdentity(){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)};currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")}catch(_:Exception){};loadSeats()}}
