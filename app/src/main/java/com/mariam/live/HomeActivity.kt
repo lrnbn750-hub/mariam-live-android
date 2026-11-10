@@ -425,8 +425,13 @@ class HomeActivity : Activity() {
                 if(!source.isRecycled)source.recycle()
                 val result=AuthApi.post("/api/voice-rooms",payload,token)
                 runOnUiThread{
-                    if(result.status in 200..299){Toast.makeText(this,"تم إنشاء الغرفة وحفظ صورتها",Toast.LENGTH_LONG).show()}
-                    else Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
+                    if(result.status in 200..299){
+                        Toast.makeText(this,"تم إنشاء الغرفة وحفظ صورتها",Toast.LENGTH_LONG).show()
+                        // Refresh the home list immediately after the server confirms creation.
+                        loadRooms()
+                    }else{
+                        Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
+                    }
                 }
             }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?:"تعذر تجهيز الصورة",Toast.LENGTH_LONG).show()}}
         }
