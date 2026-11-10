@@ -31,6 +31,7 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(9,17,31); private val purple=Color.rgb(54,190,210); private val gold=Color.rgb(111,231,220); private val mutedText=Color.rgb(178,202,215)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var mic:LinearLayout
+ private lateinit var controlBar:LinearLayout
  private lateinit var chatPanel:LinearLayout
  private var chatPoll:Job?=null
  private lateinit var chatMessages:LinearLayout
@@ -76,13 +77,13 @@ class RoomActivity : Activity() {
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
    page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
   status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
-  val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(2),0,dp(2))}
+  controlBar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(2),0,dp(2));visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(22,112,137),Color.rgb(50,190,204)){toggleMic()}
   mic.visibility=View.GONE
-  bar.addView(mic,LinearLayout.LayoutParams(dp(112),dp(66)))
+  controlBar.addView(mic,LinearLayout.LayoutParams(dp(112),dp(66)))
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
   roomRoot.addView(page,LinearLayout.LayoutParams(-1,0,1f))
-  roomRoot.addView(bar,LinearLayout.LayoutParams(-1,dp(70)).apply{setMargins(dp(8),0,dp(8),dp(3))})
+  roomRoot.addView(controlBar,LinearLayout.LayoutParams(-1,dp(70)).apply{setMargins(dp(8),0,dp(8),dp(3))})
   setContentView(roomRoot)
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
@@ -269,6 +270,7 @@ class RoomActivity : Activity() {
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
 mic.visibility=if(isSeated)View.VISIBLE else View.GONE
+    controlBar.visibility=if(isSeated)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
