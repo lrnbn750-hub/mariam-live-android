@@ -31,7 +31,7 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(16,10,28); private val purple=Color.rgb(164,76,239); private val gold=Color.rgb(255,195,83); private val mutedText=Color.rgb(207,190,220)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var mic:LinearLayout
- private var chatDialog:AlertDialog?=null
+ private lateinit var chatPanel:LinearLayout
  private var chatPoll:Job?=null
  private lateinit var chatMessages:LinearLayout
  private lateinit var chatScroll:ScrollView
@@ -103,71 +103,53 @@ class RoomActivity : Activity() {
   setOnClickListener{click()}
  }
 
- private fun openRoomChat(){
-  if(chatDialog?.isShowing==true)return
-  val root=LinearLayout(this).apply{
+ private fun buildInlineChat()=LinearLayout(this).apply{
    orientation=1
-   setPadding(dp(14),dp(10),dp(14),dp(10))
+   setPadding(dp(12),dp(10),dp(12),dp(10))
    background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-    intArrayOf(Color.rgb(49,25,67),Color.rgb(27,15,39)))
-  }
-  chatMessages=LinearLayout(this).apply{orientation=1}
-  chatScroll=ScrollView(this).apply{
-   isFillViewport=true
-   addView(chatMessages,android.widget.FrameLayout.LayoutParams(-1,-2))
-  }
-  root.addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f))
-  val composer=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
-  chatInput=EditText(this).apply{
-   hint="اكتب رسالتك..."
-   textSize=14f
-   maxLines=3
-   setTextColor(Color.WHITE)
-   setHintTextColor(Color.LTGRAY)
-   setPadding(dp(13),dp(8),dp(13),dp(8))
-   background=GradientDrawable().apply{
-    setColor(Color.rgb(57,39,70))
-    cornerRadius=dp(18).toFloat()
-    setStroke(dp(1),Color.rgb(137,89,190))
+    intArrayOf(Color.rgb(54,29,75),Color.rgb(29,16,42))).apply{
+     cornerRadius=dp(20).toFloat()
+     setStroke(dp(1),Color.rgb(111,67,145))
    }
-  }
-  composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(8)})
-  val send=TextView(this).apply{
-   text="إرسال"
-   textSize=14f
-   gravity=Gravity.CENTER
-   typeface=android.graphics.Typeface.DEFAULT_BOLD
-   setTextColor(Color.WHITE)
-   setPadding(dp(16),0,dp(16),0)
-   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-    intArrayOf(Color.rgb(178,105,226),Color.rgb(111,55,160))).apply{
-     cornerRadius=dp(17).toFloat()
+   chatPanel=this
+   val header=LinearLayout(this@RoomActivity).apply{gravity=Gravity.CENTER_VERTICAL}
+   header.addView(label("دردشة الغرفة",15f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(28),1f))
+   header.addView(label("● مباشر",10f,Color.rgb(113,220,166),true))
+   addView(header,LinearLayout.LayoutParams(-1,-2))
+   chatMessages=LinearLayout(this@RoomActivity).apply{orientation=1}
+   chatScroll=ScrollView(this@RoomActivity).apply{
+    isFillViewport=true
+    overScrollMode=View.OVER_SCROLL_NEVER
+    addView(chatMessages,android.widget.FrameLayout.LayoutParams(-1,-2))
    }
-   setOnClickListener{sendRoomMessage()}
-  }
-  composer.addView(send,LinearLayout.LayoutParams(-2,dp(46)))
-  root.addView(composer,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(9)})
-  chatDialog=AlertDialog.Builder(this)
-   .setTitle("دردشة الغرفة")
-   .setView(root)
-   .setNegativeButton("إغلاق",null)
-   .create()
-  chatDialog?.setOnDismissListener{
+   addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(6)})
+   val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   chatInput=EditText(this@RoomActivity).apply{
+    hint="اكتب رسالتك...";textSize=13f;maxLines=2
+    setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY)
+    setPadding(dp(12),dp(7),dp(12),dp(7))
+    background=GradientDrawable().apply{
+     setColor(Color.rgb(57,39,70));cornerRadius=dp(16).toFloat()
+     setStroke(dp(1),Color.rgb(137,89,190))
+    }
+   }
+   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(43),1f).apply{marginEnd=dp(7)})
+   val send=TextView(this@RoomActivity).apply{
+    text="إرسال";textSize=13f;gravity=Gravity.CENTER
+    typeface=android.graphics.Typeface.DEFAULT_BOLD
+    setTextColor(Color.WHITE);setPadding(dp(13),0,dp(13),0)
+    background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+     intArrayOf(Color.rgb(178,105,226),Color.rgb(111,55,160))).apply{cornerRadius=dp(15).toFloat()}
+    setOnClickListener{sendRoomMessage()}
+   }
+   composer.addView(send,LinearLayout.LayoutParams(-2,dp(42)))
+   addView(composer,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})
+   loadRoomMessages()
    chatPoll?.cancel()
-   chatPoll=null
-   chatDialog=null
-  }
-  chatDialog?.show()
-  chatDialog?.window?.setLayout((resources.displayMetrics.widthPixels*.94f).toInt(),
-   (resources.displayMetrics.heightPixels*.72f).toInt())
-  loadRoomMessages()
-  chatPoll=scope.launch{
-   while(isActive && chatDialog?.isShowing==true){
-    delay(3000)
-    loadRoomMessages()
+   chatPoll=scope.launch{
+    while(isActive){delay(3000);loadRoomMessages()}
    }
   }
- }
 
  private fun loadRoomMessages(){
   if(!isActiveChat())return
@@ -257,7 +239,7 @@ class RoomActivity : Activity() {
   }
  }
 
- private fun isActiveChat()=chatDialog?.isShowing==true && roomId.isNotBlank() && authToken.isNotBlank()
+ private fun isActiveChat()=::chatPanel.isInitialized && roomId.isNotBlank() && authToken.isNotBlank()
 
  private fun loadIdentity(){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)};currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")}catch(_:Exception){};loadSeats()}}
  private fun emptySeats(){seats=JSONArray();for(i in 1..8)seats.put(JSONObject().put("seat_number",i));drawSeats()}
