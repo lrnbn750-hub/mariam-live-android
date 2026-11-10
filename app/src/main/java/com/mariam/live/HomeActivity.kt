@@ -141,7 +141,7 @@ class HomeActivity : Activity() {
             text="●";textSize=9f;gravity=Gravity.CENTER
             setTextColor(if(index==0)accent else Color.rgb(210,205,220))
             setPadding(dp(5),0,dp(5),0)
-            setOnClickListener{slider.displayedChild=index;slider.stopFlipping();slider.startFlipping();for(i in 0..1)dotViewsSafe(i,this@HomeActivity,dots,slider)}
+            setOnClickListener{slider.displayedChild=index;slider.stopFlipping();slider.startFlipping()}
         }}
         dots.addView(dotViews[0]);dots.addView(dotViews[1])
         slider.setOnTouchListener{v,event->
