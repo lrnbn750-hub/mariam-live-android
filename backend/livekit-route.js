@@ -5,37 +5,16 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
 
-  // Eight persistent speaker seats and hand-raise queue. Created safely without
-  // touching existing users, rooms, memberships, or LiveKit credentials.
+  // Tables are installed by the privileged deployment migration. The API role
+  // only performs normal DML here; it must not need CREATE privileges.
   let schemaReady;
   const ensureVoiceSchema = () => {
     if (!schemaReady) {
-      schemaReady = (async () => {
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS voice_room_seats (
-            room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
-            seat_number SMALLINT NOT NULL CHECK (seat_number BETWEEN 1 AND 8),
-            user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            is_muted BOOLEAN NOT NULL DEFAULT FALSE,
-            assigned_at TIMESTAMPTZ,
-            PRIMARY KEY (room_id, seat_number),
-            UNIQUE (room_id, user_id)
-          )
-        `);
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS voice_room_hand_raises (
-            room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            PRIMARY KEY (room_id, user_id)
-          )
-        `);
-        await db.query(`
-          INSERT INTO voice_room_seats(room_id, seat_number, user_id, assigned_at)
-          SELECT id, 1, owner_id, NOW() FROM voice_rooms
-          ON CONFLICT (room_id, seat_number) DO NOTHING
-        `);
-      })().catch(error => {
+      schemaReady = db.query(`
+        INSERT INTO voice_room_seats(room_id, seat_number, user_id, assigned_at)
+        SELECT id, 1, owner_id, NOW() FROM voice_rooms
+        ON CONFLICT (room_id, seat_number) DO NOTHING
+      `).catch(error => {
         schemaReady = null;
         throw error;
       });
