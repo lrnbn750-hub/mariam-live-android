@@ -43,7 +43,7 @@ class RoomActivity : Activity() {
   super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  val page=LinearLayout(this).apply{orientation=1;minimumHeight=resources.displayMetrics.heightPixels;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,39,58),bg,Color.rgb(8,24,39)))}
+  val page=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,39,58),bg,Color.rgb(8,24,39)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(label("MARIAM LIVE",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)))
@@ -74,22 +74,15 @@ class RoomActivity : Activity() {
   page.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
-   val screenDp=(resources.displayMetrics.heightPixels/resources.displayMetrics.density).toInt()
-   val chatHeight=(screenDp-465).coerceAtLeast(245)
-   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(chatHeight)).apply{topMargin=dp(12)})
-  status=label("جارٍ الاتصال...",12f,Color.LTGRAY).apply{setPadding(0,dp(12),0,dp(8))};page.addView(status)
-  val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(4),0,dp(4))}
-    val share=action("مشاركة","share",Color.rgb(35,83,105),Color.rgb(65,160,180)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
-  mic=action("إيقاف المايك","mic",Color.rgb(22,112,137),Color.rgb(50,190,204)){toggleMic()}
+   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
+  status=label("جارٍ الاتصال...",11f,Color.LTGRAY).apply{setPadding(0,dp(5),0,dp(3))};page.addView(status,LinearLayout.LayoutParams(-1,dp(25)))
+  val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(2),0,dp(2))}
+  mic=action("المايك","mic",Color.rgb(22,112,137),Color.rgb(50,190,204)){toggleMic()}
   mic.visibility=View.GONE
-  val gift=action("الهدايا","gift",Color.rgb(126,69,91),Color.rgb(207,105,133)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
-  listOf(share,mic,gift).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})}
-  val contentScroll=ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)}
+  bar.addView(mic,LinearLayout.LayoutParams(dp(112),dp(66)))
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
-  roomRoot.addView(contentScroll,LinearLayout.LayoutParams(-1,0,1f))
-  roomRoot.addView(bar,LinearLayout.LayoutParams(-1,dp(82)).apply{
-   setMargins(dp(8),dp(2),dp(8),dp(4))
-  })
+  roomRoot.addView(page,LinearLayout.LayoutParams(-1,0,1f))
+  roomRoot.addView(bar,LinearLayout.LayoutParams(-1,dp(70)).apply{setMargins(dp(8),0,dp(8),dp(3))})
   setContentView(roomRoot)
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
@@ -134,8 +127,8 @@ class RoomActivity : Activity() {
    setPadding(dp(12),dp(10),dp(12),dp(10))
    background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
     intArrayOf(Color.rgb(20,53,73),Color.rgb(11,29,46))).apply{
-     cornerRadius=dp(20).toFloat()
-     setStroke(dp(1),Color.rgb(48,111,132))
+     cornerRadius=dp(8).toFloat()
+     setStroke(dp(1),Color.argb(105,111,231,220))
    }
    chatPanel=this
    val header=LinearLayout(this@RoomActivity).apply{gravity=Gravity.CENTER_VERTICAL}
@@ -155,8 +148,8 @@ class RoomActivity : Activity() {
     setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY)
     setPadding(dp(12),dp(7),dp(12),dp(7))
     background=GradientDrawable().apply{
-     setColor(Color.rgb(24,54,70));cornerRadius=dp(16).toFloat()
-     setStroke(dp(1),Color.rgb(60,145,166))
+     setColor(Color.argb(18,111,231,220));cornerRadius=dp(7).toFloat()
+     setStroke(dp(1),Color.argb(115,111,231,220))
     }
    }
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(43),1f).apply{marginEnd=dp(7)})
