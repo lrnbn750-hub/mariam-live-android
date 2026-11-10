@@ -8,6 +8,8 @@ on:
     paths:
       - .github/workflows/deploy-livekit-backend.yml
       - backend/livekit-route.js
+      - backend/voice-rooms.js
+      - backend/profile-id-migration.sql
 
 permissions:
   contents: read
@@ -36,6 +38,44 @@ jobs:
         run: |
           set -euo pipefail
           scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/livekit-route.js mariam-admin@185.174.252.118:/tmp/mariam-livekit-route.js
+
+
+      - name: Upload room API and account ID migration
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/voice-rooms.js mariam-admin@185.174.252.118:/tmp/mariam-voice-rooms.js
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/profile-id-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-profile-id.sql
+
+      - name: Deploy room images and numeric account IDs
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME"; test -n "$DB_USER"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/mariam-profile-id.sql
+          install -m 640 /tmp/mariam-voice-rooms.js src/routes/voice-rooms.js
+          rm -f /tmp/mariam-voice-rooms.js /tmp/mariam-profile-id.sql
+          mkdir -p /opt/mariam-live/uploads/rooms
+          chown -R mariam-admin:mariam-admin /opt/mariam-live/uploads
+          chmod 750 /opt/mariam-live/uploads /opt/mariam-live/uploads/rooms
+          node <<'NODE'
+          const fs=require("fs");
+          const file="src/server.js";
+          let s=fs.readFileSync(file,"utf8");
+          s=s.replace('express.json({ limit: "2mb" })','express.json({ limit: "8mb" })');
+          const staticLine='app.use("/uploads", express.static("/opt/mariam-live/uploads", { maxAge: "7d", immutable: true }));';
+          if(!s.includes(staticLine)) s=s.replace('app.use(cors());','app.use(cors());\n'+staticLine);
+          const publicId="u.public_id";
+          s=s.replace('         u.id,\n         u.username,','         u.id,\n         u.public_id,\n         u.username,');
+          s=s.replace('        id: user.id,\n        username: user.username,','        id: user.id,\n        public_id: user.public_id,\n        username: user.username,');
+          fs.writeFileSync(file,s);
+          NODE
+          sudo -n /usr/local/sbin/restart-mariam-live
+          curl -fsS https://nokiraq.duckdns.org/api/health
+          REMOTE
 
       - name: Install route, keep existing LiveKit key, and restart API service
         run: |
