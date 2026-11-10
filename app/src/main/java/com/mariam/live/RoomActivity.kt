@@ -114,7 +114,7 @@ class RoomActivity : Activity() {
   chatMessages=LinearLayout(this).apply{orientation=1}
   chatScroll=ScrollView(this).apply{
    isFillViewport=true
-   addView(chatMessages,ScrollView.LayoutParams(-1,-2))
+   addView(chatMessages,android.widget.FrameLayout.LayoutParams(-1,-2))
   }
   root.addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f))
   val composer=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
