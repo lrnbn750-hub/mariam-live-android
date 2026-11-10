@@ -403,7 +403,13 @@ class HomeActivity : Activity() {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==roomImagePicker && resultCode==RESULT_OK){
             val uri=data?.data ?: return
-            createRoomWithImage(pendingRoomName,uri)
+            try {
+                val flags=data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                contentResolver.takePersistableUriPermission(uri, flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch(_:Exception) {}
+            startActivity(Intent(this,RoomSetupActivity::class.java)
+                .putExtra("room_name",pendingRoomName)
+                .putExtra("image_uri",uri.toString()))
         }
     }
     private fun createRoomWithImage(name:String,uri:Uri){
