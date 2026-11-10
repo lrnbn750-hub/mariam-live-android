@@ -28,10 +28,15 @@ src/routes/friends.js (6711 bytes)
 src/routes/livekit.js (10428 bytes)
 src/routes/messages.js (6860 bytes)
 src/routes/profile.js (2880 bytes)
+src/routes/profile.js.bak-public-id-20261110064530439 (2880 bytes)
 src/routes/voice-rooms.js (4716 bytes)
-src/server.js (6454 bytes)
+src/server.js (6536 bytes)
 src/server.js.backup (997 bytes)
+src/server.js.bak-public-id-20261110-072558 (6454 bytes)
+src/server.js.bak-public-id-20261110-072634 (6485 bytes)
+src/server.js.bak-public-id-20261110064530439 (6516 bytes)
 src/server.js.bak.messages (6276 bytes)
+src/server.js.before-public-id-1794293541 (6516 bytes)
 src/server.js.save (6161 bytes)
 ===== SOURCE CONTENTS =====
 --- FILE: src/server.js
@@ -166,7 +171,7 @@ app.post("/api/auth/register", async (req, res) => {
       `INSERT INTO users
        (username, email, password_hash)
        VALUES ($1, $2, $3)
-       RETURNING id, username, email, created_at`,
+       RETURNING id, public_id, username, email, created_at`,
       [username, email, passwordHash]
     );
 
@@ -231,7 +236,7 @@ app.post("/api/auth/login", async (req, res) => {
 
   try {
     const result = await db.query(
-      `SELECT id, username, email, password_hash, status
+      `SELECT id, public_id, username, email, password_hash, status
        FROM users
        WHERE LOWER(email) = $1
           OR LOWER(username) = $1
@@ -275,6 +280,7 @@ app.post("/api/auth/login", async (req, res) => {
       token,
       user: {
         id: user.id,
+        public_id: user.public_id,
         username: user.username,
         email: user.email
       }
@@ -295,6 +301,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
     const result = await db.query(
       `SELECT
          u.id,
+            u.public_id,
          u.username,
          u.email,
          u.created_at,
@@ -313,8 +320,6 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
       });
     }
 
-    return res.json({
-      user: result.rows[0]
 --- FILE: src/routes/friends.js
 const { randomUUID } = require("crypto");
 
@@ -1386,4 +1391,4 @@ CREATE INDEX idx_room_members_user ON room_members(user_id);
 ┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 └────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 6% | ram usage: 6.2% | eth0: ⇓ 3kb/s ⇑ 5kb/s | disk: ⇓ 0mb/s ⇑ 99kb/s
+host metrics | cpu: 1.2% | ram usage: 6.2% | eth0: ⇓ 1kb/s ⇑ 1kb/s | disk: ⇓ 0mb/s ⇑ 49kb/s
