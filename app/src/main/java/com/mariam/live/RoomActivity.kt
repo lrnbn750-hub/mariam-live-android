@@ -267,6 +267,22 @@ class RoomActivity : Activity() {
   scope.launch{
    try{
     val r=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/seats",authToken)}
+    if(r.status==403 || r.status==404){
+     if(!leaving){
+      leaving=true
+      chatPoll?.cancel()
+      membershipWatch?.cancel()
+      try{if(connected)room.disconnect()}catch(_:Exception){}
+      connected=false
+      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+      AlertDialog.Builder(this@RoomActivity)
+       .setTitle("انتهى البث")
+       .setMessage("قام صاحب الغرفة بإغلاق الغرفة. تم إخراجك من البث.")
+       .setPositiveButton("العودة للرئيسية"){_,_->finish()}
+       .setCancelable(false).show()
+     }
+     return@launch
+    }
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
     seats=r.body.optJSONArray("seats")?:JSONArray()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
@@ -419,9 +435,20 @@ class RoomActivity : Activity() {
     connected=true
     status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
+    startRoomMembershipWatch()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
     stopService(service)
+   }
+  }
+ }
+ private var membershipWatch:Job?=null
+ private fun startRoomMembershipWatch(){
+  membershipWatch?.cancel()
+  membershipWatch=scope.launch{
+   while(isActive && connected && !leaving){
+    delay(4500)
+    loadSeats()
    }
   }
  }
@@ -472,7 +499,7 @@ class RoomActivity : Activity() {
       if(connected)room.disconnect()
       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
       val result=withContext(Dispatchers.IO){
-       AuthApi.post("/api/voice-rooms/$roomId/close",JSONObject(),authToken)
+       AuthApi.delete("/api/voice-rooms/$roomId",authToken)
       }
       if(result.status !in 200..299){
        leaving=false
