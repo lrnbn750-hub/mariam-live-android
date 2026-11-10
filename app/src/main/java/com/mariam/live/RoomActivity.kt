@@ -138,7 +138,7 @@ class RoomActivity : Activity() {
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(6)})
    val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
    chatInput=EditText(this@RoomActivity).apply{
-    hint="اكتب رسالتك...";textSize=13f;maxLines=1;singleLine=true
+    hint="اكتب رسالتك...";textSize=13f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
     inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
     setOnEditorActionListener{_,actionId,event->
