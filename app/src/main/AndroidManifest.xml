@@ -21,6 +21,7 @@
             android:foregroundServiceType="microphone" />
         <activity android:name=".RoomActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" />
+        <activity android:name=".MalakWelcomeActivity" android:exported="false" />
         <activity android:name=".RegisterActivity" android:exported="false" />
         <activity android:name=".LoginActivity" android:exported="false" />
 
