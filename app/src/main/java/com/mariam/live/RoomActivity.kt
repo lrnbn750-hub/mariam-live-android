@@ -88,6 +88,7 @@ class RoomActivity : Activity() {
   }
    val iv=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)))
+    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.FIT_CENTER
    }
    addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
