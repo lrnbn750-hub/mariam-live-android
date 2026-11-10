@@ -26,6 +26,9 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
           requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           PRIMARY KEY (room_id, user_id)
         );
+        INSERT INTO voice_room_seats(room_id, seat_number, user_id, assigned_at)
+        SELECT id, 1, owner_id, NOW() FROM voice_rooms
+        ON CONFLICT (room_id, seat_number) DO NOTHING;
       `);
     }
     return schemaReady;
