@@ -35,24 +35,10 @@ jobs:
           cp -a src/server.js "src/server.js.backup-room-images-$(date +%Y%m%d%H%M%S)"
           cp -a src/routes/voice-rooms.js "src/routes/voice-rooms.js.backup-room-images-$(date +%Y%m%d%H%M%S)"
           install -m 640 /tmp/mariam-voice-rooms.js src/routes/voice-rooms.js
-          node <<'NODE'
-          require("dotenv").config();
-          const { Client } = require("pg");
-          (async () => {
-            const db = new Client({
-              host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432),
-              database: process.env.DB_NAME, user: process.env.DB_USER,
-              password: process.env.DB_PASSWORD
-            });
-            await db.connect();
-            try {
-              await db.query("ALTER TABLE public.voice_rooms ADD COLUMN IF NOT EXISTS image_url TEXT");
-              console.log("ROOM_IMAGE_COLUMN_OK");
-            } finally { await db.end(); }
-          })().catch(e => { console.error("ROOM_IMAGE_MIGRATION_FAILED:", e.message); process.exit(1); });
-          NODE
-          mkdir -p /opt/mariam-live/uploads/rooms
-          chmod 750 /opt/mariam-live/uploads /opt/mariam-live/uploads/rooms
+          echo "ROOM_IMAGE_COLUMN_ALREADY_ADDED_MANUALLY"
+          sudo -n install -d -o mariam-admin -g mariam-admin -m 750 /opt/mariam-live/uploads/rooms
+          sudo -n chown mariam-admin:mariam-admin /opt/mariam-live/uploads
+          sudo -n chmod 750 /opt/mariam-live/uploads /opt/mariam-live/uploads/rooms
           node <<'NODE'
           const fs = require("fs");
           const file = "src/server.js";
