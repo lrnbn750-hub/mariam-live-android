@@ -27,6 +27,108 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Patch backend voice room closure
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          FILE=src/routes/voice-rooms.js
+          test -f "$FILE"
+          cp -a "$FILE" "$FILE.backup-close-room-$(date +%Y%m%d%H%M%S)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("src/routes/voice-rooms.js")
+          s=p.read_text()
+          start=s.index('  // Close room (owner only)')
+          end=s.index('\n  });', start)+len('\n  });')
+          replacement = r'''  // Close room (owner only): close it in the database and remove every member.
+  // Deleting the LiveKit room disconnects all participants immediately.
+  app.delete("/api/voice-rooms/:roomId", authenticateToken, async (req, res) => {
+    const roomId = req.params.roomId;
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [roomId]);
+      const roomResult = await client.query(
+        "SELECT id, owner_id, status FROM voice_rooms WHERE id=$1 FOR UPDATE",
+        [roomId]
+      );
+      if (!roomResult.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Room not found" });
+      }
+      const room = roomResult.rows[0];
+      if (String(room.owner_id) !== String(req.userId)) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "Only the room owner can close this room" });
+      }
+      if (room.status !== "closed") {
+        await client.query("UPDATE voice_rooms SET status='closed' WHERE id=$1", [roomId]);
+        await client.query("DELETE FROM room_members WHERE room_id=$1", [roomId]);
+        await client.query(
+          "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
+          [roomId]
+        );
+        await client.query("DELETE FROM voice_room_hand_raises WHERE room_id=$1", [roomId]);
+      }
+      await client.query("COMMIT");
+
+      let livekitClosed = false;
+      try {
+        const { RoomServiceClient } = require("livekit-server-sdk");
+        const apiKey = process.env.LIVEKIT_API_KEY;
+        const apiSecret = process.env.LIVEKIT_API_SECRET;
+        if (apiKey && apiSecret) {
+          const host = (process.env.LIVEKIT_URL || "wss://voicenokiraq.duckdns.org")
+            .replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+          const service = new RoomServiceClient(host, apiKey, apiSecret);
+          await service.deleteRoom(roomId);
+          livekitClosed = true;
+        } else {
+          console.error("LiveKit deletion skipped: API credentials are missing");
+        }
+      } catch (livekitError) {
+        console.error("LiveKit room deletion failed:", livekitError.message);
+      }
+      return res.json({
+        message: "Room closed successfully",
+        roomId,
+        livekitClosed,
+        notice: "تم إغلاق البث بواسطة صاحب الغرفة"
+      });
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      console.error("Close room:", error.message);
+      return res.status(500).json({ error: "Could not close room" });
+    } finally {
+      client.release();
+    }
+  });'''
+          s=s[:start]+replacement+s[end:]
+          p.write_text(s)
+          PY
+          node --check "$FILE"
+          echo "Backend route syntax check passed."
+          echo "===== RESTART TARGET DISCOVERY ====="
+          pid=$(ss -ltnpH 'sport = :3000' 2>/dev/null | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1 || true)
+          if [ -n "$pid" ]; then
+            echo "API_PID=$pid"
+            cat "/proc/$pid/cgroup" || true
+            unit=$(sed -n 's#.*\(/[^/]*\.service\).*#\1#p' "/proc/$pid/cgroup" | head -1 | sed 's#^.*/##')
+            if [ -n "$unit" ] && systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q "$unit"; then
+              systemctl restart "$unit"
+              echo "RESTARTED_SYSTEMD_UNIT=$unit"
+            elif command -v pm2 >/dev/null 2>&1 && pm2 jlist 2>/dev/null | grep -q '"name"'; then
+              pm2 restart all
+              echo "RESTARTED_PM2=all"
+            else
+              echo "RESTART_REQUIRED=manual; no known service manager matched API PID"
+            fi
+          else
+            echo "API_PID_NOT_FOUND_ON_3000; restart not attempted"
+          fi
+          REMOTE
       - name: Run read-only API and database smoke tests
         run: |
           set -euo pipefail
