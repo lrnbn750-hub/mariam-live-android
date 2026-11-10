@@ -125,10 +125,10 @@ class RoomActivity : Activity() {
  private fun buildInlineChat()=LinearLayout(this).apply{
    orientation=1
    setPadding(dp(12),dp(10),dp(12),dp(10))
-   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-    intArrayOf(Color.rgb(20,53,73),Color.rgb(11,29,46))).apply{
-     cornerRadius=dp(8).toFloat()
-     setStroke(dp(1),Color.argb(105,111,231,220))
+   background=GradientDrawable().apply{
+     setColor(Color.argb(10,111,231,220))
+     cornerRadius=dp(7).toFloat()
+     setStroke(dp(1),Color.argb(90,111,231,220))
    }
    chatPanel=this
    val header=LinearLayout(this@RoomActivity).apply{gravity=Gravity.CENTER_VERTICAL}
