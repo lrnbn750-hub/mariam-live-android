@@ -48,65 +48,65 @@ class HomeActivity : Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        val cream=Color.rgb(255,255,249)
-        window.statusBarColor=cream;window.navigationBarColor=Color.WHITE
-        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(Color.rgb(250,250,252))}
-        val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(Color.rgb(250,250,252))}
-        val scroll=ScrollView(this).apply{isFillViewport=true;clipToPadding=false;addView(content)}
-        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        val header=LinearLayout(this).apply{
-            orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),dp(7),dp(12),dp(7))
-            setBackgroundColor(cream)
+        val pageBg=Color.rgb(15,18,35)
+        val barBg=Color.rgb(25,28,49)
+        val selected=Color.rgb(139,92,246)
+        val inactive=Color.rgb(169,174,196)
+        window.statusBarColor=pageBg
+        window.navigationBarColor=pageBg
+        window.decorView.systemUiVisibility=0
+        val root=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
+            setBackgroundColor(pageBg)
         }
-        fun topTab(title:String,mode:String)=TextView(this).apply{
-            text=title;textSize=15f;gravity=Gravity.CENTER
-            setTextColor(if(filterMode==mode)ink else muted)
-            typeface=if(filterMode==mode)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            setSingleLine(true)
-            setOnClickListener{filterMode=mode;buildCards()}
+        val emptyArea=FrameLayout(this).apply{
+            setBackgroundColor(pageBg)
         }
-        header.addView(topTab("متصل","online"),LinearLayout.LayoutParams(0,dp(48),1f))
-        header.addView(topTab("شعبي","popular"),LinearLayout.LayoutParams(0,dp(48),1f))
-        val searchButton=TextView(this).apply{
-            text="⌕";textSize=32f;gravity=Gravity.CENTER;setTextColor(ink)
-            setPadding(dp(5),0,dp(5),0)
-            setOnClickListener{showSearchDialog()}
+        root.addView(emptyArea,LinearLayout.LayoutParams(-1,0,1f))
+        val nav=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
+            gravity=Gravity.CENTER
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(31,34,58),barBg))
+            setPadding(dp(5),dp(7),dp(5),dp(7))
+            elevation=dp(12).toFloat()
         }
-        header.addView(searchButton,LinearLayout.LayoutParams(dp(44),dp(48)))
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
-        val sectionTitle=label("الغرف الاجتماعية",19f,ink,true).apply{setPadding(dp(18),dp(15),dp(18),dp(10))}
-        content.addView(sectionTitle,LinearLayout.LayoutParams(-1,dp(54)))
-        grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-        content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
-        roomStatus=label("جارٍ تحميل الغرف...",12f,muted).apply{gravity=Gravity.CENTER}
-        content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
-        roomStatus.text="جارٍ تحميل الغرف الحقيقية..."
-        val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
-        fun navItem(symbol:String,title:String,selected:Boolean=false)=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-            addView(iconView(symbol,if(selected)purple else ink),LinearLayout.LayoutParams(dp(28),dp(30)))
+        fun navItem(symbol:String,title:String,active:Boolean=false)=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER
+            isClickable=true
+            isFocusable=true
+            addView(iconView(symbol,if(active)selected else inactive),LinearLayout.LayoutParams(dp(28),dp(30)))
             addView(TextView(this@HomeActivity).apply{
-                text=title;textSize=12f;gravity=Gravity.CENTER
-                setTextColor(if(selected)purple else muted);setSingleLine(true)
-            },LinearLayout.LayoutParams(-1,dp(20)))
+                text=title
+                textSize=11f
+                gravity=Gravity.CENTER
+                setTextColor(if(active)selected else inactive)
+                setSingleLine(true)
+                typeface=if(active)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            },LinearLayout.LayoutParams(-1,dp(21)))
         }
-        nav.addView(navItem("profile","حسابي").apply{setOnClickListener{startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))}},LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(navItem("message","رسائل"),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(navItem("profile","حسابي").apply{setOnClickListener{startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))}},LinearLayout.LayoutParams(0,dp(66),1f))
+        nav.addView(navItem("message","رسائل"),LinearLayout.LayoutParams(0,dp(66),1f))
         val addRoom=FrameLayout(this).apply{
             val circle=TextView(this@HomeActivity).apply{
-                text="+";textSize=31f;gravity=Gravity.CENTER
-                setTextColor(Color.WHITE);background=shape(purple,30);elevation=dp(6).toFloat()
+                text="+"
+                textSize=31f
+                gravity=Gravity.CENTER
+                setTextColor(Color.WHITE)
+                background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(157,111,255),selected)).apply{cornerRadius=dp(30).toFloat()}
+                elevation=dp(8).toFloat()
                 setOnClickListener{showCreateRoomDialog()}
             }
             addView(circle,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         }
-        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(navItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(navItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)));setContentView(root)
-        verifyAccount();loadRooms()
+        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(66),1f))
+        nav.addView(navItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(66),1f))
+        nav.addView(navItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(66),1f))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
+        setContentView(root)
+        verifyAccount()
     }
     private fun iconView(kind:String,tint:Int):View = object:View(this){
         private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{
@@ -329,7 +329,7 @@ class HomeActivity : Activity() {
                 if(!source.isRecycled)source.recycle()
                 val result=AuthApi.post("/api/voice-rooms",payload,token)
                 runOnUiThread{
-                    if(result.status in 200..299){Toast.makeText(this,"تم إنشاء الغرفة وحفظ صورتها",Toast.LENGTH_LONG).show();loadRooms()}
+                    if(result.status in 200..299){Toast.makeText(this,"تم إنشاء الغرفة وحفظ صورتها",Toast.LENGTH_LONG).show()}
                     else Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
                 }
             }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?:"تعذر تجهيز الصورة",Toast.LENGTH_LONG).show()}}
