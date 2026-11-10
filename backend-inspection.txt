@@ -25,7 +25,7 @@
 }
 ===== SOURCE FILES =====
 src/routes/friends.js (6711 bytes)
-src/routes/livekit.js (13010 bytes)
+src/routes/livekit.js (15574 bytes)
 src/routes/livekit.js.backup-20261110-104118 (10428 bytes)
 src/routes/messages.js (6860 bytes)
 src/routes/profile.js (2880 bytes)
@@ -1148,6 +1148,60 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
   }
 
+
+  // Room text chat: members only, newest 50 messages returned in chronological order.
+  app.get("/api/voice-rooms/:roomId/messages", authenticateToken, async (req, res) => {
+    try {
+      const roomId = req.params.roomId;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
+      const result = await db.query(`
+        SELECT * FROM (
+          SELECT m.id, m.room_id, m.user_id, m.message, m.created_at,
+                 COALESCE(p.display_name, u.username) AS display_name, u.username
+          FROM voice_room_messages m
+          JOIN users u ON u.id = m.user_id
+          LEFT JOIN user_profiles p ON p.user_id = u.id
+          WHERE m.room_id = $1
+          ORDER BY m.id DESC
+          LIMIT 50
+        ) recent
+        ORDER BY id ASC
+      `, [roomId]);
+      return res.json({ messages: result.rows });
+    } catch (error) {
+      console.error("List room messages:", error.message);
+      return res.status(500).json({ error: "Could not load room messages" });
+    }
+  });
+
+  app.post("/api/voice-rooms/:roomId/messages", authenticateToken, async (req, res) => {
+    try {
+      const roomId = req.params.roomId;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
+      const message = String(req.body && req.body.message || "").trim();
+      if (!message || message.length > 500) {
+        return res.status(400).json({ error: "Message must contain 1-500 characters" });
+      }
+      const recent = await db.query(
+        "SELECT created_at FROM voice_room_messages WHERE room_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1",
+        [roomId, req.userId]
+      );
+      if (recent.rows.length && Date.now() - new Date(recent.rows[0].created_at).getTime() < 700) {
+        return res.status(429).json({ error: "Please wait before sending another message" });
+      }
+      const result = await db.query(
+        "INSERT INTO voice_room_messages(room_id,user_id,message) VALUES($1,$2,$3) RETURNING id, room_id, user_id, message, created_at",
+        [roomId, req.userId, message]
+      );
+      return res.status(201).json({ message: "Message sent", item: result.rows[0] });
+    } catch (error) {
+      console.error("Send room message:", error.message);
+      return res.status(500).json({ error: "Could not send room message" });
+    }
+  });
+
   app.get("/api/voice-rooms/:roomId/seats", authenticateToken, async (req, res) => {
     try {
       await ensureVoiceSchema();
@@ -1330,51 +1384,6 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       return res.status(500).json({ error: "Could not update mute state" });
     }
   });
-
-  app.post("/api/voice-rooms/:roomId/token", authenticateToken, async (req, res) => {
-    const roomId = String(req.params.roomId || "");
-    if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
-    if (!apiKey || !apiSecret) return res.status(503).json({ error: "LiveKit credentials are not configured" });
-
-    let tokenStage = "schema";
-    try {
-      await ensureVoiceSchema();
-      tokenStage = "membership";
-      const membership = await db.query(
-        `SELECT r.id, r.owner_id
-         FROM voice_rooms r
-         JOIN room_members m ON m.room_id = r.id
-         WHERE r.id = $1 AND r.status = 'active' AND m.user_id = $2
-         LIMIT 1`,
-        [roomId, req.userId]
-      );
-      if (!membership.rows.length) return res.status(403).json({ error: "Join the room before requesting an audio token" });
-
-      tokenStage = "seat";
-      const seat = await db.query(
-        "SELECT s.seat_number, s.is_muted FROM voice_room_seats s WHERE s.room_id=$1 AND s.user_id=$2 LIMIT 1",
-        [roomId, req.userId]
-      );
-      const isOwner = String(membership.rows[0].owner_id) === String(req.userId);
-      const canPublish = isOwner || (seat.rows.length > 0 && !seat.rows[0].is_muted);
-      tokenStage = "sign";
-      const token = new AccessToken(apiKey, apiSecret, { identity: String(req.userId), ttl: "10m" });
-      token.addGrant({
-        roomJoin: true, room: roomId, canPublish,
-        canSubscribe: true, canPublishData: true
-      });
-      const participantToken = await token.toJwt();
-      return res.json({ serverUrl: liveKitUrl, participantToken, canPublish });
-    } catch (error) {
-      console.error("LiveKit token error at " + tokenStage + ":", error.message);
-      return res.status(500).json({
-        error: "Could not create audio token",
-        stage: tokenStage,
-        code: error.code || error.name || "UNKNOWN"
-      });
-    }
-  });
-};
 ===== MIGRATIONS =====
 --- FILE: /opt/mariam-live/database/001_initial.sql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -1455,4 +1464,4 @@ CREATE INDEX idx_room_members_user ON room_members(user_id);
 ┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 └────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 6.4% | ram usage: 6.2% | eth0: ⇓ 5kb/s ⇑ 9kb/s | disk: ⇓ 882kb/s ⇑ 65kb/s
+host metrics | cpu: 1.1% | ram usage: 5.9% | eth0: ⇓ 12kb/s ⇑ 1kb/s | disk: ⇓ 0mb/s ⇑ 9kb/s
