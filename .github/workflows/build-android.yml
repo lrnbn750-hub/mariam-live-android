@@ -49,9 +49,9 @@ jobs:
       - name: Download full-resolution Malak welcome image
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
-          curl -k -fL --retry 3 --retry-delay 2 "https://i.top4top.io/p_3966x4g0b0.png" -o app/src/main/res/drawable-nodpi/malak_splash.png
-          file app/src/main/res/drawable-nodpi/malak_splash.png
-          test -s app/src/main/res/drawable-nodpi/malak_splash.png
+          curl -k -fL --retry 3 --retry-delay 2 "https://i.top4top.io/p_3966x4g0b0.png" -o app/src/main/res/drawable-nodpi/malak_splash.jpg
+          file app/src/main/res/drawable-nodpi/malak_splash.jpg
+          test -s app/src/main/res/drawable-nodpi/malak_splash.jpg
 
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
