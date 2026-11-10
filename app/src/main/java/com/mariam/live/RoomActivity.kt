@@ -31,6 +31,8 @@ class RoomActivity : Activity() {
  private var seats=JSONArray(); private var hands=JSONArray()
  private val bg=Color.rgb(13,14,31); private val purple=Color.rgb(151,112,245); private val gold=Color.rgb(244,197,106); private val mutedText=Color.rgb(181,177,202)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
+ private lateinit var roomPage:LinearLayout
+ private var loadedBackgroundUrl=""
  private lateinit var mic:LinearLayout
  private lateinit var chatPanel:LinearLayout
  private var chatPoll:Job?=null
@@ -44,7 +46,7 @@ class RoomActivity : Activity() {
   super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  val page=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))}
+  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(label("MARIAM LIVE  ✦",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)))
@@ -52,7 +54,7 @@ class RoomActivity : Activity() {
    setOnClickListener{leaveRoom()}
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,45,75));setStroke(dp(1),Color.rgb(198,105,151))}
   },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8)})
-  page.addView(top)
+  roomPage.addView(top)
   page.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
   page.addView(label("مساحة صوتية مباشرة  •  8 مقاعد",12f,mutedText).apply{setPadding(0,0,0,dp(14))})
   val host=LinearLayout(this).apply{
@@ -80,7 +82,7 @@ class RoomActivity : Activity() {
   mic=action("المايك","mic",Color.rgb(91,65,160),Color.rgb(188,153,255)){toggleMic()}
   mic.visibility=View.GONE
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
-  roomRoot.addView(page,LinearLayout.LayoutParams(-1,-1))
+  roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
@@ -287,6 +289,8 @@ class RoomActivity : Activity() {
     seats=r.body.optJSONArray("seats")?:JSONArray()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
+    val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
+    if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
     val ownerSeat=seats.optJSONObject(0)
     val ownerSeatUser=ownerSeat?.optString("user_id").orEmpty()
@@ -313,6 +317,32 @@ class RoomActivity : Activity() {
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
+
+ private fun applyRoomBackground(url:String){
+  loadedBackgroundUrl=url
+  if(url.isBlank()){
+   roomPage.background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))
+   return
+  }
+  scope.launch{
+   try{
+    val bitmap=withContext(Dispatchers.IO){
+     val connection=java.net.URL(url).openConnection()
+     connection.connectTimeout=10000
+     connection.readTimeout=15000
+     connection.getInputStream().use{android.graphics.BitmapFactory.decodeStream(it)}
+    }
+    if(bitmap!=null && loadedBackgroundUrl==url){
+     val photo=android.graphics.drawable.BitmapDrawable(resources,bitmap)
+     photo.alpha=255
+     roomPage.background=android.graphics.drawable.LayerDrawable(arrayOf(photo,GradientDrawable().apply{setColor(Color.argb(82,5,7,20))}))
+    }
+   }catch(_:Exception){
+    if(loadedBackgroundUrl==url) roomPage.background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))
+   }
+  }
+ }
+
  private fun drawSeats(){
   grid.removeAllViews()
   for(row in 0..1){
