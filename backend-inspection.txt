@@ -1386,4 +1386,4 @@ CREATE INDEX idx_room_members_user ON room_members(user_id);
 ┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 └────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 0.7% | ram usage: 6% | eth0: ⇓ 1kb/s ⇑ 1kb/s | disk: ⇓ 25kb/s ⇑ 30kb/s
+host metrics | cpu: 0.5% | ram usage: 6.2% | disk: ⇓ 0mb/s ⇑ 25kb/s
