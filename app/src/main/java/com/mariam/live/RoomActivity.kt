@@ -6,6 +6,11 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PixelFormat
+import android.graphics.drawable.Drawable
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -98,13 +103,17 @@ class RoomActivity : Activity() {
         params.topMargin = dp(26)
         root.addView(stateCard, params)
 
-        micButton = actionButton("🎙 إيقاف المايك")
+        micButton = actionButton("إيقاف المايك")
+        micButton.setCompoundDrawablesRelativeWithIntrinsicBounds(IconDrawable(this, "mic", Color.WHITE, dp(22)), null, null, null)
+        micButton.compoundDrawablePadding = dp(12)
         micButton.setOnClickListener { toggleMicrophone() }
         val micParams = LinearLayout.LayoutParams(-1, dp(52))
         micParams.topMargin = dp(22)
         root.addView(micButton, micParams)
 
         leaveButton = actionButton("مغادرة الغرفة")
+        leaveButton.setCompoundDrawablesRelativeWithIntrinsicBounds(IconDrawable(this, "leave", Color.WHITE, dp(22)), null, null, null)
+        leaveButton.compoundDrawablePadding = dp(12)
         leaveButton.setOnClickListener { leaveRoom() }
         val leaveParams = LinearLayout.LayoutParams(-1, dp(50))
         leaveParams.topMargin = dp(12)
@@ -132,10 +141,11 @@ class RoomActivity : Activity() {
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
-        background = GradientDrawable().apply {
-            setColor(purple)
-            cornerRadius = dp(14).toFloat()
+        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(176, 74, 255), Color.rgb(111, 45, 207))).apply {
+            cornerRadius = dp(28).toFloat()
+            setStroke(dp(1), Color.rgb(205, 155, 255))
         }
+        elevation = dp(5).toFloat()
     }
 
     private fun startVoiceForegroundService() {
@@ -174,7 +184,7 @@ class RoomActivity : Activity() {
                 connected = true
                 microphoneEnabled = true
                 state.text = "أنت متصل بالغرفة الصوتية"
-                micButton.text = "🎙 إيقاف المايك"
+                micButton.text = "إيقاف المايك"
             } catch (error: Exception) {
                 state.text = error.message ?: "تعذر الاتصال الصوتي"
                 micButton.isEnabled = false
@@ -190,7 +200,8 @@ class RoomActivity : Activity() {
             try {
                 microphoneEnabled = !microphoneEnabled
                 room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
-                micButton.text = if (microphoneEnabled) "🎙 إيقاف المايك" else "🔇 تشغيل المايك"
+                micButton.text = if (microphoneEnabled) "إيقاف المايك" else "تشغيل المايك"
+                micButton.setCompoundDrawablesRelativeWithIntrinsicBounds(IconDrawable(this@RoomActivity, if (microphoneEnabled) "mic" else "muted", Color.WHITE, dp(22)), null, null, null)
                 state.text = if (microphoneEnabled) "المايك يعمل" else "المايك متوقف"
             } catch (error: Exception) {
                 microphoneEnabled = !microphoneEnabled
@@ -248,4 +259,52 @@ class RoomActivity : Activity() {
     companion object {
         private const val REQUEST_MICROPHONE = 4102
     }
+}
+
+/** أيقونات Vector مرسومة برمجياً — بدون Emoji أو صور نقطية. */
+private class IconDrawable(
+    context: android.content.Context,
+    private val kind: String,
+    private val tint: Int,
+    private val iconSize: Int
+) : Drawable() {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = tint
+        style = Paint.Style.STROKE
+        strokeWidth = iconSize * 0.095f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    override fun draw(canvas: Canvas) {
+        val b = bounds
+        val save = canvas.save()
+        canvas.translate(b.left.toFloat(), b.top.toFloat())
+        canvas.scale(b.width().toFloat() / iconSize, b.height().toFloat() / iconSize)
+        val cx = iconSize / 2f
+        when (kind) {
+            "mic", "muted" -> {
+                canvas.drawRoundRect(cx - 4.2f, 2f, cx + 4.2f, 17f, 5f, 5f, paint)
+                canvas.drawArc(android.graphics.RectF(cx - 10f, 8f, cx + 10f, 25f), 0f, 180f, false, paint)
+                canvas.drawLine(cx, 25f, cx, 30f, paint)
+                canvas.drawLine(cx - 6f, 30f, cx + 6f, 30f, paint)
+                if (kind == "muted") canvas.drawLine(4f, 4f, iconSize - 4f, iconSize - 4f, paint)
+            }
+            "leave" -> {
+                val path = Path().apply {
+                    moveTo(8f, 5f); lineTo(4f, 5f); lineTo(4f, 27f)
+                    lineTo(8f, 27f); moveTo(16f, 10f); lineTo(27f, 16f)
+                    lineTo(16f, 22f); moveTo(27f, 16f); lineTo(10f, 16f)
+                }
+                canvas.drawPath(path, paint)
+            }
+        }
+        canvas.restoreToCount(save)
+    }
+
+    override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+    override fun getIntrinsicWidth(): Int = iconSize
+    override fun getIntrinsicHeight(): Int = iconSize
 }
