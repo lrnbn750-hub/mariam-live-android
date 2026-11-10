@@ -29,6 +29,9 @@ class RoomSetupActivity : Activity() {
     private lateinit var preview: ImageView
     private lateinit var startButton: TextView
     private var imageUri: Uri? = null
+    private var backgroundUri: Uri? = null
+    private val backgroundPickerRequest = 7316
+    private lateinit var backgroundPreview: ImageView
     private val imagePickerRequest = 7315
     private var selectedCategory = "عام"
 
@@ -118,6 +121,46 @@ class RoomSetupActivity : Activity() {
         })
         content.addView(setupCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
 
+        content.addView(text("خلفية الغرفة الكاملة", 17f, white, true).apply {
+            gravity = Gravity.START; setPadding(0, dp(22), 0, dp(8))
+        })
+        val backgroundFrame = FrameLayout(this).apply {
+            background = rounded(Color.rgb(22, 20, 43), 20, Color.rgb(151,112,245))
+            clipToOutline = true
+        }
+        backgroundPreview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(25,65,92), Color.rgb(28,23,55), Color.rgb(13,14,31))))
+        }
+        backgroundFrame.addView(backgroundPreview, FrameLayout.LayoutParams(-1, dp(170)))
+        val previewShade = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = GradientDrawable().apply { setColor(Color.argb(105, 5, 8, 20)); cornerRadius = dp(20).toFloat() }
+        }
+        previewShade.addView(text("MARIAM LIVE  ✦", 15f, Color.WHITE, true))
+        previewShade.addView(text("معاينة شكل الغرفة", 12f, Color.WHITE, true).apply { setPadding(0, dp(5), 0, dp(10)) })
+        val sampleSeats = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        repeat(4) {
+            val dot = View(this).apply { background = rounded(Color.argb(205, 151,112,245), 30, Color.WHITE) }
+            sampleSeats.addView(dot, LinearLayout.LayoutParams(dp(28), dp(28)).apply { setMargins(dp(5), 0, dp(5), 0) })
+        }
+        previewShade.addView(sampleSeats)
+        previewShade.addView(text("الدردشة والأزرار تظهر فوق الخلفية", 10f, Color.WHITE))
+        backgroundFrame.addView(previewShade, FrameLayout.LayoutParams(-1, -1))
+        content.addView(backgroundFrame, LinearLayout.LayoutParams(-1, dp(170)))
+        content.addView(text("＋ اختيار خلفية من معرض الهاتف", 13f, Color.rgb(244,197,106), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(4))
+            setOnClickListener { chooseRoomBackground() }
+        })
+        content.addView(text("ستظهر الخلفية لجميع أعضاء الغرفة", 11f, Color.rgb(181,177,202)).apply {
+            gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(5))
+        })
+
+
         content.addView(text("اختر تصنيف الغرفة", 16f, white, true).apply {
             gravity = Gravity.START; setPadding(0, dp(20), 0, dp(9))
         })
@@ -198,6 +241,15 @@ class RoomSetupActivity : Activity() {
         }
     }
 
+    private fun chooseRoomBackground() {
+        val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "image/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(pick, backgroundPickerRequest)
+    }
+
     private fun chooseRoomImage() {
         val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             type = "image/*"
@@ -210,6 +262,14 @@ class RoomSetupActivity : Activity() {
     @Deprecated("Deprecated in Android API; retained for broad device compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == backgroundPickerRequest && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            backgroundUri = uri
+            try { contentResolver.takePersistableUriPermission(uri, data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
+            try { contentResolver.openInputStream(uri)?.use { input -> backgroundPreview.setImageBitmap(BitmapFactory.decodeStream(input)) } }
+            catch (_: Exception) { Toast.makeText(this, "تعذر فتح الخلفية", Toast.LENGTH_SHORT).show() }
+            return
+        }
         if (requestCode == imagePickerRequest && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
             imageUri = uri
@@ -266,6 +326,25 @@ class RoomSetupActivity : Activity() {
                 val payload = JSONObject().put("name", name).put("max_members", 8)
                     .put("image_mime", "image/jpeg")
                     .put("image_base64", android.util.Base64.encodeToString(bytes.toByteArray(), android.util.Base64.NO_WRAP))
+                backgroundUri?.let { bgUri ->
+                    val bgSource = contentResolver.openInputStream(bgUri)?.use { BitmapFactory.decodeStream(it) }
+                        ?: throw Exception("تعذر قراءة صورة الخلفية")
+                    val bgScale = minOf(1f, 1280f / maxOf(bgSource.width, bgSource.height))
+                    val bgBitmap = if (bgScale < 1f) Bitmap.createScaledBitmap(bgSource,
+                        (bgSource.width * bgScale).toInt().coerceAtLeast(1),
+                        (bgSource.height * bgScale).toInt().coerceAtLeast(1), true) else bgSource
+                    val bgBytes = ByteArrayOutputStream()
+                    var bgQuality = 82
+                    do {
+                        bgBytes.reset()
+                        bgBitmap.compress(Bitmap.CompressFormat.JPEG, bgQuality, bgBytes)
+                        bgQuality -= 10
+                    } while (bgBytes.size() > 3 * 1024 * 1024 && bgQuality >= 42)
+                    if (bgBytes.size() > 3 * 1024 * 1024) throw Exception("خلفية الغرفة كبيرة جداً")
+                    payload.put("background_base64", android.util.Base64.encodeToString(bgBytes.toByteArray(), android.util.Base64.NO_WRAP))
+                    if (bgBitmap !== bgSource) bgBitmap.recycle()
+                    if (!bgSource.isRecycled) bgSource.recycle()
+                }
                 if (resized !== source) resized.recycle()
                 if (!source.isRecycled) source.recycle()
                 val result = AuthApi.post("/api/voice-rooms", payload, token)
