@@ -202,7 +202,13 @@ class HomeActivity : Activity() {
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
         setContentView(root)
         verifyAccount()
-        loadRooms()
+    }
+
+    override fun onResume(){
+        super.onResume()
+        if(::grid.isInitialized && ::roomStatus.isInitialized){
+            loadRooms()
+        }
     }
     private fun iconView(kind:String,tint:Int):View = object:View(this){
         private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{
