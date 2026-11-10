@@ -3,11 +3,13 @@ module.exports = (app, db, authenticateToken) => {
   // Create a room with a required, validated image selected by the owner.
   app.post("/api/voice-rooms", authenticateToken, async (req, res) => {
     let savedFile = null;
+    let savedBackgroundFile = null;
     try {
       const name = String(req.body.name || "").trim();
       const max_members = Number(req.body.max_members || 8);
       const imageData = String(req.body.image_base64 || "");
       const mimeType = String(req.body.image_mime || "");
+      const backgroundData = String(req.body.background_base64 || "");
       if (name.length < 2 || name.length > 100) return res.status(400).json({ error: "Room name must be 2-100 characters" });
       if (!Number.isInteger(max_members) || max_members < 2 || max_members > 8) return res.status(400).json({ error: "Room capacity must be 2-8" });
       if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType) || !imageData) return res.status(400).json({ error: "Choose a JPG, PNG or WebP room image" });
@@ -29,13 +31,23 @@ module.exports = (app, db, authenticateToken) => {
       savedFile = path.join(directory, filename);
       fs.writeFileSync(savedFile, buffer, { flag: "wx", mode: 0o640 });
       const imageUrl = "https://nokiraq.duckdns.org/uploads/rooms/" + filename;
+      let backgroundUrl = null;
+      if (backgroundData) {
+        const backgroundBuffer = Buffer.from(backgroundData, "base64");
+        const validJpeg = backgroundBuffer.length >= 3 && backgroundBuffer[0] === 0xff && backgroundBuffer[1] === 0xd8 && backgroundBuffer[2] === 0xff;
+        if (!validJpeg || backgroundBuffer.length > 4 * 1024 * 1024) throw new Error("Invalid room background image");
+        const backgroundFilename = crypto.randomUUID() + "-background.jpg";
+        savedBackgroundFile = path.join(directory, backgroundFilename);
+        fs.writeFileSync(savedBackgroundFile, backgroundBuffer, { flag: "wx", mode: 0o640 });
+        backgroundUrl = "https://nokiraq.duckdns.org/uploads/rooms/" + backgroundFilename;
+      }
       const client = await db.connect();
       try {
         await client.query("BEGIN");
         const result = await client.query(
-          `INSERT INTO voice_rooms (owner_id, name, max_members, status, image_url)
-           VALUES ($1, $2, $3, 'active', $4) RETURNING *`,
-          [req.userId, name, max_members, imageUrl]
+          `INSERT INTO voice_rooms (owner_id, name, max_members, status, image_url, room_background_url)
+           VALUES ($1, $2, $3, 'active', $4, $5) RETURNING *`,
+          [req.userId, name, max_members, imageUrl, backgroundUrl]
         );
         await client.query("INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)", [result.rows[0].id, req.userId]);
         await client.query("COMMIT");
@@ -46,6 +58,7 @@ module.exports = (app, db, authenticateToken) => {
       } finally { client.release(); }
     } catch (error) {
       if (savedFile) { try { require("fs").unlinkSync(savedFile); } catch (_) {} }
+      if (savedBackgroundFile) { try { require("fs").unlinkSync(savedBackgroundFile); } catch (_) {} }
       console.error("Create room:", error.message);
       return res.status(500).json({ error: "Could not create room" });
     }
