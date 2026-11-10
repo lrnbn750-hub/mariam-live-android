@@ -68,6 +68,9 @@ class LoginActivity : Activity() {
                 }
             }
         }
+        card.addView(AuthUi.socialDivider(this))
+        card.addView(AuthUi.socialButton(this, "المتابعة باستخدام Google", "G"))
+        card.addView(AuthUi.socialButton(this, "تسجيل الدخول برقم الهاتف", "☎"))
         val register = AuthUi.link(this, "مستخدم جديد؟ أنشئ حسابك الآن")
         register.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
         page.addView(card); page.addView(register)
