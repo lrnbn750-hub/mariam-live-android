@@ -21,9 +21,9 @@ import java.util.concurrent.Executors
 
 class RoomSetupActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
-    private val navy = Color.rgb(9, 17, 31)
-    private val blue = Color.rgb(17, 39, 58)
-    private val violet = Color.rgb(8, 24, 39)
+    private val navy = Color.rgb(13, 14, 31)
+    private val blue = Color.rgb(28, 23, 55)
+    private val violet = Color.rgb(13, 14, 31)
     private val white = Color.WHITE
     private lateinit var titleInput: EditText
     private lateinit var preview: ImageView
@@ -40,7 +40,7 @@ class RoomSetupActivity : Activity() {
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) =
         TextView(this).apply {
             text = value; textSize = size; setTextColor(color); gravity = Gravity.CENTER
-            if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
+            if (bold) typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD) else typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +55,7 @@ class RoomSetupActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(17, 39, 58), navy, Color.rgb(8, 24, 39)))
+                intArrayOf(Color.rgb(28, 23, 55), navy, Color.rgb(13, 14, 31)))
         }
         val scroll = ScrollView(this).apply { clipToPadding = false }
         val content = LinearLayout(this).apply {
@@ -65,21 +65,21 @@ class RoomSetupActivity : Activity() {
         }
         scroll.addView(content)
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(text("MARIAM LIVE", 17f, Color.rgb(111,231,220), true), LinearLayout.LayoutParams(0, dp(42), 1f))
+        top.addView(text("MARIAM LIVE", 17f, Color.rgb(244,197,106), true), LinearLayout.LayoutParams(0, dp(42), 1f))
         top.addView(text("إعداد الغرفة", 16f, white, true), LinearLayout.LayoutParams(-2, dp(42)))
         top.addView(text("×", 30f, white).apply { setOnClickListener { finish() } }, LinearLayout.LayoutParams(dp(42), dp(42)))
         content.addView(top)
         content.addView(text(initialName.ifBlank { "غرفة صوتية جديدة" }, 23f, white, true).apply { setPadding(0, dp(12), 0, dp(4)) })
-        content.addView(text("معاينة قبل بدء البث • 8 مقاعد", 12f, Color.rgb(178,202,215)).apply { gravity = Gravity.START; setPadding(0, 0, 0, dp(14)) })
+        content.addView(text("معاينة قبل بدء البث • 8 مقاعد", 12f, Color.rgb(181,177,202)).apply { gravity = Gravity.START; setPadding(0, 0, 0, dp(14)) })
         val setupCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(Color.rgb(17, 43, 61), 22, Color.rgb(57,137,153))
+            background = rounded(Color.rgb(17, 43, 61), 22, Color.rgb(111,91,176))
         }
         val imageRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         preview = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            background = rounded(Color.rgb(28,92,111), 14, Color.rgb(111,231,220))
+            background = rounded(Color.rgb(76,58,125), 14, Color.rgb(244,197,106))
             clipToOutline = true
         }
         preview.setOnClickListener { chooseRoomImage() }
@@ -91,13 +91,14 @@ class RoomSetupActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
         }
-        titleColumn.addView(text("عنوان الغرفة", 12f, Color.rgb(184,216,225), true).apply {
+        titleColumn.addView(text("عنوان الغرفة", 12f, Color.rgb(196,190,218), true).apply {
             gravity = Gravity.START
         })
         titleInput = EditText(this).apply {
             setText(initialName)
             hint = "أضف عنواناً للدردشة"
             textSize = 17f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             setTextColor(white)
             setHintTextColor(Color.rgb(153,206,218))
             setSingleLine(true)
@@ -107,12 +108,12 @@ class RoomSetupActivity : Activity() {
         titleColumn.addView(titleInput, LinearLayout.LayoutParams(-1, dp(42)))
         imageRow.addView(titleColumn, LinearLayout.LayoutParams(0, -2, 1f))
         setupCard.addView(imageRow)
-        setupCard.addView(text("＋ تغيير صورة الغرفة", 12f, Color.rgb(111,231,220), true).apply {
+        setupCard.addView(text("＋ تغيير صورة الغرفة", 12f, Color.rgb(244,197,106), true).apply {
             gravity = Gravity.START
             setPadding(0, dp(8), 0, 0)
             setOnClickListener { chooseRoomImage() }
         })
-        setupCard.addView(text("صورة واسم الغرفة سيظهران للأعضاء قبل الدخول", 11f, Color.rgb(178,202,215)).apply {
+        setupCard.addView(text("صورة واسم الغرفة سيظهران للأعضاء قبل الدخول", 11f, Color.rgb(181,177,202)).apply {
             gravity = Gravity.START; setPadding(0, dp(7), 0, 0)
         })
         content.addView(setupCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
@@ -128,12 +129,12 @@ class RoomSetupActivity : Activity() {
         listOf("مشاعر ♡", "موسيقى ♬", "ألعاب", "عام").forEach { label ->
             val category = text(label, 11f, white, true).apply {
                 setPadding(dp(11), dp(9), dp(11), dp(9))
-                background = rounded(if (label == "عام") Color.rgb(22,112,137) else Color.rgb(17,43,61), 20, Color.rgb(57,137,153))
+                background = rounded(if (label == "عام") Color.rgb(112,82,190) else Color.rgb(35,29,65), 20, Color.rgb(111,91,176))
                 setOnClickListener {
                     selectedCategory = label.substringBefore(" ")
                     for (i in 0 until categories.childCount) {
                         val child = categories.getChildAt(i) as TextView
-                        child.background = rounded(if (child === this) Color.rgb(139, 62, 185) else Color.rgb(72, 66, 199), 20, Color.rgb(140, 157, 255))
+                        child.background = rounded(if (child === this) Color.rgb(151,112,245) else Color.rgb(63,48,111), 20, Color.rgb(188,153,255))
                     }
                 }
             }
@@ -160,7 +161,7 @@ class RoomSetupActivity : Activity() {
                     setPadding(dp(2), dp(8), dp(2), dp(6))
                 }
                 val circle = FrameLayout(this).apply {
-                    background = rounded(Color.rgb(18,52,69), 50, Color.rgb(111,231,220))
+                    background = rounded(Color.rgb(42,34,76), 50, Color.rgb(244,197,106))
                     addView(ChairIcon(), FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
                 }
                 seat.addView(circle, LinearLayout.LayoutParams(dp(64), dp(64)))
@@ -171,14 +172,14 @@ class RoomSetupActivity : Activity() {
         }
         content.addView(seatGrid, LinearLayout.LayoutParams(-1, -2))
 
-        val note = text("سيتم فتح الغرفة بعد الضغط على بدء البث المباشر", 11f, Color.rgb(178,202,215))
+        val note = text("سيتم فتح الغرفة بعد الضغط على بدء البث المباشر", 11f, Color.rgb(181,177,202))
         content.addView(note, LinearLayout.LayoutParams(-1, dp(44)))
 
         startButton = text("ابدأ البث المباشر  ▶", 17f, white, true).apply {
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(55,190,207), Color.rgb(25,119,151))).apply {
+                intArrayOf(Color.rgb(151,112,245), Color.rgb(105,73,193))).apply {
                 cornerRadius = dp(30).toFloat()
-                setStroke(dp(1), Color.rgb(75,188,204))
+                setStroke(dp(1), Color.rgb(188,153,255))
             }
             elevation = dp(5).toFloat()
             setOnClickListener { createAndStart() }
