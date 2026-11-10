@@ -46,13 +46,31 @@ class HomeActivity : Activity() {
         val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(Color.rgb(250,250,252))}
         val scroll=ScrollView(this).apply{isFillViewport=true;clipToPadding=false;addView(content)}
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(8));setBackgroundColor(cream)}
-        header.addView(label("◉",27f,purple,true),LinearLayout.LayoutParams(dp(42),dp(45)))
-        header.addView(label("⌕",34f,ink),LinearLayout.LayoutParams(dp(42),dp(45)))
-        header.addView(label("شعبي",17f,ink,true),LinearLayout.LayoutParams(0,dp(45),1f))
-        header.addView(label("المجاورون",14f,muted))
-        header.addView(label("  متصل",14f,muted))
-        content.addView(header)
+        val header=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
+            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(6),dp(12),dp(6))
+            setBackgroundColor(cream)
+        }
+        fun headerTab(title:String,selected:Boolean)=TextView(this).apply{
+            text=title;textSize=14f;gravity=Gravity.CENTER
+            setTextColor(if(selected)ink else muted)
+            typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            setSingleLine(true)
+        }
+        header.addView(headerTab("متصل",false),LinearLayout.LayoutParams(0,dp(48),1f))
+        header.addView(headerTab("شعبي",true),LinearLayout.LayoutParams(0,dp(48),1f))
+        header.addView(headerTab("المجاورون",false),LinearLayout.LayoutParams(0,dp(48),1.15f))
+        val searchButton=TextView(this).apply{
+            text="⌕";textSize=29f;gravity=Gravity.CENTER;setTextColor(ink)
+            background=shape(Color.WHITE,24)
+        }
+        header.addView(searchButton,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(7)})
+        val logo=TextView(this).apply{
+            text="M";textSize=19f;typeface=Typeface.DEFAULT_BOLD;gravity=Gravity.CENTER
+            setTextColor(Color.WHITE);background=shape(purple,13)
+        }
+        header.addView(logo,LinearLayout.LayoutParams(dp(40),dp(40)).apply{marginStart=dp(7)})
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
         val banner=FrameLayout(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
@@ -75,13 +93,33 @@ class HomeActivity : Activity() {
         roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
         buildCards()
-        val create=TextView(this).apply{text="＋  إنشاء غرفة صوتية";textSize=14f;gravity=Gravity.CENTER;typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=shape(purple,16);setOnClickListener{showCreateRoomDialog()}}
-        content.addView(create,LinearLayout.LayoutParams(-1,dp(50)).apply{setMargins(dp(16),dp(5),dp(16),dp(16))})
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
-        listOf("♙\nحسابي","☏\nرسائل","☆\nالمفضلة","◎\nاكتشف","⌂\nالرئيسية").forEachIndexed{i,s->
-            nav.addView(label(s,11f,if(i==4)purple else ink,i==4).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(0,dp(48),1f))
+        fun navItem(symbol:String,title:String,selected:Boolean=false)=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+            addView(TextView(this@HomeActivity).apply{
+                text=symbol;textSize=if(symbol=="＋")27f else 21f;gravity=Gravity.CENTER
+                setTextColor(if(selected||symbol=="＋")purple else ink)
+            },LinearLayout.LayoutParams(-1,dp(28)))
+            if(title.isNotEmpty()) addView(TextView(this@HomeActivity).apply{
+                text=title;textSize=10f;gravity=Gravity.CENTER
+                setTextColor(if(selected)purple else muted);setSingleLine(true)
+            },LinearLayout.LayoutParams(-1,dp(17)))
         }
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)));setContentView(root)
+        nav.addView(navItem("♙","حسابي"),LinearLayout.LayoutParams(0,dp(58),1f))
+        nav.addView(navItem("☏","رسائل"),LinearLayout.LayoutParams(0,dp(58),1f))
+        val addRoom=FrameLayout(this).apply{
+            val circle=TextView(this@HomeActivity).apply{
+                text="＋";textSize=30f;gravity=Gravity.CENTER
+                setTextColor(Color.WHITE);background=shape(purple,30);elevation=dp(5).toFloat()
+                setOnClickListener{showCreateRoomDialog()}
+            }
+            addView(circle,FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
+        }
+        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(60),1f))
+        nav.addView(navItem("☆","المفضلة"),LinearLayout.LayoutParams(0,dp(58),1f))
+        nav.addView(navItem("◎","اكتشف"),LinearLayout.LayoutParams(0,dp(58),1f))
+        nav.addView(navItem("⌂","الرئيسية",true),LinearLayout.LayoutParams(0,dp(58),1f))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(76)));setContentView(root)
         verifyAccount();loadRooms()
     }
     private fun buildCards(){
