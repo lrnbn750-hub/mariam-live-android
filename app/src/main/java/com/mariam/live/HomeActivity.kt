@@ -26,6 +26,8 @@ class HomeActivity : Activity() {
     private val muted = Color.rgb(139,139,153)
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
+    private var filterMode = "online"
+    private var searchQuery = ""
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -48,18 +50,15 @@ class HomeActivity : Activity() {
             gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),dp(7),dp(12),dp(7))
             setBackgroundColor(cream)
         }
-        fun topTab(title:String,selected:Boolean)=TextView(this).apply{
+        fun topTab(title:String,mode:String)=TextView(this).apply{
             text=title;textSize=15f;gravity=Gravity.CENTER
-            setTextColor(if(selected)ink else muted)
-            typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            setTextColor(if(filterMode==mode)ink else muted)
+            typeface=if(filterMode==mode)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
             setSingleLine(true)
-            setOnClickListener{
-                Toast.makeText(this@HomeActivity,"تم اختيار: $title",Toast.LENGTH_SHORT).show()
-            }
+            setOnClickListener{filterMode=mode;buildCards()}
         }
-        header.addView(topTab("متصل",false),LinearLayout.LayoutParams(0,dp(48),0.9f))
-        header.addView(topTab("شعبي",true),LinearLayout.LayoutParams(0,dp(48),0.9f))
-        header.addView(topTab("المجاورون",false),LinearLayout.LayoutParams(0,dp(48),1.15f))
+        header.addView(topTab("متصل","online"),LinearLayout.LayoutParams(0,dp(48),1f))
+        header.addView(topTab("شعبي","popular"),LinearLayout.LayoutParams(0,dp(48),1f))
         val searchButton=TextView(this).apply{
             text="⌕";textSize=32f;gravity=Gravity.CENTER;setTextColor(ink)
             setPadding(dp(5),0,dp(5),0)
@@ -67,20 +66,8 @@ class HomeActivity : Activity() {
         }
         header.addView(searchButton,LinearLayout.LayoutParams(dp(44),dp(48)))
         content.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
-        val banner=FrameLayout(this).apply{
-            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
-        }
-        val bt=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
-        bt.addView(label("MARIAM LIVE",25f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
-        bt.addView(label("عِش اللحظة… وتعرّف على أصدقاء جدد",13f,Color.WHITE).apply{gravity=Gravity.CENTER})
-        banner.addView(bt,FrameLayout.LayoutParams(-1,-1))
-        content.addView(banner,LinearLayout.LayoutParams(-1,dp(132)).apply{setMargins(dp(16),dp(8),dp(16),dp(14))})
-        val hsv=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-        val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(14),0,dp(14),dp(4))}
-        listOf("🇮🇶 العراق","🇪🇬 مصر","🇸🇦 السعودية","🌍 الكل").forEachIndexed{i,s->
-            chips.addView(TextView(this).apply{text=s;textSize=12f;gravity=Gravity.CENTER;setTextColor(if(i==0)Color.rgb(31,160,100)else muted);background=shape(if(i==0)Color.rgb(226,248,236)else Color.WHITE,24);setPadding(dp(17),dp(10),dp(17),dp(10))},LinearLayout.LayoutParams(-2,dp(42)).apply{marginEnd=dp(8)})
-        }
-        hsv.addView(chips);content.addView(hsv)
+        val sectionTitle=label("الغرف الاجتماعية",19f,ink,true).apply{setPadding(dp(18),dp(15),dp(18),dp(10))}
+        content.addView(sectionTitle,LinearLayout.LayoutParams(-1,dp(54)))
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
         roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
@@ -153,12 +140,14 @@ class HomeActivity : Activity() {
         grid.removeAllViews()
         val width=(resources.displayMetrics.widthPixels-dp(32))/2
         val imageHeight=(width*0.78f).toInt()
-        if(liveRooms.isEmpty()){
-            roomStatus.text="لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
+        val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
+        val visible=if(filterMode=="popular")filtered.sortedByDescending{it.count}else filtered.sortedByDescending{it.count>0}
+        if(visible.isEmpty()){
+            roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
             return
         }
-        roomStatus.text="الغرف النشطة: ${liveRooms.size}"
-        liveRooms.forEach { room ->
+        roomStatus.text="الغرف الحقيقية: ${visible.size}"
+        visible.forEach { room ->
             val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(10));isClickable=true}
             val frame=FrameLayout(this).apply{
                 background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(117,78,211),Color.rgb(36,31,62))).apply{cornerRadius=dp(13).toFloat()}
@@ -227,18 +216,10 @@ class HomeActivity : Activity() {
         }
     }
     private fun showSearchDialog(){
-        val input=EditText(this).apply{
-            hint="ابحث عن غرفة أو مجتمع"
-            setSingleLine(true)
-        }
-        android.app.AlertDialog.Builder(this)
-            .setTitle("بحث")
-            .setView(input)
-            .setNegativeButton("إلغاء",null)
-            .setPositiveButton("بحث"){_,_->
-                val query=input.text.toString().trim()
-                if(query.isNotEmpty()) Toast.makeText(this,"بحث عن: $query",Toast.LENGTH_SHORT).show()
-            }.show()
+        val input=EditText(this).apply{hint="ابحث عن اسم غرفة";setSingleLine(true);setText(searchQuery)}
+        android.app.AlertDialog.Builder(this).setTitle("بحث في الغرف الحقيقية").setView(input)
+            .setNegativeButton("مسح"){_,_->searchQuery="";buildCards()}
+            .setPositiveButton("بحث"){_,_->searchQuery=input.text.toString().trim();buildCards()}.show()
     }
     private fun showCreateRoomDialog(){
         val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
