@@ -151,6 +151,35 @@ object AuthUi {
             }
         }
 
+    fun socialButton(activity: Activity, title: String, symbol: String): TextView =
+        TextView(activity).apply {
+            text = "$symbol   $title"
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(INK)
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = dp(activity, 14).toFloat()
+                setStroke(dp(activity, 1), 0xFFE6E1EF.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(activity, 50)).apply {
+                topMargin = dp(activity, 9)
+            }
+            setOnClickListener {
+                android.widget.Toast.makeText(activity, "قريباً في Mariam Live ✨", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    fun socialDivider(activity: Activity): TextView =
+        TextView(activity).apply {
+            text = "أو تابع باستخدام"
+            textSize = 12f
+            setTextColor(MUTED)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(activity, 15), 0, dp(activity, 5))
+        }
+
     fun message(activity: Activity): TextView =
         TextView(activity).apply {
             textSize = 13f
