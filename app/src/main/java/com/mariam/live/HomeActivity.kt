@@ -4,6 +4,11 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.MediaStore
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -28,6 +33,8 @@ class HomeActivity : Activity() {
     private lateinit var roomStatus: TextView
     private var filterMode = "online"
     private var searchQuery = ""
+    private var pendingRoomName = ""
+    private val roomImagePicker = 7314
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -224,26 +231,47 @@ class HomeActivity : Activity() {
     private fun showCreateRoomDialog(){
         val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
         android.app.AlertDialog.Builder(this).setTitle("إنشاء غرفة صوتية")
-            .setMessage("اختر اسماً للغرفة. إضافة صورة للغرفة ستحتاج تفعيل رفع الصور على الخادم.")
+            .setMessage("اختر صورة من هاتفك لتظهر على بطاقة الغرفة في الصفحة الرئيسية.")
             .setView(input).setNegativeButton("إلغاء",null)
-            .setPositiveButton("إنشاء"){_,_->
+            .setPositiveButton("اختيار الصورة"){_,_->
                 val name=input.text.toString().trim()
-                if(name.length<2)Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show()
-                else createRoom(name)
+                if(name.length<2){Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show();return@setPositiveButton}
+                pendingRoomName=name
+                val pick=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{type="image/*";addCategory(Intent.CATEGORY_OPENABLE)}
+                startActivityForResult(pick,roomImagePicker)
             }.show()
     }
-    private fun createRoom(name:String){
+    @Deprecated("Deprecated in Android API; retained for broad device compatibility")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==roomImagePicker && resultCode==RESULT_OK){
+            val uri=data?.data ?: return
+            createRoomWithImage(pendingRoomName,uri)
+        }
+    }
+    private fun createRoomWithImage(name:String,uri:Uri){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        Toast.makeText(this,"جارٍ تجهيز الصورة وإنشاء الغرفة...",Toast.LENGTH_SHORT).show()
         executor.execute{
             try{
-                val result=AuthApi.post("/api/voice-rooms",JSONObject().put("name",name).put("max_members",8),token)
+                val source=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it)} ?: throw Exception("تعذر قراءة الصورة")
+                val maxSide=1280
+                val scale=minOf(1f,maxSide.toFloat()/maxOf(source.width,source.height))
+                val resized=if(scale<1f)Bitmap.createScaledBitmap(source,(source.width*scale).toInt().coerceAtLeast(1),(source.height*scale).toInt().coerceAtLeast(1),true)else source
+                val bytes=ByteArrayOutputStream()
+                var quality=85
+                do{bytes.reset();resized.compress(Bitmap.CompressFormat.JPEG,quality,bytes);quality-=10}while(bytes.size()>3*1024*1024 && quality>=45)
+                if(bytes.size()>3*1024*1024)throw Exception("الصورة كبيرة جداً، اختر صورة أصغر")
+                val payload=JSONObject().put("name",name).put("max_members",8)
+                    .put("image_mime","image/jpeg").put("image_base64",Base64.encodeToString(bytes.toByteArray(),Base64.NO_WRAP))
+                if(resized!==source)resized.recycle()
+                if(!source.isRecycled)source.recycle()
+                val result=AuthApi.post("/api/voice-rooms",payload,token)
                 runOnUiThread{
-                    if(result.status in 200..299){
-                        Toast.makeText(this,"تم إنشاء الغرفة",Toast.LENGTH_SHORT).show()
-                        loadRooms()
-                    }else Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
+                    if(result.status in 200..299){Toast.makeText(this,"تم إنشاء الغرفة وحفظ صورتها",Toast.LENGTH_LONG).show();loadRooms()}
+                    else Toast.makeText(this,result.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show()
                 }
-            }catch(_:Exception){runOnUiThread{Toast.makeText(this,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}}
+            }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?:"تعذر تجهيز الصورة",Toast.LENGTH_LONG).show()}}
         }
     }
     private fun openLogin(){startActivity(Intent(this,LoginActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK});finish()}
