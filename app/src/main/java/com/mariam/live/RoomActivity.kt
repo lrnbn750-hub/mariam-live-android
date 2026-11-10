@@ -71,7 +71,7 @@ class RoomActivity : Activity() {
   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(
    Color.red(color)+((255-Color.red(color))*0.08f).toInt(),
    Color.green(color)+((255-Color.green(color))*0.08f).toInt(),
-   Color.blue(color)+((255-Color.blue(color))*0.08f).toInt()),color)).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.argb(105,accent.red(),accent.green(),accent.blue()))}
+   Color.blue(color)+((255-Color.blue(color))*0.08f).toInt()),color)).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.argb(105,Color.red(accent),Color.green(accent),Color.blue(accent)))}
   val iconWrap=FrameLayout(this@RoomActivity).apply{
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(42,accent.red(),accent.green(),accent.blue()));setStroke(dp(1),Color.argb(125,accent.red(),accent.green(),accent.blue()))}
    val iv=ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)));setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN);scaleType=ImageView.ScaleType.FIT_CENTER}
