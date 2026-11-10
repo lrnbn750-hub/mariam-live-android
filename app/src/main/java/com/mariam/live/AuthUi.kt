@@ -25,10 +25,10 @@ object AuthUi {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(activity, 24), dp(activity, 22), dp(activity, 24), dp(activity, 24))
+            setPadding(dp(activity, 22), dp(activity, 30), dp(activity, 22), dp(activity, 30))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(0xFF17152B.toInt(), 0xFF252044.toInt(), 0xFF17152B.toInt())
+                intArrayOf(0xFF10101F.toInt(), 0xFF242044.toInt(), 0xFF17152B.toInt())
             )
         }
     }
@@ -44,7 +44,7 @@ object AuthUi {
         val wrap = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(activity, 12), 0, dp(activity, 24))
+            setPadding(0, dp(activity, 24), 0, dp(activity, 30))
         }
         val mark = TextView(activity).apply {
             text = "M"
@@ -56,7 +56,8 @@ object AuthUi {
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(PURPLE, PINK)
             ).apply { shape = GradientDrawable.OVAL }
-            layoutParams = LinearLayout.LayoutParams(dp(activity, 76), dp(activity, 76))
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 82), dp(activity, 82))
+            elevation = dp(activity, 12).toFloat()
         }
         val title = TextView(activity).apply {
             text = "Mariam Live"
@@ -79,12 +80,13 @@ object AuthUi {
     fun card(activity: Activity): LinearLayout =
         LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(activity, 22), dp(activity, 24), dp(activity, 22), dp(activity, 22))
+            setPadding(dp(activity, 22), dp(activity, 26), dp(activity, 22), dp(activity, 26))
             background = GradientDrawable().apply {
                 setColor(0xFFFCFBFF.toInt())
-                cornerRadius = dp(activity, 24).toFloat()
+                cornerRadius = dp(activity, 28).toFloat()
+                setStroke(dp(activity, 1), 0x33FFFFFF)
             }
-            elevation = dp(activity, 8).toFloat()
+            elevation = dp(activity, 12).toFloat()
         }
 
     fun heading(activity: Activity, text: String): TextView =
@@ -153,7 +155,7 @@ object AuthUi {
 
     fun socialButton(activity: Activity, title: String, symbol: String): TextView =
         TextView(activity).apply {
-            text = "$symbol   $title"
+            text = if (symbol.isBlank()) title else "$symbol   $title"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
