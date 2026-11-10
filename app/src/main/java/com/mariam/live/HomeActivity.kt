@@ -78,9 +78,25 @@ class HomeActivity : Activity() {
         section.addView(TextView(this).apply{text="اكتشف وشارك";textSize=11f;setTextColor(muted)})
         content.addView(section)
         val filters=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER_VERTICAL}
-        fun filterChip(title:String,mode:String)=TextView(this).apply{text=title;textSize=12f;gravity=Gravity.CENTER;setPadding(dp(16),dp(9),dp(16),dp(9));background=GradientDrawable().apply{setColor(if(filterMode==mode)accent else Color.WHITE);cornerRadius=dp(18).toFloat();if(filterMode!=mode)setStroke(dp(1),Color.rgb(232,230,240))};setTextColor(if(filterMode==mode)Color.WHITE else muted);typeface=if(filterMode==mode)Typeface.DEFAULT_BOLD else Typeface.DEFAULT;setOnClickListener{filterMode=mode;filters.removeAllViews();filters.addView(filterChip("المتصلون","online"));filters.addView(filterChip("الأكثر شعبية","popular"));buildCards()}}
-        filters.addView(filterChip("المتصلون","online"))
-        filters.addView(filterChip("الأكثر شعبية","popular"),LinearLayout.LayoutParams(-2,-2).apply{marginStart=dp(8)})
+        lateinit var refreshFilters: () -> Unit
+        fun filterChip(title:String,mode:String):TextView {
+            val chip=TextView(this)
+            chip.text=title
+            chip.textSize=12f
+            chip.gravity=Gravity.CENTER
+            chip.setPadding(dp(16),dp(9),dp(16),dp(9))
+            chip.background=GradientDrawable().apply{setColor(if(filterMode==mode)accent else Color.WHITE);cornerRadius=dp(18).toFloat();if(filterMode!=mode)setStroke(dp(1),Color.rgb(232,230,240))}
+            chip.setTextColor(if(filterMode==mode)Color.WHITE else muted)
+            chip.typeface=if(filterMode==mode)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            chip.setOnClickListener{filterMode=mode;refreshFilters();buildCards()}
+            return chip
+        }
+        refreshFilters = {
+            filters.removeAllViews()
+            filters.addView(filterChip("المتصلون","online"))
+            filters.addView(filterChip("الأكثر شعبية","popular"),LinearLayout.LayoutParams(-2,-2).apply{marginStart=dp(8)})
+        }
+        refreshFilters()
         content.addView(filters)
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(-dp(5),dp(8),-dp(5),0)})
