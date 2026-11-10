@@ -42,15 +42,17 @@ class HomeActivity : Activity() {
         val cream=Color.rgb(255,255,249)
         window.statusBarColor=cream;window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(250,250,252))}
-        val scroll=ScrollView(this).apply{isFillViewport=true;addView(root)}
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(Color.rgb(250,250,252))}
+        val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(Color.rgb(250,250,252))}
+        val scroll=ScrollView(this).apply{isFillViewport=true;clipToPadding=false;addView(content)}
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(8));setBackgroundColor(cream)}
         header.addView(label("◉",27f,purple,true),LinearLayout.LayoutParams(dp(42),dp(45)))
         header.addView(label("⌕",34f,ink),LinearLayout.LayoutParams(dp(42),dp(45)))
         header.addView(label("شعبي",17f,ink,true),LinearLayout.LayoutParams(0,dp(45),1f))
         header.addView(label("المجاورون",14f,muted))
         header.addView(label("  متصل",14f,muted))
-        root.addView(header)
+        content.addView(header)
         val banner=FrameLayout(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
@@ -58,38 +60,38 @@ class HomeActivity : Activity() {
         bt.addView(label("MARIAM LIVE",25f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
         bt.addView(label("عِش اللحظة… وتعرّف على أصدقاء جدد",13f,Color.WHITE).apply{gravity=Gravity.CENTER})
         banner.addView(bt,FrameLayout.LayoutParams(-1,-1))
-        root.addView(banner,LinearLayout.LayoutParams(-1,dp(132)).apply{setMargins(dp(16),dp(8),dp(16),dp(14))})
-        val hsv=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false}
-        val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;setPadding(dp(14),0,dp(14),dp(4))}
+        content.addView(banner,LinearLayout.LayoutParams(-1,dp(132)).apply{setMargins(dp(16),dp(8),dp(16),dp(14))})
+        val hsv=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+        val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(14),0,dp(14),dp(4))}
         listOf("🇮🇶 العراق","🇪🇬 مصر","🇸🇦 السعودية","🌍 الكل").forEachIndexed{i,s->
             chips.addView(TextView(this).apply{text=s;textSize=12f;gravity=Gravity.CENTER;setTextColor(if(i==0)Color.rgb(31,160,100)else muted);background=shape(if(i==0)Color.rgb(226,248,236)else Color.WHITE,24);setPadding(dp(17),dp(10),dp(17),dp(10))},LinearLayout.LayoutParams(-2,dp(42)).apply{marginEnd=dp(8)})
         }
-        hsv.addView(chips);root.addView(hsv)
+        hsv.addView(chips);content.addView(hsv)
         val heading=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(18),dp(15),dp(18),dp(10))}
         heading.addView(label("الغرف والمجتمعات",18f,ink,true),LinearLayout.LayoutParams(0,dp(34),1f))
-        heading.addView(label("اكتشف المزيد  ›",12f,purple,true));root.addView(heading)
-        grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false}
-        root.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
+        heading.addView(label("اكتشف المزيد  ›",12f,purple,true));content.addView(heading)
+        grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+        content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
         roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
-        root.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
+        content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
         buildCards()
         val create=TextView(this).apply{text="＋  إنشاء غرفة صوتية";textSize=14f;gravity=Gravity.CENTER;typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=shape(purple,16);setOnClickListener{showCreateRoomDialog()}}
-        root.addView(create,LinearLayout.LayoutParams(-1,dp(50)).apply{setMargins(dp(16),dp(5),dp(16),dp(16))})
-        val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(8),dp(5),dp(8))}
+        content.addView(create,LinearLayout.LayoutParams(-1,dp(50)).apply{setMargins(dp(16),dp(5),dp(16),dp(16))})
+        val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(6),dp(5),dp(6));elevation=dp(8).toFloat()}
         listOf("♙\nحسابي","☏\nرسائل","☆\nالمفضلة","◎\nاكتشف","⌂\nالرئيسية").forEachIndexed{i,s->
             nav.addView(label(s,11f,if(i==4)purple else ink,i==4).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(0,dp(48),1f))
         }
-        root.addView(nav);setContentView(scroll)
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)));setContentView(root)
         verifyAccount();loadRooms()
     }
     private fun buildCards(){
         grid.removeAllViews()
-        val w=(resources.displayMetrics.widthPixels-dp(34))/2
+        val availableWidth=(resources.displayMetrics.widthPixels-dp(32));val w=availableWidth/2;val imageHeight=(w*0.78f).toInt()
         demos.forEachIndexed{i,r->
             val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(9))}
             val frame=FrameLayout(this).apply{background=shape(Color.rgb(232,227,243),13);clipToOutline=true}
             val image=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(Color.rgb(225,220,239))}
-            frame.addView(image,FrameLayout.LayoutParams(-1,dp(158)))
+            frame.addView(image,FrameLayout.LayoutParams(-1,imageHeight))
             frame.addView(TextView(this).apply{text=r.tag;textSize=10f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=shape(if(i%2==0)Color.rgb(0,174,190)else purple,7);setPadding(dp(8),dp(5),dp(8),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply{setMargins(0,0,dp(7),dp(7))})
             frame.addView(TextView(this).apply{text="＋  ◉ ◉ ◉ ◉  •••";textSize=11f;setTextColor(Color.WHITE);background=shape(0x99000000.toInt(),18);setPadding(dp(7),dp(5),dp(7),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(7),0,0,dp(7))})
             card.addView(frame)
