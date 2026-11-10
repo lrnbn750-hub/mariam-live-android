@@ -76,7 +76,7 @@ class ProfileActivity : Activity() {
                 val profile=AuthApi.get("/api/users/$userId",token)
                 val data=if(profile.status in 200..299)(profile.body.optJSONObject("user")?:profile.body)else user
                 runOnUiThread{
-                    idView.text=if(userId.isNotBlank())userId else "غير متوفر"
+                    idView.text=if(data.has("public_id") && !data.isNull("public_id")) data.optString("public_id") else "غير متوفر"
                     displayName.setText(data.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
                     bio.setText(data.optString("bio").takeUnless{it=="null"}?:"")
                     country.setText(data.optString("country").takeUnless{it=="null"}?:"")
