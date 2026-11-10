@@ -68,20 +68,57 @@ class HomeActivity : Activity() {
         header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)))
         content.addView(header,LinearLayout.LayoutParams(-1,dp(58)))
         val hero=FrameLayout(this).apply{
-            background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(54,35,102),Color.rgb(119,66,220),Color.rgb(232,91,157))).apply{cornerRadius=dp(25).toFloat()}
+            background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(35,22,69),Color.rgb(91,43,157),Color.rgb(205,58,151))).apply{cornerRadius=dp(25).toFloat()}
             elevation=dp(5).toFloat()
             clipToOutline=true
         }
-        val glow=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x28FFFFFF)}}
+        val glow=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x24FFFFFF)}}
         hero.addView(glow,FrameLayout.LayoutParams(dp(150),dp(150),Gravity.TOP or Gravity.END).apply{rightMargin=-dp(38);topMargin=-dp(58)})
-        val heroContent=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(19),dp(17),dp(19),dp(17))}
-        val livePill=TextView(this).apply{text="●  عالمك الآن";textSize=10f;typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(dp(10),dp(5),dp(10),dp(5));background=GradientDrawable().apply{setColor(0x35FFFFFF);cornerRadius=dp(20).toFloat()}}
-        heroContent.addView(livePill,LinearLayout.LayoutParams(-2,-2))
-        heroContent.addView(TextView(this).apply{text="هنا تبدأ الحكاية ✨";textSize=22f;typeface=Typeface.create("sans-serif",Typeface.BOLD);setTextColor(Color.WHITE);setPadding(0,dp(9),0,0)})
-        heroContent.addView(TextView(this).apply{text="ادخل أجواء ممتعة، تعرّف على ناس جدد وشارك أجمل اللحظات";textSize=11f;setTextColor(Color.rgb(247,237,255));setPadding(0,dp(4),0,dp(12))})
-        val createButton=TextView(this).apply{text="＋  افتح غرفتك الآن";textSize=12f;typeface=Typeface.DEFAULT_BOLD;gravity=Gravity.CENTER;setTextColor(Color.rgb(83,48,137));background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(15).toFloat()};setPadding(dp(15),dp(9),dp(15),dp(9));setOnClickListener{showCreateRoomDialog()}}
-        heroContent.addView(createButton,LinearLayout.LayoutParams(-2,dp(39)))
-        hero.addView(heroContent,FrameLayout.LayoutParams(-1,-1))
+        val promoRow=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            layoutDirection=View.LAYOUT_DIRECTION_LTR
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(15),dp(12),dp(15),dp(12))
+        }
+        val phoneArt=FrameLayout(this).apply{
+            background=GradientDrawable().apply{setColor(0x24FFFFFF);cornerRadius=dp(18).toFloat();setStroke(dp(1),0x55FFFFFF)}
+        }
+        val phone=TextView(this).apply{
+            text="📱";textSize=61f;gravity=Gravity.CENTER
+            setShadowLayer(dp(9).toFloat(),0f,dp(3).toFloat(),0xAA090014.toInt())
+        }
+        phoneArt.addView(phone,FrameLayout.LayoutParams(-1,-1))
+        promoRow.addView(phoneArt,LinearLayout.LayoutParams(dp(104),dp(145)).apply{marginEnd=dp(12)})
+        val promoText=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER_VERTICAL
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
+        }
+        promoText.addView(TextView(this).apply{
+            text="🎁 عرض خاص من Mariam Live";textSize=10f;typeface=Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(255,226,167));gravity=Gravity.CENTER_VERTICAL
+        })
+        promoText.addView(TextView(this).apply{
+            text="اشحن رصيدك الآن";textSize=19f;typeface=Typeface.create("sans-serif",Typeface.BOLD)
+            setTextColor(Color.WHITE);setPadding(0,dp(7),0,0)
+        })
+        promoText.addView(TextView(this).apply{
+            text="1$ فقط";textSize=30f;typeface=Typeface.create("sans-serif",Typeface.BOLD)
+            setTextColor(Color.rgb(255,220,113));setPadding(0,dp(1),0,0)
+        })
+        promoText.addView(TextView(this).apply{
+            text="وادخل السحب على\niPhone 18 Pro Max";textSize=12f
+            typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);setPadding(0,dp(2),0,dp(9))
+        })
+        val promoButton=TextView(this).apply{
+            text="اشحن الآن  ←";textSize=12f;typeface=Typeface.DEFAULT_BOLD
+            gravity=Gravity.CENTER;setTextColor(Color.rgb(74,39,119))
+            background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(13).toFloat()}
+            setPadding(dp(14),dp(9),dp(14),dp(9))
+        }
+        promoText.addView(promoButton,LinearLayout.LayoutParams(-2,dp(38)))
+        promoRow.addView(promoText,LinearLayout.LayoutParams(0,-1,1f))
+        hero.addView(promoRow,FrameLayout.LayoutParams(-1,-1))
         content.addView(hero,LinearLayout.LayoutParams(-1,dp(184)).apply{topMargin=dp(16)})
         val section=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(0,dp(20),0,dp(10))}
         section.addView(TextView(this).apply{text="✨  غرف تستحق الدخول";textSize=18f;typeface=Typeface.DEFAULT_BOLD;setTextColor(ink)},LinearLayout.LayoutParams(0,dp(32),1f))
