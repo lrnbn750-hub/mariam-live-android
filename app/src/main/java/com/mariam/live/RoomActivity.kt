@@ -55,8 +55,8 @@ class RoomActivity : Activity() {
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,45,75));setStroke(dp(1),Color.rgb(198,105,151))}
   },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8)})
   roomPage.addView(top)
-  page.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
-  page.addView(label("مساحة صوتية مباشرة  •  8 مقاعد",12f,mutedText).apply{setPadding(0,0,0,dp(14))})
+  roomPage.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
+  roomPage.addView(label("مساحة صوتية مباشرة  •  8 مقاعد",12f,mutedText).apply{setPadding(0,0,0,dp(14))})
   val host=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(15),dp(12),dp(15),dp(12))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
@@ -74,10 +74,10 @@ class RoomActivity : Activity() {
   hostInfo.addView(label("المضيف • البث الصوتي مباشر",11f,Color.rgb(184,216,225)).apply{gravity=Gravity.START;setPadding(0,dp(4),0,0)})
   host.addView(hostInfo,LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(13)})
   host.addView(label("● مباشر",11f,Color.rgb(244,197,106),true))
-  page.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
-  page.addView(label("منصة المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
-  grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
-   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
+  roomPage.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
+  roomPage.addView(label("منصة المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
+  grid=LinearLayout(this).apply{orientation=1};roomPage.addView(grid)
+   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
   status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(91,65,160),Color.rgb(188,153,255)){toggleMic()}
   mic.visibility=View.GONE
