@@ -111,13 +111,13 @@ class RoomSetupActivity : Activity() {
         titleColumn.addView(titleInput, LinearLayout.LayoutParams(-1, dp(42)))
         imageRow.addView(titleColumn, LinearLayout.LayoutParams(0, -2, 1f))
         setupCard.addView(imageRow)
-        setupCard.addView(text("＋ اختر صورة الغرفة", 12f, Color.rgb(224, 229, 255), true).apply {
+        setupCard.addView(text("＋ تغيير صورة الغرفة", 12f, Color.rgb(224, 229, 255), true).apply {
             gravity = Gravity.START
             setPadding(0, dp(8), 0, 0)
             setOnClickListener { chooseRoomImage() }
         })
-        setupCard.addView(text("غرفة عامة  •  8 مقاعد صوتية", 12f, Color.rgb(220, 226, 255)).apply {
-            gravity = Gravity.START; setPadding(0, dp(9), 0, 0)
+        setupCard.addView(text("صورة واسم الغرفة سيظهران للأعضاء قبل الدخول", 11f, Color.rgb(220, 226, 255)).apply {
+            gravity = Gravity.START; setPadding(0, dp(7), 0, 0)
         })
         content.addView(setupCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
 
@@ -147,8 +147,11 @@ class RoomSetupActivity : Activity() {
         }
         content.addView(categories, LinearLayout.LayoutParams(-1, -2))
 
-        content.addView(text("مقاعد المتحدثين", 17f, white, true).apply {
-            gravity = Gravity.START; setPadding(0, dp(24), 0, dp(12))
+        content.addView(text("معاينة الغرفة الصوتية", 17f, white, true).apply {
+            gravity = Gravity.START; setPadding(0, dp(24), 0, dp(5))
+        })
+        content.addView(text("8 مقاعد • اضغط على المقعد لمعاينة مكانه", 11f, Color.rgb(220, 226, 255)).apply {
+            gravity = Gravity.START; setPadding(0, 0, 0, dp(10))
         })
         val seatGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         for (row in 0..1) {
