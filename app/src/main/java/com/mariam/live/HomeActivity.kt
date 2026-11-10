@@ -52,12 +52,28 @@ class HomeActivity : Activity() {
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val header=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(18),dp(10),dp(18),dp(10))
+            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),dp(7),dp(12),dp(7))
             setBackgroundColor(cream)
         }
-        header.addView(label("الغرف الاجتماعية",19f,ink,true),LinearLayout.LayoutParams(0,dp(48),1f))
-        header.addView(label("اكتشف المزيد  ›",13f,purple,true))
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(62)))
+        fun topTab(title:String,selected:Boolean)=TextView(this).apply{
+            text=title;textSize=15f;gravity=Gravity.CENTER
+            setTextColor(if(selected)ink else muted)
+            typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            setSingleLine(true)
+            setOnClickListener{
+                Toast.makeText(this@HomeActivity,"تم اختيار: $title",Toast.LENGTH_SHORT).show()
+            }
+        }
+        header.addView(topTab("متصل",false),LinearLayout.LayoutParams(0,dp(48),0.9f))
+        header.addView(topTab("شعبي",true),LinearLayout.LayoutParams(0,dp(48),0.9f))
+        header.addView(topTab("المجاورون",false),LinearLayout.LayoutParams(0,dp(48),1.15f))
+        val searchButton=TextView(this).apply{
+            text="⌕";textSize=32f;gravity=Gravity.CENTER;setTextColor(ink)
+            setPadding(dp(5),0,dp(5),0)
+            setOnClickListener{showSearchDialog()}
+        }
+        header.addView(searchButton,LinearLayout.LayoutParams(dp(44),dp(48)))
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
         val banner=FrameLayout(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
@@ -164,6 +180,20 @@ class HomeActivity : Activity() {
     private fun loadRooms(){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
         executor.execute{try{val r=AuthApi.get("/api/voice-rooms",token);val rooms=r.body.optJSONArray("rooms");runOnUiThread{roomStatus.text=if(r.status in 200..299&&rooms!=null)"الغرف الفعلية المتاحة: ${rooms.length()}  •  الصور أعلاه تجريبية" else "صور تجريبية للمعاينة — تعذّر تحديث الغرف"}}catch(_:Exception){runOnUiThread{roomStatus.text="صور تجريبية للمعاينة — لا يوجد اتصال بالغرف"}}}
+    }
+    private fun showSearchDialog(){
+        val input=EditText(this).apply{
+            hint="ابحث عن غرفة أو مجتمع"
+            setSingleLine(true)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("بحث")
+            .setView(input)
+            .setNegativeButton("إلغاء",null)
+            .setPositiveButton("بحث"){_,_->
+                val query=input.text.toString().trim()
+                if(query.isNotEmpty()) Toast.makeText(this,"بحث عن: $query",Toast.LENGTH_SHORT).show()
+            }.show()
     }
     private fun showCreateRoomDialog(){
         val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
