@@ -126,6 +126,47 @@ class HomeActivity : Activity() {
 
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
 
+        // زر تسجيل الخروج من الحساب
+        val logoutButton = TextView(this).apply {
+            text = "خروج"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(220, 55, 75))
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(255, 235, 239), 12)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+
+        header.addView(
+            logoutButton,
+            LinearLayout.LayoutParams(-2, dp(42)).apply {
+                marginEnd = dp(8)
+            }
+        )
+
+        logoutButton.setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("تسجيل الخروج")
+                .setMessage("هل تريد تسجيل الخروج من حسابك؟")
+                .setNegativeButton("إلغاء", null)
+                .setPositiveButton("خروج") { _, _ ->
+                    // حذف رمز الجلسة المحفوظ محلياً
+                    getSharedPreferences("MariamLive", MODE_PRIVATE)
+                        .edit()
+                        .clear()
+                        .apply()
+
+                    // العودة إلى شاشة الدخول ومنع الرجوع للصفحة السابقة
+                    val intent = Intent(this, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
+                    finish()
+                }
+                .show()
+        }
+
         val notification = TextView(this).apply {
             text = "♧"
             textSize = 25f
