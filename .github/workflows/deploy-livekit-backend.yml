@@ -7,6 +7,7 @@ on:
       - feature/mariam-live-development
     paths:
       - .github/workflows/deploy-livekit-backend.yml
+      - backend/livekit-route.js
 
 permissions:
   contents: read
