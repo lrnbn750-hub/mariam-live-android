@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Build
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -137,8 +138,22 @@ class RoomActivity : Activity() {
         }
     }
 
+    private fun startVoiceForegroundService() {
+        val serviceIntent = Intent(this, VoiceForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+    }
+
+    private fun stopVoiceForegroundService() {
+        stopService(Intent(this, VoiceForegroundService::class.java))
+    }
+
     private fun connectToVoiceRoom() {
         state.text = "جارٍ الاتصال بخادم الصوت..."
+        startVoiceForegroundService()
         scope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
@@ -163,6 +178,7 @@ class RoomActivity : Activity() {
             } catch (error: Exception) {
                 state.text = error.message ?: "تعذر الاتصال الصوتي"
                 micButton.isEnabled = false
+                stopVoiceForegroundService()
                 Toast.makeText(this@RoomActivity, state.text, Toast.LENGTH_LONG).show()
             }
         }
@@ -206,6 +222,7 @@ class RoomActivity : Activity() {
         scope.launch {
             try {
                 if (connected) room.disconnect()
+                stopVoiceForegroundService()
                 withContext(Dispatchers.IO) {
                     AuthApi.post("/api/voice-rooms/$roomId/leave", JSONObject(), authToken)
                 }
@@ -223,9 +240,7 @@ class RoomActivity : Activity() {
     }
 
     override fun onDestroy() {
-        if (!leaving && connected) {
-            room.disconnect()
-        }
+        // Keep the LiveKit room connected while this Activity is in the background.
         scope.cancel()
         super.onDestroy()
     }
