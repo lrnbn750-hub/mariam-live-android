@@ -35,7 +35,7 @@ class RoomActivity : Activity() {
   super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  val page=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(38,15,57),bg,Color.rgb(28,9,37)))}
+  val page=LinearLayout(this).apply{orientation=1;minimumHeight=resources.displayMetrics.heightPixels;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(38,15,57),bg,Color.rgb(28,9,37)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(label("MARIAM LIVE",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(action("تحديث","refresh",purple){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)));page.addView(top)
