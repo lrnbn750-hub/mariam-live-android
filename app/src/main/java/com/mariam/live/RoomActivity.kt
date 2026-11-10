@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -109,8 +110,18 @@ mic.visibility=if(isSeated)View.VISIBLE else View.GONE
   val muted=s.optBoolean("is_muted")
   AlertDialog.Builder(this).setTitle(name)
    .setItems(arrayOf(if(muted)"إلغاء الكتم" else "كتم المتحدث","إزالة من المقعد")){_,which->
-    if(which==0)post("/api/voice-rooms/$roomId/seats/$n/mute",JSONObject().put("muted",!muted))
-    else del("/api/voice-rooms/$roomId/seats/$n")
+    scope.launch {
+     try {
+      val result=withContext(Dispatchers.IO) {
+       if(which==0) AuthApi.post("/api/voice-rooms/$roomId/seats/$n/mute",JSONObject().put("muted",!muted),authToken)
+       else AuthApi.delete("/api/voice-rooms/$roomId/seats/$n",authToken)
+      }
+      if(result.status in 200..299) loadSeats()
+      else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تنفيذ العملية"),Toast.LENGTH_SHORT).show()
+     } catch(_:Exception) {
+      Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
+     }
+    }
    }.setNegativeButton("إغلاق",null).show()
  }
  private fun claimSeat(n:Int){
