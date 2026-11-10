@@ -31,9 +31,11 @@ src/routes/profile.js (2880 bytes)
 src/routes/profile.js.bak-public-id-20261110064530439 (2880 bytes)
 src/routes/voice-rooms.js (6701 bytes)
 src/routes/voice-rooms.js.backup-room-images-20261110084425 (4716 bytes)
+src/routes/voice-rooms.js.backup-room-images-20261110085154 (6701 bytes)
 src/server.js (6536 bytes)
 src/server.js.backup (997 bytes)
 src/server.js.backup-room-images-20261110084425 (6536 bytes)
+src/server.js.backup-room-images-20261110085154 (6536 bytes)
 src/server.js.bak-public-id-20261110-072558 (6454 bytes)
 src/server.js.bak-public-id-20261110-072634 (6485 bytes)
 src/server.js.bak-public-id-20261110064530439 (6516 bytes)
@@ -1405,4 +1407,4 @@ CREATE INDEX idx_room_members_user ON room_members(user_id);
 ┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 └────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 0.9% | ram usage: 6.3% | eth0: ⇓ 1kb/s ⇑ 1kb/s | disk: ⇓ 0mb/s ⇑ 41kb/s
+host metrics | cpu: 1.1% | ram usage: 6% | eth0: ⇓ 1kb/s ⇑ 1kb/s | disk: ⇓ 0mb/s ⇑ 57kb/s
