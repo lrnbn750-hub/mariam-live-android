@@ -49,10 +49,24 @@ class RoomActivity : Activity() {
   top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)));page.addView(top)
   page.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
   page.addView(label("غرفة صوتية مباشرة  •  8 مقاعد",12f,Color.LTGRAY).apply{setPadding(0,0,0,dp(14))})
-  val host=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12));background=panel(Color.rgb(57,29,78),22)}
-  host.addView(label("M",32f,gold,true).apply{background=GradientDrawable().apply{shape=1;setColor(Color.rgb(85,43,113));setStroke(dp(3),gold)}},LinearLayout.LayoutParams(dp(68),dp(68)))
-  host.addView(label("صاحب الغرفة",15f,Color.WHITE,true));host.addView(label("المضيف • المقعد الرئيسي",11f,gold))
-  page.addView(host,LinearLayout.LayoutParams(-1,dp(118)))
+  val host=LinearLayout(this).apply{
+   orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(15),dp(12),dp(15),dp(12))
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+    intArrayOf(Color.rgb(78,39,103),Color.rgb(43,25,62))).apply{
+     cornerRadius=dp(22).toFloat();setStroke(dp(1),Color.rgb(125,76,158))
+   }
+  }
+  val hostAvatar=FrameLayout(this).apply{
+   background=GradientDrawable().apply{shape=1;setColor(Color.rgb(96,51,126));setStroke(dp(2),gold)}
+   addView(label("M",27f,gold,true),FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+  }
+  host.addView(hostAvatar,LinearLayout.LayoutParams(dp(58),dp(58)))
+  val hostInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+  hostInfo.addView(label("صاحب الغرفة",15f,Color.WHITE,true).apply{gravity=Gravity.START})
+  hostInfo.addView(label("المضيف • البث الصوتي مباشر",11f,Color.rgb(220,194,235)).apply{gravity=Gravity.START;setPadding(0,dp(4),0,0)})
+  host.addView(hostInfo,LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(13)})
+  host.addView(label("● مباشر",11f,Color.rgb(111,224,164),true))
+  page.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
    page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(245)).apply{topMargin=dp(12)})
@@ -63,8 +77,14 @@ class RoomActivity : Activity() {
   mic.visibility=View.GONE
   val gift=action("الهدايا","gift",Color.rgb(111,43,104),Color.rgb(190,76,151)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
   val exit=action("مغادرة","leave",Color.rgb(125,39,66),Color.rgb(208,70,103)){leaveRoom()}
-  listOf(share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
-  setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)})
+  listOf(share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})}
+  val contentScroll=ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)}
+  val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
+  roomRoot.addView(contentScroll,LinearLayout.LayoutParams(-1,0,1f))
+  roomRoot.addView(bar,LinearLayout.LayoutParams(-1,dp(82)).apply{
+   setMargins(dp(8),dp(2),dp(8),dp(4))
+  })
+  setContentView(roomRoot)
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
@@ -258,12 +278,50 @@ mic.visibility=if(isSeated)View.VISIBLE else View.GONE
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
- private fun drawSeats(){grid.removeAllViews();for(row in 0..1){val line=LinearLayout(this);for(col in 0..3){val i=row*4+col;val s=seats.optJSONObject(i)?:JSONObject();val uid=s.optString("user_id").takeIf{it.isNotBlank()&&it!="null"};val name=s.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid==null)"مقعد فارغ" else "متحدث";val tile=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(2),dp(8),dp(2),dp(7));background=panel(if(uid==null)Color.rgb(34,21,49) else Color.rgb(65,34,85),15)}
-  tile.addView(label(if(uid==null)"+" else name.take(1).uppercase(),24f,if(uid==null)purple else gold,true).apply{background=GradientDrawable().apply{shape=1;setColor(Color.rgb(53,31,72));setStroke(dp(2),if(uid==null)purple else gold)}},LinearLayout.LayoutParams(dp(50),dp(50)))
-  tile.addView(label(name,10f,Color.WHITE,true));tile.addView(label(if(s.optBoolean("is_muted"))"مكتوم" else if(uid==null)"متاح" else "على المايك",9f,Color.LTGRAY))
-  tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-  line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{setMargins(dp(2),dp(3),dp(2),dp(5))})
- };grid.addView(line)}}
+ private fun drawSeats(){
+  grid.removeAllViews()
+  for(row in 0..1){
+   val line=LinearLayout(this).apply{orientation=0}
+   for(col in 0..3){
+    val i=row*4+col
+    val s=seats.optJSONObject(i)?:JSONObject()
+    val uid=s.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+    val name=s.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid==null)"مقعد فارغ" else "متحدث"
+    val occupied=uid!=null
+    val tile=LinearLayout(this).apply{
+     orientation=1;gravity=Gravity.CENTER
+     setPadding(dp(3),dp(9),dp(3),dp(8))
+     background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+      if(occupied)intArrayOf(Color.rgb(78,43,99),Color.rgb(48,29,66))
+      else intArrayOf(Color.rgb(39,25,55),Color.rgb(26,18,40))).apply{
+       cornerRadius=dp(18).toFloat()
+       setStroke(dp(1),if(occupied)Color.rgb(181,125,222) else Color.rgb(91,57,119))
+      }
+     elevation=dp(2).toFloat()
+     isClickable=true;isFocusable=true
+    }
+    val avatar=FrameLayout(this).apply{
+     background=GradientDrawable().apply{
+      shape=1
+      setColor(if(occupied)Color.rgb(95,54,119) else Color.rgb(48,30,67))
+      setStroke(dp(2),if(occupied)gold else purple)
+     }
+     addView(label(if(occupied)name.take(1).uppercase() else "+",
+      if(occupied)21f else 25f,if(occupied)gold else purple,true),
+      FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+    }
+    tile.addView(avatar,LinearLayout.LayoutParams(dp(48),dp(48)).apply{bottomMargin=dp(6)})
+    tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
+    val caption=if(s.optBoolean("is_muted"))"مكتوم" else if(!occupied)"اضغط للجلوس" else "على المايك"
+    tile.addView(label(caption,9f,if(!occupied)Color.rgb(183,145,211) else Color.rgb(255,211,137)))
+    tile.setOnClickListener{seatClick(s,i+1,uid,name)}
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(108),1f).apply{
+     setMargins(dp(3),dp(4),dp(3),dp(4))
+    })
+   }
+   grid.addView(line,LinearLayout.LayoutParams(-1,-2))
+  }
+ }
  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
   if(uid==null){claimSeat(n);return}
   if(uid==currentUserId){Toast.makeText(this,"أنت جالس على هذا المقعد",Toast.LENGTH_SHORT).show();return}
