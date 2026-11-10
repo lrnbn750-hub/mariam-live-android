@@ -22,6 +22,7 @@ import android.view.View
 import android.widget.*
 import org.json.JSONObject
 import java.net.URL
+import java.net.HttpURLConnection
 import java.util.concurrent.Executors
 
 class HomeActivity : Activity() {
@@ -168,7 +169,7 @@ class HomeActivity : Activity() {
             }
             frame.addView(overlay,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
             if(!room.imageUrl.isNullOrBlank()){
-                executor.execute{try{val con=URL(room.imageUrl).openConnection();con.connectTimeout=8000;con.readTimeout=8000;val bmp=con.getInputStream().use{BitmapFactory.decodeStream(it)};runOnUiThread{cover.setImageBitmap(bmp)}}catch(_:Exception){}}
+                loadRoomCover(cover,room.imageUrl)
             }
             card.addView(frame)
             card.addView(label(room.name,14f,ink,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(4),dp(7),dp(4),0)})
@@ -198,7 +199,7 @@ class HomeActivity : Activity() {
                             item.optString("name","غرفة صوتية"),
                             item.optInt("member_count",0),
                             item.optInt("max_members",8),
-                            item.optString("image_url").takeIf{it.isNotBlank()&&it!="null"}
+                            roomImageUrl(item)
                         ))
                     }
                 }
@@ -207,6 +208,43 @@ class HomeActivity : Activity() {
                     if(result.status !in 200..299)roomStatus.text=result.body.optString("error","تعذر تحميل الغرف")
                 }
             }catch(_:Exception){runOnUiThread{liveRooms.clear();buildCards();roomStatus.text="تعذر الاتصال بالخادم"}}
+        }
+    }
+    private fun roomImageUrl(item:JSONObject):String?{
+        val image=item.optJSONObject("image")
+        val raw=sequenceOf(
+            item.optString("image_url"),
+            item.optString("imageUrl"),
+            item.optString("cover_url"),
+            item.optString("coverUrl"),
+            image?.optString("url").orEmpty()
+        ).firstOrNull{it.isNotBlank()&&it!="null"} ?: return null
+        return when{
+            raw.startsWith("https://",true)->raw
+            raw.startsWith("http://",true)->raw
+            raw.startsWith("/")->"https://nokiraq.duckdns.org$raw"
+            else->"https://nokiraq.duckdns.org/uploads/rooms/$raw"
+        }
+    }
+    private fun loadRoomCover(view:ImageView,imageUrl:String){
+        executor.execute{
+            var connection:HttpURLConnection?=null
+            try{
+                connection=(URL(imageUrl).openConnection() as HttpURLConnection).apply{
+                    connectTimeout=15000
+                    readTimeout=20000
+                    instanceFollowRedirects=true
+                    setRequestProperty("Accept","image/avif,image/webp,image/png,image/jpeg,*/*")
+                    setRequestProperty("User-Agent","MariamLive-Android")
+                    connect()
+                }
+                if(connection.responseCode !in 200..299)throw Exception("HTTP ${connection.responseCode}")
+                val bitmap=connection.inputStream.use{BitmapFactory.decodeStream(it)}
+                    ?: throw Exception("Invalid room image")
+                runOnUiThread{if(!isFinishing && !isDestroyed)view.setImageBitmap(bitmap) else bitmap.recycle()}
+            }catch(e:Exception){
+                android.util.Log.w("MariamLive","Room cover load failed: $imageUrl",e)
+            }finally{connection?.disconnect()}
         }
     }
     private fun joinRoom(id:String,name:String){
