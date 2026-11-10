@@ -40,7 +40,7 @@ class RoomActivity : Activity() {
   val page=LinearLayout(this).apply{orientation=1;minimumHeight=resources.displayMetrics.heightPixels;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(38,15,57),bg,Color.rgb(28,9,37)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(label("MARIAM LIVE",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
-  top.addView(action("تحديث","refresh",purple){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)));page.addView(top)
+  top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)));page.addView(top)
   page.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
   page.addView(label("غرفة صوتية مباشرة  •  8 مقاعد",12f,Color.LTGRAY).apply{setPadding(0,0,0,dp(14))})
   val host=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12));background=panel(Color.rgb(57,29,78),22)}
@@ -73,7 +73,7 @@ class RoomActivity : Activity() {
    Color.green(color)+((255-Color.green(color))*0.08f).toInt(),
    Color.blue(color)+((255-Color.blue(color))*0.08f).toInt()),color)).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.argb(105,Color.red(accent),Color.green(accent),Color.blue(accent)))}
   val iconWrap=FrameLayout(this@RoomActivity).apply{
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(42,accent.red(),accent.green(),accent.blue()));setStroke(dp(1),Color.argb(125,accent.red(),accent.green(),accent.blue()))}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(42,Color.red(accent),Color.green(accent),Color.blue(accent)));setStroke(dp(1),Color.argb(125,accent.red(),accent.green(),accent.blue()))}
    val iv=ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)));setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN);scaleType=ImageView.ScaleType.FIT_CENTER}
    addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
   }
