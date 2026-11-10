@@ -323,16 +323,31 @@ class RoomActivity : Activity() {
     val uid=s.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val name=s.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid==null)"مقعد فارغ" else "متحدث"
     val occupied=uid!=null
+    // ألوان متناسقة ومختلفة لكل مقعد
+    val seatColors=arrayOf(
+     intArrayOf(Color.rgb(91,65,160),Color.rgb(43,34,91)),   // بنفسجي
+     intArrayOf(Color.rgb(28,119,135),Color.rgb(24,55,83)),  // تركوازي
+     intArrayOf(Color.rgb(153,75,117),Color.rgb(75,38,82)),  // وردي
+     intArrayOf(Color.rgb(54,94,159),Color.rgb(31,43,82)),   // أزرق
+     intArrayOf(Color.rgb(151,104,48),Color.rgb(74,48,43)), // ذهبي
+     intArrayOf(Color.rgb(65,125,103),Color.rgb(29,65,65)), // أخضر
+     intArrayOf(Color.rgb(117,76,153),Color.rgb(55,39,91)), // بنفسجي فاتح
+     intArrayOf(Color.rgb(153,83,65),Color.rgb(76,42,54))   // مرجاني
+    )
+    val seatColor=seatColors[i%seatColors.size]
     val tile=LinearLayout(this).apply{
      orientation=1;gravity=Gravity.CENTER
      setPadding(dp(3),dp(9),dp(3),dp(8))
      background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-      if(occupied)intArrayOf(Color.rgb(63,48,111),Color.rgb(35,29,65))
-      else intArrayOf(Color.rgb(29,25,53),Color.rgb(22,20,43))).apply{
+      if(occupied)seatColor else intArrayOf(
+       Color.rgb((Color.red(seatColor[0])*0.42f).toInt(),(Color.green(seatColor[0])*0.42f).toInt(),(Color.blue(seatColor[0])*0.42f).toInt()),
+       Color.rgb((Color.red(seatColor[1])*0.62f).toInt(),(Color.green(seatColor[1])*0.62f).toInt(),(Color.blue(seatColor[1])*0.62f).toInt())
+      )).apply{
        cornerRadius=dp(18).toFloat()
-       setStroke(dp(1),if(occupied)Color.rgb(188,153,255) else Color.rgb(91,72,145))
+       setStroke(dp(1),if(occupied)Color.rgb(226,205,255) else Color.rgb(
+        (Color.red(seatColor[0])*0.85f).toInt(),(Color.green(seatColor[0])*0.85f).toInt(),(Color.blue(seatColor[0])*0.85f).toInt()))
       }
-     elevation=dp(2).toFloat()
+     elevation=dp(3).toFloat()
      isClickable=true;isFocusable=true
     }
     val avatar=FrameLayout(this).apply{
