@@ -3,6 +3,7 @@ package com.mariam.live
 import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -10,371 +11,109 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import org.json.JSONObject
+import java.net.URL
 import java.util.concurrent.Executors
 
 class HomeActivity : Activity() {
-    private val executor = Executors.newSingleThreadExecutor()
-    private val purple = Color.rgb(111, 76, 255)
-    private val ink = Color.rgb(35, 32, 58)
-    private val muted = Color.rgb(137, 135, 157)
-    private val page = Color.rgb(247, 246, 252)
-    private lateinit var roomsContainer: LinearLayout
+    private val executor = Executors.newFixedThreadPool(4)
+    private val purple = Color.rgb(112,75,246)
+    private val ink = Color.rgb(35,34,53)
+    private val muted = Color.rgb(139,139,153)
+    private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
-    private lateinit var greeting: TextView
-    private lateinit var userLine: TextView
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    private fun text(value: String, size: Float, color: Int, bold: Boolean = false) =
-        TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            if (bold) typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-    private fun shape(color: Int, radius: Int = 18, stroke: Int = Color.TRANSPARENT) =
-        GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-            if (stroke != Color.TRANSPARENT) setStroke(dp(1), stroke)
-        }
-
-    private fun params(width: Int = -1, height: Int = -2, top: Int = 0) =
-        LinearLayout.LayoutParams(width, height).apply { topMargin = dp(top) }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    private data class DemoRoom(val title:String,val tag:String,val count:Int,val image:String)
+    private val demos = listOf(
+        DemoRoom("سهرة الأصدقاء 🎙","دردشة",28,"https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=700&h=700&fit=crop"),
+        DemoRoom("مجلس الموسيقى 🎵","موسيقى",19,"https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=700&h=700&fit=crop"),
+        DemoRoom("تعرف وتواصل","عشوائي",34,"https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=700&h=700&fit=crop"),
+        DemoRoom("ليلة عربية ✨","مباشر",12,"https://images.unsplash.com/photo-1506157786151-b8491531f063?w=700&h=700&fit=crop"),
+        DemoRoom("أصدقاء حول العالم","دردشة",21,"https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=700&h=700&fit=crop"),
+        DemoRoom("استراحة ووناسة","عشوائي",16,"https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=700&h=700&fit=crop")
+    )
+    private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
+    private fun shape(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat()}
+    private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{
+        text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER_VERTICAL
+        if(b)typeface=Typeface.DEFAULT_BOLD
+    }
+    override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        window.statusBarColor = page
-        window.navigationBarColor = Color.WHITE
-        window.decorView.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(page)
-        }
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            clipToPadding = false
-            addView(root)
-        }
-
-        // Top brand bar
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(16), dp(20), dp(10))
-        }
-        val brandStack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brandStack.addView(text("MARIAM LIVE", 20f, ink, true))
-        brandStack.addView(text("تواصل • شارك • استمتع", 11f, muted))
-        header.addView(brandStack, LinearLayout.LayoutParams(0, -2, 1f))
-        val notification = TextView(this).apply {
-            text = "♧"
-            textSize = 23f
-            gravity = Gravity.CENTER
-            setTextColor(ink)
-            background = shape(Color.WHITE, 15)
-            elevation = dp(2).toFloat()
-        }
-        header.addView(notification, LinearLayout.LayoutParams(dp(44), dp(44)))
+        val cream=Color.rgb(255,255,249)
+        window.statusBarColor=cream;window.navigationBarColor=Color.WHITE
+        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(250,250,252))}
+        val scroll=ScrollView(this).apply{isFillViewport=true;addView(root)}
+        val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(8));setBackgroundColor(cream)}
+        header.addView(label("◉",27f,purple,true),LinearLayout.LayoutParams(dp(42),dp(45)))
+        header.addView(label("⌕",34f,ink),LinearLayout.LayoutParams(dp(42),dp(45)))
+        header.addView(label("شعبي",17f,ink,true),LinearLayout.LayoutParams(0,dp(45),1f))
+        header.addView(label("المجاورون",14f,muted))
+        header.addView(label("  متصل",14f,muted))
         root.addView(header)
-
-        // Welcome block
-        val welcome = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(18), dp(20), dp(8))
+        val banner=FrameLayout(this).apply{
+            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(190,124,246),Color.rgb(103,85,224))).apply{cornerRadius=dp(16).toFloat()}
         }
-        welcome.addView(text("أهلاً بعودتك 👋", 25f, ink, true))
-        greeting = text("خلّينا نكتشف الأجواء اليوم", 14f, muted)
-        welcome.addView(greeting, params(top = 5))
-        userLine = text("", 12f, purple, true)
-        welcome.addView(userLine, params(top = 7))
-        root.addView(welcome)
-
-        // Main feature card
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(119, 83, 255), Color.rgb(77, 56, 190))
-            ).apply { cornerRadius = dp(24).toFloat() }
-            elevation = dp(4).toFloat()
+        val bt=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
+        bt.addView(label("MARIAM LIVE",25f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
+        bt.addView(label("عِش اللحظة… وتعرّف على أصدقاء جدد",13f,Color.WHITE).apply{gravity=Gravity.CENTER})
+        banner.addView(bt,FrameLayout.LayoutParams(-1,-1))
+        root.addView(banner,LinearLayout.LayoutParams(-1,dp(132)).apply{setMargins(dp(16),dp(8),dp(16),dp(14))})
+        val hsv=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false}
+        val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;setPadding(dp(14),0,dp(14),dp(4))}
+        listOf("🇮🇶 العراق","🇪🇬 مصر","🇸🇦 السعودية","🌍 الكل").forEachIndexed{i,s->
+            chips.addView(TextView(this).apply{text=s;textSize=12f;gravity=Gravity.CENTER;setTextColor(if(i==0)Color.rgb(31,160,100)else muted);background=shape(if(i==0)Color.rgb(226,248,236)else Color.WHITE,24);setPadding(dp(17),dp(10),dp(17),dp(10))},LinearLayout.LayoutParams(-2,dp(42)).apply{marginEnd=dp(8)})
         }
-        hero.addView(text("مساحتك… صوتك… أصدقاؤك", 20f, Color.WHITE, true))
-        hero.addView(text("انضم إلى غرفة وتعرّف على أشخاص جدد", 13f, Color.rgb(235, 230, 255)).apply {
-            setPadding(0, dp(7), 0, dp(14))
-        })
-        val explore = TextView(this).apply {
-            text = "استكشف الغرف  →"
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(purple)
-            gravity = Gravity.CENTER
-            background = shape(Color.WHITE, 13)
-            setPadding(dp(16), dp(11), dp(16), dp(11))
-            setOnClickListener { loadRooms() }
+        hsv.addView(chips);root.addView(hsv)
+        val heading=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(18),dp(15),dp(18),dp(10))}
+        heading.addView(label("الغرف والمجتمعات",18f,ink,true),LinearLayout.LayoutParams(0,dp(34),1f))
+        heading.addView(label("اكتشف المزيد  ›",12f,purple,true));root.addView(heading)
+        grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false}
+        root.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(10),0,dp(10),dp(8))})
+        roomStatus=label("صور تجريبية للمعاينة",12f,muted).apply{gravity=Gravity.CENTER}
+        root.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(32)))
+        buildCards()
+        val create=TextView(this).apply{text="＋  إنشاء غرفة صوتية";textSize=14f;gravity=Gravity.CENTER;typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=shape(purple,16);setOnClickListener{showCreateRoomDialog()}}
+        root.addView(create,LinearLayout.LayoutParams(-1,dp(50)).apply{setMargins(dp(16),dp(5),dp(16),dp(16))})
+        val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=ColorDrawable(Color.WHITE);setPadding(dp(5),dp(8),dp(5),dp(8))}
+        listOf("♙\nحسابي","☏\nرسائل","☆\nالمفضلة","◎\nاكتشف","⌂\nالرئيسية").forEachIndexed{i,s->
+            nav.addView(label(s,11f,if(i==4)purple else ink,i==4).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(0,dp(48),1f))
         }
-        hero.addView(explore, LinearLayout.LayoutParams(-2, -2))
-        root.addView(hero, LinearLayout.LayoutParams(-1, dp(174)).apply {
-            setMargins(dp(20), dp(14), dp(20), dp(18))
-        })
-
-        // Quick categories
-        val categoryTitle = text("اكتشف مجتمعك", 18f, ink, true)
-        root.addView(categoryTitle, LinearLayout.LayoutParams(-1, dp(32)).apply {
-            setMargins(dp(20), 0, dp(20), dp(8))
-        })
-        val categories = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(20), 0, dp(20), dp(4))
-        }
-        listOf("الكل", "🎙 صوتية", "🎵 موسيقى", "💬 دردشة").forEachIndexed { index, name ->
-            val chip = TextView(this).apply {
-                text = name
-                textSize = 12f
-                gravity = Gravity.CENTER
-                setPadding(dp(15), dp(10), dp(15), dp(10))
-                setTextColor(if (index == 0) Color.WHITE else muted)
-                background = shape(if (index == 0) purple else Color.WHITE, 20)
-            }
-            categories.addView(chip, LinearLayout.LayoutParams(-2, dp(40)).apply {
-                marginEnd = dp(8)
-            })
-        }
-        root.addView(categories)
-
-        // Rooms section
-        val section = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(22), dp(20), dp(8))
-        }
-        section.addView(text("الغرف النشطة", 19f, ink, true), LinearLayout.LayoutParams(0, dp(34), 1f))
-        section.addView(text("مباشر الآن  ●", 11f, Color.rgb(28, 164, 112), true))
-        root.addView(section)
-
-        val roomsCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = shape(Color.WHITE, 22)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            elevation = dp(2).toFloat()
-        }
-        roomStatus = text("جارٍ تحميل الغرف...", 13f, muted)
-        roomsCard.addView(roomStatus, params(top = 2))
-        roomsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        roomsCard.addView(roomsContainer, params(top = 8))
-        root.addView(roomsCard, LinearLayout.LayoutParams(-1, -2).apply {
-            setMargins(dp(20), 0, dp(20), dp(14))
-        })
-
-        val create = TextView(this).apply {
-            text = "＋   أنشئ غرفتك الصوتية"
-            textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            background = shape(purple, 16)
-            elevation = dp(3).toFloat()
-            setOnClickListener { showCreateRoomDialog() }
-        }
-        root.addView(create, LinearLayout.LayoutParams(-1, dp(54)).apply {
-            setMargins(dp(20), dp(4), dp(20), dp(24))
-        })
-
-        // Bottom navigation presentation
-        val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.WHITE)
-            setPadding(dp(8), dp(10), dp(8), dp(10))
-            elevation = dp(8).toFloat()
-        }
-        listOf("⌂\nالرئيسية", "◉\nالغرف", "♡\nالأصدقاء", "●\nحسابي").forEachIndexed { index, item ->
-            val tab = TextView(this).apply {
-                text = item
-                textSize = 11f
-                gravity = Gravity.CENTER
-                setLineSpacing(dp(3).toFloat(), 1f)
-                setTextColor(if (index == 0) purple else muted)
-                typeface = if (index == 0) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            }
-            nav.addView(tab, LinearLayout.LayoutParams(0, dp(48), 1f))
-        }
-        root.addView(nav)
-        setContentView(scroll)
-
-        verifyAccount()
-        loadRooms()
+        root.addView(nav);setContentView(scroll)
+        verifyAccount();loadRooms()
     }
-
-    private fun verifyAccount() {
-        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
-        val token = prefs.getString("token", null)
-        if (token.isNullOrBlank()) {
-            openLogin()
-            return
-        }
-        executor.execute {
-            try {
-                val result = AuthApi.get("/api/auth/me", token)
-                if (result.status in 200..299) {
-                    val user = result.body.optJSONObject("user") ?: result.body
-                    val name = user.optString("display_name")
-                        .takeIf { it.isNotBlank() } ?: user.optString("username", "صديقنا")
-                    val username = user.optString("username")
-                    runOnUiThread {
-                        greeting.text = "سعيدون بوجودك، $name"
-                        userLine.text = if (username.isNotBlank()) "@$username" else "عضو في مجتمع Mariam Live"
-                    }
-                } else if (result.status == 401 || result.status == 403) {
-                    prefs.edit().remove("token").apply()
-                    runOnUiThread { openLogin() }
-                } else {
-                    runOnUiThread { userLine.text = "تعذر تحديث بيانات الحساب" }
-                }
-            } catch (_: Exception) {
-                runOnUiThread { userLine.text = "تحقق من اتصال الإنترنت" }
-            }
+    private fun buildCards(){
+        grid.removeAllViews()
+        val w=(resources.displayMetrics.widthPixels-dp(34))/2
+        demos.forEachIndexed{i,r->
+            val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(9))}
+            val frame=FrameLayout(this).apply{background=shape(Color.rgb(232,227,243),13);clipToOutline=true}
+            val image=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(Color.rgb(225,220,239))}
+            frame.addView(image,FrameLayout.LayoutParams(-1,dp(158)))
+            frame.addView(TextView(this).apply{text=r.tag;textSize=10f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=shape(if(i%2==0)Color.rgb(0,174,190)else purple,7);setPadding(dp(8),dp(5),dp(8),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply{setMargins(0,0,dp(7),dp(7))})
+            frame.addView(TextView(this).apply{text="＋  ◉ ◉ ◉ ◉  •••";textSize=11f;setTextColor(Color.WHITE);background=shape(0x99000000.toInt(),18);setPadding(dp(7),dp(5),dp(7),dp(5))},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(7),0,0,dp(7))})
+            card.addView(frame)
+            card.addView(label(r.title,13f,ink,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(4),dp(7),dp(4),0)})
+            card.addView(label("●  ${r.count} متصل الآن",10f,Color.rgb(26,169,113)).apply{setPadding(dp(4),dp(4),0,0)})
+            grid.addView(card,GridLayout.LayoutParams().apply{width=w;height=-2;setMargins(dp(3),dp(3),dp(3),dp(5))})
+            executor.execute{try{val conn=URL(r.image).openConnection();conn.connectTimeout=8000;conn.readTimeout=8000;val bmp=conn.getInputStream().use{BitmapFactory.decodeStream(it)};runOnUiThread{image.setImageBitmap(bmp)}}catch(_:Exception){}}
         }
     }
-
-    private fun loadRooms() {
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
-        roomStatus.text = "جارٍ تحديث قائمة الغرف..."
-        executor.execute {
-            try {
-                val result = AuthApi.get("/api/voice-rooms", token)
-                val rooms = result.body.optJSONArray("rooms")
-                runOnUiThread {
-                    roomsContainer.removeAllViews()
-                    if (result.status !in 200..299 || rooms == null) {
-                        roomStatus.text = "تعذر تحميل الغرف حالياً."
-                        return@runOnUiThread
-                    }
-                    roomStatus.text = if (rooms.length() == 0) "لا توجد غرف نشطة الآن. كن أول من ينشئ غرفة!" else "اختر غرفة وانضم إلى الأصدقاء"
-                    for (i in 0 until rooms.length()) {
-                        val room = rooms.optJSONObject(i) ?: continue
-                        val id = room.optString("id")
-                        val name = room.optString("name", "غرفة صوتية")
-                        val count = room.optInt("member_count", 0)
-                        val max = room.optInt("max_members", 8)
-                        val row = LinearLayout(this).apply {
-                            orientation = LinearLayout.HORIZONTAL
-                            gravity = Gravity.CENTER_VERTICAL
-                            setPadding(dp(12), dp(12), dp(12), dp(12))
-                            background = shape(Color.rgb(248, 247, 253), 16)
-                        }
-                        val icon = TextView(this).apply {
-                            text = "🎙"
-                            textSize = 23f
-                            gravity = Gravity.CENTER
-                            background = shape(Color.rgb(235, 230, 255), 14)
-                        }
-                        row.addView(icon, LinearLayout.LayoutParams(dp(48), dp(48)))
-                        val info = LinearLayout(this).apply {
-                            orientation = LinearLayout.VERTICAL
-                            setPadding(dp(11), 0, dp(6), 0)
-                        }
-                        info.addView(text(name, 14f, ink, true))
-                        info.addView(text("👥  $count / $max مشارك", 11f, muted).apply {
-                            setPadding(0, dp(5), 0, 0)
-                        })
-                        row.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
-                        val join = TextView(this).apply {
-                            text = "دخول"
-                            textSize = 12f
-                            typeface = Typeface.DEFAULT_BOLD
-                            setTextColor(purple)
-                            gravity = Gravity.CENTER
-                            background = shape(Color.WHITE, 12, Color.rgb(226, 220, 255))
-                            setPadding(dp(13), dp(9), dp(13), dp(9))
-                            setOnClickListener { joinRoom(id, name) }
-                        }
-                        row.addView(join)
-                        roomsContainer.addView(row, params(top = if (i == 0) 0 else 9))
-                    }
-                }
-            } catch (_: Exception) {
-                runOnUiThread { roomStatus.text = "تعذر الاتصال بالخادم لتحميل الغرف." }
-            }
-        }
+    private fun verifyAccount(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{try{val r=AuthApi.get("/api/auth/me",token);if(r.status==401||r.status==403){getSharedPreferences("MariamLive",MODE_PRIVATE).edit().remove("token").apply();runOnUiThread{openLogin()}}}catch(_:Exception){}}
     }
-
-    private fun showCreateRoomDialog() {
-        val input = EditText(this).apply { hint = "اسم الغرفة"; setSingleLine(true) }
-        android.app.AlertDialog.Builder(this)
-            .setTitle("إنشاء غرفة صوتية")
-            .setView(input)
-            .setNegativeButton("إلغاء", null)
-            .setPositiveButton("إنشاء") { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.length < 2) Toast.makeText(this, "اكتب اسماً من حرفين على الأقل", Toast.LENGTH_SHORT).show()
-                else createRoom(name)
-            }.show()
+    private fun loadRooms(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{try{val r=AuthApi.get("/api/voice-rooms",token);val rooms=r.body.optJSONArray("rooms");runOnUiThread{roomStatus.text=if(r.status in 200..299&&rooms!=null)"الغرف الفعلية المتاحة: ${rooms.length()}  •  الصور أعلاه تجريبية" else "صور تجريبية للمعاينة — تعذّر تحديث الغرف"}}catch(_:Exception){runOnUiThread{roomStatus.text="صور تجريبية للمعاينة — لا يوجد اتصال بالغرف"}}}
     }
-
-    private fun createRoom(name: String) {
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
-        roomStatus.text = "جارٍ إنشاء الغرفة..."
-        executor.execute {
-            try {
-                val result = AuthApi.post("/api/voice-rooms", JSONObject().put("name", name).put("max_members", 8), token)
-                runOnUiThread {
-                    if (result.status in 200..299) {
-                        Toast.makeText(this, "تم إنشاء الغرفة", Toast.LENGTH_SHORT).show()
-                        loadRooms()
-                    } else {
-                        val message = result.body.optString("error", "تعذر إنشاء الغرفة")
-                        roomStatus.text = message
-                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (_: Exception) {
-                runOnUiThread { roomStatus.text = "تعذر الاتصال بالخادم." }
-            }
-        }
+    private fun showCreateRoomDialog(){
+        val input=EditText(this).apply{hint="اسم الغرفة";setSingleLine(true)}
+        android.app.AlertDialog.Builder(this).setTitle("إنشاء غرفة صوتية").setView(input).setNegativeButton("إلغاء",null).setPositiveButton("إنشاء"){_,_->val n=input.text.toString().trim();if(n.length<2)Toast.makeText(this,"اكتب اسماً من حرفين على الأقل",Toast.LENGTH_SHORT).show()else createRoom(n)}.show()
     }
-
-    private fun joinRoom(id: String, name: String) {
-        if (id.isBlank()) return
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
-        roomStatus.text = "جارٍ الانضمام إلى الغرفة..."
-        executor.execute {
-            try {
-                val result = AuthApi.post("/api/voice-rooms/$id/join", JSONObject(), token)
-                runOnUiThread {
-                    if (result.status in 200..299) {
-                        startActivity(Intent(this, RoomActivity::class.java).apply {
-                            putExtra("room_id", id)
-                            putExtra("room_name", name)
-                        })
-                    } else {
-                        val message = result.body.optString("error", "تعذر دخول الغرفة")
-                        roomStatus.text = message
-                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                        loadRooms()
-                    }
-                }
-            } catch (_: Exception) {
-                runOnUiThread { roomStatus.text = "تعذر الاتصال بالخادم لدخول الغرفة." }
-            }
-        }
+    private fun createRoom(name:String){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{try{val r=AuthApi.post("/api/voice-rooms",JSONObject().put("name",name).put("max_members",8),token);runOnUiThread{Toast.makeText(this,if(r.status in 200..299)"تم إنشاء الغرفة" else r.body.optString("error","تعذر إنشاء الغرفة"),Toast.LENGTH_LONG).show();loadRooms()}}catch(_:Exception){runOnUiThread{Toast.makeText(this,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}}}
     }
-
-    private fun openLogin() {
-        startActivity(Intent(this, LoginActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
-        finish()
-    }
-
-    override fun onDestroy() {
-        executor.shutdownNow()
-        super.onDestroy()
-    }
+    private fun openLogin(){startActivity(Intent(this,LoginActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK});finish()}
+    override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
 }
