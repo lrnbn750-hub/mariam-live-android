@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mariam-live-development
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
@@ -59,7 +62,7 @@ jobs:
           if (!source.includes(staticRoute)) {
             const marker = "app.use(cors());";
             if (!source.includes(marker)) throw new Error("CORS middleware marker missing");
-            source = source.replace(marker, marker + "\\n" + staticRoute);
+            source = source.replace(marker, marker + "\n" + staticRoute);
           }
           fs.writeFileSync(file, source);
           NODE
