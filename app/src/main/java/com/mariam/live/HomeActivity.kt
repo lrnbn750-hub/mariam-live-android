@@ -73,6 +73,129 @@ class HomeActivity : Activity() {
         startActivity(intent)
     }
 
+    private fun showProfile(scroll: ScrollView) {
+        val profile = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(20), dp(24), dp(20), dp(30))
+        }
+
+        profile.addView(text("الملف الشخصي", 24f, dark, true))
+
+        val subtitle = text("إدارة معلومات حسابك في Mariam Live", 13f, gray)
+        subtitle.setPadding(0, dp(6), 0, dp(22))
+        profile.addView(subtitle)
+
+        val avatar = TextView(this).apply {
+            text = "👤"
+            textSize = 42f
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(235, 228, 255), 60)
+        }
+        val avatarParams = LinearLayout.LayoutParams(dp(100), dp(100))
+        avatarParams.gravity = Gravity.CENTER_HORIZONTAL
+        profile.addView(avatar, avatarParams)
+
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val displayName = EditText(this).apply {
+            hint = "الاسم الظاهر"
+            setSingleLine()
+            setText(prefs.getString("profile_display_name", ""))
+            textSize = 15f
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(Color.WHITE, 12)
+        }
+        val nameParams = LinearLayout.LayoutParams(-1, dp(54))
+        nameParams.topMargin = dp(22)
+        profile.addView(displayName, nameParams)
+
+        val bio = EditText(this).apply {
+            hint = "نبذة عنك"
+            minLines = 3
+            maxLines = 4
+            gravity = Gravity.TOP or Gravity.RIGHT
+            setText(prefs.getString("profile_bio", ""))
+            textSize = 15f
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(Color.WHITE, 12)
+        }
+        val bioParams = LinearLayout.LayoutParams(-1, dp(110))
+        bioParams.topMargin = dp(12)
+        profile.addView(bio, bioParams)
+
+        val save = TextView(this).apply {
+            text = "حفظ التعديلات"
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = gradient()
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        val saveParams = LinearLayout.LayoutParams(-1, dp(52))
+        saveParams.topMargin = dp(18)
+        profile.addView(save, saveParams)
+
+        save.setOnClickListener {
+            val nameValue = displayName.text.toString().trim()
+            val bioValue = bio.text.toString().trim()
+            if (nameValue.length > 30 || bioValue.length > 150) {
+                Toast.makeText(
+                    this,
+                    "الاسم بحد أقصى 30 حرفاً والنبذة 150 حرفاً",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+            prefs.edit()
+                .putString("profile_display_name", nameValue)
+                .putString("profile_bio", bioValue)
+                .apply()
+            Toast.makeText(this, "تم حفظ التعديلات على هذا الجهاز", Toast.LENGTH_SHORT).show()
+        }
+
+        // تسجيل الخروج أسفل رابط/زر حفظ التعديلات مباشرة
+        val logout = TextView(this).apply {
+            text = "تسجيل الخروج"
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(210, 45, 65))
+            background = rounded(Color.rgb(255, 235, 239), 12)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        val logoutParams = LinearLayout.LayoutParams(-1, dp(52))
+        logoutParams.topMargin = dp(12)
+        profile.addView(logout, logoutParams)
+
+        logout.setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("تسجيل الخروج")
+                .setMessage("هل تريد تسجيل الخروج من حسابك؟")
+                .setNegativeButton("إلغاء", null)
+                .setPositiveButton("خروج") { _, _ -> performLogout() }
+                .show()
+        }
+
+        scroll.removeAllViews()
+        scroll.addView(profile)
+        scroll.smoothScrollTo(0, 0)
+    }
+
+    private fun performLogout() {
+        getSharedPreferences("MariamLive", MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -125,47 +248,6 @@ class HomeActivity : Activity() {
         brand.addView(text("عالمك.. أصدقاء.. وأصوات", 11f, gray))
 
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-
-        // زر تسجيل الخروج من الحساب
-        val logoutButton = TextView(this).apply {
-            text = "خروج"
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(220, 55, 75))
-            gravity = Gravity.CENTER
-            background = rounded(Color.rgb(255, 235, 239), 12)
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-
-        header.addView(
-            logoutButton,
-            LinearLayout.LayoutParams(-2, dp(42)).apply {
-                marginEnd = dp(8)
-            }
-        )
-
-        logoutButton.setOnClickListener {
-            android.app.AlertDialog.Builder(this)
-                .setTitle("تسجيل الخروج")
-                .setMessage("هل تريد تسجيل الخروج من حسابك؟")
-                .setNegativeButton("إلغاء", null)
-                .setPositiveButton("خروج") { _, _ ->
-                    // حذف رمز الجلسة المحفوظ محلياً
-                    getSharedPreferences("MariamLive", MODE_PRIVATE)
-                        .edit()
-                        .clear()
-                        .apply()
-
-                    // العودة إلى شاشة الدخول ومنع الرجوع للصفحة السابقة
-                    val intent = Intent(this, LoginActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    startActivity(intent)
-                    finish()
-                }
-                .show()
-        }
 
         val notification = TextView(this).apply {
             text = "♧"
@@ -476,7 +558,11 @@ class HomeActivity : Activity() {
 
             itemLayout.setOnClickListener {
                 if (index == 0) {
+                    scroll.removeAllViews()
+                    scroll.addView(content)
                     scroll.smoothScrollTo(0, 0)
+                } else if (index == 4) {
+                    showProfile(scroll)
                 } else {
                     Toast.makeText(
                         this@HomeActivity,
