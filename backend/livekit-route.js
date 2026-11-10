@@ -10,26 +10,35 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
   let schemaReady;
   const ensureVoiceSchema = () => {
     if (!schemaReady) {
-      schemaReady = db.query(`
-        CREATE TABLE IF NOT EXISTS voice_room_seats (
-          room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
-          seat_number SMALLINT NOT NULL CHECK (seat_number BETWEEN 1 AND 8),
-          user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-          is_muted BOOLEAN NOT NULL DEFAULT FALSE,
-          assigned_at TIMESTAMPTZ,
-          PRIMARY KEY (room_id, seat_number),
-          UNIQUE (room_id, user_id)
-        );
-        CREATE TABLE IF NOT EXISTS voice_room_hand_raises (
-          room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          PRIMARY KEY (room_id, user_id)
-        );
-        INSERT INTO voice_room_seats(room_id, seat_number, user_id, assigned_at)
-        SELECT id, 1, owner_id, NOW() FROM voice_rooms
-        ON CONFLICT (room_id, seat_number) DO NOTHING;
-      `);
+      schemaReady = (async () => {
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS voice_room_seats (
+            room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
+            seat_number SMALLINT NOT NULL CHECK (seat_number BETWEEN 1 AND 8),
+            user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            is_muted BOOLEAN NOT NULL DEFAULT FALSE,
+            assigned_at TIMESTAMPTZ,
+            PRIMARY KEY (room_id, seat_number),
+            UNIQUE (room_id, user_id)
+          )
+        `);
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS voice_room_hand_raises (
+            room_id UUID NOT NULL REFERENCES voice_rooms(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (room_id, user_id)
+          )
+        `);
+        await db.query(`
+          INSERT INTO voice_room_seats(room_id, seat_number, user_id, assigned_at)
+          SELECT id, 1, owner_id, NOW() FROM voice_rooms
+          ON CONFLICT (room_id, seat_number) DO NOTHING
+        `);
+      })().catch(error => {
+        schemaReady = null;
+        throw error;
+      });
     }
     return schemaReady;
   };
@@ -199,8 +208,10 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
     if (!apiKey || !apiSecret) return res.status(503).json({ error: "LiveKit credentials are not configured" });
 
+    let tokenStage = "schema";
     try {
       await ensureVoiceSchema();
+      tokenStage = "membership";
       const membership = await db.query(
         `SELECT r.id, r.owner_id
          FROM voice_rooms r
@@ -211,12 +222,14 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       );
       if (!membership.rows.length) return res.status(403).json({ error: "Join the room before requesting an audio token" });
 
+      tokenStage = "seat";
       const seat = await db.query(
         "SELECT s.seat_number, s.is_muted FROM voice_room_seats s WHERE s.room_id=$1 AND s.user_id=$2 LIMIT 1",
         [roomId, req.userId]
       );
       const isOwner = String(membership.rows[0].owner_id) === String(req.userId);
       const canPublish = isOwner || (seat.rows.length > 0 && !seat.rows[0].is_muted);
+      tokenStage = "sign";
       const token = new AccessToken(apiKey, apiSecret, { identity: String(req.userId), ttl: "10m" });
       token.addGrant({
         roomJoin: true, room: roomId, canPublish,
@@ -225,8 +238,12 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       const participantToken = await token.toJwt();
       return res.json({ serverUrl: liveKitUrl, participantToken, canPublish });
     } catch (error) {
-      console.error("LiveKit token error:", error.message);
-      return res.status(500).json({ error: "Could not create audio token" });
+      console.error("LiveKit token error at " + tokenStage + ":", error.message);
+      return res.status(500).json({
+        error: "Could not create audio token",
+        stage: tokenStage,
+        code: error.code || error.name || "UNKNOWN"
+      });
     }
   });
 };
