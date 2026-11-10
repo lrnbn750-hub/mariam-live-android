@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.view.inputmethod.EditorInfo
 import android.view.View
 import android.widget.*
 import org.json.JSONArray
@@ -137,7 +138,13 @@ class RoomActivity : Activity() {
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(6)})
    val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
    chatInput=EditText(this@RoomActivity).apply{
-    hint="اكتب رسالتك...";textSize=13f;maxLines=2
+    hint="اكتب رسالتك...";textSize=13f;maxLines=1;singleLine=true
+    imeOptions=EditorInfo.IME_ACTION_SEND
+    inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+    setOnEditorActionListener{_,actionId,event->
+     val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
+     if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
+    }
     setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY)
     setPadding(dp(12),dp(7),dp(12),dp(7))
     background=GradientDrawable().apply{
