@@ -107,6 +107,49 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     }
   });
 
+  // A room member may take an available seat for themselves.
+  app.post("/api/voice-rooms/:roomId/seats/:seatNumber/claim", authenticateToken, async (req, res) => {
+    const client = await db.connect();
+    try {
+      await ensureVoiceSchema();
+      const { roomId, seatNumber } = req.params;
+      const seat = Number(seatNumber);
+      if (!validRoomId(roomId) || !Number.isInteger(seat) || seat < 1 || seat > 8) {
+        return res.status(400).json({ error: "Invalid room or seat" });
+      }
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [roomId]);
+      const room = await client.query("SELECT id FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
+      if (!room.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Room not found" });
+      }
+      const member = await client.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2", [roomId, req.userId]);
+      if (!member.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "Join the room first" });
+      }
+      const target = await client.query("SELECT user_id FROM voice_room_seats WHERE room_id=$1 AND seat_number=$2 FOR UPDATE", [roomId, seat]);
+      if (target.rows.length && target.rows[0].user_id && String(target.rows[0].user_id) !== String(req.userId)) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "This seat is already occupied" });
+      }
+      const current = await client.query("SELECT seat_number FROM voice_room_seats WHERE room_id=$1 AND user_id=$2 LIMIT 1", [roomId, req.userId]);
+      if (current.rows.length && Number(current.rows[0].seat_number) !== seat) {
+        await client.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2", [roomId, req.userId]);
+      }
+      await client.query("INSERT INTO voice_room_seats(room_id,seat_number,user_id,is_muted,assigned_at) VALUES($1,$2,$3,FALSE,NOW()) ON CONFLICT(room_id,seat_number) DO UPDATE SET user_id=EXCLUDED.user_id,is_muted=FALSE,assigned_at=NOW()", [roomId, seat, req.userId]);
+      await client.query("COMMIT");
+      return res.json({ message: "Seat claimed", seatNumber: seat });
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      console.error("Claim voice seat:", error.message);
+      return res.status(500).json({ error: "Could not claim seat" });
+    } finally {
+      client.release();
+    }
+  });
+
   app.post("/api/voice-rooms/:roomId/seats/:seatNumber/assign", authenticateToken, async (req, res) => {
     const client = await db.connect();
     try {
