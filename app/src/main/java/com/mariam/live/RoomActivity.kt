@@ -55,15 +55,15 @@ class RoomActivity : Activity() {
   page.addView(host,LinearLayout.LayoutParams(-1,dp(118)))
   page.addView(label("مقاعد المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
   grid=LinearLayout(this).apply{orientation=1};page.addView(grid)
+   page.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(245)).apply{topMargin=dp(12)})
   status=label("جارٍ الاتصال...",12f,Color.LTGRAY).apply{setPadding(0,dp(12),0,dp(8))};page.addView(status)
   val bar=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0;setPadding(0,dp(4),0,dp(4))}
-  val chat=action("دردشة","chat",Color.rgb(75,54,104),Color.rgb(137,89,190)){openRoomChat()}
-  val share=action("مشاركة","share",Color.rgb(65,58,105),Color.rgb(117,103,190)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
+    val share=action("مشاركة","share",Color.rgb(65,58,105),Color.rgb(117,103,190)){val i=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"انضم إلى غرفتي في Mariam Live")};startActivity(Intent.createChooser(i,"مشاركة"))}
   mic=action("إيقاف المايك","mic",Color.rgb(83,48,125),Color.rgb(169,91,221)){toggleMic()}
   mic.visibility=View.GONE
   val gift=action("الهدايا","gift",Color.rgb(111,43,104),Color.rgb(190,76,151)){Toast.makeText(this,"متجر الهدايا والمحفظة ضمن المرحلة التالية",Toast.LENGTH_SHORT).show()}
   val exit=action("مغادرة","leave",Color.rgb(125,39,66),Color.rgb(208,70,103)){leaveRoom()}
-  listOf(chat,share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
+  listOf(share,mic,gift,exit).forEach{bar.addView(it,LinearLayout.LayoutParams(0,dp(82),1f).apply{setMargins(dp(3),0,dp(3),0)})};page.addView(bar)
   setContentView(ScrollView(this).apply{isFillViewport=true;setBackgroundColor(bg);addView(page)})
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
