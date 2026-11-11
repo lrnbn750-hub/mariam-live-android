@@ -132,9 +132,9 @@ class ProfileActivity : Activity() {
         status.text="جارٍ تحميل الملف الشخصي..."
         executor.execute{
             try{
-                val me=AuthApi.get("/api/auth/me",token)
+                val me=AuthApi.get("/api/profile",token)
                 if(me.status !in 200..299)throw Exception(me.body.optString("error","تعذر تحميل الحساب"))
-                val user=me.body.optJSONObject("user")?:me.body
+                val user=me.body.optJSONObject("profile")?:me.body
                 userId=user.optString("id")
                 // Use the authenticated account response directly. The old /api/users/:id
                 // endpoint is not provided by this backend and could return an HTML 404 page.
