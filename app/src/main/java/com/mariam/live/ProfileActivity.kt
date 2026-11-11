@@ -28,6 +28,10 @@ class ProfileActivity : Activity() {
     private lateinit var avatarPreview:ImageView
     private lateinit var avatarRing:View
     private lateinit var royalFrame:RoyalGifFrame
+    private lateinit var frameToggle:TextView
+    private var royalFrameOwned=false
+    private var royalFrameEquipped=false
+    private val royalFrameItemId="royal100-frame"
     private lateinit var status:TextView
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
@@ -85,7 +89,22 @@ class ProfileActivity : Activity() {
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
         avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(130),dp(126),Gravity.CENTER))
         card.addView(avatarFrame,LinearLayout.LayoutParams(dp(130),dp(130)).apply{
-            gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)
+            gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(4)
+        })
+        frameToggle=TextView(this).apply{
+            text="جارٍ فحص الإطار..."
+            textSize=13f;gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(purple)
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.rgb(246,243,255));cornerRadius=dp(12).toFloat()
+                setStroke(dp(1),Color.rgb(218,207,255))
+            }
+            setPadding(dp(14),dp(10),dp(14),dp(10))
+            setOnClickListener{toggleRoyalFrame()}
+        }
+        card.addView(frameToggle,LinearLayout.LayoutParams(dp(190),-2).apply{
+            gravity=Gravity.CENTER;bottomMargin=dp(8)
         })
 
         levelCard=LinearLayout(this).apply{
@@ -186,6 +205,90 @@ class ProfileActivity : Activity() {
         setContentView(ScrollView(this).apply{addView(root)})
         loadProfile(idView)
         loadLevelProgress()
+        loadRoyalFrameState()
+    }
+
+    override fun onResume(){
+        super.onResume()
+        if(::frameToggle.isInitialized) loadRoyalFrameState()
+    }
+
+    private fun loadRoyalFrameState(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{
+            try{
+                val result=AuthApi.get("/api/inventory",token)
+                if(result.status !in 200..299)throw Exception("تعذر تحميل الإطار")
+                val items=result.body.optJSONArray("items")?:org.json.JSONArray()
+                var owned=false
+                var equipped=false
+                for(i in 0 until items.length()){
+                    val item=items.optJSONObject(i)?:continue
+                    if(item.optString("item_id")==royalFrameItemId){
+                        owned=item.optBoolean("owned")
+                        equipped=item.optBoolean("equipped")
+                        break
+                    }
+                }
+                runOnUiThread{
+                    if(isFinishing)return@runOnUiThread
+                    royalFrameOwned=owned
+                    royalFrameEquipped=equipped
+                    renderRoyalFrameState()
+                }
+            }catch(e:Exception){
+                runOnUiThread{
+                    if(!isFinishing){
+                        frameToggle.text="تعذر تحميل حالة الإطار"
+                        frameToggle.isEnabled=true
+                    }
+                }
+            }
+        }
+    }
+
+    private fun renderRoyalFrameState(){
+        if(royalFrameEquipped){
+            avatarRing.visibility=View.GONE
+            royalFrame.visibility=View.VISIBLE
+            royalFrame.startAnimation()
+            frameToggle.text="إيقاف الإطار  ◉"
+            frameToggle.setTextColor(Color.rgb(190,48,65))
+        }else{
+            royalFrame.stopAnimation()
+            royalFrame.visibility=View.GONE
+            avatarRing.visibility=View.VISIBLE
+            frameToggle.text=if(royalFrameOwned)"تشغيل الإطار الملكي" else "الإطار الملكي غير متوفر"
+            frameToggle.setTextColor(if(royalFrameOwned)purple else Color.GRAY)
+        }
+        frameToggle.isEnabled=royalFrameOwned
+        frameToggle.alpha=if(royalFrameOwned)1f else 0.65f
+    }
+
+    private fun toggleRoyalFrame(){
+        if(!royalFrameOwned)return
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        frameToggle.isEnabled=false
+        frameToggle.text="جارٍ تحديث الإطار..."
+        executor.execute{
+            try{
+                val result=if(royalFrameEquipped){
+                    AuthApi.post("/api/inventory/unequip",JSONObject().put("item_type","frame"),token)
+                }else{
+                    AuthApi.post("/api/inventory/equip",JSONObject().put("item_id",royalFrameItemId),token)
+                }
+                if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحديث الإطار"))
+                runOnUiThread{
+                    royalFrameEquipped=!royalFrameEquipped
+                    renderRoyalFrameState()
+                }
+            }catch(e:Exception){
+                runOnUiThread{
+                    frameToggle.text=e.message?:"تعذر تحديث الإطار"
+                    frameToggle.isEnabled=true
+                }
+            }
+        }
     }
 
     private fun loadLevelProgress(){
@@ -247,11 +350,8 @@ class ProfileActivity : Activity() {
             in 91..99 -> intArrayOf(Color.rgb(67,13,24),Color.rgb(151,28,44),Color.rgb(42,12,28),Color.rgb(255,180,83),Color.rgb(255,235,187),Color.rgb(255,197,112),Color.rgb(154,48,51))
             else -> intArrayOf(Color.rgb(38,12,54),Color.rgb(126,25,91),Color.rgb(43,12,65),Color.rgb(255,210,92),Color.rgb(255,245,190),Color.rgb(255,221,128),Color.rgb(190,53,112))
         }
-        if(level>=100){
-            avatarRing.visibility=View.GONE
-            royalFrame.visibility=View.VISIBLE
-            royalFrame.startAnimation()
-        }else{
+        // The frame is controlled by the equipped inventory item, not level alone.
+        if(!royalFrameEquipped){
             royalFrame.stopAnimation()
             royalFrame.visibility=View.GONE
             avatarRing.visibility=View.VISIBLE
