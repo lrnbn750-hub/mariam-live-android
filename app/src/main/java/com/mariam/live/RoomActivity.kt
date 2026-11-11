@@ -141,7 +141,7 @@ class RoomActivity : Activity() {
                 val index = rowIndex * 4 + columnIndex
                 val seat = seatView(
                     seats[index].first,
-                    seats[index].second,
+                    if (index == 0) seats[index].second else (index + 1).toString(),
                     index == 0
                 )
 
@@ -327,43 +327,71 @@ class RoomActivity : Activity() {
         owner: Boolean
     ): View {
 
+        // Keep every seat transparent and the same size so the grid stays aligned.
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(3), dp(5), dp(3), dp(5))
-            background = rounded(panelColor, 14)
+            setPadding(dp(2), dp(3), dp(2), dp(3))
+            setBackgroundColor(Color.TRANSPARENT)
         }
 
-        val avatar = TextView(this).apply {
-            text = symbol
-            textSize = 27f
-            gravity = Gravity.CENTER
-            setTextColor(white)
-            background = rounded(
-                if (owner) purple else Color.rgb(61, 48, 82),
-                100
+        if (owner) {
+            // Occupied seat: show only the avatar frame and the display name.
+            val avatar = TextView(this).apply {
+                text = symbol
+                textSize = 29f
+                gravity = Gravity.CENTER
+                setTextColor(white)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.rgb(61, 48, 82))
+                    setStroke(dp(2), purple)
+                }
+            }
+
+            container.addView(
+                avatar,
+                LinearLayout.LayoutParams(dp(62), dp(62))
             )
+
+            val name = TextView(this).apply {
+                text = label
+                textSize = 11f
+                setTextColor(white)
+                gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+
+            val nameParams = LinearLayout.LayoutParams(-1, dp(24))
+            nameParams.topMargin = dp(4)
+            container.addView(name, nameParams)
+        } else {
+            // Empty seat: a slightly larger purple plus and the seat number only.
+            val plus = TextView(this).apply {
+                text = "+"
+                textSize = 35f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(purple)
+            }
+
+            container.addView(
+                plus,
+                LinearLayout.LayoutParams(dp(62), dp(62))
+            )
+
+            val number = TextView(this).apply {
+                text = label
+                textSize = 12f
+                setTextColor(Color.LTGRAY)
+                gravity = Gravity.CENTER
+            }
+
+            val numberParams = LinearLayout.LayoutParams(-1, dp(24))
+            numberParams.topMargin = dp(4)
+            container.addView(number, numberParams)
         }
-
-        container.addView(
-            avatar,
-            LinearLayout.LayoutParams(dp(54), dp(54))
-        )
-
-        val name = TextView(this).apply {
-            text = label
-            textSize = 11f
-            setTextColor(if (owner) white else Color.LTGRAY)
-            gravity = Gravity.CENTER
-            maxLines = 1
-        }
-
-        val nameParams = LinearLayout.LayoutParams(
-            -1,
-            dp(28)
-        )
-        nameParams.topMargin = dp(4)
-        container.addView(name, nameParams)
 
         container.setOnClickListener {
             Toast.makeText(
