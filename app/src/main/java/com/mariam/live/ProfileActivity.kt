@@ -28,6 +28,7 @@ class ProfileActivity : Activity() {
     private lateinit var avatarPreview:ImageView
     private lateinit var status:TextView
     private lateinit var levelNumber:TextView
+    private lateinit var levelCard:LinearLayout
     private lateinit var levelRank:TextView
     private lateinit var levelXp:TextView
     private lateinit var levelProgress:ProgressBar
@@ -67,7 +68,7 @@ class ProfileActivity : Activity() {
         }
         card.addView(avatarPreview,LinearLayout.LayoutParams(dp(112),dp(112)).apply{gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)})
 
-        val levelCard=LinearLayout(this).apply{
+        levelCard=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
             setPadding(dp(16),dp(14),dp(16),dp(14))
             background=android.graphics.drawable.GradientDrawable(
@@ -181,6 +182,7 @@ class ProfileActivity : Activity() {
                 }
                 runOnUiThread{
                     if(isFinishing)return@runOnUiThread
+                    applyLevelTheme(level)
                     levelNumber.text="LV $level"
                     levelRank.text=rank
                     levelProgress.progress=(progress*1000).toInt()
@@ -196,6 +198,41 @@ class ProfileActivity : Activity() {
                 }
             }
         }
+    }
+
+    // Visual tier palette: each 10-level band has its own identity.
+    private fun applyLevelTheme(level:Int){
+        val colors = when(level){
+            in 1..10 -> intArrayOf(Color.rgb(54,37,25),Color.rgb(112,75,43),Color.rgb(43,29,22),Color.rgb(218,157,91),Color.rgb(255,220,174),Color.rgb(226,173,113),Color.rgb(88,61,39))
+            in 11..20 -> intArrayOf(Color.rgb(37,43,55),Color.rgb(104,116,133),Color.rgb(34,39,51),Color.rgb(192,205,221),Color.rgb(245,249,255),Color.rgb(218,228,241),Color.rgb(91,103,122))
+            in 21..30 -> intArrayOf(Color.rgb(55,39,10),Color.rgb(150,105,20),Color.rgb(64,43,10),Color.rgb(255,207,70),Color.rgb(255,239,164),Color.rgb(255,218,105),Color.rgb(111,76,16))
+            in 31..40 -> intArrayOf(Color.rgb(9,55,43),Color.rgb(17,119,83),Color.rgb(8,45,39),Color.rgb(72,222,164),Color.rgb(190,255,225),Color.rgb(102,238,184),Color.rgb(20,105,78))
+            in 41..50 -> intArrayOf(Color.rgb(9,35,75),Color.rgb(22,91,160),Color.rgb(8,29,67),Color.rgb(83,174,255),Color.rgb(196,231,255),Color.rgb(112,190,255),Color.rgb(26,87,145))
+            in 51..60 -> intArrayOf(Color.rgb(48,18,78),Color.rgb(117,48,160),Color.rgb(39,15,67),Color.rgb(206,130,255),Color.rgb(239,207,255),Color.rgb(211,151,255),Color.rgb(100,45,145))
+            in 61..70 -> intArrayOf(Color.rgb(75,12,28),Color.rgb(164,31,59),Color.rgb(58,10,27),Color.rgb(255,105,132),Color.rgb(255,204,213),Color.rgb(255,137,157),Color.rgb(130,27,57))
+            in 71..80 -> intArrayOf(Color.rgb(13,48,61),Color.rgb(34,133,151),Color.rgb(9,37,53),Color.rgb(105,231,245),Color.rgb(213,255,255),Color.rgb(135,239,247),Color.rgb(38,119,139))
+            in 81..90 -> intArrayOf(Color.rgb(34,22,76),Color.rgb(81,48,151),Color.rgb(23,16,61),Color.rgb(169,145,255),Color.rgb(232,222,255),Color.rgb(183,165,255),Color.rgb(83,57,157))
+            in 91..99 -> intArrayOf(Color.rgb(67,13,24),Color.rgb(151,28,44),Color.rgb(42,12,28),Color.rgb(255,180,83),Color.rgb(255,235,187),Color.rgb(255,197,112),Color.rgb(154,48,51))
+            else -> intArrayOf(Color.rgb(38,12,54),Color.rgb(126,25,91),Color.rgb(43,12,65),Color.rgb(255,210,92),Color.rgb(255,245,190),Color.rgb(255,221,128),Color.rgb(190,53,112))
+        }
+        levelCard.background=android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            intArrayOf(colors[0],colors[1],colors[2])
+        ).apply{
+            cornerRadius=dp(18).toFloat()
+            setStroke(dp(if(level==100)2 else 1),colors[3])
+        }
+        levelNumber.setTextColor(colors[4])
+        levelRank.setTextColor(Color.WHITE)
+        levelXp.setTextColor(colors[5])
+        levelProgress.progressDrawable=android.graphics.drawable.ClipDrawable(
+            android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(colors[4],colors[5],colors[3])
+            ).apply{cornerRadius=dp(8).toFloat()},
+            Gravity.LEFT,android.graphics.drawable.ClipDrawable.HORIZONTAL
+        )
+        levelProgress.progressBackgroundTintList=android.content.res.ColorStateList.valueOf(colors[6])
     }
 
     private fun pickPhoto(){
