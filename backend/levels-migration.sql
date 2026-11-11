@@ -16,5 +16,5 @@ CREATE TABLE IF NOT EXISTS public.user_xp_events (
 CREATE INDEX IF NOT EXISTS user_xp_events_user_created_idx
   ON public.user_xp_events(user_id, created_at DESC);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_levels, public.user_xp_events TO :"app_role";
-GRANT USAGE, SELECT ON SEQUENCE public.user_xp_events_id_seq TO <<APP_ROLE>>;
+GRANT USAGE, SELECT ON SEQUENCE public.user_xp_events_id_seq TO :"app_role";
 COMMIT;
