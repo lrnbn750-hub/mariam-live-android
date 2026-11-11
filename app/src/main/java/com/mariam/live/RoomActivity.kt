@@ -167,62 +167,57 @@ class RoomActivity : Activity() {
 
  override fun dispatchTouchEvent(event:MotionEvent):Boolean{
   val screenHeight=resources.displayMetrics.heightPixels.toFloat()
-  val chatTop=if(::chatPanel.isInitialized){
-   val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()
-  }else screenHeight
   when(event.actionMasked){
    MotionEvent.ACTION_DOWN->{
     swipeDownX=event.rawX
     swipeDownY=event.rawY
+    val chatTop=if(::chatPanel.isInitialized){
+     val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()
+    }else screenHeight
     if(!switchingRoom && swipeDownY<chatTop){
      roomPage.animate().cancel()
+     roomPage.setLayerType(View.LAYER_TYPE_HARDWARE,null)
      roomPage.translationY=0f
-     roomPage.alpha=1f
-     roomPage.scaleX=1f
-     roomPage.scaleY=1f
     }
    }
    MotionEvent.ACTION_MOVE->{
     val dx=event.rawX-swipeDownX
     val dy=event.rawY-swipeDownY
-    if(!switchingRoom && swipeDownY<chatTop &&
-      kotlin.math.abs(dy)>dp(8) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.15f){
-     // The page follows the finger with a little resistance, like a native feed.
-     val resisted=dy*0.72f
-     roomPage.translationY=resisted
-     val progress=(kotlin.math.abs(resisted)/screenHeight).coerceAtMost(0.22f)
-     val scale=1f-progress*0.12f
-     roomPage.scaleX=scale
-     roomPage.scaleY=scale
-     roomPage.alpha=1f-progress*0.75f
+    if(!switchingRoom && swipeDownY<screenHeight-dp(170) &&
+      kotlin.math.abs(dy)>dp(8) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.2f){
+     // Translate only: avoid scaling/fading the full room hierarchy on every frame.
+     roomPage.translationY=dy*0.88f
      return true
     }
    }
    MotionEvent.ACTION_UP,MotionEvent.ACTION_CANCEL->{
     val dx=event.rawX-swipeDownX
     val dy=event.rawY-swipeDownY
-    val isVertical=swipeDownY<chatTop &&
-      kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.15f
+    val isVertical=kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.2f
     if(isVertical && (roomPage.translationY!=0f || kotlin.math.abs(dy)>dp(12))){
-     val commit=event.actionMasked==MotionEvent.ACTION_UP && kotlin.math.abs(dy)>dp(105)
+     val commit=event.actionMasked==MotionEvent.ACTION_UP && kotlin.math.abs(dy)>dp(125)
+     roomPage.animate().cancel()
      if(commit && !switchingRoom){
       val direction=if(dy<0)1 else -1
-      val targetY=if(direction>0)-screenHeight else screenHeight
-      roomPage.animate().cancel()
       roomPage.animate()
-       .translationY(targetY)
-       .scaleX(0.94f).scaleY(0.94f)
-       .alpha(0f)
-       .setDuration(190)
+       .translationY(if(direction>0)-screenHeight else screenHeight)
+       .setDuration(150)
+       .setInterpolator(android.view.animation.LinearInterpolator())
        .withEndAction{
-        roomPage.translationY=0f;roomPage.scaleX=1f;roomPage.scaleY=1f;roomPage.alpha=1f
+        roomPage.translationY=0f
+        roomPage.setLayerType(View.LAYER_TYPE_NONE,null)
         switchLiveRoom(direction)
        }.start()
      }else{
-      roomPage.animate().translationY(0f).scaleX(1f).scaleY(1f).alpha(1f)
-       .setDuration(220).setInterpolator(android.view.animation.DecelerateInterpolator(1.7f)).start()
+      roomPage.animate().translationY(0f)
+       .setDuration(170)
+       .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
+       .withEndAction{roomPage.setLayerType(View.LAYER_TYPE_NONE,null)}
+       .start()
      }
      return true
+    }else{
+     roomPage.setLayerType(View.LAYER_TYPE_NONE,null)
     }
    }
   }
