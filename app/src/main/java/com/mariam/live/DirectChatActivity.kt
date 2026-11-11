@@ -67,7 +67,7 @@ class DirectChatActivity : Activity() {
             orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(2), dp(10), dp(2), dp(10))
         }
-        scroll.addView(messages, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(messages, android.widget.FrameLayout.LayoutParams(-1, -2))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val composer = LinearLayout(this).apply {
