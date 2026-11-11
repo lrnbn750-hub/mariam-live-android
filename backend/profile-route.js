@@ -4,6 +4,87 @@ const { randomUUID } = require("crypto");
 
 module.exports = function(app, db, authenticateToken) {
 
+
+  // Level progress is server-owned. Client devices can read progress but cannot
+  // grant XP. Trusted backend event handlers can call app.locals.awardMariamXp.
+  app.get("/api/levels/me", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        "SELECT total_xp FROM user_levels WHERE user_id = $1",
+        [req.userId]
+      );
+      const totalXp = result.rows.length ? Number(result.rows[0].total_xp) : 0;
+      let level = 1;
+      let currentFloor = 0;
+      let nextFloor = 100;
+      while (level < 100 && totalXp >= nextFloor) {
+        level += 1;
+        currentFloor = nextFloor;
+        nextFloor = level * level * 100;
+      }
+      if (level === 1) {
+        currentFloor = 0;
+        nextFloor = 100;
+      }
+      if (level === 100) {
+        currentFloor = 990000;
+        nextFloor = 990000;
+      }
+      return res.json({
+        level,
+        total_xp: totalXp,
+        current_level_xp: Math.max(0, totalXp - currentFloor),
+        next_level_xp: Math.max(0, nextFloor - currentFloor),
+        progress: level === 100 ? 1 : Math.min(1, Math.max(0, (totalXp - currentFloor) / (nextFloor - currentFloor)))
+      });
+    } catch (error) {
+      console.error("Load level progress:", error.message);
+      return res.status(500).json({ error: "Could not load level progress" });
+    }
+  });
+
+  // Idempotent server-side award helper. Event handlers must supply a unique
+  // event key so retries cannot grant the same experience twice.
+  app.locals.awardMariamXp = async (userId, amount, eventKey, reason) => {
+    const xp = Math.floor(Number(amount));
+    if (!userId || !Number.isSafeInteger(xp) || xp < 1 || xp > 10000 ||
+        typeof eventKey !== "string" || !eventKey || eventKey.length > 180) {
+      throw new Error("Invalid XP award");
+    }
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const inserted = await client.query(
+        `INSERT INTO user_xp_events (user_id, event_key, xp_amount, reason)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id, event_key) DO NOTHING
+         RETURNING xp_amount`,
+        [userId, eventKey, xp, String(reason || "activity").slice(0, 60)]
+      );
+      if (inserted.rows.length) {
+        await client.query(
+          `INSERT INTO user_levels (user_id, total_xp, updated_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (user_id)
+           DO UPDATE SET total_xp = user_levels.total_xp + EXCLUDED.total_xp,
+                         updated_at = NOW()`,
+          [userId, xp]
+        );
+      }
+      const total = await client.query(
+        "SELECT total_xp FROM user_levels WHERE user_id = $1",
+        [userId]
+      );
+      await client.query("COMMIT");
+      return Number(total.rows[0]?.total_xp || 0);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   // Public profile lookup by the internal UUID. The authenticated API returns
   // the separate public account ID used by the app's profile screen.
   app.get("/api/users/:id", async (req, res) => {
