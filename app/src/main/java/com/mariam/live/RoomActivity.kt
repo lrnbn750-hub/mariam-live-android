@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.net.Uri
 import android.util.Base64
+import java.io.ByteArrayOutputStream
 import android.view.Gravity
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.Track
