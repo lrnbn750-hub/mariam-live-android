@@ -32,7 +32,6 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(13,14,31); private val purple=Color.rgb(151,112,245); private val gold=Color.rgb(244,197,106); private val mutedText=Color.rgb(181,177,202)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
- private lateinit var hostAvatar:FrameLayout
  private var loadedBackgroundUrl=""
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
@@ -60,27 +59,8 @@ class RoomActivity : Activity() {
   },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8)})
   roomPage.addView(top)
   roomPage.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
-  roomPage.addView(label("مساحة صوتية مباشرة  •  8 مقاعد",12f,mutedText).apply{setPadding(0,0,0,dp(14))})
-  val host=LinearLayout(this).apply{
-   orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(15),dp(12),dp(15),dp(12))
-   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.rgb(49,37,88),Color.rgb(35,29,65))).apply{
-     cornerRadius=dp(22).toFloat();setStroke(dp(1),Color.rgb(111,91,176))
-   }
-  }
-  hostAvatar=FrameLayout(this).apply{
-   background=GradientDrawable().apply{shape=1;setColor(Color.rgb(76,58,125));setStroke(dp(2),gold)}
-   addView(label("M",27f,gold,true),FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
-  }
-  host.addView(hostAvatar,LinearLayout.LayoutParams(dp(58),dp(58)))
-  val hostInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-  hostInfo.addView(label("صاحب الغرفة",15f,Color.WHITE,true).apply{gravity=Gravity.START})
-  hostInfo.addView(label("المضيف • البث الصوتي مباشر",11f,Color.rgb(184,216,225)).apply{gravity=Gravity.START;setPadding(0,dp(4),0,0)})
-  host.addView(hostInfo,LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(13)})
-  host.addView(label("● مباشر",11f,Color.rgb(244,197,106),true))
-  roomPage.addView(host,LinearLayout.LayoutParams(-1,dp(86)))
-  roomPage.addView(label("منصة المتحدثين",17f,Color.WHITE,true).apply{setPadding(0,dp(18),0,dp(8))})
-  grid=LinearLayout(this).apply{orientation=1};roomPage.addView(grid)
+  grid=LinearLayout(this).apply{orientation=1}
+  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
    roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
   status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(91,65,160),Color.rgb(188,153,255)){toggleMic()}
@@ -131,10 +111,6 @@ class RoomActivity : Activity() {
    setPadding(0,dp(8),0,0)
    background=null
    chatPanel=this
-   val header=LinearLayout(this@RoomActivity).apply{gravity=Gravity.CENTER_VERTICAL}
-   header.addView(label("دردشة الغرفة",15f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(28),1f))
-   header.addView(label("● مباشر",10f,Color.rgb(244,197,106),true))
-   addView(header,LinearLayout.LayoutParams(-1,-2))
    chatMessages=LinearLayout(this@RoomActivity).apply{orientation=1}
    chatScroll=ScrollView(this@RoomActivity).apply{
     isFillViewport=true
@@ -362,21 +338,6 @@ class RoomActivity : Activity() {
   }
  }
 
- private fun updateHostAvatar(){
-  if(!::hostAvatar.isInitialized)return
-  val owner=seats.optJSONObject(0)
-  val url=owner?.optString("avatar_url").orEmpty().takeIf{it.isNotBlank()&&it!="null"}
-  if(url==null)return
-  val photo=ImageView(this).apply{
-   scaleType=ImageView.ScaleType.CENTER_CROP
-   clipToOutline=true
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.TRANSPARENT)}
-   tag=url
-  }
-  hostAvatar.removeAllViews()
-  hostAvatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
-  loadAvatarInto(photo,url)
- }
  private fun drawSeats(){
   grid.removeAllViews()
   for(row in 0..1){
