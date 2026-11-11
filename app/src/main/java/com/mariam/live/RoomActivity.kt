@@ -360,40 +360,25 @@ class RoomActivity : Activity() {
      intArrayOf(Color.rgb(153,83,65),Color.rgb(76,42,54))   // مرجاني
     )
     val seatColor=seatColors[i%seatColors.size]
+    // كل المقاعد بلا بطاقات أو خلفيات أو حدود؛ نعرض المحتوى فقط.
     val tile=LinearLayout(this).apply{
-     orientation=1;gravity=Gravity.CENTER
-     if(occupied){
-      setPadding(dp(3),dp(9),dp(3),dp(8))
-      background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,seatColor).apply{
-       cornerRadius=dp(18).toFloat()
-       setStroke(dp(1),Color.rgb(226,205,255))
-      }
-      elevation=dp(3).toFloat()
-     }else{
-      // المقعد الفارغ شفاف وصغير: لا بطاقة ولا لون ولا إطار ولا ارتفاع زائد.
-      setPadding(0,0,0,0)
-      background=null
-      elevation=0f
-      minimumHeight=0
-      minimumWidth=0
-     }
-     isClickable=true;isFocusable=true
+     orientation=1
+     gravity=Gravity.CENTER
+     setPadding(0,0,0,0)
+     background=null
+     elevation=0f
+     isClickable=true
+     isFocusable=true
     }
-    // لا نرسم دائرة/مربعاً حول علامة + في المقعد الفارغ.
-    // صورة العضو تبقى دائرية وكبيرة عند وجوده.
     val avatar=FrameLayout(this).apply{
-     clipChildren=false;clipToPadding=false
+     clipChildren=false
+     clipToPadding=false
+     background=null
      if(occupied){
-      background=GradientDrawable().apply{
-       shape=GradientDrawable.OVAL
-       setColor(Color.rgb(104,73,161))
-       setStroke(dp(2),gold)
-      }
       addView(label(name.take(1).uppercase(),21f,gold,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      background=null
-      addView(label("+",34f,purple,true),
+      addView(label("+",30f,purple,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
@@ -411,7 +396,7 @@ class RoomActivity : Activity() {
     // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
-     addView(avatar,FrameLayout.LayoutParams(dp(if(occupied) 70 else 34),dp(if(occupied) 70 else 34),Gravity.CENTER))
+     addView(avatar,FrameLayout.LayoutParams(dp(if(occupied) 70 else 38),dp(if(occupied) 70 else 38),Gravity.CENTER))
     }
     val totalXp=s.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
@@ -419,18 +404,18 @@ class RoomActivity : Activity() {
      avatarStage.addView(royal,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(if(occupied) 100 else 38),dp(if(occupied) 100 else 38)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(if(occupied) 100 else 42),dp(if(occupied) 100 else 42)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
      tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
      val caption=if(s.optBoolean("is_muted"))"مكتوم" else "على المايك"
-     tile.addView(label(caption,9f,Color.rgb(244,197,106)))
+     // الاسم فقط تحت الصورة، دون وصف المايك أو أي بطاقة خلفية.
     }else{
      // المقعد الفارغ: علامة + ورقم صغير فقط، بلا أي كلمات.
-     tile.addView(label((i+1).toString(),9f,Color.rgb(181,177,202),true))
+     tile.addView(label((i+1).toString(),11f,Color.rgb(205,198,226),true))
     }
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,if(occupied) dp(148) else dp(44),1f).apply{
-     setMargins(dp(3),dp(if(occupied) 4 else 1),dp(3),dp(if(occupied) 4 else 1))
+    line.addView(tile,LinearLayout.LayoutParams(0,if(occupied) dp(112) else dp(64),1f).apply{
+     setMargins(dp(3),dp(2),dp(3),dp(2))
     })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
