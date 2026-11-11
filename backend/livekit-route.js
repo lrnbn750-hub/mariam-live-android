@@ -135,6 +135,32 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     }
   });
 
+  // All current room members, including listeners who are not occupying a voice seat.
+  app.get("/api/voice-rooms/:roomId/members", authenticateToken, async (req, res) => {
+    try {
+      const roomId = req.params.roomId;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      if (!(await isMember(roomId, req.userId)) return res.status(403).json({ error: "Join the room first" });
+      const result = await db.query(`
+        SELECT m.user_id, COALESCE(p.display_name, u.username) AS display_name,
+               u.username, p.avatar_url, u.public_id,
+               (r.owner_id = m.user_id) AS is_owner,
+               s.seat_number, COALESCE(s.is_muted, FALSE) AS is_muted
+        FROM room_members m
+        JOIN users u ON u.id = m.user_id
+        LEFT JOIN user_profiles p ON p.user_id = u.id
+        LEFT JOIN voice_rooms r ON r.id = m.room_id
+        LEFT JOIN voice_room_seats s ON s.room_id = m.room_id AND s.user_id = m.user_id
+        WHERE m.room_id = $1
+        ORDER BY (r.owner_id = m.user_id) DESC, s.seat_number NULLS LAST, m.joined_at ASC
+      `, [roomId]);
+      return res.json({ members: result.rows, count: result.rows.length });
+    } catch (error) {
+      console.error("List voice room members:", error.message);
+      return res.status(500).json({ error: "Could not load room members" });
+    }
+  });
+
   app.post("/api/voice-rooms/:roomId/hand-raise", authenticateToken, async (req, res) => {
     try {
       await ensureVoiceSchema();
