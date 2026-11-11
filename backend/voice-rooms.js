@@ -1,5 +1,40 @@
 module.exports = (app, db, authenticateToken) => {
 
+  // Upload the authenticated user's profile photo and publish its public URL.
+  app.post("/api/profile/avatar", authenticateToken, async (req, res) => {
+    let savedPath = null;
+    try {
+      const encoded = String(req.body && req.body.avatar_base64 || "");
+      if (!encoded || encoded.length > 2 * 1024 * 1024) {
+        return res.status(413).json({ error: "Profile image must be smaller than 1.5 MB" });
+      }
+      const buffer = Buffer.from(encoded, "base64");
+      const validJpeg = buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+      if (!validJpeg || buffer.length > 1536 * 1024) {
+        return res.status(400).json({ error: "Choose a valid JPG profile image" });
+      }
+      const fs = require("fs");
+      const path = require("path");
+      const crypto = require("crypto");
+      const directory = "/opt/mariam-live/uploads/avatars";
+      fs.mkdirSync(directory, { recursive: true });
+      const filename = crypto.randomUUID() + ".jpg";
+      savedPath = path.join(directory, filename);
+      fs.writeFileSync(savedPath, buffer, { flag: "wx", mode: 0o640 });
+      const avatarUrl = "https://nokiraq.duckdns.org/uploads/avatars/" + filename;
+      await db.query(
+        "INSERT INTO user_profiles (user_id, avatar_url) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET avatar_url = EXCLUDED.avatar_url",
+        [req.userId, avatarUrl]
+      );
+      return res.json({ message: "Profile photo updated", avatar_url: avatarUrl });
+    } catch (error) {
+      if (savedPath) { try { require("fs").unlinkSync(savedPath); } catch (_) {} }
+      console.error("Upload profile avatar:", error.message);
+      return res.status(500).json({ error: "Could not update profile photo" });
+    }
+  });
+
+
   // Create a room with a required, validated image selected by the owner.
   app.post("/api/voice-rooms", authenticateToken, async (req, res) => {
     let savedFile = null;
