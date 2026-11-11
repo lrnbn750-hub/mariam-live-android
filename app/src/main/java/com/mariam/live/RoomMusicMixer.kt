@@ -2,6 +2,7 @@ package com.mariam.live
 
 import android.content.Context
 import android.media.AudioFormat
+import android.media.AudioTrack
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -31,6 +32,9 @@ class RoomMusicMixer(
     private val running = AtomicBoolean(false)
     private val decoderFinished = AtomicBoolean(false)
     private val chunks = ArrayBlockingQueue<ShortArray>(48)
+    private val localChunks = ArrayBlockingQueue<ShortArray>(48)
+    private var localAudioTrack: AudioTrack? = null
+    private var localPlaybackThread: Thread? = null
     @Volatile var paused: Boolean = false
     @Volatile var microphoneEnabled: Boolean = true
     @Volatile var volume: Float = 0.22f
@@ -59,10 +63,30 @@ class RoomMusicMixer(
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
-        decoderThread = Thread({ decodeFile() }, "MariamRoomMusicDecoder").apply {
-            isDaemon = true
-            start()
+        try {
+            val minBuffer = AudioTrack.getMinBufferSize(48000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(960 * 4)
+            localAudioTrack = AudioTrack(android.media.AudioManager.STREAM_MUSIC, 48000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, minBuffer, AudioTrack.MODE_STREAM).also { it.play() }
+            localPlaybackThread = Thread({ playLocally() }, "MariamLocalMusicPlayback").apply { isDaemon = true; start() }
+        } catch (error: Exception) {
+            running.set(false)
+            onError("تعذر تشغيل الموسيقى محلياً: " + (error.message ?: "خطأ صوت"))
+            return
         }
+        decoderThread = Thread({ decodeFile() }, "MariamRoomMusicDecoder").apply { isDaemon = true; start() }
+    }
+
+    private fun playLocally() {
+        val track = localAudioTrack ?: return
+        try {
+            while (running.get() || localChunks.isNotEmpty()) {
+                if (paused) { Thread.sleep(40); continue }
+                val piece = localChunks.poll(100, TimeUnit.MILLISECONDS) ?: continue
+                val bytes = ByteBuffer.allocate(piece.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+                bytes.asShortBuffer().put(piece)
+                track.write(bytes.array(), 0, piece.size * 2)
+            }
+        } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+        catch (error: Exception) { if (running.get()) onError("تعذر تشغيل الصوت على هاتفك: " + (error.message ?: "خطأ صوت")) }
     }
 
     fun stop() {
@@ -71,8 +95,13 @@ class RoomMusicMixer(
         decoderThread?.interrupt()
         decoderThread = null
         chunks.clear()
+        localChunks.clear()
         currentChunk = null
         currentIndex = 0
+        localPlaybackThread?.interrupt()
+        localPlaybackThread = null
+        try { localAudioTrack?.pause(); localAudioTrack?.flush(); localAudioTrack?.release() } catch (_: Exception) {}
+        localAudioTrack = null
     }
 
     override fun onBufferRequest(
@@ -289,6 +318,7 @@ class RoomMusicMixer(
             val end = min(offset + 960, converted.size)
             val piece = converted.copyOfRange(offset, end)
             if (!chunks.offer(piece, 100, TimeUnit.MILLISECONDS)) continue
+            localChunks.offer(piece.copyOf(), 100, TimeUnit.MILLISECONDS)
             queuedChunks++
             offset = end
         }
