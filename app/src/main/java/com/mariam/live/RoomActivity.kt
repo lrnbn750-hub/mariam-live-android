@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
 import android.net.Uri
+import android.util.Base64
 import android.view.Gravity
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.Track
@@ -797,19 +798,49 @@ class RoomActivity : Activity() {
   catch(_:Exception){Toast.makeText(this,"تعذر فتح الصور",Toast.LENGTH_SHORT).show()}
  }
 
- private fun applyLocalRoomBackground(uri:Uri){
-  try{
-   val bitmap=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it)}
-   if(bitmap==null){
-    Toast.makeText(this,"تعذر قراءة الصورة",Toast.LENGTH_SHORT).show()
-    return
-   }
-   val photo=android.graphics.drawable.BitmapDrawable(resources,bitmap)
-   photo.gravity=Gravity.FILL
-   roomPage.background=android.graphics.drawable.LayerDrawable(arrayOf(photo,GradientDrawable().apply{setColor(Color.argb(78,5,7,20))}))
-   Toast.makeText(this,"تم تطبيق الخلفية على جهازك",Toast.LENGTH_LONG).show()
-  }catch(_:Exception){
-   Toast.makeText(this,"تعذر تطبيق الخلفية",Toast.LENGTH_SHORT).show()
+ private fun uploadRoomBackground(uri:Uri){
+  if(!isOwner){
+   Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show()
+   return
+  }
+  status.text="جارٍ تجهيز الخلفية ورفعها..."
+  scope.launch{
+   try{
+    val payload=withContext(Dispatchers.IO){
+     val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
+     contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it,null,bounds)}
+     if(bounds.outWidth<=0 || bounds.outHeight<=0)throw Exception("تعذر قراءة أبعاد الصورة")
+     var sample=1
+     while(bounds.outWidth/sample>2048 || bounds.outHeight/sample>2048)sample*=2
+     val options=BitmapFactory.Options().apply{inSampleSize=sample}
+     val bitmap=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it,null,options)}
+      ?:throw Exception("تعذر قراءة الصورة")
+     try{
+      var bytes=ByteArrayOutputStream()
+      var quality=88
+      do{
+       bytes=ByteArrayOutputStream()
+       bitmap.compress(Bitmap.CompressFormat.JPEG,quality,bytes)
+       quality-=8
+      }while(bytes.size()>3*1024*1024 && quality>=56)
+      if(bytes.size()>4*1024*1024)throw Exception("حجم الصورة كبير، اختر صورة أصغر")
+      JSONObject()
+       .put("background_base64",Base64.encodeToString(bytes.toByteArray(),Base64.NO_WRAP))
+       .put("image_mime","image/jpeg")
+     }finally{bitmap.recycle()}
+    }
+    val response=withContext(Dispatchers.IO){
+     AuthApi.put("/api/voice-rooms/$roomId/background",payload,authToken)
+    }
+    if(response.status in 200..299){
+     Toast.makeText(this@RoomActivity,"تم حفظ خلفية الغرفة للجميع",Toast.LENGTH_LONG).show()
+     loadSeats()
+    }else{
+     Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر حفظ الخلفية"),Toast.LENGTH_LONG).show()
+    }
+   }catch(e:Exception){
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر رفع الخلفية",Toast.LENGTH_LONG).show()
+   }finally{status.text=""}
   }
  }
 
@@ -945,7 +976,7 @@ class RoomActivity : Activity() {
   if(requestCode==4201){
    startRoomMusic(uri)
   }else if(requestCode==4202){
-   applyLocalRoomBackground(uri)
+   uploadRoomBackground(uri)
   }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
