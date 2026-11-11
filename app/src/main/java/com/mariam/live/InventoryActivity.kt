@@ -124,21 +124,30 @@ class InventoryActivity : Activity() {
             background=GradientDrawable().apply {
                 setColor(if(owned)purple else Color.rgb(239,237,243));cornerRadius=dp(10).toFloat()
             }
-            isEnabled=owned&&!equipped
-            setOnClickListener{equip(id,token)}
+            // Same button toggles off when the item is already equipped.
+            isEnabled=owned
+            alpha=if(owned)1f else 0.65f
+            setOnClickListener{toggleItem(id,type,equipped,token)}
         }
         details.addView(action)
         card.addView(details,LinearLayout.LayoutParams(0,-2,1f))
         list.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(10)})
     }
 
-    private fun equip(itemId:String,token:String) {
-        status.text="جارٍ تركيب العنصر..."
+    private fun toggleItem(itemId:String,itemType:String,equipped:Boolean,token:String) {
+        status.text=if(equipped)"جارٍ إيقاف العنصر..." else "جارٍ تركيب العنصر..."
         executor.execute {
             try {
-                val response=AuthApi.post("/api/inventory/equip",JSONObject().put("item_id",itemId),token)
-                if(response.status !in 200..299) throw Exception(response.body.optString("error","تعذر تركيب العنصر"))
-                runOnUiThread{status.text="تم تركيب العنصر بنجاح";loadInventory()}
+                val response=if(equipped){
+                    AuthApi.post("/api/inventory/unequip",JSONObject().put("item_type",itemType),token)
+                }else{
+                    AuthApi.post("/api/inventory/equip",JSONObject().put("item_id",itemId),token)
+                }
+                if(response.status !in 200..299) throw Exception(response.body.optString("error","تعذر تحديث العنصر"))
+                runOnUiThread{
+                    status.text=if(equipped)"تم إيقاف العنصر، ويمكنك تركيبه مجدداً" else "تم تركيب العنصر بنجاح"
+                    loadInventory()
+                }
             } catch(e:Exception) {
                 runOnUiThread{status.text=e.message?:"تعذر الاتصال بالخادم"}
             }
