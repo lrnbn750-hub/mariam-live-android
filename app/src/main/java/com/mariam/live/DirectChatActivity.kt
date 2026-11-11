@@ -106,7 +106,10 @@ class DirectChatActivity : Activity() {
                 runOnUiThread {
                     messages.removeAllViews()
                     if (result.status in 200..299) {
-                        for (i in 0 until rows.length()) addMessage(rows.optJSONObject(i) ?: continue)
+                        for (i in 0 until rows.length()) {
+                            val message = rows.optJSONObject(i)
+                            if (message != null) addMessage(message)
+                        }
                         status.text = if (rows.length() == 0) "ابدأ أول محادثة بينكما" else " "
                     } else status.text = result.body.optString("error", "تعذر تحميل الرسائل")
                     loading = false
