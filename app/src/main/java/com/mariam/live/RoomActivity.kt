@@ -414,9 +414,10 @@ class RoomActivity : Activity() {
      tile.addView(label((i+1).toString(),11f,Color.rgb(205,198,226),true))
     }
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,if(occupied) dp(112) else dp(64),1f).apply{
-     setMargins(dp(3),dp(2),dp(3),dp(2))
-    })
+    // Keep every seat cell the same height so empty and occupied seats align.
+     line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{
+      setMargins(dp(3),dp(2),dp(3),dp(2))
+     })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
   }
