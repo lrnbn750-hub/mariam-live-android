@@ -232,4 +232,70 @@ module.exports = function(app, db, authenticateToken) {
       return res.status(500).json({ error: "Could not update profile" });
     }
   });
+
+  // Persistent inventory: equipping is allowed only for items owned by this account.
+  app.get("/api/inventory", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        `SELECT i.item_id, i.name, i.item_type, i.asset_url, i.source_type, i.price_iqd,
+                (ui.user_id IS NOT NULL) AS owned,
+                (e.item_id IS NOT NULL) AS equipped,
+                ui.obtained_from, ui.obtained_at
+         FROM store_items i
+         LEFT JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
+         LEFT JOIN user_equipped_items e ON e.item_id=i.item_id AND e.user_id=$1
+         WHERE i.active=TRUE ORDER BY owned DESC, i.item_type, i.name`,
+        [req.userId]
+      );
+      return res.json({ items: result.rows });
+    } catch (error) {
+      console.error("Load inventory:", error.message);
+      return res.status(500).json({ error: "Could not load inventory" });
+    }
+  });
+
+  app.post("/api/inventory/equip", authenticateToken, async (req, res) => {
+    const itemId = String(req.body?.item_id || "").trim();
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(itemId)) return res.status(400).json({ error: "Invalid item ID" });
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const owned = await client.query(
+        `SELECT i.item_id, i.item_type FROM store_items i
+         JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
+         WHERE i.item_id=$2 AND i.active=TRUE FOR UPDATE OF ui`,
+        [req.userId, itemId]
+      );
+      if (!owned.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "You do not own this item" });
+      }
+      const item = owned.rows[0];
+      await client.query(
+        `INSERT INTO user_equipped_items(user_id,item_type,item_id,equipped_at)
+         VALUES($1,$2,$3,NOW())
+         ON CONFLICT(user_id,item_type) DO UPDATE
+         SET item_id=EXCLUDED.item_id,equipped_at=NOW()`,
+        [req.userId, item.item_type, item.item_id]
+      );
+      await client.query("COMMIT");
+      return res.json({ message: "Item equipped", item_id: item.item_id, item_type: item.item_type });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Equip inventory item:", error.message);
+      return res.status(500).json({ error: "Could not equip item" });
+    } finally { client.release(); }
+  });
+
+  app.post("/api/inventory/unequip", authenticateToken, async (req, res) => {
+    const itemType = String(req.body?.item_type || "");
+    if (!["frame", "background"].includes(itemType)) return res.status(400).json({ error: "Invalid item type" });
+    try {
+      await db.query("DELETE FROM user_equipped_items WHERE user_id=$1 AND item_type=$2", [req.userId, itemType]);
+      return res.json({ message: "Item unequipped", item_type: itemType });
+    } catch (error) {
+      console.error("Unequip inventory item:", error.message);
+      return res.status(500).json({ error: "Could not unequip item" });
+    }
+  });
 };
