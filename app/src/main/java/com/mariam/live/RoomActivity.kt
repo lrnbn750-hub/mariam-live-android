@@ -122,7 +122,7 @@ class RoomActivity : Activity() {
      val id=item.optString("id")
      val name=item.optString("name","غرفة صوتية")
      val count=item.optInt("member_count",0)
-     if(id.isNotBlank() && id!=roomId && count>=0)active.add(id to name)
+     if(id.isNotBlank())active.add(id to name)
     }
     val currentIndex=active.indexOfFirst{it.first==roomId}
     // The current room may be omitted by the API in some configurations; use the
@@ -173,7 +173,7 @@ class RoomActivity : Activity() {
     val dy=event.y-swipeDownY
     val chatTop=if(::chatPanel.isInitialized){
      val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()-window.decorView.rootView.top
-    }else height.toFloat()
+    }else resources.displayMetrics.heightPixels.toFloat()
     if(swipeDownY<chatTop && kotlin.math.abs(dy)>dp(105) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.25f){
      switchLiveRoom(if(dy<0)1 else -1)
      return true
