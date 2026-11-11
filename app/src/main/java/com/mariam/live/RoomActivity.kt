@@ -32,6 +32,9 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(13,14,31); private val purple=Color.rgb(151,112,245); private val gold=Color.rgb(244,197,106); private val mutedText=Color.rgb(181,177,202)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
+ private lateinit var ownerAvatarView:ImageView
+ private lateinit var ownerNameView:TextView
+ private lateinit var ownerIdView:TextView
  private var loadedBackgroundUrl=""
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
@@ -62,12 +65,10 @@ class RoomActivity : Activity() {
    contentDescription="مغادرة البث"
   },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
   roomPage.addView(top)
-  val roomTitle=label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.WHITE,true).apply{
-   setPadding(dp(4),dp(10),dp(4),dp(5))
-   setShadowLayer(dp(3).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
-   contentDescription="إعدادات خلفية الغرفة"
-  }
-  roomPage.addView(roomTitle)
+  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(112)).apply{
+   topMargin=dp(10)
+   bottomMargin=dp(5)
+  })
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
    roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
@@ -82,6 +83,78 @@ class RoomActivity : Activity() {
   room=LiveKit.create(applicationContext);loadIdentity()
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
+ private fun buildPremiumRoomHeader():View{
+  val card=LinearLayout(this).apply{
+   orientation=0
+   gravity=Gravity.CENTER_VERTICAL
+   setPadding(dp(12),dp(9),dp(12),dp(9))
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+    intArrayOf(Color.argb(238,18,13,39),Color.argb(232,37,20,65),Color.argb(238,15,12,32))).apply{
+     cornerRadius=dp(25).toFloat()
+     setStroke(dp(1),Color.rgb(214,166,91))
+   }
+   elevation=dp(8).toFloat()
+  }
+  val avatarFrame=FrameLayout(this).apply{
+   background=GradientDrawable().apply{
+    shape=GradientDrawable.OVAL
+    setColor(Color.rgb(34,22,58))
+    setStroke(dp(3),Color.rgb(236,190,104))
+   }
+   elevation=dp(5).toFloat()
+  }
+  ownerAvatarView=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(49,37,75))}
+   clipToOutline=true
+   setImageDrawable(VectorIcon("user",Color.rgb(220,190,135),dp(28)))
+  }
+  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(66),dp(66)).apply{marginEnd=dp(12)})
+  val details=LinearLayout(this).apply{
+   orientation=1
+   gravity=Gravity.CENTER_VERTICAL
+  }
+  details.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.WHITE,true).apply{
+   gravity=Gravity.END or Gravity.CENTER_VERTICAL
+   maxLines=1
+   ellipsize=android.text.TextUtils.TruncateAt.END
+   setShadowLayer(dp(5).toFloat(),0f,0f,Color.rgb(186,91,255))
+  },LinearLayout.LayoutParams(-1,dp(31)))
+  ownerNameView=label("صاحب الغرفة",14f,Color.rgb(255,220,160),true).apply{
+   gravity=Gravity.END or Gravity.CENTER_VERTICAL
+   maxLines=1
+  }
+  details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(23)))
+  ownerIdView=label("ID: "+roomId,12f,Color.rgb(205,190,235),true).apply{
+   gravity=Gravity.END or Gravity.CENTER_VERTICAL
+   maxLines=1
+  }
+  details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(22)))
+  card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
+  val crown=label("♛",25f,Color.rgb(255,205,112),true)
+  card.addView(crown,LinearLayout.LayoutParams(dp(30),dp(42)).apply{marginStart=dp(5)})
+  return card
+ }
+
+ private fun updatePremiumOwnerHeader(owner:JSONObject?){
+  if(!::ownerNameView.isInitialized || owner==null)return
+  val name=owner.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
+   ?:owner.optString("username").takeIf{it.isNotBlank()&&it!="null"}
+   ?: "صاحب الغرفة"
+  ownerNameView.text=name
+  val accountId=owner.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
+   ?:owner.optString("account_id").takeIf{it.isNotBlank()&&it!="null"}
+  ownerIdView.text=if(accountId!=null) "ID: $accountId" else "ROOM ID: $roomId"
+  val avatarUrl=owner.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+  if(avatarUrl.isNotBlank()){
+   ownerAvatarView.tag=avatarUrl
+   loadAvatarInto(ownerAvatarView,avatarUrl)
+  }else{
+   ownerAvatarView.setImageDrawable(VectorIcon("user",Color.rgb(220,190,135),dp(28)))
+  }
+ }
+
  private fun action(title:String,icon:String,color:Int,accent:Int,click:()->Unit)=LinearLayout(this).apply{
   orientation=1;gravity=Gravity.CENTER;isClickable=true;isFocusable=true
   elevation=dp(5).toFloat()
@@ -297,6 +370,7 @@ class RoomActivity : Activity() {
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
     val ownerSeat=seats.optJSONObject(0)
+    updatePremiumOwnerHeader(ownerSeat)
     val ownerSeatUser=ownerSeat?.optString("user_id").orEmpty()
     if(isOwner && !ownerSeatSetupDone){
      ownerSeatSetupDone=true
@@ -387,7 +461,7 @@ class RoomActivity : Activity() {
       addView(label(name.take(1).uppercase(),21f,gold,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",40f,purple,true),
+      addView(label("+",40f,Color.rgb(204,151,255),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
@@ -405,6 +479,12 @@ class RoomActivity : Activity() {
     // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
+     background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+      intArrayOf(Color.rgb(92,54,137),Color.rgb(25,20,48),Color.rgb(132,91,175))).apply{
+       shape=GradientDrawable.OVAL
+       setStroke(dp(2),if(occupied)Color.rgb(232,184,101) else Color.rgb(156,111,221))
+      }
+     elevation=dp(5).toFloat()
      addView(avatar,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
     }
     val totalXp=s.optLong("total_xp",0L)
