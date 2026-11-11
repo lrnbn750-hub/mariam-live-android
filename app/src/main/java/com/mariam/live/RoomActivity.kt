@@ -12,7 +12,10 @@ import android.graphics.PorterDuff
 import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
+import android.net.Uri
 import android.view.Gravity
+import io.livekit.android.room.track.LocalAudioTrack
+import io.livekit.android.room.track.Track
 import android.view.inputmethod.EditorInfo
 import android.view.View
 import android.widget.*
@@ -41,6 +44,8 @@ class RoomActivity : Activity() {
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
+ private lateinit var musicButton:LinearLayout
+ private var musicMixer:RoomMusicMixer?=null
  private lateinit var chatPanel:LinearLayout
  private var chatPoll:Job?=null
  private lateinit var chatMessages:LinearLayout
@@ -72,10 +77,19 @@ class RoomActivity : Activity() {
   })
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
-   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
   status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(91,65,160),Color.rgb(188,153,255)){toggleMic()}
   mic.visibility=View.GONE
+  musicButton=action("موسيقى","music",Color.rgb(28,119,135),Color.rgb(111,231,220)){showMusicOptions()}
+  musicButton.visibility=View.GONE
+  val roomControls=LinearLayout(this).apply{
+   orientation=0
+   gravity=Gravity.CENTER
+   addView(mic,LinearLayout.LayoutParams(dp(82),dp(78)).apply{marginEnd=dp(12)})
+   addView(musicButton,LinearLayout.LayoutParams(dp(82),dp(78)))
+  }
+  roomPage.addView(roomControls,LinearLayout.LayoutParams(-1,dp(82)).apply{topMargin=dp(4)})
+  roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8)})
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
@@ -418,6 +432,7 @@ class RoomActivity : Activity() {
      }
     }
     mic.visibility=if(isSeated)View.VISIBLE else View.GONE
+    musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
@@ -655,7 +670,115 @@ class RoomActivity : Activity() {
    }
   }
  }
- private fun toggleMic(){if(!connected)return;scope.launch{try{microphoneEnabled=!microphoneEnabled;room.localParticipant.setMicrophoneEnabled(microphoneEnabled);status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"}catch(_:Exception){}}}
+ private fun toggleMic(){
+  if(!connected)return
+  microphoneEnabled=!microphoneEnabled
+  val mixer=musicMixer
+  if(mixer!=null){
+   mixer.microphoneEnabled=microphoneEnabled
+   status.text=if(microphoneEnabled)"المايك يعمل مع الموسيقى" else "المايك مكتوم والموسيقى مستمرة"
+   return
+  }
+  scope.launch{
+   try{
+    room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
+    status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"
+   }catch(_:Exception){}
+  }
+ }
+
+ private fun showMusicOptions(){
+  if(!isOwner || !connected){
+   Toast.makeText(this,"الموسيقى متاحة لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
+   return
+  }
+  val mixer=musicMixer
+  val options=if(mixer==null) arrayOf("اختيار أغنية من الهاتف")
+   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى")
+  AlertDialog.Builder(this)
+   .setTitle("موسيقى الغرفة")
+   .setItems(options){_,which->
+    if(mixer==null || (mixer!=null && which==2)){
+     chooseRoomMusic()
+    }else if(which==0){
+     mixer.paused=!mixer.paused
+     Toast.makeText(this,if(mixer.paused)"تم إيقاف الموسيقى مؤقتاً" else "استؤنفت الموسيقى",Toast.LENGTH_SHORT).show()
+    }else{
+     stopRoomMusic()
+    }
+   }
+   .setNegativeButton("إغلاق",null)
+   .show()
+ }
+
+ private fun chooseRoomMusic(){
+  val picker=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
+   addCategory(Intent.CATEGORY_OPENABLE)
+   type="audio/*"
+  }
+  try{startActivityForResult(picker,4201)}
+  catch(_:Exception){Toast.makeText(this,"تعذر فتح ملفات الهاتف",Toast.LENGTH_SHORT).show()}
+ }
+
+ private fun startRoomMusic(uri:Uri){
+  if(!isOwner || !connected)return
+  scope.launch{
+   try{
+    // Keep the published audio track alive even when the owner has muted their microphone.
+    room.localParticipant.setMicrophoneEnabled(true)
+    val track=room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack
+    if(track==null){
+     Toast.makeText(this@RoomActivity,"مسار الصوت غير جاهز، أعد المحاولة",Toast.LENGTH_LONG).show()
+     if(!microphoneEnabled)room.localParticipant.setMicrophoneEnabled(false)
+     return@launch
+    }
+    stopRoomMusic()
+    val mixer=RoomMusicMixer(
+     this@RoomActivity,uri,
+     onError={message->runOnUiThread{
+      stopRoomMusic()
+      Toast.makeText(this@RoomActivity,message,Toast.LENGTH_LONG).show()
+     }},
+     onEnded={runOnUiThread{
+      stopRoomMusic()
+      Toast.makeText(this@RoomActivity,"انتهت الأغنية",Toast.LENGTH_SHORT).show()
+     }}
+    )
+    mixer.microphoneEnabled=microphoneEnabled
+    musicMixer=mixer
+    track.setAudioBufferCallback(mixer)
+    mixer.start()
+    Toast.makeText(this@RoomActivity,"بدأ إرسال الموسيقى إلى الغرفة",Toast.LENGTH_SHORT).show()
+   }catch(_:Exception){
+    stopRoomMusic()
+    Toast.makeText(this@RoomActivity,"تعذر تشغيل الموسيقى",Toast.LENGTH_LONG).show()
+   }
+  }
+ }
+
+ private fun stopRoomMusic(){
+  val mixer=musicMixer
+  musicMixer=null
+  try{
+   val track=if(::room.isInitialized) room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack else null
+   track?.setAudioBufferCallback(null)
+  }catch(_:Exception){}
+  mixer?.stop()
+  if(connected && !microphoneEnabled){
+   scope.launch{try{room.localParticipant.setMicrophoneEnabled(false)}catch(_:Exception){}}
+  }
+ }
+
+ @Deprecated("Deprecated in Android")
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
+  super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode!=4201 || resultCode!=Activity.RESULT_OK)return
+  val uri=data?.data?:return
+  try{
+   contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)
+  }catch(_:Exception){}
+  startRoomMusic(uri)
+ }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
  private fun leaveRoom(){
   if(leaving)return
@@ -699,6 +822,8 @@ class RoomActivity : Activity() {
     leaving=true
     scope.launch{
      try{
+      stopRoomMusic()
+      stopRoomMusic()
       if(connected)room.disconnect()
       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
       val result=withContext(Dispatchers.IO){
@@ -724,6 +849,7 @@ class RoomActivity : Activity() {
 
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){
+  stopRoomMusic()
   seatRefreshJob?.cancel()
   scope.cancel()
   super.onDestroy()
@@ -740,6 +866,7 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  "chat"->{c.drawRoundRect(3f,5f,29f,23f,5f,5f,p);c.drawLine(9f,23f,7f,29f,p);for(x in listOf(10f,16f,22f))c.drawCircle(x,14f,1f,p)}
  "share"->{c.drawLine(7f,16f,25f,7f,p);c.drawLine(7f,16f,25f,25f,p);c.drawCircle(6f,16f,3f,p);c.drawCircle(26f,6f,3f,p);c.drawCircle(26f,26f,3f,p)}
  "gift"->{c.drawRect(4f,13f,28f,28f,p);c.drawRect(2f,10f,30f,15f,p);c.drawLine(16f,10f,16f,28f,p);c.drawOval(RectF(6f,3f,16f,12f),p);c.drawOval(RectF(16f,3f,26f,12f),p)}
+ "music"->{c.drawLine(12f,7f,12f,23f,p);c.drawLine(12f,7f,25f,4f,p);c.drawLine(25f,4f,25f,20f,p);c.drawOval(RectF(5f,21f,13f,28f),p);c.drawOval(RectF(18f,18f,26f,25f),p)}
  "leave"->{val q=Path().apply{moveTo(8f,5f);lineTo(4f,5f);lineTo(4f,27f);lineTo(8f,27f);moveTo(16f,10f);lineTo(27f,16f);lineTo(16f,22f);moveTo(27f,16f);lineTo(10f,16f)};c.drawPath(q,p)}
  else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
  };c.restoreToCount(save)}
