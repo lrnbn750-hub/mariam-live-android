@@ -515,7 +515,7 @@ class RoomActivity : Activity() {
      avatarStage.addView(royal,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(100),dp(100)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(96),dp(96)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
      tile.addView(label(name,13f,Color.WHITE,true).apply{
       maxLines=2
