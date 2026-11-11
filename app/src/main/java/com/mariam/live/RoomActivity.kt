@@ -393,8 +393,11 @@ class RoomActivity : Activity() {
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
+    // Owner identity comes from the room record, never from seat 1.
+    // This keeps the creator's profile visible even after they leave the room or seat.
+    val roomOwner=r.body.optJSONObject("owner")
+    updatePremiumOwnerHeader(roomOwner)
     val ownerSeat=seats.optJSONObject(0)
-    updatePremiumOwnerHeader(ownerSeat)
     val ownerSeatUser=ownerSeat?.optString("user_id").orEmpty()
     if(isOwner && !ownerSeatSetupDone){
      ownerSeatSetupDone=true
@@ -514,10 +517,10 @@ class RoomActivity : Activity() {
     val totalXp=s.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
      val royal=RoyalSeatGifView(this)
-     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
+     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(80),dp(80),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(96),dp(96)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(80),dp(80)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
      tile.addView(label(name,13f,Color.WHITE,true).apply{
       maxLines=2
