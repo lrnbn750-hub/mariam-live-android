@@ -236,6 +236,22 @@ module.exports = function(app, db, authenticateToken) {
   // Persistent inventory: equipping is allowed only for items owned by this account.
   app.get("/api/inventory", authenticateToken, async (req, res) => {
     try {
+      // Grant LV100 exclusive frames automatically and persistently.
+      await db.query(
+        `
+          INSERT INTO user_inventory(user_id, item_id, obtained_from)
+          SELECT $1, item_id, 'admin'
+          FROM store_items
+          WHERE active = TRUE
+            AND item_id IN ('royal100-frame','dragon100-frame','vip-purple-frame','vip-red-frame')
+            AND EXISTS (
+              SELECT 1 FROM user_levels
+              WHERE user_id = $1 AND total_xp >= 990000
+            )
+          ON CONFLICT(user_id, item_id) DO NOTHING
+        `,
+        [req.userId]
+      );
       const result = await db.query(
         `SELECT i.item_id, i.name, i.item_type, i.asset_url, i.source_type, i.price_iqd,
                 (ui.user_id IS NOT NULL) AS owned,
