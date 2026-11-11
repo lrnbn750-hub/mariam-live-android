@@ -6,6 +6,7 @@ on:
       - feature/mariam-live-development
     paths:
       - backend/profile-route.js
+      - backend/inventory-migration.sql
       - .github/workflows/deploy-profile-api.yml
   workflow_dispatch:
 
