@@ -26,6 +26,7 @@ class ProfileActivity : Activity() {
     private lateinit var bio:EditText
     private lateinit var country:EditText
     private lateinit var avatarPreview:ImageView
+    private lateinit var avatarRing:View
     private lateinit var status:TextView
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
@@ -66,7 +67,23 @@ class ProfileActivity : Activity() {
             setImageDrawable(android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(239,233,255))})
             contentDescription="الصورة الشخصية"
         }
-        card.addView(avatarPreview,LinearLayout.LayoutParams(dp(112),dp(112)).apply{gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)})
+        val avatarFrame=FrameLayout(this).apply{
+            clipChildren=false;clipToPadding=false
+        }
+        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(106),dp(106),Gravity.CENTER))
+        avatarRing=View(this).apply{
+            background=android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(4),Color.rgb(201,158,75))
+            }
+            isClickable=false
+            isFocusable=false
+        }
+        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(120),dp(120),Gravity.CENTER))
+        card.addView(avatarFrame,LinearLayout.LayoutParams(dp(120),dp(120)).apply{
+            gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)
+        })
 
         levelCard=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
@@ -214,6 +231,11 @@ class ProfileActivity : Activity() {
             in 81..90 -> intArrayOf(Color.rgb(34,22,76),Color.rgb(81,48,151),Color.rgb(23,16,61),Color.rgb(169,145,255),Color.rgb(232,222,255),Color.rgb(183,165,255),Color.rgb(83,57,157))
             in 91..99 -> intArrayOf(Color.rgb(67,13,24),Color.rgb(151,28,44),Color.rgb(42,12,28),Color.rgb(255,180,83),Color.rgb(255,235,187),Color.rgb(255,197,112),Color.rgb(154,48,51))
             else -> intArrayOf(Color.rgb(38,12,54),Color.rgb(126,25,91),Color.rgb(43,12,65),Color.rgb(255,210,92),Color.rgb(255,245,190),Color.rgb(255,221,128),Color.rgb(190,53,112))
+        }
+        avatarRing.background=android.graphics.drawable.GradientDrawable().apply{
+            shape=android.graphics.drawable.GradientDrawable.OVAL
+            setColor(Color.TRANSPARENT)
+            setStroke(dp(if(level>=100)5 else if(level>=91)4 else 3),colors[3])
         }
         levelCard.background=android.graphics.drawable.GradientDrawable(
             android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
