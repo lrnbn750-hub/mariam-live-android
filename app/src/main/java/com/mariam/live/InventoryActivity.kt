@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.graphics.Color
 import android.graphics.BitmapFactory
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import android.graphics.drawable.GradientDrawable
 import org.json.JSONObject
