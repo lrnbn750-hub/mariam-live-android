@@ -10,6 +10,8 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
 import android.widget.ImageView
+import android.net.Uri
+import java.io.ByteArrayOutputStream
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -33,6 +35,7 @@ class RoomActivity : Activity() {
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private var loadedBackgroundUrl=""
+ private val backgroundPickerRequest=7317
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
@@ -51,14 +54,24 @@ class RoomActivity : Activity() {
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
   roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-  top.addView(label("MARIAM LIVE  ✦",17f,gold,true),LinearLayout.LayoutParams(0,dp(42),1f))
-  top.addView(action("تحديث","refresh",purple,gold){loadSeats()},LinearLayout.LayoutParams(dp(85),dp(42)))
+  top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
   top.addView(label("×",30f,Color.WHITE,true).apply{
    setOnClickListener{leaveRoom()}
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,45,75));setStroke(dp(1),Color.rgb(198,105,151))}
-  },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8);topMargin=dp(7)})
+   background=GradientDrawable().apply{
+    shape=GradientDrawable.OVAL
+    setColor(Color.argb(90,15,15,30))
+    setStroke(dp(1),Color.argb(90,220,220,235))
+   }
+   contentDescription="مغادرة البث"
+  },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
   roomPage.addView(top)
-  roomPage.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
+  val roomTitle=label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.WHITE,true).apply{
+   setPadding(dp(4),dp(10),dp(4),dp(5))
+   setShadowLayer(dp(3).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
+   setOnClickListener{showRoomBackgroundSettings()}
+   contentDescription="إعدادات خلفية الغرفة"
+  }
+  roomPage.addView(roomTitle)
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
    roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(12)})
@@ -313,6 +326,91 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun showRoomBackgroundSettings(){
+  if(!isOwner){
+   Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show()
+   return
+  }
+  AlertDialog.Builder(this)
+   .setTitle("خلفية الغرفة")
+   .setItems(arrayOf("اختيار صورة من الهاتف","إزالة الخلفية الحالية")){_,which->
+    if(which==0) chooseRoomBackground() else clearRoomBackground()
+   }
+   .setNegativeButton("إلغاء",null)
+   .show()
+ }
+
+ private fun chooseRoomBackground(){
+  val pick=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
+   type="image/*"
+   addCategory(Intent.CATEGORY_OPENABLE)
+   addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+  }
+  startActivityForResult(pick,backgroundPickerRequest)
+ }
+
+ @Deprecated("Deprecated in Android API; retained for broad device compatibility")
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
+  super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode!=backgroundPickerRequest || resultCode!=RESULT_OK)return
+  val uri=data?.data?:return
+  try{contentResolver.takePersistableUriPermission(uri,data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){}
+  uploadRoomBackground(uri)
+ }
+
+ private fun uploadRoomBackground(uri:Uri){
+  Toast.makeText(this,"جارٍ حفظ خلفية الغرفة...",Toast.LENGTH_SHORT).show()
+  scope.launch{
+   try{
+    val encoded=withContext(Dispatchers.IO){
+     val source=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it)}
+      ?:throw Exception("تعذر قراءة الصورة المختارة")
+     val scale=minOf(1f,1280f/maxOf(source.width,source.height))
+     val resized=if(scale<1f)Bitmap.createScaledBitmap(source,
+      (source.width*scale).toInt().coerceAtLeast(1),(source.height*scale).toInt().coerceAtLeast(1),true) else source
+     val bytes=ByteArrayOutputStream()
+     var quality=82
+     do{
+      bytes.reset()
+      resized.compress(Bitmap.CompressFormat.JPEG,quality,bytes)
+      quality-=8
+     }while(bytes.size()>3*1024*1024 && quality>=42)
+     if(bytes.size()>3*1024*1024)throw Exception("حجم الخلفية كبير جداً")
+     val result=android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP)
+     if(resized!==source)resized.recycle()
+     if(!source.isRecycled)source.recycle()
+     result
+    }
+    val response=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/background",JSONObject().put("background_base64",encoded),authToken)
+    }
+    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر حفظ الخلفية"))
+    val url=response.body.optString("backgroundUrl")
+    if(url.isNotBlank() && url!="null")applyRoomBackground(url)
+    Toast.makeText(this@RoomActivity,"تم تغيير خلفية الغرفة لجميع الأعضاء",Toast.LENGTH_LONG).show()
+    loadSeats()
+   }catch(e:Exception){
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر تغيير الخلفية",Toast.LENGTH_LONG).show()
+   }
+  }
+ }
+
+ private fun clearRoomBackground(){
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){
+     AuthApi.delete("/api/voice-rooms/$roomId/background",authToken)
+    }
+    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر إزالة الخلفية"))
+    applyRoomBackground("")
+    Toast.makeText(this@RoomActivity,"تمت إزالة الخلفية",Toast.LENGTH_SHORT).show()
+    loadSeats()
+   }catch(e:Exception){
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر إزالة الخلفية",Toast.LENGTH_LONG).show()
+   }
+  }
+ }
+
  private fun applyRoomBackground(url:String){
   loadedBackgroundUrl=url
   if(url.isBlank()){
@@ -406,16 +504,22 @@ class RoomActivity : Activity() {
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(100),dp(100)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
-     tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
-     val caption=if(s.optBoolean("is_muted"))"مكتوم" else "على المايك"
-     // الاسم فقط تحت الصورة، دون وصف المايك أو أي بطاقة خلفية.
+     tile.addView(label(name,13f,Color.WHITE,true).apply{
+      maxLines=2
+      minLines=1
+      ellipsize=android.text.TextUtils.TruncateAt.END
+      gravity=Gravity.CENTER
+      setPadding(dp(2),dp(2),dp(2),dp(1))
+      setShadowLayer(dp(3).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
+      includeFontPadding=false
+     },LinearLayout.LayoutParams(-1,dp(29)))
     }else{
      // المقعد الفارغ: علامة + ورقم صغير فقط، بلا أي كلمات.
      tile.addView(label((i+1).toString(),11f,Color.rgb(205,198,226),true))
     }
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
     // Keep every seat cell the same height so empty and occupied seats align.
-     line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{
+     line.addView(tile,LinearLayout.LayoutParams(0,dp(132),1f).apply{
       setMargins(dp(3),dp(2),dp(3),dp(2))
      })
    }

@@ -117,6 +117,61 @@ module.exports = (app, db, authenticateToken) => {
     }
   });
 
+  // Change or remove the room background while the room is live (owner only).
+  app.post("/api/voice-rooms/:roomId/background", authenticateToken, async (req, res) => {
+    let savedPath = null;
+    try {
+      const encoded = String(req.body && req.body.background_base64 || "");
+      if (!encoded || encoded.length > 6 * 1024 * 1024) {
+        return res.status(413).json({ error: "Room background must be 4 MB or smaller" });
+      }
+      const buffer = Buffer.from(encoded, "base64");
+      const validJpeg = buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+      if (!validJpeg || buffer.length > 4 * 1024 * 1024) {
+        return res.status(400).json({ error: "Choose a valid JPG background image" });
+      }
+      const fs = require("fs");
+      const path = require("path");
+      const crypto = require("crypto");
+      const directory = "/opt/mariam-live/uploads/rooms";
+      fs.mkdirSync(directory, { recursive: true });
+      const filename = crypto.randomUUID() + "-background.jpg";
+      savedPath = path.join(directory, filename);
+      fs.writeFileSync(savedPath, buffer, { flag: "wx", mode: 0o640 });
+      const backgroundUrl = "https://nokiraq.duckdns.org/uploads/rooms/" + filename;
+      const result = await db.query(
+        "UPDATE voice_rooms SET room_background_url = $1 WHERE id = $2 AND owner_id = $3 AND status = 'active' RETURNING id",
+        [backgroundUrl, req.params.roomId, req.userId]
+      );
+      if (!result.rows.length) {
+        try { fs.unlinkSync(savedPath); } catch (_) {}
+        savedPath = null;
+        return res.status(404).json({ error: "Room not found or you are not the owner" });
+      }
+      return res.json({ message: "Room background updated", backgroundUrl });
+    } catch (error) {
+      if (savedPath) { try { require("fs").unlinkSync(savedPath); } catch (_) {} }
+      console.error("Update room background:", error.message);
+      return res.status(500).json({ error: "Could not update room background" });
+    }
+  });
+
+  app.delete("/api/voice-rooms/:roomId/background", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        "UPDATE voice_rooms SET room_background_url = NULL WHERE id = $1 AND owner_id = $2 AND status = 'active' RETURNING id",
+        [req.params.roomId, req.userId]
+      );
+      if (!result.rows.length) {
+        return res.status(404).json({ error: "Room not found or you are not the owner" });
+      }
+      return res.json({ message: "Room background removed" });
+    } catch (error) {
+      console.error("Remove room background:", error.message);
+      return res.status(500).json({ error: "Could not remove room background" });
+    }
+  });
+
   // List active rooms
   app.get("/api/voice-rooms", authenticateToken, async (req, res) => {
     try {
