@@ -3,7 +3,10 @@ package com.mariam.live
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Color
-import android.graphics.BitmapFactory
+import android.graphics.Movie
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.widget.*
@@ -95,8 +98,7 @@ class InventoryActivity : Activity() {
                 setStroke(dp(1),Color.rgb(229,224,240))
             }
         }
-        val preview=ImageView(this).apply {
-            scaleType=ImageView.ScaleType.FIT_CENTER
+        val preview=AnimatedGifPreview(this).apply {
             background=GradientDrawable().apply {
                 setColor(Color.rgb(246,243,255));cornerRadius=dp(12).toFloat()
             }
@@ -104,9 +106,11 @@ class InventoryActivity : Activity() {
         card.addView(preview,LinearLayout.LayoutParams(dp(76),dp(76)))
         if(url.startsWith("https://")) executor.execute {
             try {
-                val bitmap=URL(url).openConnection().apply{connectTimeout=8000;readTimeout=10000}.getInputStream().use{BitmapFactory.decodeStream(it)}
-                if(bitmap!=null)runOnUiThread{if(!isFinishing)preview.setImageBitmap(bitmap)}
-            }catch(_:Exception){}
+                val bytes=URL(url).openConnection().apply{connectTimeout=12000;readTimeout=15000}.getInputStream().use{it.readBytes()}
+                runOnUiThread{if(!isFinishing)preview.setGif(bytes)}
+            }catch(e:Exception){
+                android.util.Log.e("InventoryPreview","GIF load failed for $id",e)
+            }
         }
         val details=LinearLayout(this).apply { orientation=1;setPadding(dp(12),0,0,0) }
         details.addView(TextView(this).apply {
@@ -155,4 +159,35 @@ class InventoryActivity : Activity() {
     }
 
     override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
+}
+
+
+/** Small animated GIF preview. BitmapFactory does not reliably decode animated GIFs. */
+private class AnimatedGifPreview(context: android.content.Context) : View(context) {
+    private var movie: Movie? = null
+    private var startedAt = 0L
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+    fun setGif(bytes: ByteArray) {
+        movie = Movie.decodeByteArray(bytes, 0, bytes.size)
+        startedAt = SystemClock.uptimeMillis()
+        invalidate()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val gif = movie ?: return
+        val duration = gif.duration().takeIf { it > 0 } ?: 1000
+        val elapsed = ((SystemClock.uptimeMillis() - startedAt) % duration).toInt()
+        gif.setTime(elapsed)
+        val sx = width.toFloat() / gif.width().coerceAtLeast(1)
+        val sy = height.toFloat() / gif.height().coerceAtLeast(1)
+        val scale = minOf(sx, sy)
+        val save = canvas.save()
+        canvas.translate((width - gif.width() * scale) / 2f, (height - gif.height() * scale) / 2f)
+        canvas.scale(scale, scale)
+        gif.draw(canvas, 0f, 0f, paint)
+        canvas.restoreToCount(save)
+        postInvalidateOnAnimation()
+    }
 }
