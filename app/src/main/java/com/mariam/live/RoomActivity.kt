@@ -491,45 +491,34 @@ class RoomActivity : Activity() {
    val line=LinearLayout(this).apply{orientation=0}
    for(col in 0..3){
     val i=row*4+col
-    val s=seats.optJSONObject(i)?:JSONObject()
-    val uid=s.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
-    val name=s.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid==null)"مقعد فارغ" else "متحدث"
+    val seat=seats.optJSONObject(i)?:JSONObject()
+    val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
-    // ألوان متناسقة ومختلفة لكل مقعد
-    val seatColors=arrayOf(
-     intArrayOf(Color.rgb(91,65,160),Color.rgb(43,34,91)),   // بنفسجي
-     intArrayOf(Color.rgb(28,119,135),Color.rgb(24,55,83)),  // تركوازي
-     intArrayOf(Color.rgb(153,75,117),Color.rgb(75,38,82)),  // وردي
-     intArrayOf(Color.rgb(54,94,159),Color.rgb(31,43,82)),   // أزرق
-     intArrayOf(Color.rgb(151,104,48),Color.rgb(74,48,43)), // ذهبي
-     intArrayOf(Color.rgb(65,125,103),Color.rgb(29,65,65)), // أخضر
-     intArrayOf(Color.rgb(117,76,153),Color.rgb(55,39,91)), // بنفسجي فاتح
-     intArrayOf(Color.rgb(153,83,65),Color.rgb(76,42,54))   // مرجاني
-    )
-    val seatColor=seatColors[i%seatColors.size]
-    // كل المقاعد بلا بطاقات أو خلفيات أو حدود؛ نعرض المحتوى فقط.
+    val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
+     ?:if(occupied)"متحدث" else "مقعد فارغ"
+    val publicId=seat.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
+     ?:seat.optString("account_id").takeIf{it.isNotBlank()&&it!="null"}
+     ?: ""
     val tile=LinearLayout(this).apply{
      orientation=1
      gravity=Gravity.CENTER
      setPadding(0,0,0,0)
      background=null
-     elevation=0f
      isClickable=true
      isFocusable=true
     }
     val avatar=FrameLayout(this).apply{
      clipChildren=false
      clipToPadding=false
-     background=null
      if(occupied){
-      addView(label(name.take(1).uppercase(),21f,Color.rgb(83,126,94),true),
+      addView(label(name.take(1).uppercase(),18f,Color.rgb(105,112,105),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",28f,Color.rgb(83,126,94),true),
+      addView(label("+",24f,Color.rgb(125,132,125),false),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
-    val avatarUrl=s.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
@@ -540,43 +529,46 @@ class RoomActivity : Activity() {
      avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
      loadAvatarInto(photo,avatarUrl)
     }
-    // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
+    val avatarSize=if(occupied)dp(56) else dp(58)
     val avatarStage=FrameLayout(this).apply{
-     clipChildren=false;clipToPadding=false
-     background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
-      intArrayOf(Color.rgb(229,235,222),Color.rgb(241,242,235),Color.rgb(202,232,210))).apply{
-       shape=GradientDrawable.OVAL
-       setStroke(dp(2),if(occupied)Color.rgb(83,126,94) else Color.rgb(190,205,186))
-      }
-     elevation=dp(5).toFloat()
-     addView(avatar,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
+     clipChildren=false
+     clipToPadding=false
+     background=GradientDrawable().apply{
+      shape=GradientDrawable.OVAL
+      setColor(Color.TRANSPARENT)
+      setStroke(dp(1),Color.rgb(190,194,188))
+     }
+     addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
     }
-    val totalXp=s.optLong("total_xp",0L)
+    val totalXp=seat.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
      val royal=RoyalSeatGifView(this)
-     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(80),dp(80),Gravity.CENTER))
+     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(64),dp(64),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(80),dp(80)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(64),dp(64)).apply{bottomMargin=dp(2)})
     if(occupied){
-     tile.addView(label(name,13f,Color.rgb(247,247,242),true).apply{
-      maxLines=2
-      minLines=1
+     tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
+      maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
       gravity=Gravity.CENTER
-      setPadding(dp(2),dp(2),dp(2),dp(1))
-      setShadowLayer(0f,0f,0f,Color.TRANSPARENT)
       includeFontPadding=false
-     },LinearLayout.LayoutParams(-1,dp(29)))
+     },LinearLayout.LayoutParams(-1,dp(18)))
+     if(publicId.isNotBlank()){
+      tile.addView(label("ID: $publicId",9f,Color.rgb(125,130,123),false).apply{
+       maxLines=1
+       ellipsize=android.text.TextUtils.TruncateAt.END
+       gravity=Gravity.CENTER
+       includeFontPadding=false
+      },LinearLayout.LayoutParams(-1,dp(15)))
+     }
     }else{
-     // المقعد الفارغ: علامة + ورقم صغير فقط، بلا أي كلمات.
-     tile.addView(label((i+1).toString(),11f,Color.rgb(103,111,101),true))
+     tile.addView(label((i+1).toString(),10f,Color.rgb(125,130,123),false))
     }
-    tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-    // Keep every seat cell the same height so empty and occupied seats align.
-     line.addView(tile,LinearLayout.LayoutParams(0,dp(132),1f).apply{
-      setMargins(dp(3),dp(2),dp(3),dp(2))
-     })
+    tile.setOnClickListener{seatClick(seat,i+1,uid,name)}
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(104),1f).apply{
+     setMargins(dp(2),dp(2),dp(2),dp(2))
+    })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
   }
