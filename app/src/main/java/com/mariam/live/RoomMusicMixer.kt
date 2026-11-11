@@ -49,12 +49,12 @@ class RoomMusicMixer(
     @Volatile private var lastBytesRead = 0
 
     fun diagnostics(): String =
-        "استدعاءات مسار الصوت: $callbackCount\\n" +
-        "بيانات مفكوكة: $decodedBytes بايت\\n" +
-        "مقاطع أضيفت للطابور: $queuedChunks\\n" +
-        "عينات موسيقى أُرسلت: $consumedSamples\\n" +
-        "مرات فراغ الطابور: $underrunCount\\n" +
-        "صيغة الصوت: $lastAudioFormat | التردد: $lastSampleRate | القنوات: $lastChannelCount | bytesRead: $lastBytesRead\\n" +
+        "استدعاءات مسار الصوت: $callbackCount\n" +
+        "بيانات مفكوكة: $decodedBytes بايت\n" +
+        "مقاطع أضيفت للطابور: $queuedChunks\n" +
+        "عينات موسيقى أُرسلت: $consumedSamples\n" +
+        "مرات فراغ الطابور: $underrunCount\n" +
+        "صيغة الصوت: $lastAudioFormat | التردد: $lastSampleRate | القنوات: $lastChannelCount | bytesRead: $lastBytesRead\n" +
         "المقاطع المتبقية: ${chunks.size} | يعمل: ${running.get()} | متوقف مؤقتاً: $paused"
 
     fun start() {
