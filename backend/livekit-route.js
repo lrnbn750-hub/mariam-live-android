@@ -252,10 +252,16 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       const { roomId, seatNumber } = req.params;
       const room = await getRoom(roomId);
       if (!room) return res.status(404).json({ error: "Room not found" });
-      if (String(room.owner_id) !== String(req.userId)) return res.status(403).json({ error: "Only the room owner can release seats" });
       const seat = Number(seatNumber);
       if (!Number.isInteger(seat) || seat < 1 || seat > 8) return res.status(400).json({ error: "Invalid seat" });
-      await db.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND seat_number=$2", [roomId, seat]);
+      const isOwner = String(room.owner_id) === String(req.userId);
+      // A speaker may leave their own seat; only the owner may release someone else's seat.
+      const result = isOwner
+        ? await db.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND seat_number=$2 RETURNING seat_number", [roomId, seat])
+        : await db.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND seat_number=$2 AND user_id=$3 RETURNING seat_number", [roomId, seat, req.userId]);
+      if (!result.rows.length) {
+        return res.status(403).json({ error: "You can only leave your own seat; only the room owner can release another speaker" });
+      }
       return res.json({ message: "Seat released" });
     } catch (error) {
       console.error("Release voice seat:", error.message);
