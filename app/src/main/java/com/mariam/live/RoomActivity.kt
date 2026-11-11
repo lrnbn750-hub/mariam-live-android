@@ -16,6 +16,7 @@ import android.net.Uri
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import android.view.Gravity
+import android.view.MotionEvent
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.Track
 import android.view.inputmethod.EditorInfo
@@ -42,6 +43,7 @@ class RoomActivity : Activity() {
  private lateinit var ownerIdView:TextView
  private var ownerProfileRequested=false
  private var loadedBackgroundUrl=""
+ private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
@@ -105,6 +107,82 @@ class RoomActivity : Activity() {
   room=LiveKit.create(applicationContext);loadIdentity()
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
+ private fun switchLiveRoom(direction:Int){
+  if(switchingRoom || leaving || roomId.isBlank())return
+  switchingRoom=true
+  Toast.makeText(this,if(direction>0)"جارٍ الانتقال إلى البث التالي..." else "جارٍ الرجوع إلى البث السابق...",Toast.LENGTH_SHORT).show()
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms",authToken)}
+    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحميل الغرف"))
+    val array=response.body.optJSONArray("rooms")?:JSONArray()
+    val active=ArrayList<Pair<String,String>>()
+    for(i in 0 until array.length()){
+     val item=array.optJSONObject(i)?:continue
+     val id=item.optString("id")
+     val name=item.optString("name","غرفة صوتية")
+     val count=item.optInt("member_count",0)
+     if(id.isNotBlank() && id!=roomId && count>=0)active.add(id to name)
+    }
+    val currentIndex=active.indexOfFirst{it.first==roomId}
+    // The current room may be omitted by the API in some configurations; use the
+    // returned active-room order and choose the first/last available destination.
+    val targetIndex=if(currentIndex<0){if(direction>0)0 else active.lastIndex}
+      else currentIndex+direction
+    if(targetIndex !in active.indices){
+     Toast.makeText(this@RoomActivity,"لا توجد غرف أخرى بهذا الاتجاه",Toast.LENGTH_SHORT).show()
+     switchingRoom=false
+     return@launch
+    }
+    val target=active[targetIndex]
+    val joined=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/${target.first}/join",JSONObject(),authToken)
+    }
+    if(joined.status !in 200..299)throw Exception(joined.body.optString("error","تعذر دخول البث الجديد"))
+    try{
+     stopRoomMusic(restoreMic=false)
+     if(connected)room.disconnect()
+     connected=false
+     withContext(Dispatchers.IO){
+      AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
+     }
+     stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+     val next=Intent(this@RoomActivity,RoomActivity::class.java)
+      .putExtra("room_id",target.first)
+      .putExtra("room_name",target.second)
+     startActivity(next)
+     finish()
+    }catch(e:Exception){
+     withContext(Dispatchers.IO){
+      AuthApi.post("/api/voice-rooms/${target.first}/leave",JSONObject().put("keep_open",true),authToken)
+     }
+     throw e
+    }
+   }catch(e:Exception){
+    switchingRoom=false
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر الانتقال بين الغرف",Toast.LENGTH_LONG).show()
+   }
+  }
+ }
+
+ override fun dispatchTouchEvent(event:MotionEvent):Boolean{
+  when(event.actionMasked){
+   MotionEvent.ACTION_DOWN->{swipeDownX=event.x;swipeDownY=event.y}
+   MotionEvent.ACTION_UP->{
+    val dx=event.x-swipeDownX
+    val dy=event.y-swipeDownY
+    val chatTop=if(::chatPanel.isInitialized){
+     val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()-window.decorView.rootView.top
+    }else height.toFloat()
+    if(swipeDownY<chatTop && kotlin.math.abs(dy)>dp(105) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.25f){
+     switchLiveRoom(if(dy<0)1 else -1)
+     return true
+    }
+   }
+  }
+  return super.dispatchTouchEvent(event)
+ }
+
  private fun buildPremiumRoomHeader():View{
   val card=LinearLayout(this).apply{
    orientation=0
