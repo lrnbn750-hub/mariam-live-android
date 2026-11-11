@@ -54,82 +54,126 @@ class ProfileActivity : Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        window.statusBarColor=Color.rgb(250,249,253);window.navigationBarColor=Color.WHITE
+        val green=Color.rgb(35,157,91)
+        val dark=Color.rgb(34,48,40)
+        val muted=Color.rgb(112,128,118)
+        val pale=Color.rgb(241,249,244)
+        purple=green
+        window.statusBarColor=Color.WHITE
+        window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        val root=LinearLayout(this).apply{orientation=1;setPadding(dp(20),dp(18),dp(20),dp(22));setBackgroundColor(Color.rgb(250,249,253))}
-        val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-        val back=TextView(this).apply{text="‹";textSize=30f;setTextColor(purple);gravity=Gravity.CENTER;setOnClickListener{finish()}}
+
+        fun panel()=android.graphics.drawable.GradientDrawable().apply{
+            setColor(Color.WHITE);cornerRadius=dp(20).toFloat()
+            setStroke(dp(1),Color.rgb(225,237,228))
+        }
+        fun actionButton(textValue:String,fill:Int,textColor:Int)=TextView(this).apply{
+            text=textValue;textSize=14f;gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(textColor)
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(fill);cornerRadius=dp(14).toFloat()
+            }
+            setPadding(dp(14),dp(13),dp(14),dp(13))
+        }
+
+        val root=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setBackgroundColor(Color.rgb(248,251,249))
+        }
+        val top=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(16),dp(8),dp(16),dp(8));setBackgroundColor(Color.WHITE)
+        }
+        val back=TextView(this).apply{
+            text="‹";textSize=32f;setTextColor(green);gravity=Gravity.CENTER
+            setOnClickListener{finish()}
+        }
         top.addView(back,LinearLayout.LayoutParams(dp(42),dp(48)))
-        top.addView(TextView(this).apply{text="الملف الشخصي";textSize=20f;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(35,34,53))},LinearLayout.LayoutParams(0,dp(48),1f))
-        root.addView(top)
-        val card=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(20).toFloat()}}
-        card.addView(TextView(this).apply{text="معلومات حسابك";textSize=18f;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(35,34,53))})
-        card.addView(caption("الصورة الشخصية"))
+        top.addView(TextView(this).apply{
+            text="ملفي الشخصي";textSize=20f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(dark)
+        },LinearLayout.LayoutParams(0,dp(48),1f))
+        top.addView(TextView(this).apply{
+            text="MARIAM LIVE";textSize=10f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(green)
+        })
+        root.addView(top,LinearLayout.LayoutParams(-1,-2))
+
+        val scroll=ScrollView(this).apply{clipToPadding=false;isFillViewport=false}
+        val content=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(16),dp(16),dp(16),dp(28))
+        }
+        scroll.addView(content)
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+
+        val hero=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+            setPadding(dp(18),dp(22),dp(18),dp(20))
+            background=android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(28,139,78),Color.rgb(61,184,112),Color.rgb(20,119,67))
+            ).apply{cornerRadius=dp(24).toFloat()}
+        }
+        hero.addView(TextView(this).apply{
+            text="حسابك • هويتك • حضورك";textSize=13f
+            setTextColor(Color.rgb(226,255,237))
+        })
         avatarPreview=ImageView(this).apply{
-            scaleType=ImageView.ScaleType.CENTER_CROP
-            clipToOutline=true
-            background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(239,233,255));setStroke(dp(2),purple)}
-            setImageDrawable(android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(239,233,255))})
+            scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true
+            background=android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL
+                setColor(Color.rgb(226,244,232));setStroke(dp(3),Color.WHITE)
+            }
+            setImageDrawable(android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(226,244,232))
+            })
             contentDescription="الصورة الشخصية"
         }
-        val avatarFrame=FrameLayout(this).apply{
-            clipChildren=false;clipToPadding=false
-        }
-        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(106),dp(106),Gravity.CENTER))
+        val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
+        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(108),dp(108),Gravity.CENTER))
         avatarRing=View(this).apply{
             background=android.graphics.drawable.GradientDrawable().apply{
                 shape=android.graphics.drawable.GradientDrawable.OVAL
-                setColor(Color.TRANSPARENT)
-                setStroke(dp(4),Color.rgb(201,158,75))
+                setColor(Color.TRANSPARENT);setStroke(dp(4),Color.rgb(255,225,145))
             }
-            isClickable=false
-            isFocusable=false
+            isClickable=false;isFocusable=false
         }
         avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(120),dp(120),Gravity.CENTER))
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
         avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(130),dp(126),Gravity.CENTER))
-        card.addView(avatarFrame,LinearLayout.LayoutParams(dp(130),dp(130)).apply{
-            gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(4)
+        hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(130),dp(130)).apply{topMargin=dp(10)})
+        hero.addView(TextView(this).apply{
+            text="صورتك الشخصية";textSize=16f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE);gravity=Gravity.CENTER
         })
-        frameToggle=TextView(this).apply{
-            text="جارٍ فحص الإطار..."
-            textSize=13f;gravity=Gravity.CENTER
-            typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(purple)
-            background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(Color.rgb(246,243,255));cornerRadius=dp(12).toFloat()
-                setStroke(dp(1),Color.rgb(218,207,255))
-            }
-            setPadding(dp(14),dp(10),dp(14),dp(10))
+        frameToggle=actionButton("جارٍ فحص الإطار...",Color.WHITE,green).apply{
             setOnClickListener{toggleRoyalFrame()}
         }
-        card.addView(frameToggle,LinearLayout.LayoutParams(dp(190),-2).apply{
-            gravity=Gravity.CENTER;bottomMargin=dp(8)
-        })
+        hero.addView(frameToggle,LinearLayout.LayoutParams(dp(205),-2).apply{topMargin=dp(10)})
+        content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         levelCard=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL
-            setPadding(dp(16),dp(14),dp(16),dp(14))
+            orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14))
             background=android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(34,25,16),Color.rgb(83,54,22),Color.rgb(35,25,17))
-            ).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(201,158,75))}
+                intArrayOf(Color.rgb(25,105,65),Color.rgb(38,143,83),Color.rgb(20,91,56))
+            ).apply{cornerRadius=dp(20).toFloat();setStroke(dp(1),Color.rgb(130,207,157))}
         }
         val levelHeader=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
         levelHeader.addView(TextView(this).apply{
-            text="✦  مستوى Mariam Live"
-            textSize=14f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(255,224,155))
-        },LinearLayout.LayoutParams(0,dp(28),1f))
+            text="✦ مستوى Mariam Live";textSize=14f
+            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE)
+        },LinearLayout.LayoutParams(0,dp(30),1f))
         levelNumber=TextView(this).apply{
-            text="LV 1";textSize=22f;typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(255,215,115));gravity=Gravity.CENTER
+            text="LV 1";textSize=23f
+            typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(255,230,165));gravity=Gravity.CENTER
         }
-        levelHeader.addView(levelNumber)
-        levelCard.addView(levelHeader)
+        levelHeader.addView(levelNumber);levelCard.addView(levelHeader)
         levelRank=TextView(this).apply{
             text="المبتدئ";textSize=13f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE);setPadding(0,dp(5),0,dp(7))
+            setTextColor(Color.WHITE);setPadding(0,dp(4),0,dp(8))
         }
         levelCard.addView(levelRank)
         levelProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply{
@@ -137,60 +181,67 @@ class ProfileActivity : Activity() {
             progressDrawable=android.graphics.drawable.ClipDrawable(
                 android.graphics.drawable.GradientDrawable(
                     android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(255,226,143),Color.rgb(194,130,36))
+                    intArrayOf(Color.rgb(255,237,177),Color.rgb(255,199,89))
                 ).apply{cornerRadius=dp(8).toFloat()},
-                Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL
+                Gravity.LEFT,android.graphics.drawable.ClipDrawable.HORIZONTAL
             )
-            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(91,69,43))
+            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(24,92,57))
         }
         levelCard.addView(levelProgress,LinearLayout.LayoutParams(-1,dp(9)))
         levelXp=TextView(this).apply{
-            text="0 / 100 XP";textSize=11f;setTextColor(Color.rgb(238,213,167))
+            text="0 / 100 XP";textSize=11f;setTextColor(Color.rgb(226,255,237))
             gravity=Gravity.END;setPadding(0,dp(7),0,0)
         }
         levelCard.addView(levelXp)
-        card.addView(levelCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(5)})
-        val inventoryButton=TextView(this).apply{
-            text="🎒  حقيبتي — إطارات وخلفيات"
-            textSize=15f;gravity=Gravity.CENTER
-            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
-            background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(Color.rgb(246,243,255));cornerRadius=dp(14).toFloat()
-                setStroke(dp(1),Color.rgb(218,207,255))
-            }
-            setPadding(dp(12),dp(14),dp(12),dp(14))
+        content.addView(levelCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+
+        val toolsCard=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(14),dp(14),dp(14));background=panel()
+        }
+        toolsCard.addView(TextView(this).apply{
+            text="أدوات الحساب";textSize=17f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(dark)
+        })
+        val inventoryButton=actionButton("🎒  حقيبتي — الإطارات والخلفيات",pale,green).apply{
             setOnClickListener{startActivity(Intent(this@ProfileActivity,InventoryActivity::class.java))}
         }
-        card.addView(inventoryButton,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(8)})
-        val choosePhoto=TextView(this).apply{
-            text="اختيار صورة من الهاتف";textSize=14f;gravity=Gravity.CENTER
-            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
-            background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.rgb(246,243,255));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(218,207,255))}
-            setPadding(dp(14),dp(13),dp(14),dp(13))
-            setOnClickListener{pickPhoto()}
+        toolsCard.addView(inventoryButton,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+        val choosePhoto=actionButton("＋  تغيير الصورة الشخصية",pale,green).apply{setOnClickListener{pickPhoto()}}
+        toolsCard.addView(choosePhoto,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
+        content.addView(toolsCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+
+        val details=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(15),dp(16),dp(16));background=panel()
         }
-        card.addView(choosePhoto,LinearLayout.LayoutParams(-1,-2))
-        card.addView(caption("رقم الحساب (ID)"))
-        val idView=TextView(this).apply{text="جارٍ تحميل المعرّف...";textSize=13f;setTextColor(purple);setPadding(dp(12),dp(13),dp(12),dp(13));background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.rgb(246,243,255));cornerRadius=dp(12).toFloat()}}
-        card.addView(idView,LinearLayout.LayoutParams(-1,-2))
-        card.addView(caption("اسم العرض"))
-        displayName=field("اكتب الاسم الذي يظهر للناس");card.addView(displayName,LinearLayout.LayoutParams(-1,-2))
-        card.addView(caption("نبذة عنك"))
-        bio=field("اكتب نبذة قصيرة");card.addView(bio,LinearLayout.LayoutParams(-1,-2))
-        card.addView(caption("الدولة"))
-        country=field("الدولة");card.addView(country,LinearLayout.LayoutParams(-1,-2))
-        status=TextView(this).apply{textSize=12f;setTextColor(Color.rgb(180,65,75));setPadding(0,dp(10),0,dp(4))}
-        card.addView(status)
-        val save=TextView(this).apply{text="حفظ التعديلات";textSize=15f;gravity=Gravity.CENTER;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=android.graphics.drawable.GradientDrawable().apply{setColor(purple);cornerRadius=dp(14).toFloat()};setPadding(0,dp(15),0,dp(15));setOnClickListener{saveProfile()}}
-        card.addView(save,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
-        val logout=TextView(this).apply{
-            text="تسجيل الخروج";textSize=15f;gravity=Gravity.CENTER
-            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(190,48,65))
+        details.addView(TextView(this).apply{
+            text="بيانات الحساب";textSize=17f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(dark)
+        })
+        details.addView(caption("رقم الحساب (ID)"))
+        val idView=TextView(this).apply{
+            text="جارٍ تحميل المعرّف...";textSize=14f;setTextColor(green)
+            setPadding(dp(13),dp(13),dp(13),dp(13))
             background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(Color.rgb(255,242,244));cornerRadius=dp(14).toFloat()
-                setStroke(dp(1),Color.rgb(245,210,216))
+                setColor(pale);cornerRadius=dp(12).toFloat()
             }
-            setPadding(0,dp(15),0,dp(15))
+        }
+        details.addView(idView,LinearLayout.LayoutParams(-1,-2))
+        details.addView(caption("اسم العرض"))
+        displayName=field("اكتب الاسم الذي يظهر للناس");details.addView(displayName,LinearLayout.LayoutParams(-1,-2))
+        details.addView(caption("نبذة عنك"))
+        bio=field("اكتب نبذة قصيرة").apply{minLines=2;gravity=Gravity.TOP or Gravity.START}
+        details.addView(bio,LinearLayout.LayoutParams(-1,-2))
+        details.addView(caption("الدولة"))
+        country=field("الدولة");details.addView(country,LinearLayout.LayoutParams(-1,-2))
+        status=TextView(this).apply{
+            textSize=12f;setTextColor(Color.rgb(180,65,75));setPadding(0,dp(10),0,dp(4))
+        }
+        details.addView(status)
+        val save=actionButton("حفظ التعديلات",green,Color.WHITE).apply{setOnClickListener{saveProfile()}}
+        details.addView(save,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+        content.addView(details,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+
+        val logout=actionButton("تسجيل الخروج",Color.rgb(255,242,242),Color.rgb(190,48,65)).apply{
             setOnClickListener{
                 android.app.AlertDialog.Builder(this@ProfileActivity)
                     .setTitle("تسجيل الخروج")
@@ -200,9 +251,8 @@ class ProfileActivity : Activity() {
                     .show()
             }
         }
-        card.addView(logout,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
-        root.addView(card,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
-        setContentView(ScrollView(this).apply{addView(root)})
+        content.addView(logout,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+        setContentView(root)
         loadProfile(idView)
         loadLevelProgress()
         loadRoyalFrameState()
