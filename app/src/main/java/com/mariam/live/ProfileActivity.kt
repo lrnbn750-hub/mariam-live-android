@@ -222,19 +222,33 @@ class ProfileActivity : Activity() {
                 val items=result.body.optJSONArray("items")?:org.json.JSONArray()
                 var owned=false
                 var equipped=false
+                var equippedUrl=""
+                var equippedId=""
                 for(i in 0 until items.length()){
                     val item=items.optJSONObject(i)?:continue
-                    if(item.optString("item_id")==royalFrameItemId){
-                        owned=item.optBoolean("owned")
-                        equipped=item.optBoolean("equipped")
+                    if(item.optString("item_type")=="frame" && item.optBoolean("owned") && item.optBoolean("equipped")){
+                        equipped=true
+                        equippedId=item.optString("item_id")
+                        equippedUrl=item.optString("asset_url")
                         break
                     }
+                    if(item.optString("item_id")==royalFrameItemId) owned=item.optBoolean("owned")
                 }
                 runOnUiThread{
                     if(isFinishing)return@runOnUiThread
                     royalFrameOwned=owned
                     royalFrameEquipped=equipped
                     renderRoyalFrameState()
+                    if(equipped && equippedUrl.startsWith("https://")){
+                        executor.execute{
+                            try{
+                                val bytes=URL(equippedUrl).openConnection().apply{connectTimeout=12000;readTimeout=15000}.getInputStream().use{it.readBytes()}
+                                runOnUiThread{if(!isFinishing)royalFrame.setGif(bytes)}
+                            }catch(e:Exception){
+                                android.util.Log.e("ProfileFrame","Could not load equipped frame $equippedId",e)
+                            }
+                        }
+                    }
                 }
             }catch(e:Exception){
                 runOnUiThread{
@@ -279,8 +293,7 @@ class ProfileActivity : Activity() {
                 }
                 if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحديث الإطار"))
                 runOnUiThread{
-                    royalFrameEquipped=!royalFrameEquipped
-                    renderRoyalFrameState()
+                    loadRoyalFrameState()
                 }
             }catch(e:Exception){
                 runOnUiThread{
@@ -515,11 +528,15 @@ class ProfileActivity : Activity() {
 }
 
 private class RoyalGifFrame(context:android.content.Context):View(context){
-    private val movie:android.graphics.Movie?=try{
-        context.resources.openRawResource(R.drawable.royal100).use{android.graphics.Movie.decodeStream(it)}
-    }catch(_:Exception){null}
+    private var movie:android.graphics.Movie?=null
     private var startedAt=0L
     private var running=false
+
+    fun setGif(bytes:ByteArray){
+        movie=android.graphics.Movie.decodeByteArray(bytes,0,bytes.size)
+        startedAt=android.os.SystemClock.uptimeMillis()
+        if(running)postInvalidateOnAnimation()
+    }
 
     fun startAnimation(){
         if(movie==null)return
@@ -539,9 +556,8 @@ private class RoyalGifFrame(context:android.content.Context):View(context){
         val gif=movie?:return
         if(!running)return
         val duration=gif.duration().takeIf{it>0}?:1000
-        val now=android.os.SystemClock.uptimeMillis()
-        gif.setTime(((now-startedAt)%duration).toInt())
-        val scale=minOf(width.toFloat()/gif.width(),height.toFloat()/gif.height())
+        gif.setTime(((android.os.SystemClock.uptimeMillis()-startedAt)%duration).toInt())
+        val scale=minOf(width.toFloat()/gif.width().coerceAtLeast(1),height.toFloat()/gif.height().coerceAtLeast(1))
         val save=canvas.save()
         canvas.translate((width-gif.width()*scale)/2f,(height-gif.height()*scale)/2f)
         canvas.scale(scale,scale)
