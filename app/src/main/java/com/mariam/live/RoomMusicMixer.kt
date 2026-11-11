@@ -81,9 +81,16 @@ class RoomMusicMixer(
             while (running.get() || localChunks.isNotEmpty()) {
                 if (paused) { Thread.sleep(40); continue }
                 val piece = localChunks.poll(100, TimeUnit.MILLISECONDS) ?: continue
-                val bytes = ByteBuffer.allocate(piece.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-                bytes.asShortBuffer().put(piece)
-                track.write(bytes.array(), 0, piece.size * 2)
+                // Apply the same in-app volume slider to local monitoring as to the room mix.
+                val gain = volume.coerceIn(0f, 1f)
+                val adjusted = ShortArray(piece.size) { index ->
+                    (piece[index] * gain).toInt()
+                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                        .toShort()
+                }
+                val bytes = ByteBuffer.allocate(adjusted.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+                bytes.asShortBuffer().put(adjusted)
+                track.write(bytes.array(), 0, adjusted.size * 2)
             }
         } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
         catch (error: Exception) { if (running.get()) onError("تعذر تشغيل الصوت على هاتفك: " + (error.message ?: "خطأ صوت")) }
