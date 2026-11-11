@@ -131,6 +131,18 @@ class ProfileActivity : Activity() {
         }
         levelCard.addView(levelXp)
         card.addView(levelCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(5)})
+        val inventoryButton=TextView(this).apply{
+            text="🎒  حقيبتي — إطارات وخلفيات"
+            textSize=15f;gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.rgb(246,243,255));cornerRadius=dp(14).toFloat()
+                setStroke(dp(1),Color.rgb(218,207,255))
+            }
+            setPadding(dp(12),dp(14),dp(12),dp(14))
+            setOnClickListener{startActivity(Intent(this@ProfileActivity,InventoryActivity::class.java))}
+        }
+        card.addView(inventoryButton,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(8)})
         val choosePhoto=TextView(this).apply{
             text="اختيار صورة من الهاتف";textSize=14f;gravity=Gravity.CENTER
             typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
