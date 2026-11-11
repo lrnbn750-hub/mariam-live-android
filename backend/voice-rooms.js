@@ -4,7 +4,7 @@ module.exports = (app, db, authenticateToken) => {
   app.get("/api/profile", authenticateToken, async (req, res) => {
     try {
       const result = await db.query(
-        `SELECT u.username, p.display_name, p.bio, p.country, p.avatar_url
+        `SELECT u.username, u.public_id, p.display_name, p.bio, p.country, p.avatar_url
          FROM users u
          LEFT JOIN user_profiles p ON p.user_id = u.id
          WHERE u.id = $1 LIMIT 1`,
