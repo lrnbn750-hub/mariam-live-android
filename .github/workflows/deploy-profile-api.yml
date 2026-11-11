@@ -55,6 +55,20 @@ jobs:
           rm -f /tmp/mariam-levels-migration.sql
           REMOTE
 
+      - name: Install profile inventory tables
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/inventory-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-inventory-migration.sql
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME"; test -n "$DB_USER"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/mariam-inventory-migration.sql
+          rm -f /tmp/mariam-inventory-migration.sql
+          REMOTE
+
       - name: Install route, preserve backup, and restart API
         run: |
           set -euo pipefail
