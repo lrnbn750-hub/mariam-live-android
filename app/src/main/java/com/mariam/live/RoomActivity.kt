@@ -10,8 +10,6 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
 import android.widget.ImageView
-import android.net.Uri
-import java.io.ByteArrayOutputStream
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -35,7 +33,6 @@ class RoomActivity : Activity() {
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private var loadedBackgroundUrl=""
- private val backgroundPickerRequest=7317
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
@@ -68,7 +65,6 @@ class RoomActivity : Activity() {
   val roomTitle=label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.WHITE,true).apply{
    setPadding(dp(4),dp(10),dp(4),dp(5))
    setShadowLayer(dp(3).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
-   setOnClickListener{showRoomBackgroundSettings()}
    contentDescription="إعدادات خلفية الغرفة"
   }
   roomPage.addView(roomTitle)
@@ -323,91 +319,6 @@ class RoomActivity : Activity() {
     mic.visibility=if(isSeated)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
-  }
- }
-
- private fun showRoomBackgroundSettings(){
-  if(!isOwner){
-   Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show()
-   return
-  }
-  AlertDialog.Builder(this)
-   .setTitle("خلفية الغرفة")
-   .setItems(arrayOf("اختيار صورة من الهاتف","إزالة الخلفية الحالية")){_,which->
-    if(which==0) chooseRoomBackground() else clearRoomBackground()
-   }
-   .setNegativeButton("إلغاء",null)
-   .show()
- }
-
- private fun chooseRoomBackground(){
-  val pick=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
-   type="image/*"
-   addCategory(Intent.CATEGORY_OPENABLE)
-   addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-  }
-  startActivityForResult(pick,backgroundPickerRequest)
- }
-
- @Deprecated("Deprecated in Android API; retained for broad device compatibility")
- override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
-  super.onActivityResult(requestCode,resultCode,data)
-  if(requestCode!=backgroundPickerRequest || resultCode!=RESULT_OK)return
-  val uri=data?.data?:return
-  try{contentResolver.takePersistableUriPermission(uri,data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){}
-  uploadRoomBackground(uri)
- }
-
- private fun uploadRoomBackground(uri:Uri){
-  Toast.makeText(this,"جارٍ حفظ خلفية الغرفة...",Toast.LENGTH_SHORT).show()
-  scope.launch{
-   try{
-    val encoded=withContext(Dispatchers.IO){
-     val source=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it)}
-      ?:throw Exception("تعذر قراءة الصورة المختارة")
-     val scale=minOf(1f,1280f/maxOf(source.width,source.height))
-     val resized=if(scale<1f)Bitmap.createScaledBitmap(source,
-      (source.width*scale).toInt().coerceAtLeast(1),(source.height*scale).toInt().coerceAtLeast(1),true) else source
-     val bytes=ByteArrayOutputStream()
-     var quality=82
-     do{
-      bytes.reset()
-      resized.compress(Bitmap.CompressFormat.JPEG,quality,bytes)
-      quality-=8
-     }while(bytes.size()>3*1024*1024 && quality>=42)
-     if(bytes.size()>3*1024*1024)throw Exception("حجم الخلفية كبير جداً")
-     val result=android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP)
-     if(resized!==source)resized.recycle()
-     if(!source.isRecycled)source.recycle()
-     result
-    }
-    val response=withContext(Dispatchers.IO){
-     AuthApi.post("/api/voice-rooms/$roomId/background",JSONObject().put("background_base64",encoded),authToken)
-    }
-    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر حفظ الخلفية"))
-    val url=response.body.optString("backgroundUrl")
-    if(url.isNotBlank() && url!="null")applyRoomBackground(url)
-    Toast.makeText(this@RoomActivity,"تم تغيير خلفية الغرفة لجميع الأعضاء",Toast.LENGTH_LONG).show()
-    loadSeats()
-   }catch(e:Exception){
-    Toast.makeText(this@RoomActivity,e.message?:"تعذر تغيير الخلفية",Toast.LENGTH_LONG).show()
-   }
-  }
- }
-
- private fun clearRoomBackground(){
-  scope.launch{
-   try{
-    val response=withContext(Dispatchers.IO){
-     AuthApi.delete("/api/voice-rooms/$roomId/background",authToken)
-    }
-    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر إزالة الخلفية"))
-    applyRoomBackground("")
-    Toast.makeText(this@RoomActivity,"تمت إزالة الخلفية",Toast.LENGTH_SHORT).show()
-    loadSeats()
-   }catch(e:Exception){
-    Toast.makeText(this@RoomActivity,e.message?:"تعذر إزالة الخلفية",Toast.LENGTH_LONG).show()
-   }
   }
  }
 
