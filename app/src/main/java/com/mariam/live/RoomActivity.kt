@@ -627,7 +627,10 @@ class RoomActivity : Activity() {
 
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){
-  seatRefreshJob?.cancel()scope.cancel();super.onDestroy()}
+  seatRefreshJob?.cancel()
+  scope.cancel()
+  super.onDestroy()
+ }
 }
 
 /** أيقونات Vector مخصصة مرسومة على Canvas بدون رموز Emoji. */
