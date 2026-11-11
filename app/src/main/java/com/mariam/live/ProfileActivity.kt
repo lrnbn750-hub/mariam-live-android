@@ -2,22 +2,32 @@ package com.mariam.live
 
 import android.app.Activity
 import android.os.Bundle
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.content.Intent
+import android.net.Uri
+import android.util.Base64
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.net.URL
 import java.util.concurrent.Executors
 
 class ProfileActivity : Activity() {
     private val executor=Executors.newSingleThreadExecutor()
     private val purple=Color.rgb(112,75,246)
     private var userId=""
+    private var avatarUrl=""
+    private var selectedPhoto:Uri?=null
     private lateinit var displayName:EditText
     private lateinit var bio:EditText
     private lateinit var country:EditText
-    private lateinit var avatar:EditText
+    private lateinit var avatarPreview:ImageView
     private lateinit var status:TextView
+    private val photoPickerCode=7421
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun field(hintText:String)=EditText(this).apply{
         hint=hintText;textSize=15f;setTextColor(Color.rgb(35,34,53))
@@ -34,7 +44,7 @@ class ProfileActivity : Activity() {
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         window.statusBarColor=Color.rgb(250,249,253);window.navigationBarColor=Color.WHITE
-        window.decorView.systemUiVisibility=android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val root=LinearLayout(this).apply{orientation=1;setPadding(dp(20),dp(18),dp(20),dp(22));setBackgroundColor(Color.rgb(250,249,253))}
         val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
         val back=TextView(this).apply{text="‹";textSize=30f;setTextColor(purple);gravity=Gravity.CENTER;setOnClickListener{finish()}}
@@ -43,6 +53,23 @@ class ProfileActivity : Activity() {
         root.addView(top)
         val card=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(20).toFloat()}}
         card.addView(TextView(this).apply{text="معلومات حسابك";textSize=18f;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(35,34,53))})
+        card.addView(caption("الصورة الشخصية"))
+        avatarPreview=ImageView(this).apply{
+            scaleType=ImageView.ScaleType.CENTER_CROP
+            clipToOutline=true
+            background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(239,233,255));setStroke(dp(2),purple)}
+            setImageDrawable(android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(239,233,255))})
+            contentDescription="الصورة الشخصية"
+        }
+        card.addView(avatarPreview,LinearLayout.LayoutParams(dp(112),dp(112)).apply{gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)})
+        val choosePhoto=TextView(this).apply{
+            text="اختيار صورة من الهاتف";textSize=14f;gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
+            background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.rgb(246,243,255));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(218,207,255))}
+            setPadding(dp(14),dp(13),dp(14),dp(13))
+            setOnClickListener{pickPhoto()}
+        }
+        card.addView(choosePhoto,LinearLayout.LayoutParams(-1,-2))
         card.addView(caption("رقم الحساب (ID)"))
         val idView=TextView(this).apply{text="جارٍ تحميل المعرّف...";textSize=13f;setTextColor(purple);setPadding(dp(12),dp(13),dp(12),dp(13));background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.rgb(246,243,255));cornerRadius=dp(12).toFloat()}}
         card.addView(idView,LinearLayout.LayoutParams(-1,-2))
@@ -52,9 +79,6 @@ class ProfileActivity : Activity() {
         bio=field("اكتب نبذة قصيرة");card.addView(bio,LinearLayout.LayoutParams(-1,-2))
         card.addView(caption("الدولة"))
         country=field("الدولة");card.addView(country,LinearLayout.LayoutParams(-1,-2))
-        card.addView(caption("رابط صورة الملف الشخصي"))
-        avatar=field("https://...");card.addView(avatar,LinearLayout.LayoutParams(-1,-2))
-        card.addView(TextView(this).apply{text="ملاحظة: رفع الصور من الهاتف يحتاج خدمة رفع ملفات على الخادم؛ هذا الحقل يقبل رابط صورة فقط حالياً.";textSize=11f;setTextColor(Color.rgb(135,130,150));setPadding(0,dp(7),0,0)})
         status=TextView(this).apply{textSize=12f;setTextColor(Color.rgb(180,65,75));setPadding(0,dp(10),0,dp(4))}
         card.addView(status)
         val save=TextView(this).apply{text="حفظ التعديلات";textSize=15f;gravity=Gravity.CENTER;typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE);background=android.graphics.drawable.GradientDrawable().apply{setColor(purple);cornerRadius=dp(14).toFloat()};setPadding(0,dp(15),0,dp(15));setOnClickListener{saveProfile()}}
@@ -81,6 +105,27 @@ class ProfileActivity : Activity() {
         setContentView(ScrollView(this).apply{addView(root)})
         loadProfile(idView)
     }
+    private fun pickPhoto(){
+        val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
+            addCategory(Intent.CATEGORY_OPENABLE);type="image/*"
+        }
+        startActivityForResult(intent,photoPickerCode)
+    }
+    @Deprecated("Deprecated in Android")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==photoPickerCode && resultCode==RESULT_OK){
+            val uri=data?.data?:return
+            selectedPhoto=uri
+            try{
+                contentResolver.openInputStream(uri)?.use{stream->
+                    val bitmap=BitmapFactory.decodeStream(stream)
+                    if(bitmap!=null)avatarPreview.setImageBitmap(bitmap)
+                }
+            }catch(_:Exception){}
+            uploadPhoto(uri)
+        }
+    }
     private fun loadProfile(idView:TextView){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
         if(token.isNullOrBlank()){finish();return}
@@ -93,15 +138,60 @@ class ProfileActivity : Activity() {
                 userId=user.optString("id")
                 val profile=AuthApi.get("/api/users/$userId",token)
                 val data=if(profile.status in 200..299)(profile.body.optJSONObject("user")?:profile.body)else user
+                val url=data.optString("avatar_url").takeUnless{it=="null"}?:""
                 runOnUiThread{
-                    idView.text=if(user.has("public_id") && !user.isNull("public_id")) user.optString("public_id") else "سيظهر بعد تحديث الخادم"
+                    idView.text=if(user.has("public_id") && !user.isNull("public_id")) user.optString("public_id") else "حسابك"
                     displayName.setText(data.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
                     bio.setText(data.optString("bio").takeUnless{it=="null"}?:"")
                     country.setText(data.optString("country").takeUnless{it=="null"}?:"")
-                    avatar.setText(data.optString("avatar_url").takeUnless{it=="null"}?:"")
+                    avatarUrl=url
                     status.text=""
+                    if(url.isNotBlank())loadAvatarPreview(url)
                 }
             }catch(e:Exception){runOnUiThread{status.text=e.message?:"تعذر تحميل البيانات"}}
+        }
+    }
+    private fun loadAvatarPreview(url:String){
+        executor.execute{
+            try{
+                val bitmap=URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{BitmapFactory.decodeStream(it)}
+                if(bitmap!=null)runOnUiThread{if(!isFinishing)avatarPreview.setImageBitmap(bitmap)}
+            }catch(_:Exception){}
+        }
+    }
+    private fun uploadPhoto(uri:Uri){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        status.setTextColor(Color.rgb(85,80,105));status.text="جارٍ تجهيز الصورة ورفعها..."
+        executor.execute{
+            try{
+                val source=contentResolver.openInputStream(uri)?.use{it.readBytes()}?:throw Exception("تعذر قراءة الصورة")
+                val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
+                BitmapFactory.decodeByteArray(source,0,source.size,bounds)
+                var sample=1
+                while(bounds.outWidth/sample>1200 || bounds.outHeight/sample>1200)sample*=2
+                val bitmap=BitmapFactory.decodeByteArray(source,0,source.size,BitmapFactory.Options().apply{inSampleSize=sample})
+                    ?:throw Exception("صيغة الصورة غير مدعومة")
+                val scaled=if(bitmap.width>900 || bitmap.height>900){
+                    val ratio=minOf(900f/bitmap.width,900f/bitmap.height)
+                    Bitmap.createScaledBitmap(bitmap,(bitmap.width*ratio).toInt().coerceAtLeast(1),(bitmap.height*ratio).toInt().coerceAtLeast(1),true)
+                }else bitmap
+                val output=ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG,82,output)
+                val bytes=output.toByteArray()
+                if(bytes.size>1536*1024)throw Exception("الصورة كبيرة، اختر صورة أصغر")
+                val payload=JSONObject().put("avatar_base64",Base64.encodeToString(bytes,Base64.NO_WRAP))
+                val result=AuthApi.post("/api/profile/avatar",payload,token)
+                if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر رفع الصورة"))
+                avatarUrl=result.body.optString("avatar_url")
+                runOnUiThread{
+                    status.setTextColor(Color.rgb(35,145,95))
+                    status.text="تم رفع الصورة الشخصية بنجاح، وستظهر في مقاعد الغرفة الصوتية"
+                }
+                if(scaled!==bitmap)scaled.recycle()
+                if(bitmap!==scaled)bitmap.recycle()
+            }catch(e:Exception){
+                runOnUiThread{status.setTextColor(Color.rgb(180,65,75));status.text=e.message?:"تعذر رفع الصورة"}
+            }
         }
     }
     private fun saveProfile(){
@@ -111,12 +201,15 @@ class ProfileActivity : Activity() {
         val payload=JSONObject().put("display_name",name)
             .put("bio",bio.text.toString().trim())
             .put("country",country.text.toString().trim())
-            .put("avatar_url",avatar.text.toString().trim())
-        status.text="جارٍ حفظ التعديلات..."
+            .put("avatar_url",avatarUrl)
+        status.setTextColor(Color.rgb(85,80,105));status.text="جارٍ حفظ التعديلات..."
         executor.execute{
             try{
                 val result=AuthApi.put("/api/profile",payload,token)
-                runOnUiThread{status.text=if(result.status in 200..299)"تم حفظ الملف الشخصي بنجاح" else result.body.optString("error","تعذر حفظ التعديلات")}
+                runOnUiThread{
+                    status.setTextColor(if(result.status in 200..299)Color.rgb(35,145,95) else Color.rgb(180,65,75))
+                    status.text=if(result.status in 200..299)"تم حفظ الملف الشخصي بنجاح" else result.body.optString("error","تعذر حفظ التعديلات")
+                }
             }catch(_:Exception){runOnUiThread{status.text="تعذر الاتصال بالخادم"}}
         }
     }
