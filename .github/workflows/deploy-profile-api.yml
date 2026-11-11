@@ -40,6 +40,20 @@ jobs:
             backend/profile-route.js \
             mariam-admin@185.174.252.118:/tmp/mariam-profile-route.js
 
+
+      - name: Install level progression tables
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/levels-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-levels-migration.sql
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          test -n "$DB_NAME"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -f /tmp/mariam-levels-migration.sql
+          rm -f /tmp/mariam-levels-migration.sql
+          REMOTE
+
       - name: Install route, preserve backup, and restart API
         run: |
           set -euo pipefail
