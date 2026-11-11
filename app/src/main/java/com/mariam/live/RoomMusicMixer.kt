@@ -38,6 +38,24 @@ class RoomMusicMixer(
     private var currentChunk: ShortArray? = null
     private var currentIndex = 0
     private var reusableMixBuffer: ByteBuffer? = null
+    @Volatile private var callbackCount = 0L
+    @Volatile private var decodedBytes = 0L
+    @Volatile private var queuedChunks = 0L
+    @Volatile private var consumedSamples = 0L
+    @Volatile private var underrunCount = 0L
+    @Volatile private var lastAudioFormat = -1
+    @Volatile private var lastSampleRate = 0
+    @Volatile private var lastChannelCount = 0
+    @Volatile private var lastBytesRead = 0
+
+    fun diagnostics(): String =
+        "استدعاءات مسار الصوت: $callbackCount\\n" +
+        "بيانات مفكوكة: $decodedBytes بايت\\n" +
+        "مقاطع أضيفت للطابور: $queuedChunks\\n" +
+        "عينات موسيقى أُرسلت: $consumedSamples\\n" +
+        "مرات فراغ الطابور: $underrunCount\\n" +
+        "صيغة الصوت: $lastAudioFormat | التردد: $lastSampleRate | القنوات: $lastChannelCount | bytesRead: $lastBytesRead\\n" +
+        "المقاطع المتبقية: ${chunks.size} | يعمل: ${running.get()} | متوقف مؤقتاً: $paused"
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -65,6 +83,11 @@ class RoomMusicMixer(
         bytesRead: Int,
         captureTimeNs: Long
     ): BufferResponse? {
+        callbackCount++
+        lastAudioFormat = audioFormat
+        lastSampleRate = sampleRate
+        lastChannelCount = channelCount
+        lastBytesRead = bytesRead
         if (!microphoneEnabled) {
             for (i in 0 until originalBuffer.capacity()) originalBuffer.put(i, 0)
         }
@@ -114,10 +137,12 @@ class RoomMusicMixer(
             currentChunk = chunks.poll()
             currentIndex = 0
             if (currentChunk == null) {
+                underrunCount++
                 if (decoderFinished.get() && running.compareAndSet(true, false)) onEnded()
                 return 0
             }
         }
+        consumedSamples++
         return currentChunk!![currentIndex++].toInt()
     }
 
@@ -183,6 +208,7 @@ class RoomMusicMixer(
                     else -> if (outputIndex >= 0) {
                         val output = codec.getOutputBuffer(outputIndex)
                         if (output != null && info.size > 0) {
+                            decodedBytes += info.size
                             output.position(info.offset)
                             output.limit(info.offset + info.size)
                             val data = ByteArray(info.size)
@@ -263,6 +289,7 @@ class RoomMusicMixer(
             val end = min(offset + 960, converted.size)
             val piece = converted.copyOfRange(offset, end)
             if (!chunks.offer(piece, 100, TimeUnit.MILLISECONDS)) continue
+            queuedChunks++
             offset = end
         }
     }
