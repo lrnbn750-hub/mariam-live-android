@@ -71,22 +71,38 @@ class RoomMusicMixer(
 
         if (paused || !running.get() || channelCount <= 0 ||
             (audioFormat != AudioFormat.ENCODING_PCM_16BIT &&
-             audioFormat != AudioFormat.ENCODING_DEFAULT)
+             audioFormat != AudioFormat.ENCODING_DEFAULT &&
+             audioFormat != AudioFormat.ENCODING_PCM_FLOAT)
         ) return null
 
-        val byteCount = originalBuffer.capacity()
+        // LiveKit can provide either PCM16 or PCM_FLOAT depending on its audio device.
+        // The mixer must return samples in the exact same format or the SDK will interpret
+        // the music bytes incorrectly (which can result in silence).
+        val bytesPerSample = if (audioFormat == AudioFormat.ENCODING_PCM_FLOAT) 4 else 2
+        val byteCount = originalBuffer.capacity() - (originalBuffer.capacity() % bytesPerSample)
+        if (byteCount <= 0) return null
+
         var output = reusableMixBuffer
         if (output == null || output.capacity() != byteCount) {
             output = ByteBuffer.allocateDirect(byteCount).order(ByteOrder.nativeOrder())
             reusableMixBuffer = output
         }
         output.clear()
-        val samples = output.order(ByteOrder.nativeOrder()).asShortBuffer()
-        val frames = (byteCount / 2) / channelCount
-        for (frame in 0 until frames) {
-            val sample = (nextMusicSample() * volume.coerceIn(0f, 1f))
-                .toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            repeat(channelCount) { samples.put(sample) }
+        val frames = (byteCount / bytesPerSample) / channelCount
+        if (audioFormat == AudioFormat.ENCODING_PCM_FLOAT) {
+            val samples = output.asFloatBuffer()
+            for (frame in 0 until frames) {
+                val sample = (nextMusicSample() / 32768f * volume.coerceIn(0f, 1f))
+                    .coerceIn(-1f, 1f)
+                repeat(channelCount) { samples.put(sample) }
+            }
+        } else {
+            val samples = output.asShortBuffer()
+            for (frame in 0 until frames) {
+                val sample = (nextMusicSample() * volume.coerceIn(0f, 1f))
+                    .toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                repeat(channelCount) { samples.put(sample) }
+            }
         }
         output.position(0)
         output.limit(byteCount)
