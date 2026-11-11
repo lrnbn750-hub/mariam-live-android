@@ -51,6 +51,10 @@ class RoomActivity : Activity() {
  private lateinit var chatMessages:LinearLayout
  private lateinit var chatScroll:ScrollView
  private lateinit var chatInput:EditText
+ private lateinit var membersButton:LinearLayout
+ private var roomMembers=JSONArray()
+ private var previousMemberIds:MutableSet<String>?=null
+ private val joinNotices=ArrayList<String>()
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(91,72,145))}
@@ -75,6 +79,14 @@ class RoomActivity : Activity() {
    topMargin=dp(10)
    bottomMargin=dp(5)
   })
+  membersButton=LinearLayout(this).apply{
+   orientation=0;gravity=Gravity.CENTER;setPadding(dp(14),dp(8),dp(14),dp(8))
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(47,34,83),Color.rgb(31,35,67))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(119,91,174))}
+   addView(label("●",11f,Color.rgb(112,231,190),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
+   addView(label("الموجودون 0",13f,Color.WHITE,true))
+   setOnClickListener{showRoomMembers()}
+  }
+  roomPage.addView(membersButton,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3);bottomMargin=dp(4)})
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
   status=label("",11f,Color.LTGRAY).apply{visibility=View.GONE}
@@ -325,6 +337,14 @@ class RoomActivity : Activity() {
      }
      chatMessages.addView(line,LinearLayout.LayoutParams(-1,-2))
     }
+    for(notice in joinNotices.takeLast(12)){
+     val event=TextView(this@RoomActivity).apply{
+      text=notice;textSize=12f;gravity=Gravity.CENTER
+      setTextColor(Color.rgb(190,174,231));setPadding(dp(8),dp(7),dp(8),dp(7))
+      background=GradientDrawable().apply{setColor(Color.argb(90,111,83,159));cornerRadius=dp(12).toFloat()}
+     }
+     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
+    }
     chatScroll.post{chatScroll.fullScroll(View.FOCUS_DOWN)}
    }catch(_:Exception){
     if(chatMessages.childCount==0)chatMessages.addView(label("تعذر الاتصال بالدردشة",13f,Color.LTGRAY))
@@ -369,6 +389,7 @@ class RoomActivity : Activity() {
     currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")
    }catch(_:Exception){}
    loadSeats()
+   loadRoomMembers()
    seatRefreshJob?.cancel()
    seatRefreshJob=launch{
     while(isActive && !leaving){
@@ -661,12 +682,73 @@ class RoomActivity : Activity() {
   }
  }
  private var membershipWatch:Job?=null
+ private fun loadRoomMembers(){
+  if(roomId.isBlank() || authToken.isBlank())return
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/members",authToken)}
+    if(response.status !in 200..299)return@launch
+    val fresh=response.body.optJSONArray("members")?:JSONArray()
+    val current=LinkedHashSet<String>()
+    for(i in 0 until fresh.length()){
+     val member=fresh.optJSONObject(i)?:continue
+     val id=member.optString("user_id")
+     if(id.isNotBlank() && id!="null")current.add(id)
+    }
+    val previous=previousMemberIds
+    if(previous!=null){
+     for(i in 0 until fresh.length()){
+      val member=fresh.optJSONObject(i)?:continue
+      val id=member.optString("user_id")
+      if(id.isNotBlank() && id!="null" && !previous.contains(id)){
+       val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+       joinNotices.add("انضم إلى الغرفة  •  $name")
+      }
+     }
+     while(joinNotices.size>12)joinNotices.removeAt(0)
+    }
+    previousMemberIds=current
+    roomMembers=fresh
+    if(::membersButton.isInitialized){
+     val count=fresh.length()
+     (membersButton.getChildAt(1) as? TextView)?.text="الموجودون $count"
+    }
+   }catch(_:Exception){}
+  }
+ }
+ private fun showRoomMembers(){
+  val list=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(6),dp(12),dp(6))}
+  if(roomMembers.length()==0)list.addView(label("لا يوجد أعضاء لعرضهم حالياً",13f,Color.LTGRAY))
+  for(i in 0 until roomMembers.length()){
+   val member=roomMembers.optJSONObject(i)?:continue
+   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+   val username=member.optString("username")
+   val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
+   val isOwnerMember=member.optBoolean("is_owner")
+   val seat=member.optInt("seat_number",0)
+   val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
+   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(8),dp(8),dp(8));background=GradientDrawable().apply{setColor(Color.rgb(35,29,61));cornerRadius=dp(14).toFloat()}}
+   val avatar=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(65,49,96))};clipToOutline=true;setImageDrawable(VectorIcon("user",Color.WHITE,dp(22)))}
+   row.addView(avatar,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(10)})
+   val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+   if(url.isNotBlank())loadAvatarInto(avatar,url)
+   val info=LinearLayout(this).apply{orientation=1}
+   info.addView(label(name,14f,Color.WHITE,true).apply{gravity=Gravity.START})
+   info.addView(label("@$username  •  ID: $account",10f,mutedText).apply{gravity=Gravity.START})
+   row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+   row.addView(label(role,10f,if(isOwnerMember)gold else Color.rgb(177,164,212),true))
+   list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
+  }
+  val scroll=ScrollView(this).apply{addView(list)}
+  AlertDialog.Builder(this).setTitle("الموجودون في الغرفة • ${roomMembers.length()}").setView(scroll).setPositiveButton("إغلاق",null).show()
+ }
  private fun startRoomMembershipWatch(){
   membershipWatch?.cancel()
   membershipWatch=scope.launch{
    while(isActive && connected && !leaving){
     delay(4500)
     loadSeats()
+    loadRoomMembers()
    }
   }
  }
