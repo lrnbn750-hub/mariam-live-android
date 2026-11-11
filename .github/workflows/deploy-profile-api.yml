@@ -1,0 +1,73 @@
+name: Deploy Mariam Live profile API
+
+on:
+  push:
+    branches:
+      - feature/mariam-live-development
+    paths:
+      - backend/profile-route.js
+      - .github/workflows/deploy-profile-api.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-profile-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/mariam-live-development
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload profile route
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 \
+            backend/profile-route.js \
+            mariam-admin@185.174.252.118:/tmp/mariam-profile-route.js
+
+      - name: Install route, preserve backup, and restart API
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 \
+            mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          test -f src/routes/profile.js
+          backup="src/routes/profile.js.backup-profile-fix-$(date +%Y%m%d%H%M%S)"
+          cp -a src/routes/profile.js "$backup"
+          install -o mariam-admin -g mariam-admin -m 640 \
+            /tmp/mariam-profile-route.js src/routes/profile.js
+          rm -f /tmp/mariam-profile-route.js
+          node --check src/routes/profile.js
+          mkdir -p /opt/mariam-live/uploads/avatars
+          chown mariam-admin:mariam-admin /opt/mariam-live/uploads/avatars
+          chmod 750 /opt/mariam-live/uploads/avatars
+          sudo -n /usr/local/sbin/restart-mariam-live
+          echo "===== HEALTH CHECK ====="
+          curl -fsS --max-time 10 https://nokiraq.duckdns.org/api/health
+          echo
+          echo "===== AVATAR ROUTE AUTH CHECK (401 EXPECTED) ====="
+          code=$(curl -sS -o /tmp/profile-avatar-check.json -w '%{http_code}' \
+            -X POST https://nokiraq.duckdns.org/api/profile/avatar \
+            -H 'Content-Type: application/json' \
+            -d '{}')
+          cat /tmp/profile-avatar-check.json
+          echo
+          test "$code" = "401"
+          echo "Profile avatar route is mounted and authentication is enforced."
+          REMOTE
