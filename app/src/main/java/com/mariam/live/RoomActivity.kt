@@ -396,12 +396,23 @@ class RoomActivity : Activity() {
      avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
      loadAvatarInto(photo,avatarUrl)
     }
-    tile.addView(avatar,LinearLayout.LayoutParams(dp(48),dp(48)).apply{bottomMargin=dp(6)})
+    // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
+    val avatarStage=FrameLayout(this).apply{
+     clipChildren=false;clipToPadding=false
+     addView(avatar,FrameLayout.LayoutParams(dp(56),dp(56),Gravity.CENTER))
+    }
+    val totalXp=s.optLong("total_xp",0L)
+    if(occupied && totalXp>=980100L){
+     val royal=RoyalSeatGifView(this)
+     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(78),dp(78),Gravity.CENTER))
+     royal.start()
+    }
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(80),dp(80)).apply{bottomMargin=dp(2)})
     tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
     val caption=if(s.optBoolean("is_muted"))"مكتوم" else if(!occupied)"اضغط للجلوس" else "على المايك"
     tile.addView(label(caption,9f,if(!occupied)Color.rgb(181,177,202) else Color.rgb(244,197,106)))
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(108),1f).apply{
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(132),1f).apply{
      setMargins(dp(3),dp(4),dp(3),dp(4))
     })
    }
@@ -608,4 +619,29 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
  };c.restoreToCount(save)}
  override fun setAlpha(a:Int){p.alpha=a};override fun setColorFilter(f:ColorFilter?){p.colorFilter=f};override fun getOpacity()=PixelFormat.TRANSLUCENT;override fun getIntrinsicWidth()=size;override fun getIntrinsicHeight()=size
+}
+
+
+/** إطار GIF الملكي لمقعد صاحب المستوى 100. */
+private class RoyalSeatGifView(context:android.content.Context):View(context){
+ private val movie:Movie?=try{
+  context.resources.openRawResource(R.drawable.royal100).use{Movie.decodeStream(it)}
+ }catch(_:Exception){null}
+ private var started=0L
+ private var active=false
+ fun start(){if(movie==null)return;active=true;started=android.os.SystemClock.uptimeMillis();postInvalidateOnAnimation()}
+ override fun onDraw(canvas:Canvas){
+  super.onDraw(canvas)
+  val gif=movie?:return
+  if(!active)return
+  val duration=gif.duration().takeIf{it>0}?:1000
+  gif.setTime(((android.os.SystemClock.uptimeMillis()-started)%duration).toInt())
+  val scale=minOf(width.toFloat()/gif.width(),height.toFloat()/gif.height())
+  val save=canvas.save()
+  canvas.translate((width-gif.width()*scale)/2f,(height-gif.height()*scale)/2f)
+  canvas.scale(scale,scale)
+  gif.draw(canvas,0f,0f)
+  canvas.restoreToCount(save)
+  postInvalidateOnAnimation()
+ }
 }
