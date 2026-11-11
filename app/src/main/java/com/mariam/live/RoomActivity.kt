@@ -32,7 +32,9 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(13,14,31); private val purple=Color.rgb(151,112,245); private val gold=Color.rgb(244,197,106); private val mutedText=Color.rgb(181,177,202)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
+ private lateinit var hostAvatar:FrameLayout
  private var loadedBackgroundUrl=""
+ private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
@@ -66,7 +68,7 @@ class RoomActivity : Activity() {
      cornerRadius=dp(22).toFloat();setStroke(dp(1),Color.rgb(111,91,176))
    }
   }
-  val hostAvatar=FrameLayout(this).apply{
+  hostAvatar=FrameLayout(this).apply{
    background=GradientDrawable().apply{shape=1;setColor(Color.rgb(76,58,125));setStroke(dp(2),gold)}
    addView(label("M",27f,gold,true),FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
   }
@@ -264,7 +266,22 @@ class RoomActivity : Activity() {
 
  private fun isActiveChat()=::chatPanel.isInitialized && roomId.isNotBlank() && authToken.isNotBlank()
 
- private fun loadIdentity(){scope.launch{try{val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)};currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")}catch(_:Exception){};loadSeats()}}
+ private fun loadIdentity(){
+  scope.launch{
+   try{
+    val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)}
+    currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")
+   }catch(_:Exception){}
+   loadSeats()
+   seatRefreshJob?.cancel()
+   seatRefreshJob=launch{
+    while(isActive && !leaving){
+     delay(5000)
+     loadSeats()
+    }
+   }
+  }
+ }
  private fun emptySeats(){seats=JSONArray();for(i in 1..8)seats.put(JSONObject().put("seat_number",i));drawSeats()}
  private fun loadSeats(){
   if(roomId.isBlank())return
@@ -345,6 +362,21 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun updateHostAvatar(){
+  if(!::hostAvatar.isInitialized)return
+  val owner=seats.optJSONObject(0)
+  val url=owner?.optString("avatar_url").orEmpty().takeIf{it.isNotBlank()&&it!="null"}
+  if(url==null)return
+  val photo=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   clipToOutline=true
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.TRANSPARENT)}
+   tag=url
+  }
+  hostAvatar.removeAllViews()
+  hostAvatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
+  loadAvatarInto(photo,url)
+ }
  private fun drawSeats(){
   grid.removeAllViews()
   for(row in 0..1){
@@ -594,7 +626,8 @@ class RoomActivity : Activity() {
  }
 
  override fun onBackPressed(){leaveRoom()}
- override fun onDestroy(){scope.cancel();super.onDestroy()}
+ override fun onDestroy(){
+  seatRefreshJob?.cancel()scope.cancel();super.onDestroy()}
 }
 
 /** أيقونات Vector مخصصة مرسومة على Canvas بدون رموز Emoji. */
