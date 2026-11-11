@@ -27,6 +27,10 @@ class ProfileActivity : Activity() {
     private lateinit var country:EditText
     private lateinit var avatarPreview:ImageView
     private lateinit var status:TextView
+    private lateinit var levelNumber:TextView
+    private lateinit var levelRank:TextView
+    private lateinit var levelXp:TextView
+    private lateinit var levelProgress:ProgressBar
     private val photoPickerCode=7421
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun field(hintText:String)=EditText(this).apply{
@@ -62,6 +66,50 @@ class ProfileActivity : Activity() {
             contentDescription="الصورة الشخصية"
         }
         card.addView(avatarPreview,LinearLayout.LayoutParams(dp(112),dp(112)).apply{gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)})
+
+        val levelCard=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(16),dp(14),dp(16),dp(14))
+            background=android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(34,25,16),Color.rgb(83,54,22),Color.rgb(35,25,17))
+            ).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(201,158,75))}
+        }
+        val levelHeader=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+        levelHeader.addView(TextView(this).apply{
+            text="✦  مستوى Mariam Live"
+            textSize=14f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(255,224,155))
+        },LinearLayout.LayoutParams(0,dp(28),1f))
+        levelNumber=TextView(this).apply{
+            text="LV 1";textSize=22f;typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(255,215,115));gravity=Gravity.CENTER
+        }
+        levelHeader.addView(levelNumber)
+        levelCard.addView(levelHeader)
+        levelRank=TextView(this).apply{
+            text="المبتدئ";textSize=13f;typeface=android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE);setPadding(0,dp(5),0,dp(7))
+        }
+        levelCard.addView(levelRank)
+        levelProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply{
+            max=1000;progress=0
+            progressDrawable=android.graphics.drawable.ClipDrawable(
+                android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.rgb(255,226,143),Color.rgb(194,130,36))
+                ).apply{cornerRadius=dp(8).toFloat()},
+                Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL
+            )
+            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(91,69,43))
+        }
+        levelCard.addView(levelProgress,LinearLayout.LayoutParams(-1,dp(9)))
+        levelXp=TextView(this).apply{
+            text="0 / 100 XP";textSize=11f;setTextColor(Color.rgb(238,213,167))
+            gravity=Gravity.END;setPadding(0,dp(7),0,0)
+        }
+        levelCard.addView(levelXp)
+        card.addView(levelCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(5)})
         val choosePhoto=TextView(this).apply{
             text="اختيار صورة من الهاتف";textSize=14f;gravity=Gravity.CENTER
             typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(purple)
@@ -104,7 +152,52 @@ class ProfileActivity : Activity() {
         root.addView(card,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
         setContentView(ScrollView(this).apply{addView(root)})
         loadProfile(idView)
+        loadLevelProgress()
     }
+
+    private fun loadLevelProgress(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{
+            try{
+                val result=AuthApi.get("/api/levels/me",token)
+                if(result.status !in 200..299)throw Exception("تعذر تحميل المستوى")
+                val level=result.body.optInt("level",1).coerceIn(1,100)
+                val total=result.body.optLong("total_xp",0L).coerceAtLeast(0L)
+                val current=result.body.optLong("current_level_xp",0L).coerceAtLeast(0L)
+                val next=result.body.optLong("next_level_xp",100L).coerceAtLeast(1L)
+                val progress=result.body.optDouble("progress",0.0).coerceIn(0.0,1.0)
+                val rank=when(level){
+                    in 1..10->"المبتدئ"
+                    in 11..20->"الهاوي"
+                    in 21..30->"النشيط"
+                    in 31..40->"المحترف"
+                    in 41..50->"الخبير"
+                    in 51..60->"الأسطورة"
+                    in 61..70->"الملكي"
+                    in 71..80->"الإمبراطوري"
+                    in 81..90->"النخبوي"
+                    in 91..99->"الأسطوري الذهبي"
+                    else->"الإمبراطور الأعظم"
+                }
+                runOnUiThread{
+                    if(isFinishing)return@runOnUiThread
+                    levelNumber.text="LV $level"
+                    levelRank.text=rank
+                    levelProgress.progress=(progress*1000).toInt()
+                    levelXp.text=if(level>=100)"MAX LEVEL  •  $total XP" else "$current / $next XP  •  المجموع $total"
+                }
+            }catch(_:Exception){
+                runOnUiThread{
+                    if(!isFinishing){
+                        levelNumber.text="LV 1"
+                        levelRank.text="تعذر تحميل المستوى"
+                        levelXp.text="تحقق من اتصال الخادم"
+                    }
+                }
+            }
+        }
+    }
+
     private fun pickPhoto(){
         val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
             addCategory(Intent.CATEGORY_OPENABLE);type="image/*"
