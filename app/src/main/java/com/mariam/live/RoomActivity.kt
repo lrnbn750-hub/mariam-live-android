@@ -694,7 +694,7 @@ class RoomActivity : Activity() {
   }
   val mixer=musicMixer
   val options=if(mixer==null) arrayOf("اختيار أغنية من الهاتف")
-   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى","مستوى صوت الموسيقى")
+   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى","مستوى صوت الموسيقى","فحص حالة الموسيقى")
   AlertDialog.Builder(this)
    .setTitle("موسيقى الغرفة")
    .setItems(options){_,which->
@@ -705,6 +705,12 @@ class RoomActivity : Activity() {
      Toast.makeText(this,if(mixer.paused)"تم إيقاف الموسيقى مؤقتاً" else "استؤنفت الموسيقى",Toast.LENGTH_SHORT).show()
     }else if(which==3){
      showMusicVolume(mixer)
+    }else if(which==4){
+     AlertDialog.Builder(this)
+      .setTitle("تشخيص بث الموسيقى")
+      .setMessage(mixer.diagnostics())
+      .setPositiveButton("حسناً",null)
+      .show()
     }else{
      stopRoomMusic()
     }
