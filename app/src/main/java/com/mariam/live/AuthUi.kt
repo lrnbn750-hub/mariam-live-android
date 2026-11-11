@@ -196,7 +196,7 @@ object AuthUi {
             this.text = text
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFFD9CFFF.toInt())
+            setTextColor(0xFF7048E8.toInt())
             gravity = Gravity.CENTER
             setPadding(0, dp(activity, 22), 0, dp(activity, 12))
         }
