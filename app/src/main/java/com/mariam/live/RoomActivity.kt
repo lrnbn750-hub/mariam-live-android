@@ -35,6 +35,7 @@ class RoomActivity : Activity() {
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
  private lateinit var ownerIdView:TextView
+ private var ownerProfileRequested=false
  private var loadedBackgroundUrl=""
  private var seatRefreshJob:Job?=null
  private val avatarBitmaps=HashMap<String,Bitmap>()
@@ -145,7 +146,28 @@ class RoomActivity : Activity() {
   ownerNameView.text=name
   val accountId=owner.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
    ?:owner.optString("account_id").takeIf{it.isNotBlank()&&it!="null"}
-  ownerIdView.text=if(accountId!=null) "ID: $accountId" else "ROOM ID: $roomId"
+  ownerIdView.text=if(accountId!=null) "ID: $accountId" else "ID: ..."
+  val ownerUserId=owner.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+  if(ownerUserId!=null && ownerUserId==currentUserId && !ownerProfileRequested){
+   ownerProfileRequested=true
+   scope.launch{
+    try{
+     val response=withContext(Dispatchers.IO){AuthApi.get("/api/profile",authToken)}
+     if(response.status in 200..299){
+      val profile=response.body.optJSONObject("profile")?:JSONObject()
+      val publicId=profile.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
+      if(publicId!=null)ownerIdView.text="ID: $publicId"
+      val profileName=profile.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
+      if(profileName!=null)ownerNameView.text=profileName
+      val profileAvatar=profile.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+      if(profileAvatar.isNotBlank()){
+       ownerAvatarView.tag=profileAvatar
+       loadAvatarInto(ownerAvatarView,profileAvatar)
+      }
+     }
+    }catch(_:Exception){ownerIdView.text="ID غير متاح"}
+   }
+  }
   val avatarUrl=owner.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
   if(avatarUrl.isNotBlank()){
    ownerAvatarView.tag=avatarUrl
@@ -461,7 +483,7 @@ class RoomActivity : Activity() {
       addView(label(name.take(1).uppercase(),21f,gold,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",40f,Color.rgb(204,151,255),true),
+      addView(label("+",28f,Color.rgb(204,151,255),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
