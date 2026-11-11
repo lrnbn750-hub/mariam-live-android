@@ -407,7 +407,7 @@ class RoomActivity : Activity() {
     // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
-     addView(avatar,FrameLayout.LayoutParams(dp(occupied ? 70 : 58),dp(occupied ? 70 : 58),Gravity.CENTER))
+     addView(avatar,FrameLayout.LayoutParams(dp(if(occupied) 70 else 58),dp(if(occupied) 70 else 58),Gravity.CENTER))
     }
     val totalXp=s.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
@@ -416,9 +416,14 @@ class RoomActivity : Activity() {
      royal.start()
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(100),dp(100)).apply{bottomMargin=dp(1)})
-    tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
-    val caption=if(s.optBoolean("is_muted"))"مكتوم" else if(!occupied)"اضغط للجلوس" else "على المايك"
-    tile.addView(label(caption,9f,if(!occupied)Color.rgb(181,177,202) else Color.rgb(244,197,106)))
+    if(occupied){
+     tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
+     val caption=if(s.optBoolean("is_muted"))"مكتوم" else "على المايك"
+     tile.addView(label(caption,9f,Color.rgb(244,197,106)))
+    }else{
+     // المقعد الفارغ: علامة + ورقم صغير فقط، بلا أي كلمات.
+     tile.addView(label((i+1).toString(),9f,Color.rgb(181,177,202),true))
+    }
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
     line.addView(tile,LinearLayout.LayoutParams(0,dp(148),1f).apply{
      setMargins(dp(3),dp(4),dp(3),dp(4))
