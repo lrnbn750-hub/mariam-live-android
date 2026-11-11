@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
 
 class ProfileActivity : Activity() {
     private val executor=Executors.newSingleThreadExecutor()
-    private val purple=Color.rgb(112,75,246)
+    private val purple=Color.rgb(35,157,91)
     private var userId=""
     private var avatarUrl=""
     private var selectedPhoto:Uri?=null
@@ -58,7 +58,6 @@ class ProfileActivity : Activity() {
         val dark=Color.rgb(34,48,40)
         val muted=Color.rgb(112,128,118)
         val pale=Color.rgb(241,249,244)
-        purple=green
         window.statusBarColor=Color.WHITE
         window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
