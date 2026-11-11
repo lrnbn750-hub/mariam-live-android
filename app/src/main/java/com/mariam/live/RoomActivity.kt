@@ -839,6 +839,12 @@ class RoomActivity : Activity() {
      if(id.isNotBlank() && id!="null")current.add(id)
     }
     val previous=previousMemberIds
+    if(previous==null && currentUserId.isNotBlank() && current.contains(currentUserId)){
+     val me=(0 until fresh.length()).mapNotNull{fresh.optJSONObject(it)}
+      .firstOrNull{it.optString("user_id")==currentUserId}
+     val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
+     joinNotices.add("$myName • لقد انضممت إلى الغرفة")
+    }
     if(previous!=null){
      for(i in 0 until fresh.length()){
       val member=fresh.optJSONObject(i)?:continue
