@@ -1,5 +1,23 @@
 module.exports = (app, db, authenticateToken) => {
 
+  // Return the authenticated user's saved profile, including the persisted avatar URL.
+  app.get("/api/profile", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        `SELECT u.username, p.display_name, p.bio, p.country, p.avatar_url
+         FROM users u
+         LEFT JOIN user_profiles p ON p.user_id = u.id
+         WHERE u.id = $1 LIMIT 1`,
+        [req.userId]
+      );
+      if (!result.rows.length) return res.status(404).json({ error: "User profile not found" });
+      return res.json({ profile: result.rows[0] });
+    } catch (error) {
+      console.error("Load profile:", error.message);
+      return res.status(500).json({ error: "Could not load profile" });
+    }
+  });
+
   // Upload the authenticated user's profile photo and publish its public URL.
   app.post("/api/profile/avatar", authenticateToken, async (req, res) => {
     let savedPath = null;
