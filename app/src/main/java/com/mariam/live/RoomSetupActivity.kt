@@ -5,408 +5,212 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.*
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.net.URL
 import java.util.concurrent.Executors
 
 class RoomSetupActivity : Activity() {
-    private val executor = Executors.newSingleThreadExecutor()
-    private val navy = Color.rgb(13, 14, 31)
-    private val blue = Color.rgb(28, 23, 55)
-    private val violet = Color.rgb(13, 14, 31)
-    private val white = Color.WHITE
-    private lateinit var titleInput: EditText
-    private lateinit var preview: ImageView
-    private lateinit var startButton: TextView
-    private var imageUri: Uri? = null
-    private var backgroundUri: Uri? = null
-    private val backgroundPickerRequest = 7316
-    private lateinit var backgroundPreview: ImageView
-    private val imagePickerRequest = 7315
-    private var selectedCategory = "عام"
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-    private fun rounded(color: Int, radius: Int, stroke: Int = 0) = GradientDrawable().apply {
-        setColor(color); cornerRadius = dp(radius).toFloat()
-        if (stroke != 0) setStroke(dp(1), stroke)
+    private val executor=Executors.newSingleThreadExecutor()
+    private val green=Color.rgb(72,125,86)
+    private val dark=Color.rgb(48,62,51)
+    private val muted=Color.rgb(112,122,111)
+    private val pale=Color.rgb(241,244,237)
+    private lateinit var titleInput:EditText
+    private lateinit var avatarPreview:ImageView
+    private lateinit var startButton:TextView
+    private var profileAvatarUrl=""
+    private var profileAvatar:Bitmap?=null
+    private var selectedCapacity=8
+    private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
+    private fun rounded(color:Int,radius:Int,stroke:Int=0)=GradientDrawable().apply{
+        setColor(color);cornerRadius=dp(radius).toFloat()
+        if(stroke!=0)setStroke(dp(1),stroke)
     }
-    private fun text(value: String, size: Float, color: Int, bold: Boolean = false) =
-        TextView(this).apply {
-            text = value; textSize = size; setTextColor(color); gravity = Gravity.CENTER
-            if (bold) typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD) else typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-        }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    private fun text(value:String,size:Float,color:Int,bold:Boolean=false)=TextView(this).apply{
+        text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
+        typeface=Typeface.create("sans-serif",if(bold)Typeface.BOLD else Typeface.NORMAL)
+    }
+    private fun caption(value:String)=text(value,13f,dark,true).apply{
+        gravity=Gravity.START
+        setPadding(0,dp(15),0,dp(7))
+    }
+    private fun placeholderBitmap():Bitmap{
+        val bitmap=Bitmap.createBitmap(512,512,Bitmap.Config.ARGB_8888)
+        val canvas=Canvas(bitmap)
+        val paint=Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.shader=android.graphics.LinearGradient(0f,0f,512f,512f,
+            intArrayOf(Color.rgb(224,234,220),Color.rgb(192,211,190)),null,android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawRect(0f,0f,512f,512f,paint)
+        paint.shader=null;paint.color=green;paint.textAlign=Paint.Align.CENTER;paint.textSize=190f;paint.typeface=Typeface.DEFAULT_BOLD
+        canvas.drawText("M",256f,325f,paint)
+        return bitmap
+    }
+    override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        window.statusBarColor = navy
-        window.navigationBarColor = navy
-        window.decorView.systemUiVisibility = 0
-        imageUri = intent.getStringExtra("image_uri")?.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
-        val initialName = intent.getStringExtra("room_name").orEmpty()
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(28, 23, 55), navy, Color.rgb(13, 14, 31)))
+        window.statusBarColor=Color.rgb(248,249,245)
+        window.navigationBarColor=Color.rgb(248,249,245)
+        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
+        val root=LinearLayout(this).apply{
+            orientation=1
+            setBackgroundColor(Color.rgb(248,249,245))
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
         }
-        val scroll = ScrollView(this).apply { clipToPadding = false }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(18), dp(10), dp(18), dp(18))
+        val top=LinearLayout(this).apply{
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(16),dp(7),dp(16),dp(7))
+            setBackgroundColor(Color.WHITE)
+        }
+        top.addView(text("×",30f,green,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(46)))
+        top.addView(text("إعداد البث المباشر",19f,dark,true),LinearLayout.LayoutParams(0,dp(46),1f))
+        top.addView(text("MARIAM LIVE",11f,green,true),LinearLayout.LayoutParams(-2,dp(46)))
+        root.addView(top,LinearLayout.LayoutParams(-1,-2))
+        val scroll=ScrollView(this).apply{clipToPadding=false}
+        val content=LinearLayout(this).apply{
+            orientation=1
+            setPadding(dp(18),dp(18),dp(18),dp(22))
         }
         scroll.addView(content)
-        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(text("MARIAM LIVE", 17f, Color.rgb(244,197,106), true), LinearLayout.LayoutParams(0, dp(42), 1f))
-        top.addView(text("إعداد الغرفة", 16f, white, true), LinearLayout.LayoutParams(-2, dp(42)))
-        top.addView(text("×", 30f, white).apply { setOnClickListener { finish() } }, LinearLayout.LayoutParams(dp(42), dp(42)))
-        content.addView(top)
-        content.addView(text(initialName.ifBlank { "غرفة صوتية جديدة" }, 23f, white, true).apply { setPadding(0, dp(12), 0, dp(4)) })
-        content.addView(text("معاينة قبل بدء البث • 8 مقاعد", 12f, Color.rgb(181,177,202)).apply { gravity = Gravity.START; setPadding(0, 0, 0, dp(14)) })
-        val setupCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(Color.rgb(17, 43, 61), 22, Color.rgb(111,91,176))
-        }
-        val imageRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            background = rounded(Color.rgb(76,58,125), 14, Color.rgb(244,197,106))
-            clipToOutline = true
-        }
-        preview.setOnClickListener { chooseRoomImage() }
-        preview.contentDescription = "اختيار صورة الغرفة"
-        imageRow.addView(preview, LinearLayout.LayoutParams(dp(66), dp(66)))
-        preview.setBackgroundColor(Color.rgb(36, 54, 155))
-        preview.setImageDrawable(ChairPlaceholder())
-        val titleColumn = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-        }
-        titleColumn.addView(text("عنوان الغرفة", 12f, Color.rgb(196,190,218), true).apply {
-            gravity = Gravity.START
+        content.addView(text("جهّز غرفتك وابدأ لقاءك",23f,dark,true).apply{gravity=Gravity.START})
+        content.addView(text("إعداد بسيط قبل دخولك إلى البث الصوتي",13f,muted).apply{
+            gravity=Gravity.START;setPadding(0,dp(5),0,dp(16))
         })
-        titleInput = EditText(this).apply {
-            setText(initialName)
-            hint = "أضف عنواناً للدردشة"
-            textSize = 17f
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-            setTextColor(white)
-            setHintTextColor(Color.rgb(153,206,218))
-            setSingleLine(true)
-            setPadding(0, dp(5), 0, dp(5))
-            background = null
+        val profileCard=LinearLayout(this).apply{
+            orientation=0;gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(14),dp(14),dp(14),dp(14))
+            background=rounded(Color.WHITE,20,Color.rgb(222,229,218))
         }
-        titleColumn.addView(titleInput, LinearLayout.LayoutParams(-1, dp(42)))
-        imageRow.addView(titleColumn, LinearLayout.LayoutParams(0, -2, 1f))
-        setupCard.addView(imageRow)
-        setupCard.addView(text("＋ تغيير صورة الغرفة", 12f, Color.rgb(244,197,106), true).apply {
-            gravity = Gravity.START
-            setPadding(0, dp(8), 0, 0)
-            setOnClickListener { chooseRoomImage() }
-        })
-        setupCard.addView(text("صورة واسم الغرفة سيظهران للأعضاء قبل الدخول", 11f, Color.rgb(181,177,202)).apply {
-            gravity = Gravity.START; setPadding(0, dp(7), 0, 0)
-        })
-        content.addView(setupCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
-
-        content.addView(text("خلفية الغرفة الكاملة", 17f, white, true).apply {
-            gravity = Gravity.START; setPadding(0, dp(22), 0, dp(8))
-        })
-        val backgroundFrame = FrameLayout(this).apply {
-            background = rounded(Color.rgb(22, 20, 43), 20, Color.rgb(151,112,245))
-            clipToOutline = true
+        avatarPreview=ImageView(this).apply{
+            scaleType=ImageView.ScaleType.CENTER_CROP
+            background=rounded(pale,40,Color.rgb(190,207,187))
+            clipToOutline=true
+            setImageBitmap(placeholderBitmap())
         }
-        backgroundPreview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25,65,92), Color.rgb(28,23,55), Color.rgb(13,14,31))))
-        }
-        backgroundFrame.addView(backgroundPreview, FrameLayout.LayoutParams(-1, dp(170)))
-        val previewShade = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = GradientDrawable().apply { setColor(Color.argb(105, 5, 8, 20)); cornerRadius = dp(20).toFloat() }
-        }
-        previewShade.addView(text("MARIAM LIVE  ✦", 15f, Color.WHITE, true))
-        previewShade.addView(text("معاينة شكل الغرفة", 12f, Color.WHITE, true).apply { setPadding(0, dp(5), 0, dp(10)) })
-        val sampleSeats = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        repeat(4) {
-            val dot = View(this).apply { background = rounded(Color.argb(205, 151,112,245), 30, Color.WHITE) }
-            sampleSeats.addView(dot, LinearLayout.LayoutParams(dp(28), dp(28)).apply { setMargins(dp(5), 0, dp(5), 0) })
-        }
-        previewShade.addView(sampleSeats)
-        previewShade.addView(text("الدردشة والأزرار تظهر فوق الخلفية", 10f, Color.WHITE))
-        backgroundFrame.addView(previewShade, FrameLayout.LayoutParams(-1, -1))
-        content.addView(backgroundFrame, LinearLayout.LayoutParams(-1, dp(170)))
-        content.addView(text("＋ اختيار خلفية من معرض الهاتف", 13f, Color.rgb(244,197,106), true).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(4))
-            setOnClickListener { chooseRoomBackground() }
+        profileCard.addView(avatarPreview,LinearLayout.LayoutParams(dp(68),dp(68)))
+        val profileInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
+        profileInfo.addView(text("صورة ملفك الشخصي",15f,dark,true).apply{gravity=Gravity.START})
+        profileInfo.addView(text("ستُستخدم تلقائياً كصورة الغرفة",12f,muted).apply{
+            gravity=Gravity.START;setPadding(0,dp(5),0,0)
         })
-        content.addView(text("ستظهر الخلفية لجميع أعضاء الغرفة", 11f, Color.rgb(181,177,202)).apply {
-            gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(5))
+        profileCard.addView(profileInfo,LinearLayout.LayoutParams(0,-2,1f))
+        profileCard.addView(text("تلقائي",11f,green,true).apply{
+            setPadding(dp(10),dp(7),dp(10),dp(7));background=rounded(pale,15)
         })
-
-
-        content.addView(text("اختر تصنيف الغرفة", 16f, white, true).apply {
-            gravity = Gravity.START; setPadding(0, dp(20), 0, dp(9))
-        })
-        val categories = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        content.addView(profileCard,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(18)})
+        content.addView(caption("اسم الغرفة"))
+        titleInput=EditText(this).apply{
+            setText(intent.getStringExtra("room_name").orEmpty())
+            hint="مثلاً: سهرة الأصدقاء"
+            textSize=15f;setTextColor(dark);setHintTextColor(Color.rgb(151,158,148))
+            setSingleLine(true);setPadding(dp(14),dp(12),dp(14),dp(12))
+            background=rounded(Color.WHITE,14,Color.rgb(218,226,215))
         }
-        listOf("مشاعر ♡", "موسيقى ♬", "ألعاب", "عام").forEach { label ->
-            val category = text(label, 11f, white, true).apply {
-                setPadding(dp(11), dp(9), dp(11), dp(9))
-                background = rounded(if (label == "عام") Color.rgb(112,82,190) else Color.rgb(35,29,65), 20, Color.rgb(111,91,176))
-                setOnClickListener {
-                    selectedCategory = label.substringBefore(" ")
-                    for (i in 0 until categories.childCount) {
-                        val child = categories.getChildAt(i) as TextView
-                        child.background = rounded(if (child === this) Color.rgb(151,112,245) else Color.rgb(63,48,111), 20, Color.rgb(188,153,255))
+        content.addView(titleInput,LinearLayout.LayoutParams(-1,dp(52)))
+        content.addView(caption("عدد مقاعد المتحدثين"))
+        val capacities=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0}
+        listOf(4,6,8).forEach{count->
+            val chip=text("$count مقاعد",13f,if(count==8)Color.WHITE else dark,true).apply{
+                setPadding(dp(12),dp(11),dp(12),dp(11))
+                background=rounded(if(count==8)green else Color.WHITE,14,if(count==8)green else Color.rgb(218,226,215))
+                setOnClickListener{
+                    selectedCapacity=count
+                    for(i in 0 until capacities.childCount){
+                        val child=capacities.getChildAt(i) as TextView
+                        val active=child.tag==count
+                        child.setTextColor(if(active)Color.WHITE else dark)
+                        child.background=rounded(if(active)green else Color.WHITE,14,if(active)green else Color.rgb(218,226,215))
                     }
                 }
+                tag=count
             }
-            categories.addView(category, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
-                setMargins(dp(3), 0, dp(3), 0)
-            })
+            capacities.addView(chip,LinearLayout.LayoutParams(0,dp(44),1f).apply{setMargins(dp(4),0,dp(4),0)})
         }
-        content.addView(categories, LinearLayout.LayoutParams(-1, -2))
-
-        content.addView(text("معاينة الغرفة الصوتية", 17f, white, true).apply {
-            gravity = Gravity.START; setPadding(0, dp(24), 0, dp(5))
-        })
-        content.addView(text("8 مقاعد • اضغط على المقعد لمعاينة مكانه", 11f, Color.rgb(220, 226, 255)).apply {
-            gravity = Gravity.START; setPadding(0, 0, 0, dp(10))
-        })
-        val seatGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        for (row in 0..1) {
-            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-            for (col in 0..3) {
-                val number = row * 4 + col + 1
-                val seat = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    gravity = Gravity.CENTER
-                    setPadding(dp(2), dp(8), dp(2), dp(6))
-                }
-                val circle = FrameLayout(this).apply {
-                    background = rounded(Color.rgb(42,34,76), 50, Color.rgb(244,197,106))
-                    addView(ChairIcon(), FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
-                }
-                seat.addView(circle, LinearLayout.LayoutParams(dp(64), dp(64)))
-                seat.addView(text("المقعد $number", 10f, white, true).apply { setPadding(0, dp(5), 0, 0) })
-                line.addView(seat, LinearLayout.LayoutParams(0, dp(104), 1f))
-            }
-            seatGrid.addView(line)
+        content.addView(capacities,LinearLayout.LayoutParams(-1,-2))
+        val info=LinearLayout(this).apply{
+            orientation=1;setPadding(dp(14),dp(12),dp(14),dp(12))
+            background=rounded(Color.rgb(237,243,234),16)
         }
-        content.addView(seatGrid, LinearLayout.LayoutParams(-1, -2))
-
-        val note = text("سيتم فتح الغرفة بعد الضغط على بدء البث المباشر", 11f, Color.rgb(181,177,202))
-        content.addView(note, LinearLayout.LayoutParams(-1, dp(44)))
-
-        startButton = text("ابدأ البث المباشر  ▶", 17f, white, true).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(151,112,245), Color.rgb(105,73,193))).apply {
-                cornerRadius = dp(30).toFloat()
-                setStroke(dp(1), Color.rgb(188,153,255))
-            }
-            elevation = dp(5).toFloat()
-            setOnClickListener { createAndStart() }
-        }
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(startButton, LinearLayout.LayoutParams(-1, dp(58)).apply {
-            setMargins(dp(20), dp(7), dp(20), dp(12))
+        info.addView(text("ماذا سيظهر للمستخدمين؟",13f,dark,true).apply{gravity=Gravity.START})
+        info.addView(text("صورتك الشخصية واسم الغرفة في بطاقة البث بالصفحة الرئيسية. لا تحتاج إلى اختيار خلفية أو رفع صورة إضافية.",12f,muted).apply{
+            gravity=Gravity.START;setPadding(0,dp(6),0,0)
         })
+        content.addView(info,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18)})
+        content.addView(text("الخلفية اختيارية بالكامل، وسيتم استخدام تصميم الغرفة الافتراضي.",11f,muted).apply{
+            gravity=Gravity.CENTER;setPadding(0,dp(14),0,dp(8))
+        })
+        startButton=text("ابدأ البث المباشر  ▶",16f,Color.WHITE,true).apply{
+            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(104,145,104),green)).apply{cornerRadius=dp(18).toFloat()}
+            elevation=dp(2).toFloat()
+            setOnClickListener{createAndStart(token)}
+        }
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(startButton,LinearLayout.LayoutParams(-1,dp(56)).apply{setMargins(dp(18),dp(8),dp(18),dp(12))})
         setContentView(root)
-        imageUri?.let { uri ->
-            try {
-                contentResolver.openInputStream(uri)?.use { input ->
-                    preview.setImageBitmap(BitmapFactory.decodeStream(input))
+        loadProfileAvatar(token)
+    }
+    private fun loadProfileAvatar(token:String){
+        if(token.isBlank())return
+        executor.execute{
+            try{
+                val response=AuthApi.get("/api/profile",token)
+                if(response.status !in 200..299)return@execute
+                val profile=response.body.optJSONObject("profile")?:JSONObject()
+                profileAvatarUrl=profile.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+                if(profileAvatarUrl.isNotBlank()){
+                    val bitmap=URL(profileAvatarUrl).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{BitmapFactory.decodeStream(it)}
+                    if(bitmap!=null){
+                        profileAvatar=bitmap
+                        runOnUiThread{if(!isFinishing)avatarPreview.setImageBitmap(bitmap)}
+                    }
                 }
-            } catch (_: Exception) {}
+            }catch(_:Exception){}
         }
     }
-
-    private fun chooseRoomBackground() {
-        val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "image/*"
-            addCategory(Intent.CATEGORY_OPENABLE)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
-        startActivityForResult(pick, backgroundPickerRequest)
-    }
-
-    private fun chooseRoomImage() {
-        val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "image/*"
-            addCategory(Intent.CATEGORY_OPENABLE)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
-        startActivityForResult(pick, imagePickerRequest)
-    }
-
-    @Deprecated("Deprecated in Android API; retained for broad device compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == backgroundPickerRequest && resultCode == RESULT_OK) {
-            val uri = data?.data ?: return
-            backgroundUri = uri
-            try { contentResolver.takePersistableUriPermission(uri, data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
-            try { contentResolver.openInputStream(uri)?.use { input -> backgroundPreview.setImageBitmap(BitmapFactory.decodeStream(input)) } }
-            catch (_: Exception) { Toast.makeText(this, "تعذر فتح الخلفية", Toast.LENGTH_SHORT).show() }
-            return
-        }
-        if (requestCode == imagePickerRequest && resultCode == RESULT_OK) {
-            val uri = data?.data ?: return
-            imageUri = uri
-            try {
-                val flags = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
-                contentResolver.takePersistableUriPermission(uri, flags)
-            } catch (_: Exception) {}
-            try {
-                contentResolver.openInputStream(uri)?.use { input ->
-                    preview.setImageBitmap(BitmapFactory.decodeStream(input))
-                }
-            } catch (_: Exception) {
-                Toast.makeText(this, "تعذر فتح الصورة، اختر صورة أخرى", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun createAndStart() {
-        val name = titleInput.text.toString().trim()
-        if (name.length < 2) {
-            Toast.makeText(this, "اكتب عنواناً من حرفين على الأقل", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val selectedImage = imageUri
-        if (selectedImage == null) {
-            Toast.makeText(this, "اختر صورة للغرفة أولاً", Toast.LENGTH_SHORT).show()
-            chooseRoomImage()
-            return
-        }
-        startButton.isEnabled = false
-        startButton.text = "جارٍ إنشاء الغرفة..."
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
-        if (token.isNullOrBlank()) {
-            Toast.makeText(this, "سجّل الدخول أولاً", Toast.LENGTH_SHORT).show()
-            finish(); return
-        }
-        executor.execute {
-            try {
-                val source = contentResolver.openInputStream(selectedImage)?.use { BitmapFactory.decodeStream(it) }
-                    ?: throw Exception("تعذر قراءة صورة الغرفة")
-                val maxSide = 1280
-                val scale = minOf(1f, maxSide.toFloat() / maxOf(source.width, source.height))
-                val resized = if (scale < 1f) Bitmap.createScaledBitmap(source,
-                    (source.width * scale).toInt().coerceAtLeast(1),
-                    (source.height * scale).toInt().coerceAtLeast(1), true) else source
-                val bytes = ByteArrayOutputStream()
-                var quality = 85
-                do {
-                    bytes.reset()
-                    resized.compress(Bitmap.CompressFormat.JPEG, quality, bytes)
-                    quality -= 10
-                } while (bytes.size() > 3 * 1024 * 1024 && quality >= 45)
-                if (bytes.size() > 3 * 1024 * 1024) throw Exception("الصورة كبيرة جداً")
-                val payload = JSONObject().put("name", name).put("max_members", 8)
-                    .put("image_mime", "image/jpeg")
-                    .put("image_base64", android.util.Base64.encodeToString(bytes.toByteArray(), android.util.Base64.NO_WRAP))
-                backgroundUri?.let { bgUri ->
-                    val bgSource = contentResolver.openInputStream(bgUri)?.use { BitmapFactory.decodeStream(it) }
-                        ?: throw Exception("تعذر قراءة صورة الخلفية")
-                    val bgScale = minOf(1f, 1280f / maxOf(bgSource.width, bgSource.height))
-                    val bgBitmap = if (bgScale < 1f) Bitmap.createScaledBitmap(bgSource,
-                        (bgSource.width * bgScale).toInt().coerceAtLeast(1),
-                        (bgSource.height * bgScale).toInt().coerceAtLeast(1), true) else bgSource
-                    val bgBytes = ByteArrayOutputStream()
-                    var bgQuality = 82
-                    do {
-                        bgBytes.reset()
-                        bgBitmap.compress(Bitmap.CompressFormat.JPEG, bgQuality, bgBytes)
-                        bgQuality -= 10
-                    } while (bgBytes.size() > 3 * 1024 * 1024 && bgQuality >= 42)
-                    if (bgBytes.size() > 3 * 1024 * 1024) throw Exception("خلفية الغرفة كبيرة جداً")
-                    payload.put("background_base64", android.util.Base64.encodeToString(bgBytes.toByteArray(), android.util.Base64.NO_WRAP))
-                    if (bgBitmap !== bgSource) bgBitmap.recycle()
-                    if (!bgSource.isRecycled) bgSource.recycle()
-                }
-                if (resized !== source) resized.recycle()
-                if (!source.isRecycled) source.recycle()
-                val result = AuthApi.post("/api/voice-rooms", payload, token)
-                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر إنشاء الغرفة"))
-                val room = result.body.optJSONObject("room") ?: throw Exception("استجابة الخادم غير مكتملة")
-                val roomId = room.optString("id")
-                runOnUiThread {
-                    startActivity(Intent(this, RoomActivity::class.java)
-                        .putExtra("room_id", roomId)
-                        .putExtra("room_name", name))
+    private fun createAndStart(token:String){
+        val name=titleInput.text.toString().trim()
+        if(name.length<2){Toast.makeText(this,"اكتب اسم الغرفة (حرفان على الأقل)",Toast.LENGTH_SHORT).show();return}
+        if(token.isBlank()){Toast.makeText(this,"سجّل الدخول أولاً",Toast.LENGTH_SHORT).show();finish();return}
+        startButton.isEnabled=false
+        startButton.text="جارٍ تجهيز غرفتك..."
+        executor.execute{
+            try{
+                val source=profileAvatar?:placeholderBitmap()
+                val maxSide=1280
+                val scale=minOf(1f,maxSide.toFloat()/maxOf(source.width,source.height))
+                val resized=if(scale<1f)Bitmap.createScaledBitmap(source,(source.width*scale).toInt().coerceAtLeast(1),(source.height*scale).toInt().coerceAtLeast(1),true)else source
+                val bytes=ByteArrayOutputStream()
+                var quality=85
+                do{bytes.reset();resized.compress(Bitmap.CompressFormat.JPEG,quality,bytes);quality-=10}while(bytes.size()>3*1024*1024&&quality>=45)
+                if(bytes.size()>3*1024*1024)throw Exception("تعذر تجهيز صورة الغرفة")
+                val payload=JSONObject().put("name",name).put("max_members",selectedCapacity)
+                    .put("image_mime","image/jpeg")
+                    .put("image_base64",android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP))
+                if(resized!==source)resized.recycle()
+                if(source!==profileAvatar&&!source.isRecycled)source.recycle()
+                val result=AuthApi.post("/api/voice-rooms",payload,token)
+                if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر إنشاء الغرفة"))
+                val room=result.body.optJSONObject("room")?:throw Exception("استجابة الخادم غير مكتملة")
+                val roomId=room.optString("id")
+                runOnUiThread{
+                    startActivity(Intent(this,RoomActivity::class.java).putExtra("room_id",roomId).putExtra("room_name",name))
                     finish()
                 }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    startButton.isEnabled = true
-                    startButton.text = "ابدأ البث المباشر  ▶"
-                    Toast.makeText(this, e.message ?: "تعذر إنشاء الغرفة", Toast.LENGTH_LONG).show()
+            }catch(e:Exception){
+                runOnUiThread{
+                    startButton.isEnabled=true;startButton.text="ابدأ البث المباشر  ▶"
+                    Toast.makeText(this,e.message?:"تعذر إنشاء الغرفة",Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
-
-    override fun onDestroy() {
-        executor.shutdownNow()
-        super.onDestroy()
-    }
-
-    private inner class ChairPlaceholder : android.graphics.drawable.Drawable() {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = dp(25).toFloat()
-            textAlign = Paint.Align.CENTER
-        }
-        override fun draw(canvas: Canvas) {
-            val b = bounds
-            canvas.drawText("＋", b.exactCenterX(), b.exactCenterY() + dp(9), paint)
-        }
-        override fun setAlpha(alpha: Int) { paint.alpha = alpha }
-        override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
-        override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
-    }
-
-    private inner class ChairIcon : View(this@RoomSetupActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = dp(3).toFloat()
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val w = width.toFloat(); val h = height.toFloat()
-            val sx = w / 36f; val sy = h / 36f
-            canvas.save(); canvas.scale(sx, sy)
-            canvas.drawRoundRect(RectF(10f, 5f, 26f, 19f), 3f, 3f, paint)
-            canvas.drawLine(7f, 17f, 7f, 27f, paint)
-            canvas.drawLine(29f, 17f, 29f, 27f, paint)
-            canvas.drawLine(7f, 24f, 29f, 24f, paint)
-            canvas.drawLine(10f, 24f, 10f, 31f, paint)
-            canvas.drawLine(26f, 24f, 26f, 31f, paint)
-            canvas.restore()
-        }
-    }
+    override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
 }
