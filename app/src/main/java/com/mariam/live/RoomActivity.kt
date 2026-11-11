@@ -94,13 +94,6 @@ class RoomActivity : Activity() {
   mic.visibility=View.GONE
   musicButton=action("موسيقى","music",Color.rgb(91,130,94),Color.rgb(157,178,145)){showMusicOptions()}
   musicButton.visibility=View.GONE
-  val roomControls=LinearLayout(this).apply{
-   orientation=0
-   gravity=Gravity.CENTER
-   addView(mic,LinearLayout.LayoutParams(dp(82),dp(78)).apply{marginEnd=dp(12)})
-   addView(musicButton,LinearLayout.LayoutParams(dp(82),dp(78)))
-  }
-  roomPage.addView(roomControls,LinearLayout.LayoutParams(-1,dp(82)).apply{topMargin=dp(4)})
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8)})
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
@@ -276,6 +269,17 @@ class RoomActivity : Activity() {
     setOnClickListener{sendRoomMessage()}
    }
    composer.addView(send,LinearLayout.LayoutParams(-2,dp(42)))
+   val toolsButton=TextView(this@RoomActivity).apply{
+    text="☰";textSize=23f;gravity=Gravity.CENTER
+    setTextColor(Color.rgb(83,126,94))
+    background=GradientDrawable().apply{
+     setColor(Color.rgb(242,243,237));cornerRadius=dp(13).toFloat()
+     setStroke(dp(1),Color.rgb(205,226,211))
+    }
+    contentDescription="إعدادات الغرفة"
+    setOnClickListener{showRoomTools()}
+   }
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(44),dp(42)).apply{marginStart=dp(6)})
    addView(composer,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})
    loadRoomMessages()
    chatPoll?.cancel()
@@ -745,6 +749,70 @@ class RoomActivity : Activity() {
    }
   }
  }
+ private fun showRoomTools(){
+  val items=LinearLayout(this).apply{
+   orientation=1
+   setPadding(dp(10),dp(5),dp(10),dp(5))
+  }
+  fun addTool(title:String,icon:String,action:()->Unit){
+   val row=LinearLayout(this).apply{
+    orientation=0;gravity=Gravity.CENTER_VERTICAL
+    setPadding(dp(9),dp(7),dp(9),dp(7))
+    background=GradientDrawable().apply{
+     setColor(Color.rgb(246,248,243));cornerRadius=dp(10).toFloat()
+    }
+    val image=ImageView(this@RoomActivity).apply{
+     setImageDrawable(VectorIcon(icon,Color.rgb(83,126,94),dp(18)))
+     scaleType=ImageView.ScaleType.FIT_CENTER
+    }
+    addView(image,LinearLayout.LayoutParams(dp(22),dp(22)).apply{marginEnd=dp(9)})
+    addView(label(title,12f,Color.rgb(65,91,69),true),LinearLayout.LayoutParams(0,dp(26),1f).apply{gravity=Gravity.CENTER_VERTICAL})
+    setOnClickListener{action()}
+   }
+   items.addView(row,LinearLayout.LayoutParams(-1,dp(40)).apply{bottomMargin=dp(5)})
+  }
+  if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك","mic"){toggleMic()}
+  if(isOwner)addTool("الموسيقى","music"){showMusicOptions()}
+  if(isOwner)addTool("خلفية الغرفة","image"){chooseRoomBackground()}
+  if(items.childCount==0){
+   addTool("لا توجد أدوات متاحة","settings"){}
+  }
+  AlertDialog.Builder(this)
+   .setTitle("أدوات الغرفة")
+   .setView(items)
+   .setNegativeButton("إغلاق",null)
+   .show()
+ }
+
+ private fun chooseRoomBackground(){
+  if(!isOwner){
+   Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show()
+   return
+  }
+  val picker=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
+   addCategory(Intent.CATEGORY_OPENABLE)
+   type="image/*"
+  }
+  try{startActivityForResult(picker,4202)}
+  catch(_:Exception){Toast.makeText(this,"تعذر فتح الصور",Toast.LENGTH_SHORT).show()}
+ }
+
+ private fun applyLocalRoomBackground(uri:Uri){
+  try{
+   val bitmap=contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it)}
+   if(bitmap==null){
+    Toast.makeText(this,"تعذر قراءة الصورة",Toast.LENGTH_SHORT).show()
+    return
+   }
+   val photo=android.graphics.drawable.BitmapDrawable(resources,bitmap)
+   photo.gravity=Gravity.FILL
+   roomPage.background=android.graphics.drawable.LayerDrawable(arrayOf(photo,GradientDrawable().apply{setColor(Color.argb(78,5,7,20))}))
+   Toast.makeText(this,"تم تطبيق الخلفية على جهازك",Toast.LENGTH_LONG).show()
+  }catch(_:Exception){
+   Toast.makeText(this,"تعذر تطبيق الخلفية",Toast.LENGTH_SHORT).show()
+  }
+ }
+
  private fun toggleMic(){
   if(!connected)return
   microphoneEnabled=!microphoneEnabled
@@ -869,12 +937,16 @@ class RoomActivity : Activity() {
  @Deprecated("Deprecated in Android")
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
-  if(requestCode!=4201 || resultCode!=Activity.RESULT_OK)return
+  if(resultCode!=Activity.RESULT_OK)return
   val uri=data?.data?:return
   try{
    contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)
   }catch(_:Exception){}
-  startRoomMusic(uri)
+  if(requestCode==4201){
+   startRoomMusic(uri)
+  }else if(requestCode==4202){
+   applyLocalRoomBackground(uri)
+  }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
  private fun leaveRoom(){
