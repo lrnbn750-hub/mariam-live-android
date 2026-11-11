@@ -106,10 +106,12 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         db.query(`
           SELECT s.seat_number, s.user_id, s.is_muted, s.assigned_at,
                  COALESCE(p.display_name, u.username) AS display_name,
-                 p.avatar_url, u.username
+                 p.avatar_url, u.username,
+                 COALESCE(ul.total_xp, 0) AS total_xp
           FROM voice_room_seats s
           LEFT JOIN users u ON u.id = s.user_id
           LEFT JOIN user_profiles p ON p.user_id = u.id
+          LEFT JOIN user_levels ul ON ul.user_id = u.id
           WHERE s.room_id = $1 ORDER BY s.seat_number
         `, [roomId]),
         db.query(`
