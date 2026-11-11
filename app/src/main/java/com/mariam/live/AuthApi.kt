@@ -10,6 +10,21 @@ object AuthApi {
 
     data class Result(val status: Int, val body: JSONObject)
 
+    private fun parseBody(text: String): JSONObject {
+        if (text.isBlank()) return JSONObject()
+        return try {
+            JSONObject(text)
+        } catch (_: Exception) {
+            val preview = text.trim().take(180).replace(Regex("\\s+"), " ")
+            JSONObject().put(
+                "error",
+                if (preview.contains("<!DOCTYPE", true) || preview.contains("<html", true))
+                    "الخادم أعاد صفحة HTML بدل JSON. تحقق من نشر مسار الملف الشخصي على الخادم."
+                else "استجابة غير صالحة من الخادم: $preview"
+            )
+        }
+    }
+
     fun get(path: String, token: String): Result {
         val connection = (URL("$BASE_URL$path").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -22,7 +37,7 @@ object AuthApi {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+            Result(status, parseBody(text))
         } finally {
             connection.disconnect()
         }
