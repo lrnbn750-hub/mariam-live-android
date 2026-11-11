@@ -140,7 +140,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     try {
       const roomId = req.params.roomId;
       if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
-      if (!(await isMember(roomId, req.userId)) return res.status(403).json({ error: "Join the room first" });
+      if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
       const result = await db.query(`
         SELECT m.user_id, COALESCE(p.display_name, u.username) AS display_name,
                u.username, p.avatar_url, u.public_id,
@@ -152,7 +152,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         LEFT JOIN voice_rooms r ON r.id = m.room_id
         LEFT JOIN voice_room_seats s ON s.room_id = m.room_id AND s.user_id = m.user_id
         WHERE m.room_id = $1
-        ORDER BY (r.owner_id = m.user_id) DESC, s.seat_number NULLS LAST, m.joined_at ASC
+        ORDER BY (r.owner_id = m.user_id) DESC, s.seat_number NULLS LAST, m.user_id ASC
       `, [roomId]);
       return res.json({ members: result.rows, count: result.rows.length });
     } catch (error) {
