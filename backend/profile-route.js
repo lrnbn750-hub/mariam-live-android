@@ -9,6 +9,16 @@ module.exports = function(app, db, authenticateToken) {
   // grant XP. Trusted backend event handlers can call app.locals.awardMariamXp.
   app.get("/api/levels/me", authenticateToken, async (req, res) => {
     try {
+      const dayKey = new Date().toISOString().slice(0, 10);
+      await app.locals.awardMariamXp(req.userId, 20, "daily-login:" + dayKey, "daily_login");
+      const profileCheck = await db.query(
+        `SELECT display_name, bio, country, avatar_url FROM user_profiles WHERE user_id = $1`,
+        [req.userId]
+      );
+      const profile = profileCheck.rows[0];
+      if (profile && profile.display_name && profile.display_name.trim() && profile.bio && profile.bio.trim() && profile.country && profile.country.trim() && profile.avatar_url && profile.avatar_url.trim()) {
+        await app.locals.awardMariamXp(req.userId, 100, "profile-complete:v1", "profile_complete");
+      }
       const result = await db.query(
         "SELECT total_xp FROM user_levels WHERE user_id = $1",
         [req.userId]
