@@ -27,6 +27,7 @@ class ProfileActivity : Activity() {
     private lateinit var country:EditText
     private lateinit var avatarPreview:ImageView
     private lateinit var avatarRing:View
+    private lateinit var royalFrame:RoyalGifFrame
     private lateinit var status:TextView
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
@@ -81,7 +82,9 @@ class ProfileActivity : Activity() {
             isFocusable=false
         }
         avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(120),dp(120),Gravity.CENTER))
-        card.addView(avatarFrame,LinearLayout.LayoutParams(dp(120),dp(120)).apply{
+        royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
+        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(130),dp(126),Gravity.CENTER))
+        card.addView(avatarFrame,LinearLayout.LayoutParams(dp(130),dp(130)).apply{
             gravity=Gravity.CENTER;topMargin=dp(6);bottomMargin=dp(10)
         })
 
@@ -232,10 +235,19 @@ class ProfileActivity : Activity() {
             in 91..99 -> intArrayOf(Color.rgb(67,13,24),Color.rgb(151,28,44),Color.rgb(42,12,28),Color.rgb(255,180,83),Color.rgb(255,235,187),Color.rgb(255,197,112),Color.rgb(154,48,51))
             else -> intArrayOf(Color.rgb(38,12,54),Color.rgb(126,25,91),Color.rgb(43,12,65),Color.rgb(255,210,92),Color.rgb(255,245,190),Color.rgb(255,221,128),Color.rgb(190,53,112))
         }
-        avatarRing.background=android.graphics.drawable.GradientDrawable().apply{
-            shape=android.graphics.drawable.GradientDrawable.OVAL
-            setColor(Color.TRANSPARENT)
-            setStroke(dp(if(level>=100)5 else if(level>=91)4 else 3),colors[3])
+        if(level>=100){
+            avatarRing.visibility=View.GONE
+            royalFrame.visibility=View.VISIBLE
+            royalFrame.startAnimation()
+        }else{
+            royalFrame.stopAnimation()
+            royalFrame.visibility=View.GONE
+            avatarRing.visibility=View.VISIBLE
+            avatarRing.background=android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(if(level>=91)4 else 3),colors[3])
+            }
         }
         levelCard.background=android.graphics.drawable.GradientDrawable(
             android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
@@ -387,5 +399,42 @@ class ProfileActivity : Activity() {
         })
         finish()
     }
-    override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
+    override fun onDestroy(){royalFrame.stopAnimation();executor.shutdownNow();super.onDestroy()}
+}
+
+private class RoyalGifFrame(context:android.content.Context):View(context){
+    private val movie:android.graphics.Movie?=try{
+        context.resources.openRawResource(R.drawable.royal100).use{android.graphics.Movie.decodeStream(it)}
+    }catch(_:Exception){null}
+    private var startedAt=0L
+    private var running=false
+
+    fun startAnimation(){
+        if(movie==null)return
+        running=true
+        startedAt=android.os.SystemClock.uptimeMillis()
+        visibility=View.VISIBLE
+        postInvalidateOnAnimation()
+    }
+
+    fun stopAnimation(){
+        running=false
+        invalidate()
+    }
+
+    override fun onDraw(canvas:android.graphics.Canvas){
+        super.onDraw(canvas)
+        val gif=movie?:return
+        if(!running)return
+        val duration=gif.duration().takeIf{it>0}?:1000
+        val now=android.os.SystemClock.uptimeMillis()
+        gif.setTime(((now-startedAt)%duration).toInt())
+        val scale=minOf(width.toFloat()/gif.width(),height.toFloat()/gif.height())
+        val save=canvas.save()
+        canvas.translate((width-gif.width()*scale)/2f,(height-gif.height()*scale)/2f)
+        canvas.scale(scale,scale)
+        gif.draw(canvas,0f,0f)
+        canvas.restoreToCount(save)
+        postInvalidateOnAnimation()
+    }
 }
