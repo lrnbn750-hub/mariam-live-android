@@ -132,23 +132,38 @@ class ProfileActivity : Activity() {
         status.text="جارٍ تحميل الملف الشخصي..."
         executor.execute{
             try{
-                val me=AuthApi.get("/api/profile",token)
+                // First get the authenticated account and its public ID.
+                val me=AuthApi.get("/api/auth/me",token)
                 if(me.status !in 200..299)throw Exception(me.body.optString("error","تعذر تحميل الحساب"))
-                val user=me.body.optJSONObject("profile")?:me.body
-                userId=user.optString("id")
-                // Use the authenticated account response directly. The old /api/users/:id
-                // endpoint is not provided by this backend and could return an HTML 404 page.
+                val account=me.body.optJSONObject("user")
+                    ?:throw Exception("استجابة الحساب لا تحتوي بيانات المستخدم")
+                userId=account.optString("id")
+                if(userId.isBlank() || userId=="null")throw Exception("لم يصل معرّف المستخدم من الخادم")
+
+                // The backend exposes profile details through /api/users/:id.
+                val response=AuthApi.get("/api/users/$userId",token)
+                if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحميل الملف الشخصي"))
+                val user=response.body.optJSONObject("user")
+                    ?:throw Exception("استجابة الملف الشخصي غير مكتملة")
                 val url=user.optString("avatar_url").takeUnless{it=="null"}?:""
+                val publicId=account.optString("public_id").takeUnless{it=="null"}?:""
+
                 runOnUiThread{
-                    idView.text=if(user.has("public_id") && !user.isNull("public_id")) user.optString("public_id") else "حسابك"
+                    idView.text=if(publicId.isNotBlank())publicId else "حسابك"
                     displayName.setText(user.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
                     bio.setText(user.optString("bio").takeUnless{it=="null"}?:"")
                     country.setText(user.optString("country").takeUnless{it=="null"}?:"")
-                    avatarUrl=url
+                    avatarUrl=when{
+                        url.isBlank()->""
+                        url.startsWith("http://") || url.startsWith("https://")->url
+                        else->"https://nokiraq.duckdns.org/"+url.trimStart('/')
+                    }
                     status.text=""
-                    if(url.isNotBlank())loadAvatarPreview(url)
+                    if(avatarUrl.isNotBlank())loadAvatarPreview(avatarUrl)
                 }
-            }catch(e:Exception){runOnUiThread{status.text=e.message?:"تعذر تحميل البيانات"}}
+            }catch(e:Exception){
+                runOnUiThread{status.text=e.message?:"تعذر تحميل البيانات"}
+            }
         }
     }
     private fun loadAvatarPreview(url:String){
