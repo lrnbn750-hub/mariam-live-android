@@ -136,14 +136,14 @@ class ProfileActivity : Activity() {
                 if(me.status !in 200..299)throw Exception(me.body.optString("error","تعذر تحميل الحساب"))
                 val user=me.body.optJSONObject("user")?:me.body
                 userId=user.optString("id")
-                val profile=AuthApi.get("/api/users/$userId",token)
-                val data=if(profile.status in 200..299)(profile.body.optJSONObject("user")?:profile.body)else user
-                val url=data.optString("avatar_url").takeUnless{it=="null"}?:""
+                // Use the authenticated account response directly. The old /api/users/:id
+                // endpoint is not provided by this backend and could return an HTML 404 page.
+                val url=user.optString("avatar_url").takeUnless{it=="null"}?:""
                 runOnUiThread{
                     idView.text=if(user.has("public_id") && !user.isNull("public_id")) user.optString("public_id") else "حسابك"
-                    displayName.setText(data.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
-                    bio.setText(data.optString("bio").takeUnless{it=="null"}?:"")
-                    country.setText(data.optString("country").takeUnless{it=="null"}?:"")
+                    displayName.setText(user.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
+                    bio.setText(user.optString("bio").takeUnless{it=="null"}?:"")
+                    country.setText(user.optString("country").takeUnless{it=="null"}?:"")
                     avatarUrl=url
                     status.text=""
                     if(url.isNotBlank())loadAvatarPreview(url)
