@@ -396,7 +396,7 @@ class RoomActivity : Activity() {
     // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
-     addView(avatar,FrameLayout.LayoutParams(dp(if(occupied) 70 else 38),dp(if(occupied) 70 else 38),Gravity.CENTER))
+     addView(avatar,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
     }
     val totalXp=s.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
@@ -404,7 +404,7 @@ class RoomActivity : Activity() {
      avatarStage.addView(royal,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(if(occupied) 100 else 42),dp(if(occupied) 100 else 42)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(100),dp(100)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
      tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
      val caption=if(s.optBoolean("is_muted"))"مكتوم" else "على المايك"
