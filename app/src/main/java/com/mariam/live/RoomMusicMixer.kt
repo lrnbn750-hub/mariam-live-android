@@ -29,6 +29,7 @@ class RoomMusicMixer(
 
     private val appContext = context.applicationContext
     private val running = AtomicBoolean(false)
+    private val decoderFinished = AtomicBoolean(false)
     private val chunks = ArrayBlockingQueue<ShortArray>(48)
     @Volatile var paused: Boolean = false
     @Volatile var microphoneEnabled: Boolean = true
@@ -48,6 +49,7 @@ class RoomMusicMixer(
 
     fun stop() {
         running.set(false)
+        decoderFinished.set(true)
         decoderThread?.interrupt()
         decoderThread = null
         chunks.clear()
@@ -93,8 +95,12 @@ class RoomMusicMixer(
 
     private fun nextMusicSample(): Int {
         while (currentChunk == null || currentIndex >= (currentChunk?.size ?: 0)) {
-            currentChunk = chunks.poll() ?: return 0
+            currentChunk = chunks.poll()
             currentIndex = 0
+            if (currentChunk == null) {
+                if (decoderFinished.get() && running.compareAndSet(true, false)) onEnded()
+                return 0
+            }
         }
         return currentChunk!![currentIndex++].toInt()
     }
@@ -102,7 +108,6 @@ class RoomMusicMixer(
     private fun decodeFile() {
         var extractor: MediaExtractor? = null
         var codec: MediaCodec? = null
-        var endedNormally = false
         try {
             extractor = MediaExtractor()
             extractor.setDataSource(appContext, uri, null)
@@ -185,15 +190,16 @@ class RoomMusicMixer(
                     }
                 }
             }
-            endedNormally = running.get() && outputEnded
         } catch (error: Exception) {
-            if (running.get()) onError(error.message ?: "تعذر قراءة ملف الموسيقى")
+            if (running.get()) {
+                running.set(false)
+                onError(error.message ?: "تعذر قراءة ملف الموسيقى")
+            }
         } finally {
             try { codec?.stop() } catch (_: Exception) {}
             try { codec?.release() } catch (_: Exception) {}
             try { extractor?.release() } catch (_: Exception) {}
-            running.set(false)
-            if (endedNormally) onEnded()
+            decoderFinished.set(true)
         }
     }
 

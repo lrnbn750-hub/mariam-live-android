@@ -694,20 +694,36 @@ class RoomActivity : Activity() {
   }
   val mixer=musicMixer
   val options=if(mixer==null) arrayOf("اختيار أغنية من الهاتف")
-   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى")
+   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى","مستوى صوت الموسيقى")
   AlertDialog.Builder(this)
    .setTitle("موسيقى الغرفة")
    .setItems(options){_,which->
-    if(mixer==null || (mixer!=null && which==2)){
+    if(mixer==null || which==2){
      chooseRoomMusic()
     }else if(which==0){
      mixer.paused=!mixer.paused
      Toast.makeText(this,if(mixer.paused)"تم إيقاف الموسيقى مؤقتاً" else "استؤنفت الموسيقى",Toast.LENGTH_SHORT).show()
+    }else if(which==3){
+     showMusicVolume(mixer)
     }else{
      stopRoomMusic()
     }
    }
    .setNegativeButton("إغلاق",null)
+   .show()
+ }
+
+ private fun showMusicVolume(mixer:RoomMusicMixer){
+  val seek=SeekBar(this).apply{
+   max=100
+   progress=(mixer.volume*100f).toInt().coerceIn(0,100)
+   setPadding(dp(22),dp(12),dp(22),dp(12))
+  }
+  AlertDialog.Builder(this)
+   .setTitle("مستوى صوت الموسيقى")
+   .setView(seek)
+   .setPositiveButton("حفظ"){_,_->mixer.volume=seek.progress/100f}
+   .setNegativeButton("إلغاء",null)
    .show()
  }
 
