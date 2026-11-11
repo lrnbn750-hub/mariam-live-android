@@ -27,5 +27,12 @@ CREATE TABLE IF NOT EXISTS public.user_equipped_items (
   PRIMARY KEY (user_id, item_type)
 );
 
+INSERT INTO public.store_items(item_id,name,item_type,asset_url,source_type,price_iqd,active)
+VALUES ('royal100-frame','الإطار الملكي LV 100','frame',
+'https://raw.githubusercontent.com/lrnbn750-hub/mariam-live-android/feature/mariam-live-development/app/src/main/res/drawable-nodpi/royal100.gif',
+'admin',0,TRUE)
+ON CONFLICT(item_id) DO UPDATE SET
+ name=EXCLUDED.name,item_type=EXCLUDED.item_type,asset_url=EXCLUDED.asset_url,active=TRUE;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.store_items, public.user_inventory, public.user_equipped_items TO :"app_role";
 COMMIT;
