@@ -58,12 +58,41 @@ jobs:
           chown mariam-admin:mariam-admin /opt/mariam-live/uploads/avatars
           chmod 750 /opt/mariam-live/uploads/avatars
           sudo -n /usr/local/sbin/restart-mariam-live
-          echo "===== HEALTH CHECK ====="
-          curl -fsS --max-time 10 https://nokiraq.duckdns.org/api/health
+          echo "===== LOCAL HEALTH CHECK WITH RETRIES ====="
+          healthy=0
+          for attempt in $(seq 1 15); do
+            if curl -fsS --max-time 3 http://127.0.0.1:3000/api/health -o /tmp/mariam-health.json; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" != "1" ]; then
+            echo "Local API did not become healthy; PM2 diagnostics follow."
+            pm2 list || true
+            pm2 logs mariam-live-api --lines 80 --nostream || true
+            exit 1
+          fi
+          cat /tmp/mariam-health.json
+          echo
+          echo "===== PUBLIC HEALTH CHECK WITH RETRIES ====="
+          public_ok=0
+          for attempt in $(seq 1 10); do
+            if curl -fsS --max-time 5 https://nokiraq.duckdns.org/api/health -o /tmp/mariam-public-health.json; then
+              public_ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$public_ok" != "1" ]; then
+            echo "Public Caddy health check failed; local API is healthy."
+            exit 1
+          fi
+          cat /tmp/mariam-public-health.json
           echo
           echo "===== AVATAR ROUTE AUTH CHECK (401 EXPECTED) ====="
           code=$(curl -sS -o /tmp/profile-avatar-check.json -w '%{http_code}' \
-            -X POST https://nokiraq.duckdns.org/api/profile/avatar \
+            -X POST http://127.0.0.1:3000/api/profile/avatar \
             -H 'Content-Type: application/json' \
             -d '{}')
           cat /tmp/profile-avatar-check.json
