@@ -56,7 +56,7 @@ class RoomActivity : Activity() {
   top.addView(label("×",30f,Color.WHITE,true).apply{
    setOnClickListener{leaveRoom()}
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,45,75));setStroke(dp(1),Color.rgb(198,105,151))}
-  },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8)})
+  },LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(8);topMargin=dp(7)})
   roomPage.addView(top)
   roomPage.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",23f,Color.WHITE,true).apply{setPadding(0,dp(12),0,dp(4))})
   grid=LinearLayout(this).apply{orientation=1}
@@ -378,7 +378,7 @@ class RoomActivity : Activity() {
       addView(label(name.take(1).uppercase(),21f,gold,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",30f,purple,true),
+      addView(label("+",40f,purple,true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
