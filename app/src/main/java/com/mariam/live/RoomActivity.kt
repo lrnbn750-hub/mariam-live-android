@@ -32,7 +32,7 @@ class RoomActivity : Activity() {
  private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
- private val bg=Color.rgb(247,250,248); private val purple=Color.rgb(35,157,91); private val gold=Color.rgb(35,157,91); private val mutedText=Color.rgb(105,119,110)
+ private val bg=Color.rgb(241,243,238); private val purple=Color.rgb(83,126,94); private val gold=Color.rgb(83,126,94); private val mutedText=Color.rgb(103,111,101)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private lateinit var ownerAvatarView:ImageView
@@ -59,18 +59,18 @@ class RoomActivity : Activity() {
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(91,72,145))}
  override fun onCreate(savedInstanceState:Bundle?){
-  super.onCreate(savedInstanceState);window.statusBarColor=Color.WHITE;window.navigationBarColor=Color.WHITE;window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+  super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(247,247,242);window.navigationBarColor=Color.rgb(247,247,242);window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));setBackgroundColor(Color.rgb(247,250,248))}
+  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(15),dp(12),dp(15),dp(12));setBackgroundColor(Color.rgb(241,243,238))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
-  top.addView(label("×",30f,Color.rgb(35,157,91),true).apply{
+  top.addView(label("×",30f,Color.rgb(83,126,94),true).apply{
    setOnClickListener{leaveRoom()}
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.WHITE)
-    setStroke(dp(1),Color.rgb(220,232,224))
+    setColor(Color.rgb(247,247,242))
+    setStroke(dp(1),Color.rgb(215,220,209))
    }
    contentDescription="مغادرة البث"
   },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
@@ -81,18 +81,18 @@ class RoomActivity : Activity() {
   })
   membersButton=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER;setPadding(dp(14),dp(8),dp(14),dp(8))
-   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.WHITE,Color.rgb(242,249,244))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(190,222,201))}
-   addView(label("●",11f,Color.rgb(35,157,91),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
-   addView(label("الموجودون 0",13f,Color.rgb(35,110,67),true))
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(247,247,242),Color.rgb(239,242,234))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(196,211,193))}
+   addView(label("●",11f,Color.rgb(83,126,94),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
+   addView(label("الموجودون 0",13f,Color.rgb(69,103,77),true))
    setOnClickListener{showRoomMembers()}
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3);bottomMargin=dp(4)})
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(26)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
-  mic=action("المايك","mic",Color.rgb(35,157,91),Color.rgb(115,205,145)){toggleMic()}
+  mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
   mic.visibility=View.GONE
-  musicButton=action("موسيقى","music",Color.rgb(42,139,91),Color.rgb(145,215,165)){showMusicOptions()}
+  musicButton=action("موسيقى","music",Color.rgb(91,130,94),Color.rgb(157,178,145)){showMusicOptions()}
   musicButton.visibility=View.GONE
   val roomControls=LinearLayout(this).apply{
    orientation=0
@@ -102,7 +102,7 @@ class RoomActivity : Activity() {
   }
   roomPage.addView(roomControls,LinearLayout.LayoutParams(-1,dp(82)).apply{topMargin=dp(4)})
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8)})
-  val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
+  val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   emptySeats()
@@ -116,25 +116,25 @@ class RoomActivity : Activity() {
    gravity=Gravity.CENTER_VERTICAL
    setPadding(dp(12),dp(9),dp(12),dp(9))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.WHITE,Color.rgb(246,251,247),Color.WHITE)).apply{
+    intArrayOf(Color.rgb(247,247,242),Color.rgb(247,247,241),Color.rgb(247,247,242))).apply{
      cornerRadius=dp(25).toFloat()
-     setStroke(dp(1),Color.rgb(126,194,145))
+     setStroke(dp(1),Color.rgb(137,166,139))
    }
    elevation=dp(8).toFloat()
   }
   val avatarFrame=FrameLayout(this).apply{
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.rgb(239,248,242))
-    setStroke(dp(3),Color.rgb(35,157,91))
+    setColor(Color.rgb(232,237,227))
+    setStroke(dp(3),Color.rgb(83,126,94))
    }
    elevation=dp(5).toFloat()
   }
   ownerAvatarView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(225,240,230))}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(226,232,221))}
    clipToOutline=true
-   setImageDrawable(VectorIcon("user",Color.rgb(35,157,91),dp(28)))
+   setImageDrawable(VectorIcon("user",Color.rgb(83,126,94),dp(28)))
   }
   avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
   card.addView(avatarFrame,LinearLayout.LayoutParams(dp(66),dp(66)).apply{marginEnd=dp(12)})
@@ -142,24 +142,24 @@ class RoomActivity : Activity() {
    orientation=1
    gravity=Gravity.CENTER_VERTICAL
   }
-  details.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.rgb(34,75,49),true).apply{
+  details.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.rgb(53,72,57),true).apply{
    gravity=Gravity.END or Gravity.CENTER_VERTICAL
    maxLines=1
    ellipsize=android.text.TextUtils.TruncateAt.END
    setShadowLayer(dp(5).toFloat(),0f,0f,Color.rgb(186,91,255))
   },LinearLayout.LayoutParams(-1,dp(31)))
-  ownerNameView=label("صاحب الغرفة",14f,Color.rgb(35,157,91),true).apply{
+  ownerNameView=label("صاحب الغرفة",14f,Color.rgb(83,126,94),true).apply{
    gravity=Gravity.END or Gravity.CENTER_VERTICAL
    maxLines=1
   }
   details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(23)))
-  ownerIdView=label("ID: "+roomId,12f,Color.rgb(105,119,110),true).apply{
+  ownerIdView=label("ID: "+roomId,12f,Color.rgb(103,111,101),true).apply{
    gravity=Gravity.END or Gravity.CENTER_VERTICAL
    maxLines=1
   }
   details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(22)))
   card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
-  val crown=label("♛",25f,Color.rgb(35,157,91),true)
+  val crown=label("♛",25f,Color.rgb(83,126,94),true)
   card.addView(crown,LinearLayout.LayoutParams(dp(30),dp(42)).apply{marginStart=dp(5)})
   return card
  }
@@ -227,14 +227,14 @@ class RoomActivity : Activity() {
     setStroke(dp(1),Color.argb(155,255,255,255))
   }
    val iv=ImageView(this@RoomActivity).apply{
-    setImageDrawable(VectorIcon(icon,Color.WHITE,dp(25)))
-    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
+    setImageDrawable(VectorIcon(icon,Color.rgb(247,247,242),dp(25)))
+    setColorFilter(Color.rgb(247,247,242),PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.FIT_CENTER
    }
    addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
   }
   addView(iconWrap,LinearLayout.LayoutParams(dp(47),dp(47)).apply{bottomMargin=dp(7)})
-  addView(label(title,11f,Color.WHITE,true))
+  addView(label(title,11f,Color.rgb(247,247,242),true))
   setOnClickListener{click()}
  }
 
@@ -259,10 +259,10 @@ class RoomActivity : Activity() {
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.rgb(38,58,45));setHintTextColor(Color.rgb(140,153,144))
+    setTextColor(Color.rgb(53,65,55));setHintTextColor(Color.rgb(125,132,122))
     setPadding(dp(12),dp(7),dp(12),dp(7))
     background=GradientDrawable().apply{
-     setColor(Color.rgb(248,252,249));cornerRadius=dp(14).toFloat()
+     setColor(Color.rgb(242,243,237));cornerRadius=dp(14).toFloat()
      setStroke(dp(1),Color.rgb(205,226,211))
     }
    }
@@ -270,9 +270,9 @@ class RoomActivity : Activity() {
    val send=TextView(this@RoomActivity).apply{
     text="إرسال";textSize=13f;gravity=Gravity.CENTER
     typeface=android.graphics.Typeface.DEFAULT_BOLD
-    setTextColor(Color.WHITE);setPadding(dp(13),0,dp(13),0)
+    setTextColor(Color.rgb(247,247,242));setPadding(dp(13),0,dp(13),0)
     background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-     intArrayOf(Color.rgb(43,170,99),Color.rgb(29,137,76))).apply{cornerRadius=dp(15).toFloat()}
+     intArrayOf(Color.rgb(91,139,101),Color.rgb(75,119,84))).apply{cornerRadius=dp(15).toFloat()}
     setOnClickListener{sendRoomMessage()}
    }
    composer.addView(send,LinearLayout.LayoutParams(-2,dp(42)))
@@ -313,21 +313,21 @@ class RoomActivity : Activity() {
       orientation=1
       setPadding(dp(11),dp(7),dp(11),dp(7))
       background=GradientDrawable().apply{
-       setColor(if(mine)Color.rgb(225,244,231) else Color.rgb(246,249,247))
+       setColor(if(mine)Color.rgb(225,244,231) else Color.rgb(242,243,237))
        cornerRadius=dp(14).toFloat()
-       setStroke(dp(1),if(mine)Color.rgb(139,207,157) else Color.rgb(222,232,225))
+       setStroke(dp(1),if(mine)Color.rgb(175,193,169) else Color.rgb(216,220,210))
       }
      }
      bubble.addView(TextView(this@RoomActivity).apply{
       text=sender
       textSize=11f
-      setTextColor(if(mine)Color.rgb(35,130,72) else Color.rgb(91,112,97))
+      setTextColor(if(mine)Color.rgb(69,103,77) else Color.rgb(91,101,91))
       typeface=android.graphics.Typeface.DEFAULT_BOLD
      })
      bubble.addView(TextView(this@RoomActivity).apply{
       text=body
       textSize=14f
-      setTextColor(Color.rgb(38,58,45))
+      setTextColor(Color.rgb(53,65,55))
       setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.NORMAL)
      })
      val line=LinearLayout(this@RoomActivity).apply{
@@ -341,8 +341,8 @@ class RoomActivity : Activity() {
     for(notice in joinNotices.takeLast(12)){
      val event=TextView(this@RoomActivity).apply{
       text=notice;textSize=12f;gravity=Gravity.CENTER
-      setTextColor(Color.rgb(69,105,78));setPadding(dp(8),dp(7),dp(8),dp(7))
-      background=GradientDrawable().apply{setColor(Color.rgb(235,246,238));cornerRadius=dp(12).toFloat()}
+      setTextColor(Color.rgb(77,91,76));setPadding(dp(8),dp(7),dp(8),dp(7))
+      background=GradientDrawable().apply{setColor(Color.rgb(235,237,229));cornerRadius=dp(12).toFloat()}
      }
      chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
     }
@@ -522,10 +522,10 @@ class RoomActivity : Activity() {
      clipToPadding=false
      background=null
      if(occupied){
-      addView(label(name.take(1).uppercase(),21f,Color.rgb(35,157,91),true),
+      addView(label(name.take(1).uppercase(),21f,Color.rgb(83,126,94),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",28f,Color.rgb(35,157,91),true),
+      addView(label("+",28f,Color.rgb(83,126,94),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
@@ -544,9 +544,9 @@ class RoomActivity : Activity() {
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
      background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
-      intArrayOf(Color.rgb(221,241,226),Color.rgb(240,249,242),Color.rgb(202,232,210))).apply{
+      intArrayOf(Color.rgb(229,235,222),Color.rgb(241,242,235),Color.rgb(202,232,210))).apply{
        shape=GradientDrawable.OVAL
-       setStroke(dp(2),if(occupied)Color.rgb(35,157,91) else Color.rgb(188,218,196))
+       setStroke(dp(2),if(occupied)Color.rgb(83,126,94) else Color.rgb(190,205,186))
       }
      elevation=dp(5).toFloat()
      addView(avatar,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
@@ -559,7 +559,7 @@ class RoomActivity : Activity() {
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(80),dp(80)).apply{bottomMargin=dp(if(occupied) 1 else 0)})
     if(occupied){
-     tile.addView(label(name,13f,Color.WHITE,true).apply{
+     tile.addView(label(name,13f,Color.rgb(247,247,242),true).apply{
       maxLines=2
       minLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
@@ -570,7 +570,7 @@ class RoomActivity : Activity() {
      },LinearLayout.LayoutParams(-1,dp(29)))
     }else{
      // المقعد الفارغ: علامة + ورقم صغير فقط، بلا أي كلمات.
-     tile.addView(label((i+1).toString(),11f,Color.rgb(105,119,110),true))
+     tile.addView(label((i+1).toString(),11f,Color.rgb(103,111,101),true))
     }
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
     // Keep every seat cell the same height so empty and occupied seats align.
@@ -728,16 +728,16 @@ class RoomActivity : Activity() {
    val isOwnerMember=member.optBoolean("is_owner")
    val seat=member.optInt("seat_number",0)
    val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
-   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(8),dp(8),dp(8));background=GradientDrawable().apply{setColor(Color.rgb(247,250,248));cornerRadius=dp(14).toFloat();setStroke(dp(1),Color.rgb(220,233,224))}}
-   val avatar=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(225,240,230))};clipToOutline=true;setImageDrawable(VectorIcon("user",Color.WHITE,dp(22)))}
+   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(8),dp(8),dp(8));background=GradientDrawable().apply{setColor(Color.rgb(241,243,238));cornerRadius=dp(14).toFloat();setStroke(dp(1),Color.rgb(220,233,224))}}
+   val avatar=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(226,232,221))};clipToOutline=true;setImageDrawable(VectorIcon("user",Color.rgb(247,247,242),dp(22)))}
    row.addView(avatar,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(10)})
    val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
    if(url.isNotBlank())loadAvatarInto(avatar,url)
    val info=LinearLayout(this).apply{orientation=1}
    info.addView(label(name,14f,Color.rgb(37,64,45),true).apply{gravity=Gravity.START})
-   info.addView(label("@$username  •  ID: $account",10f,Color.rgb(105,119,110)).apply{gravity=Gravity.START})
+   info.addView(label("@$username  •  ID: $account",10f,Color.rgb(103,111,101)).apply{gravity=Gravity.START})
    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-   row.addView(label(role,10f,if(isOwnerMember)Color.rgb(35,157,91) else Color.rgb(105,119,110),true))
+   row.addView(label(role,10f,if(isOwnerMember)Color.rgb(83,126,94) else Color.rgb(103,111,101),true))
    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
   }
   val scroll=ScrollView(this).apply{addView(list)}
