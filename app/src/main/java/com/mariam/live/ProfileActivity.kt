@@ -275,8 +275,8 @@ class ProfileActivity : Activity() {
             frameToggle.text=if(royalFrameOwned)"تشغيل الإطار الملكي" else "الإطار الملكي غير متوفر"
             frameToggle.setTextColor(if(royalFrameOwned)purple else Color.GRAY)
         }
-        frameToggle.isEnabled=royalFrameOwned
-        frameToggle.alpha=if(royalFrameOwned)1f else 0.65f
+        frameToggle.isEnabled=royalFrameOwned || royalFrameEquipped
+        frameToggle.alpha=if(frameToggle.isEnabled)1f else 0.65f
     }
 
     private fun toggleRoyalFrame(){
@@ -535,7 +535,7 @@ private class RoyalGifFrame(context:android.content.Context):View(context){
     fun setGif(bytes:ByteArray){
         movie=android.graphics.Movie.decodeByteArray(bytes,0,bytes.size)
         startedAt=android.os.SystemClock.uptimeMillis()
-        if(running)postInvalidateOnAnimation()
+        startAnimation()
     }
 
     fun startAnimation(){
