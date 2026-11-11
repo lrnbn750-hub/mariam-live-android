@@ -49,8 +49,9 @@ jobs:
           set -euo pipefail
           cd /opt/mariam-live/backend
           DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
-          test -n "$DB_NAME"
-          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -f /tmp/mariam-levels-migration.sql
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME"; test -n "$DB_USER"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/mariam-levels-migration.sql
           rm -f /tmp/mariam-levels-migration.sql
           REMOTE
 
