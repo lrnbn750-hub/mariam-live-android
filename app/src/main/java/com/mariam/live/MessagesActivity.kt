@@ -103,8 +103,8 @@ class MessagesActivity : Activity() {
                     } else {
                         status.text = "محادثاتك الخاصة • ${rows.length()}"
                         for (i in 0 until rows.length()) {
-                            val item = rows.optJSONObject(i) ?: continue
-                            addConversation(item)
+                            val item = rows.optJSONObject(i)
+                            if (item != null) addConversation(item)
                         }
                     }
                     loading = false
