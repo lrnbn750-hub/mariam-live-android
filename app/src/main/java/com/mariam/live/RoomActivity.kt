@@ -140,6 +140,9 @@ class RoomActivity : Activity() {
 
  private fun updatePremiumOwnerHeader(owner:JSONObject?){
   if(!::ownerNameView.isInitialized || owner==null)return
+  // Keep the last known owner identity visible when the owner temporarily leaves seat 1.
+  val ownerUserId=owner.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+  if(ownerUserId==null)return
   val name=owner.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
    ?:owner.optString("username").takeIf{it.isNotBlank()&&it!="null"}
    ?: "صاحب الغرفة"
@@ -147,8 +150,7 @@ class RoomActivity : Activity() {
   val accountId=owner.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
    ?:owner.optString("account_id").takeIf{it.isNotBlank()&&it!="null"}
   ownerIdView.text=if(accountId!=null) "ID: $accountId" else "ID: ..."
-  val ownerUserId=owner.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
-  if(ownerUserId!=null && ownerUserId==currentUserId && !ownerProfileRequested){
+  if(ownerUserId==currentUserId && !ownerProfileRequested){
    ownerProfileRequested=true
    scope.launch{
     try{
