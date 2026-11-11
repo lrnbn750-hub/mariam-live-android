@@ -724,6 +724,7 @@ class RoomActivity : Activity() {
   if(!isOwner || !connected)return
   scope.launch{
    try{
+    stopRoomMusic(restoreMic=false)
     // Keep the published audio track alive even when the owner has muted their microphone.
     room.localParticipant.setMicrophoneEnabled(true)
     val track=room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack
@@ -732,7 +733,6 @@ class RoomActivity : Activity() {
      if(!microphoneEnabled)room.localParticipant.setMicrophoneEnabled(false)
      return@launch
     }
-    stopRoomMusic()
     val mixer=RoomMusicMixer(
      this@RoomActivity,uri,
      onError={message->runOnUiThread{
@@ -756,7 +756,7 @@ class RoomActivity : Activity() {
   }
  }
 
- private fun stopRoomMusic(){
+ private fun stopRoomMusic(restoreMic:Boolean=true){
   val mixer=musicMixer
   musicMixer=null
   try{
@@ -764,7 +764,7 @@ class RoomActivity : Activity() {
    track?.setAudioBufferCallback(null)
   }catch(_:Exception){}
   mixer?.stop()
-  if(connected && !microphoneEnabled){
+  if(restoreMic && connected && !microphoneEnabled){
    scope.launch{try{room.localParticipant.setMicrophoneEnabled(false)}catch(_:Exception){}}
   }
  }
@@ -804,6 +804,7 @@ class RoomActivity : Activity() {
   leaving=true
   scope.launch{
    try{
+    stopRoomMusic(restoreMic=false)
     if(connected)room.disconnect()
     stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
     withContext(Dispatchers.IO){
@@ -822,8 +823,7 @@ class RoomActivity : Activity() {
     leaving=true
     scope.launch{
      try{
-      stopRoomMusic()
-      stopRoomMusic()
+      stopRoomMusic(restoreMic=false)
       if(connected)room.disconnect()
       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
       val result=withContext(Dispatchers.IO){
@@ -849,7 +849,7 @@ class RoomActivity : Activity() {
 
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){
-  stopRoomMusic()
+  stopRoomMusic(restoreMic=false)
   seatRefreshJob?.cancel()
   scope.cancel()
   super.onDestroy()
