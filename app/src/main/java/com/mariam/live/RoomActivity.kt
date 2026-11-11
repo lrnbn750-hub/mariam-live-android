@@ -33,6 +33,8 @@ class RoomActivity : Activity() {
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private var loadedBackgroundUrl=""
+ private val avatarBitmaps=HashMap<String,Bitmap>()
+ private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
  private lateinit var chatPanel:LinearLayout
  private var chatPoll:Job?=null
@@ -390,6 +392,17 @@ class RoomActivity : Activity() {
       if(occupied)21f else 25f,if(occupied)gold else purple,true),
       FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     }
+    val avatarUrl=s.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    if(occupied && avatarUrl.isNotBlank()){
+     val photo=ImageView(this).apply{
+      scaleType=ImageView.ScaleType.CENTER_CROP
+      clipToOutline=true
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.TRANSPARENT)}
+      tag=avatarUrl
+     }
+     avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
+     loadAvatarInto(photo,avatarUrl)
+    }
     tile.addView(avatar,LinearLayout.LayoutParams(dp(48),dp(48)).apply{bottomMargin=dp(6)})
     tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
     val caption=if(s.optBoolean("is_muted"))"مكتوم" else if(!occupied)"اضغط للجلوس" else "على المايك"
@@ -400,6 +413,22 @@ class RoomActivity : Activity() {
     })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
+  }
+ }
+ private fun loadAvatarInto(view:ImageView,url:String){
+  val cached=avatarBitmaps[url]
+  if(cached!=null){view.setImageBitmap(cached);return}
+  if(!avatarLoading.add(url))return
+  scope.launch{
+   try{
+    val bitmap=withContext(Dispatchers.IO){
+     java.net.URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{BitmapFactory.decodeStream(it)}
+    }
+    if(bitmap!=null){
+     avatarBitmaps[url]=bitmap
+     if(view.tag==url)view.setImageBitmap(bitmap)
+    }
+   }catch(_:Exception){}finally{avatarLoading.remove(url)}
   }
  }
  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
