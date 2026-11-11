@@ -42,6 +42,8 @@ class RoomActivity : Activity() {
  private lateinit var ownerNameView:TextView
  private lateinit var ownerIdView:TextView
  private var ownerProfileRequested=false
+ private var roomOwnerUserId=""
+ private var followRequestSent=false
  private var loadedBackgroundUrl=""
  private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
  private var seatRefreshJob:Job?=null
@@ -79,7 +81,7 @@ class RoomActivity : Activity() {
    contentDescription="مغادرة البث"
   },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
   roomPage.addView(top)
-  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(112)).apply{
+  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(68)).apply{
    topMargin=dp(10)
    bottomMargin=dp(5)
   })
@@ -228,54 +230,76 @@ class RoomActivity : Activity() {
   val card=LinearLayout(this).apply{
    orientation=0
    gravity=Gravity.CENTER_VERTICAL
-   setPadding(dp(12),dp(9),dp(12),dp(9))
+   setPadding(dp(8),dp(5),dp(8),dp(5))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.rgb(247,247,242),Color.rgb(247,247,241),Color.rgb(247,247,242))).apply{
-     cornerRadius=dp(25).toFloat()
-     setStroke(dp(1),Color.rgb(137,166,139))
+    intArrayOf(Color.argb(142,48,39,91),Color.argb(122,108,67,142),Color.argb(138,53,49,119))).apply{
+     cornerRadius=dp(24).toFloat()
+     setStroke(dp(1),Color.argb(95,255,255,255))
    }
-   elevation=dp(8).toFloat()
+   elevation=dp(2).toFloat()
   }
   val avatarFrame=FrameLayout(this).apply{
-   background=GradientDrawable().apply{
-    shape=GradientDrawable.OVAL
-    setColor(Color.rgb(232,237,227))
-    setStroke(dp(3),Color.rgb(83,126,94))
-   }
-   elevation=dp(5).toFloat()
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(190,255,255,255))}
   }
   ownerAvatarView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(226,232,221))}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(70,255,255,255))}
    clipToOutline=true
-   setImageDrawable(VectorIcon("user",Color.rgb(83,126,94),dp(28)))
+   setImageDrawable(VectorIcon("user",Color.WHITE,dp(19)))
   }
-  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
-  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(66),dp(66)).apply{marginEnd=dp(12)})
-  val details=LinearLayout(this).apply{
-   orientation=1
-   gravity=Gravity.CENTER_VERTICAL
-  }
-  details.addView(label(intent.getStringExtra("room_name")?: "غرفة صوتية",19f,Color.rgb(53,72,57),true).apply{
-   gravity=Gravity.END or Gravity.CENTER_VERTICAL
-   maxLines=1
+  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(42),dp(42),Gravity.CENTER))
+  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(7)})
+  val details=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+  ownerNameView=label("صاحب البث",13f,Color.WHITE,true).apply{
+   gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
    ellipsize=android.text.TextUtils.TruncateAt.END
-   setShadowLayer(dp(5).toFloat(),0f,0f,Color.rgb(186,91,255))
-  },LinearLayout.LayoutParams(-1,dp(31)))
-  ownerNameView=label("صاحب الغرفة",14f,Color.rgb(83,126,94),true).apply{
-   gravity=Gravity.END or Gravity.CENTER_VERTICAL
-   maxLines=1
   }
-  details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(23)))
-  ownerIdView=label("ID: "+roomId,12f,Color.rgb(103,111,101),true).apply{
-   gravity=Gravity.END or Gravity.CENTER_VERTICAL
-   maxLines=1
+  details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(22)))
+  ownerIdView=label("ID: "+roomId,10f,Color.argb(225,255,255,255),false).apply{
+   gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
   }
-  details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(22)))
+  details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(18)))
   card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
-  val crown=label("♛",25f,Color.rgb(83,126,94),true)
-  card.addView(crown,LinearLayout.LayoutParams(dp(30),dp(42)).apply{marginStart=dp(5)})
+  val follow=TextView(this).apply{
+   text="+";textSize=23f;gravity=Gravity.CENTER
+   setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(20,198,190))}
+   contentDescription="متابعة صاحب البث"
+   setOnClickListener{sendOwnerFollowRequest(this)}
+  }
+  card.addView(follow,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
   return card
+ }
+
+ private fun sendOwnerFollowRequest(button:TextView){
+  if(roomOwnerUserId.isBlank() || roomOwnerUserId=="null" || roomOwnerUserId==currentUserId){
+   Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show()
+   return
+  }
+  if(followRequestSent){
+   Toast.makeText(this,"تم إرسال طلب المتابعة مسبقاً",Toast.LENGTH_SHORT).show()
+   return
+  }
+  button.isEnabled=false
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){
+     AuthApi.post("/api/friends/requests",JSONObject().put("user_id",roomOwnerUserId),authToken)
+    }
+    if(result.status in 200..299){
+     followRequestSent=true
+     button.text="✓"
+     button.background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,139,101))}
+     Toast.makeText(this@RoomActivity,"تم إرسال طلب المتابعة",Toast.LENGTH_SHORT).show()
+    }else{
+     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال الطلب"),Toast.LENGTH_SHORT).show()
+     button.isEnabled=true
+    }
+   }catch(_:Exception){
+    button.isEnabled=true
+    Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
+   }
+  }
  }
 
  private fun updatePremiumOwnerHeader(owner:JSONObject?){
@@ -283,6 +307,7 @@ class RoomActivity : Activity() {
   // Keep the last known owner identity visible when the owner temporarily leaves seat 1.
   val ownerUserId=owner.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
   if(ownerUserId==null)return
+  roomOwnerUserId=ownerUserId
   val name=owner.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
    ?:owner.optString("username").takeIf{it.isNotBlank()&&it!="null"}
    ?: "صاحب الغرفة"
@@ -366,18 +391,18 @@ class RoomActivity : Activity() {
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(6)})
    val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
    chatInput=EditText(this@RoomActivity).apply{
-    hint="اكتب رسالتك...";textSize=13f;maxLines=1;setSingleLine(true)
+    hint="قل مرحباً...";textSize=13f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
     inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
     setOnEditorActionListener{_,actionId,event->
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.rgb(53,65,55));setHintTextColor(Color.rgb(125,132,122))
+    setTextColor(Color.WHITE);setHintTextColor(Color.argb(225,255,255,255))
     setPadding(dp(12),dp(7),dp(12),dp(7))
     background=GradientDrawable().apply{
-     setColor(Color.rgb(242,243,237));cornerRadius=dp(14).toFloat()
-     setStroke(dp(1),Color.rgb(205,226,211))
+     setColor(Color.argb(105,255,255,255));cornerRadius=dp(22).toFloat()
+     setStroke(dp(1),Color.argb(105,255,255,255))
     }
    }
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(43),1f).apply{marginEnd=dp(7)})
