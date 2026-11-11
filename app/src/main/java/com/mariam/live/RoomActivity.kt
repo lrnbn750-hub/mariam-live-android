@@ -375,15 +375,23 @@ class RoomActivity : Activity() {
      elevation=dp(3).toFloat()
      isClickable=true;isFocusable=true
     }
+    // لا نرسم دائرة/مربعاً حول علامة + في المقعد الفارغ.
+    // صورة العضو تبقى دائرية وكبيرة عند وجوده.
     val avatar=FrameLayout(this).apply{
-     background=GradientDrawable().apply{
-      shape=1
-      setColor(if(occupied)Color.rgb(104,73,161) else Color.rgb(42,34,76))
-      setStroke(dp(2),if(occupied)gold else purple)
+     clipChildren=false;clipToPadding=false
+     if(occupied){
+      background=GradientDrawable().apply{
+       shape=GradientDrawable.OVAL
+       setColor(Color.rgb(104,73,161))
+       setStroke(dp(2),gold)
+      }
+      addView(label(name.take(1).uppercase(),21f,gold,true),
+       FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+     }else{
+      background=null
+      addView(label("+",34f,purple,true),
+       FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
-     addView(label(if(occupied)name.take(1).uppercase() else "+",
-      if(occupied)21f else 25f,if(occupied)gold else purple,true),
-      FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     }
     val avatarUrl=s.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     if(occupied && avatarUrl.isNotBlank()){
@@ -399,20 +407,20 @@ class RoomActivity : Activity() {
     // إطار الصورة أكبر قليلاً، وإطار التاج الملكي يظهر حصراً لمستوى 100.
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false;clipToPadding=false
-     addView(avatar,FrameLayout.LayoutParams(dp(56),dp(56),Gravity.CENTER))
+     addView(avatar,FrameLayout.LayoutParams(dp(occupied ? 70 : 58),dp(occupied ? 70 : 58),Gravity.CENTER))
     }
     val totalXp=s.optLong("total_xp",0L)
     if(occupied && totalXp>=980100L){
      val royal=RoyalSeatGifView(this)
-     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(78),dp(78),Gravity.CENTER))
+     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
      royal.start()
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(80),dp(80)).apply{bottomMargin=dp(2)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(100),dp(100)).apply{bottomMargin=dp(1)})
     tile.addView(label(name,10f,Color.WHITE,true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
     val caption=if(s.optBoolean("is_muted"))"مكتوم" else if(!occupied)"اضغط للجلوس" else "على المايك"
     tile.addView(label(caption,9f,if(!occupied)Color.rgb(181,177,202) else Color.rgb(244,197,106)))
     tile.setOnClickListener{seatClick(s,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(132),1f).apply{
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(148),1f).apply{
      setMargins(dp(3),dp(4),dp(3),dp(4))
     })
    }
