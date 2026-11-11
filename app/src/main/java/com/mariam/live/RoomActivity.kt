@@ -262,7 +262,7 @@ class RoomActivity : Activity() {
     setTextColor(Color.rgb(38,58,45));setHintTextColor(Color.rgb(140,153,144))
     setPadding(dp(12),dp(7),dp(12),dp(7))
     background=GradientDrawable().apply{
-     setColor(Color.argb(18,111,231,220));cornerRadius=dp(7).toFloat()
+     setColor(Color.rgb(248,252,249));cornerRadius=dp(14).toFloat()
      setStroke(dp(1),Color.rgb(205,226,211))
     }
    }
@@ -293,7 +293,7 @@ class RoomActivity : Activity() {
     }
     if(result.status !in 200..299){
      if(chatMessages.childCount==0){
-      chatMessages.addView(label(result.body.optString("error","تعذر تحميل الرسائل"),13f,Color.LTGRAY))
+      chatMessages.addView(label(result.body.optString("error","تعذر تحميل الرسائل"),13f,Color.rgb(100,116,104)))
      }
      return@launch
     }
@@ -327,7 +327,8 @@ class RoomActivity : Activity() {
      bubble.addView(TextView(this@RoomActivity).apply{
       text=body
       textSize=14f
-      setTextColor(Color.WHITE)
+      setTextColor(Color.rgb(38,58,45))
+      setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.NORMAL)
      })
      val line=LinearLayout(this@RoomActivity).apply{
       orientation=0
@@ -340,7 +341,7 @@ class RoomActivity : Activity() {
     for(notice in joinNotices.takeLast(12)){
      val event=TextView(this@RoomActivity).apply{
       text=notice;textSize=12f;gravity=Gravity.CENTER
-      setTextColor(Color.rgb(190,174,231));setPadding(dp(8),dp(7),dp(8),dp(7))
+      setTextColor(Color.rgb(69,105,78));setPadding(dp(8),dp(7),dp(8),dp(7))
       background=GradientDrawable().apply{setColor(Color.rgb(235,246,238));cornerRadius=dp(12).toFloat()}
      }
      chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
