@@ -144,7 +144,7 @@ class ProfileActivity : Activity() {
         shortcut("💰","ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
         shortcut("👑","KING&QUEEN",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("KING&QUEEN")}
         shortcut("V","شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
-        shortcut("✧","LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){scroll.smoothScrollTo(0,levelCard.top)}
+        shortcut("✧","LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
 
         val separator=View(this).apply{setBackgroundColor(Color.rgb(244,245,248))}
