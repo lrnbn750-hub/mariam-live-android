@@ -29,7 +29,7 @@ class RegisterActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val page = AuthUi.page(this)
-        page.addView(AuthUi.brand(this, "انضم إلى مجتمع Mariam Live"))
+        page.addView(AuthUi.brand(this, "انضم إلى مجتمع BAK LIVE"))
         val card = AuthUi.card(this)
         card.addView(AuthUi.heading(this, "أنشئ حسابك"))
         card.addView(AuthUi.hint(this, "أنشئ حسابك برقم هاتفك وتحقق منه عبر واتساب"))
@@ -42,7 +42,7 @@ class RegisterActivity : Activity() {
         card.addView(phone)
 
         card.addView(AuthUi.label(this, "اسم المستخدم"))
-        val username = AuthUi.field(this, "مثال: mariam_123", InputType.TYPE_CLASS_TEXT)
+        val username = AuthUi.field(this, "مثال: bak_123", InputType.TYPE_CLASS_TEXT)
         card.addView(username)
 
         card.addView(AuthUi.label(this, "الاسم الظاهر"))
