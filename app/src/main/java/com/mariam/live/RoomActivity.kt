@@ -107,6 +107,24 @@ class RoomActivity : Activity() {
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
+  // Keep the room composer above the IME. Leave immersive navigation mode
+  // while the keyboard is visible so adjustResize can move the bottom controls.
+  val visibleFrame=Rect()
+  var imeWasVisible=false
+  roomRoot.viewTreeObserver.addOnGlobalLayoutListener{
+   roomRoot.getWindowVisibleDisplayFrame(visibleFrame)
+   val keyboardHeight=roomRoot.rootView.height-visibleFrame.bottom
+   val imeVisible=keyboardHeight>dp(180)
+   if(imeVisible!=imeWasVisible){
+    imeWasVisible=imeVisible
+    if(imeVisible){
+     window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_VISIBLE
+     window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+    }else{
+     hidePhoneNavigation()
+    }
+   }
+  }
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
@@ -482,6 +500,8 @@ class RoomActivity : Activity() {
    return
   }
   composerExpanded=true
+  window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_VISIBLE
+  window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
   chatIcon.visibility=View.GONE
   chatInput.visibility=View.VISIBLE
   sendButton.visibility=View.VISIBLE
