@@ -7,13 +7,82 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import org.json.JSONObject
-import java.nio.charset.StandardCharsets
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import java.util.Locale
 import java.util.concurrent.Executors
+import org.json.JSONObject
 
 class RegisterActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
+    private val phoneUtil by lazy { PhoneNumberUtil.getInstance() }
+    private data class Country(val region: String, val name: String, val dial: String)
+    private lateinit var card: LinearLayout
+    private lateinit var message: TextView
+    private lateinit var phone: EditText
+    private lateinit var countryButton: Button
+    private lateinit var submit: Button
+    private var selectedCountry = Country("IQ", "العراق", "+964")
+    private var normalizedPhone = ""
     private var otpRequested = false
+    private var otp: EditText? = null
+    private var displayName: EditText? = null
+    private var password: EditText? = null
+
+    private fun countries(): List<Country> = phoneUtil.supportedRegions
+        .mapNotNull { region ->
+            val code = phoneUtil.getCountryCodeForRegion(region)
+            if (code <= 0) null else {
+                val locale = Locale("ar", region)
+                val name = locale.getDisplayCountry(Locale("ar"))
+                    .ifBlank { Locale("", region).displayCountry }
+                Country(region, name, "+$code")
+            }
+        }
+        .distinctBy { it.region }
+        .sortedBy { it.name }
+
+    private fun chooseCountry() {
+        val items = countries()
+        val labels = items.map { "${it.name}  ${it.dial}" }.toTypedArray()
+        val search = EditText(this).apply {
+            hint = "ابحث عن الدولة أو رمز الاتصال"
+            textSize = 15f
+            setSingleLine(true)
+            setPadding(28, 18, 28, 18)
+        }
+        val list = ListView(this)
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, labels.toMutableList())
+        list.adapter = adapter
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 12, 20, 8)
+            addView(search)
+            addView(list, LinearLayout.LayoutParams(-1, dp(360)))
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("اختر رمز الدولة")
+            .setView(dialogView)
+            .setNegativeButton("إلغاء", null)
+            .create()
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                adapter.clear()
+                adapter.addAll(items.filter { it.name.contains(s.toString(), true) || it.dial.contains(s.toString()) }
+                    .map { "${it.name}  ${it.dial}" })
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+        list.setOnItemClickListener { _, _, position, _ ->
+            val chosenLabel = adapter.getItem(position)
+            selectedCountry = items.first { "${it.name}  ${it.dial}" == chosenLabel }
+            countryButton.text = "${selectedCountry.name}  ${selectedCountry.dial}  ▾"
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    private fun dp(v: Int) = AuthUi.dp(this, v)
 
     private fun completeLogin(body: JSONObject) {
         val token = body.optString("token")
@@ -30,158 +99,182 @@ class RegisterActivity : Activity() {
         super.onCreate(savedInstanceState)
         val page = AuthUi.page(this)
         page.addView(AuthUi.brand(this, "انضم إلى مجتمع BAK LIVE"))
-        val card = AuthUi.card(this)
-        card.addView(AuthUi.heading(this, "أنشئ حسابك"))
-        card.addView(AuthUi.hint(this, "أنشئ حسابك برقم هاتفك وتحقق منه عبر واتساب"))
+        card = AuthUi.card(this)
+        page.addView(card)
+        message = AuthUi.message(this)
+        renderPhoneStep()
+        page.addView(message)
+        AuthUi.background(this, AuthUi.scroll(this, page))
+    }
 
+    private fun renderPhoneStep() {
+        otpRequested = false
+        card.removeAllViews()
+        card.addView(AuthUi.heading(this, "إنشاء حساب جديد"))
+        card.addView(AuthUi.hint(this, "أدخل رقم هاتفك لنرسل لك رمز تحقق"))
+        card.addView(AuthUi.label(this, "الدولة ورمز الاتصال"))
+        countryButton = AuthUi.primaryButton(this, "${selectedCountry.name}  ${selectedCountry.dial}  ▾").apply {
+            textSize = 14f
+            setTextColor(0xFF29243D.toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xFFF3F1F8.toInt())
+                cornerRadius = dp(13).toFloat()
+            }
+            setOnClickListener { chooseCountry() }
+        }
+        card.addView(countryButton)
         card.addView(AuthUi.label(this, "رقم الهاتف"))
-        val phone = AuthUi.field(this, "+964 7XX XXX XXXX", InputType.TYPE_CLASS_PHONE).apply {
+        phone = AuthUi.field(this, "اكتب الرقم بدون رمز الدولة", InputType.TYPE_CLASS_PHONE).apply {
             textDirection = View.TEXT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+            inputType = InputType.TYPE_CLASS_PHONE
         }
         card.addView(phone)
+        submit = AuthUi.primaryButton(this, "جلب رمز التحقق")
+        card.addView(submit)
+        submit.setOnClickListener {
+            val raw = phone.text.toString().trim().replace(Regex("[^0-9+]"), "")
+            val parsed = try { phoneUtil.parse(raw, selectedCountry.region) } catch (_: Exception) { null }
+            if (parsed == null || !phoneUtil.isValidNumberForRegion(parsed, selectedCountry.region)) {
+                AuthUi.showMessage(message, "رقم الهاتف غير صحيح. اختر الدولة واكتب الرقم بشكل صحيح")
+                return@setOnClickListener
+            }
+            normalizedPhone = phoneUtil.format(parsed, PhoneNumberUtil.PhoneNumberFormat.E164)
+            submit.isEnabled = false
+            submit.text = "جارٍ إرسال رمز التحقق..."
+            message.visibility = View.GONE
+            executor.execute {
+                try {
+                    val result = AuthApi.post("/api/auth/phone/register/request-otp",
+                        JSONObject().put("phone", normalizedPhone))
+                    runOnUiThread {
+                        submit.isEnabled = true
+                        submit.text = "جلب رمز التحقق"
+                        if (result.status in 200..299) renderOtpStep()
+                        else AuthUi.showMessage(message, result.body.optString("error", "تعذر إرسال الرمز. حاول مجدداً"))
+                    }
+                } catch (_: Exception) {
+                    runOnUiThread {
+                        submit.isEnabled = true
+                        submit.text = "جلب رمز التحقق"
+                        AuthUi.showMessage(message, "تعذر الاتصال بالخادم. حاول مرة أخرى")
+                    }
+                }
+            }
+        }
+    }
 
-        card.addView(AuthUi.label(this, "اسم المستخدم"))
-        val username = AuthUi.field(this, "مثال: bak_123", InputType.TYPE_CLASS_TEXT)
-        card.addView(username)
-
-        card.addView(AuthUi.label(this, "الاسم الظاهر"))
-        val displayName = AuthUi.field(this, "الاسم الذي سيظهر للآخرين", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
-        card.addView(displayName)
-
-        card.addView(AuthUi.label(this, "كلمة المرور"))
-        val password = AuthUi.field(this, "8 أحرف على الأقل", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        card.addView(password)
-
-        card.addView(AuthUi.label(this, "تأكيد كلمة المرور"))
-        val confirm = AuthUi.field(this, "أعد كتابة كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        card.addView(confirm)
-
-        val otpLabel = AuthUi.label(this, "رمز التحقق المرسل عبر واتساب").apply { visibility = View.GONE }
-        card.addView(otpLabel)
-        val otp = AuthUi.field(this, "أدخل رمز التحقق المكوّن من 6 أرقام", InputType.TYPE_CLASS_NUMBER).apply {
-            visibility = View.GONE
+    private fun renderOtpStep() {
+        otpRequested = true
+        card.removeAllViews()
+        card.addView(AuthUi.heading(this, "تأكيد رقم الهاتف"))
+        card.addView(AuthUi.hint(this, "أدخل رمز التحقق المرسل إلى $normalizedPhone، ثم أكمل بيانات حسابك"))
+        card.addView(AuthUi.label(this, "رمز التحقق"))
+        otp = AuthUi.field(this, "رمز التحقق المكوّن من 6 أرقام", InputType.TYPE_CLASS_NUMBER).apply {
             textDirection = View.TEXT_DIRECTION_LTR
             gravity = Gravity.CENTER
+            filters = arrayOf(android.text.InputFilter.LengthFilter(6))
         }
         card.addView(otp)
-
+        card.addView(AuthUi.label(this, "الاسم الظاهر"))
+        displayName = AuthUi.field(this, "الاسم الذي سيظهر للآخرين",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+        card.addView(displayName)
+        card.addView(AuthUi.label(this, "كلمة المرور"))
+        password = AuthUi.field(this, "8 أحرف على الأقل", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        card.addView(password)
         val show = CheckBox(this).apply {
-            text = "إظهار كلمات المرور"
+            text = "إظهار كلمة المرور"
             textSize = 12f
             setTextColor(0xFF77748B.toInt())
             buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
             setOnCheckedChangeListener { _, checked ->
-                val type = if (checked) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                val p = password.selectionStart
-                val c = confirm.selectionStart
-                password.inputType = type
-                confirm.inputType = type
-                password.setSelection(p.coerceAtLeast(0))
-                confirm.setSelection(c.coerceAtLeast(0))
+                val type = InputType.TYPE_CLASS_TEXT or if (checked) InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else InputType.TYPE_TEXT_VARIATION_PASSWORD
+                val pos = password?.selectionStart ?: 0
+                password?.inputType = type
+                password?.setSelection(pos.coerceAtLeast(0))
             }
         }
         card.addView(show)
-
-        val message = AuthUi.message(this)
-        card.addView(message)
-        val submit = AuthUi.primaryButton(this, "إرسال كود واتساب")
+        submit = AuthUi.primaryButton(this, "إنشاء حساب")
         card.addView(submit)
-
-        submit.setOnClickListener {
-            val number = phone.text.toString().trim().replace(" ", "").replace("-", "")
-            val name = username.text.toString().trim().lowercase()
-            val display = displayName.text.toString().trim()
-            val pass = password.text.toString()
-            val repeated = confirm.text.toString()
-
-            if (!otpRequested) {
-                val validation = when {
-                    !Regex("^\\+?[1-9][0-9]{7,14}$").matches(number) -> "أدخل رقم هاتف دولي صحيحاً، مثال +9647XXXXXXXXX"
-                    !Regex("^[a-z0-9_]{3,30}$").matches(name) -> "اسم المستخدم: 3–30 حرفاً إنجليزياً أو رقماً أو _"
-                    display.isBlank() || display.length > 60 -> "أدخل اسماً ظاهراً لا يتجاوز 60 حرفاً"
-                    pass.length < 8 || pass.toByteArray(StandardCharsets.UTF_8).size > 72 -> "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
-                    pass != repeated -> "كلمتا المرور غير متطابقتين"
-                    else -> null
-                }
-                if (validation != null) { AuthUi.showMessage(message, validation); return@setOnClickListener }
-            } else if (!Regex("^[0-9]{6}$").matches(otp.text.toString().trim())) {
-                AuthUi.showMessage(message, "أدخل رمز التحقق المكوّن من 6 أرقام")
-                return@setOnClickListener
-            }
-
-            submit.isEnabled = false
-            submit.text = if (otpRequested) "جارٍ التحقق وإنشاء الحساب..." else "جارٍ إرسال الرمز..."
-            message.visibility = View.GONE
+        val resend = AuthUi.link(this, "إعادة إرسال الرمز")
+        card.addView(resend)
+        resend.setOnClickListener {
+            resend.isEnabled = false
             executor.execute {
                 try {
-                    val result = if (!otpRequested) {
-                        AuthApi.post("/api/auth/phone/register/request-otp", JSONObject().apply { put("phone", number) })
-                    } else {
-                        AuthApi.post("/api/auth/phone/register/verify-otp", JSONObject().apply {
-                            put("phone", number)
-                            put("otp", otp.text.toString().trim())
-                            put("username", name)
-                            put("displayName", display)
-                            put("password", pass)
-                        })
+                    val result = AuthApi.post("/api/auth/phone/register/request-otp",
+                        JSONObject().put("phone", normalizedPhone))
+                    runOnUiThread {
+                        resend.isEnabled = true
+                        AuthUi.showMessage(message,
+                            if (result.status in 200..299) "تم إرسال رمز جديد" else result.body.optString("error", "تعذر إعادة إرسال الرمز"),
+                            result.status in 200..299)
                     }
+                } catch (_: Exception) {
+                    runOnUiThread { resend.isEnabled = true; AuthUi.showMessage(message, "تعذر الاتصال بالخادم") }
+                }
+            }
+        }
+        submit.setOnClickListener {
+            val code = otp?.text?.toString()?.trim().orEmpty()
+            val display = displayName?.text?.toString()?.trim().orEmpty()
+            val pass = password?.text?.toString().orEmpty()
+            val validation = when {
+                !Regex("^[0-9]{6}$").matches(code) -> "أدخل رمز التحقق المكوّن من 6 أرقام"
+                display.isBlank() || display.length > 60 -> "أدخل اسماً ظاهراً لا يتجاوز 60 حرفاً"
+                pass.length < 8 || pass.toByteArray(Charsets.UTF_8).size > 72 -> "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
+                else -> null
+            }
+            if (validation != null) { AuthUi.showMessage(message, validation); return@setOnClickListener }
+            // The backend currently requires a username; create a unique internal one without asking the user for it.
+            val internalUsername = "bak_" + System.currentTimeMillis().toString().takeLast(10)
+            submit.isEnabled = false
+            submit.text = "جارٍ التحقق وإنشاء الحساب..."
+            executor.execute {
+                try {
+                    val result = AuthApi.post("/api/auth/phone/register/verify-otp", JSONObject().apply {
+                        put("phone", normalizedPhone)
+                        put("otp", code)
+                        put("username", internalUsername)
+                        put("displayName", display)
+                        put("password", pass)
+                    })
                     if (result.status in 200..299) {
-                        if (!otpRequested) {
-                            otpRequested = true
-                            runOnUiThread {
-                                otpLabel.visibility = View.VISIBLE
-                                otp.visibility = View.VISIBLE
-                                phone.isEnabled = false
-                                username.isEnabled = false
-                                displayName.isEnabled = false
-                                password.isEnabled = false
-                                confirm.isEnabled = false
-                                show.isEnabled = false
-                                submit.isEnabled = true
-                                submit.text = "تأكيد الرمز وإنشاء الحساب"
-                                AuthUi.showMessage(message, "تم إرسال الرمز. افحص واتساب وأدخل الكود هنا.", true)
-                            }
-                        } else {
-                            completeLogin(result.body)
-                            runOnUiThread {
-                                Toast.makeText(this, "تم إنشاء حسابك بنجاح 🎉", Toast.LENGTH_LONG).show()
-                                startActivity(Intent(this, HomeActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                })
-                                finish()
-                            }
-                        }
-                    } else {
-                        val friendly = when (result.status) {
-                            409 -> "رقم الهاتف أو اسم المستخدم مستخدم مسبقاً"
-                            429 -> "طلبات كثيرة. انتظر قليلاً ثم حاول مجدداً"
-                            400, 401 -> result.body.optString("error", "البيانات أو رمز التحقق غير صحيح")
-                            503 -> "خدمة إرسال واتساب غير مفعّلة على الخادم حالياً"
-                            else -> result.body.optString("error", "تعذر إكمال العملية")
-                        }
+                        completeLogin(result.body)
                         runOnUiThread {
-                            AuthUi.showMessage(message, friendly)
-                            submit.isEnabled = true
-                            submit.text = if (otpRequested) "تأكيد الرمز وإنشاء الحساب" else "إرسال كود واتساب"
+                            Toast.makeText(this, "تم إنشاء حسابك بنجاح 🎉", Toast.LENGTH_LONG).show()
+                            startActivity(Intent(this, HomeActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            })
+                            finish()
                         }
+                    } else runOnUiThread {
+                        submit.isEnabled = true
+                        submit.text = "إنشاء حساب"
+                        val error = when (result.status) {
+                            409 -> "هذا الرقم مسجل مسبقاً"
+                            429 -> "طلبات كثيرة. انتظر قليلاً ثم حاول"
+                            400, 401 -> result.body.optString("error", "رمز التحقق غير صحيح أو انتهت صلاحيته")
+                            503 -> "خدمة إرسال واتساب غير مفعّلة حالياً"
+                            else -> result.body.optString("error", "تعذر إنشاء الحساب")
+                        }
+                        AuthUi.showMessage(message, error)
                     }
                 } catch (_: Exception) {
                     runOnUiThread {
-                        AuthUi.showMessage(message, "تعذر الاتصال بالخادم. حاول مرة أخرى.")
                         submit.isEnabled = true
-                        submit.text = if (otpRequested) "تأكيد الرمز وإنشاء الحساب" else "إرسال كود واتساب"
+                        submit.text = "إنشاء حساب"
+                        AuthUi.showMessage(message, "تعذر الاتصال بالخادم. حاول مرة أخرى")
                     }
                 }
             }
         }
-
-        val back = AuthUi.link(this, "لديك حساب بالفعل؟ سجّل الدخول")
-        back.setOnClickListener { finish() }
-        page.addView(card)
-        page.addView(back)
-        AuthUi.background(this, AuthUi.scroll(this, page))
     }
 
-    override fun onDestroy() { executor.shutdown(); super.onDestroy() }
+    override fun onDestroy() {
+        executor.shutdown()
+        super.onDestroy()
+    }
 }
