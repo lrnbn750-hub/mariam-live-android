@@ -150,7 +150,7 @@ class ProfileActivity : Activity() {
                 val value=idViewRef?.text?.toString().orEmpty()
                 if(value.isNotBlank() && value!="حسابك"){
                     val clipboard=getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Mariam ID",value))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("BAK ID",value))
                     Toast.makeText(this@ProfileActivity,"تم نسخ ID",Toast.LENGTH_SHORT).show()
                 }
             }
@@ -264,7 +264,7 @@ class ProfileActivity : Activity() {
     }
 
     private fun showInfo(title:String){
-        android.app.AlertDialog.Builder(this).setTitle(title).setMessage("هذه الخدمة ستتوفر ضمن تطبيق مريم لايف.").setPositiveButton("حسناً",null).show()
+        android.app.AlertDialog.Builder(this).setTitle(title).setMessage("هذه الخدمة ستتوفر ضمن تطبيق BAK LIVE.").setPositiveButton("حسناً",null).show()
     }
 
     private fun showEditProfile(){
@@ -592,7 +592,7 @@ class ProfileActivity : Activity() {
                     idView.text=if(publicId.isNotBlank())publicId else "حسابك"
                     publicIdLabel.text=if(publicId.isNotBlank())"ID: $publicId" else "ID: غير متوفر"
                     displayName.setText(user.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
-                    profileTitle.text=displayName.text.toString().ifBlank{"مستخدم مريم"}
+                    profileTitle.text=displayName.text.toString().ifBlank{"مستخدم BAK LIVE"}
                     bio.setText(user.optString("bio").takeUnless{it=="null"}?:"")
                     country.setText(user.optString("country").takeUnless{it=="null"}?:"")
                     avatarUrl=when{
