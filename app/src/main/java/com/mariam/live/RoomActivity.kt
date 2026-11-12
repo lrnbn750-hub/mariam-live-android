@@ -98,7 +98,7 @@ class RoomActivity : Activity() {
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-2,dp(28)).apply{gravity=Gravity.CENTER_HORIZONTAL;topMargin=dp(2);bottomMargin=dp(2)})
   grid=LinearLayout(this).apply{orientation=1}
-  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})
+  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
   mic.visibility=View.GONE
@@ -300,7 +300,7 @@ class RoomActivity : Activity() {
    contentDescription="متابعة صاحب البث"
    setOnClickListener{sendOwnerFollowRequest(this)}
   }
-  card.addView(follow,LinearLayout.LayoutParams(dp(25),dp(25)).apply{marginStart=dp(4)})
+  card.addView(follow,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginStart=dp(5)})
   return card
  }
 
@@ -431,7 +431,7 @@ class RoomActivity : Activity() {
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
-   composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -459,7 +459,7 @@ class RoomActivity : Activity() {
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -480,8 +480,8 @@ class RoomActivity : Activity() {
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(32)).apply{marginStart=dp(4)})
-   addView(composer,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4);bottomMargin=dp(2)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(36),dp(36)).apply{marginStart=dp(5)})
+   addView(composer,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(5);bottomMargin=dp(3)})
    loadRoomMessages()
    chatPoll?.cancel()
    chatPoll=scope.launch{
