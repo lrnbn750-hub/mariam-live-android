@@ -72,7 +72,7 @@ class ProfileActivity : Activity() {
             typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
         }
         val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,248,250))}
-        val scroll=ScrollView(this).apply{fillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
+        val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
         val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
         scroll.addView(content)
 
