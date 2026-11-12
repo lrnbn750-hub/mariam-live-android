@@ -92,7 +92,8 @@ class RegisterActivity : Activity() {
             .putString("token", token)
             .putString("user_id", user.optString("id"))
             .putString("username", user.optString("username"))
-            .putString("phone", user.optString("phone")).apply()
+            .putString("phone", user.optString("phone"))
+            .putString("email", user.optString("email")).apply()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,9 +103,104 @@ class RegisterActivity : Activity() {
         card = AuthUi.card(this)
         page.addView(card)
         message = AuthUi.message(this)
-        renderPhoneStep()
+        val registrationMode = intent.getStringExtra("registration_mode") ?: "phone"
+        if (registrationMode == "email") renderEmailStep() else renderPhoneStep()
         page.addView(message)
         AuthUi.background(this, AuthUi.scroll(this, page))
+    }
+
+
+    private fun renderEmailStep() {
+        card.removeAllViews()
+        card.addView(AuthUi.heading(this, "إنشاء حساب بالبريد الإلكتروني"))
+        card.addView(AuthUi.hint(this, "أدخل بريدك واسمك الظاهر وكلمة المرور لإكمال التسجيل"))
+        card.addView(AuthUi.label(this, "البريد الإلكتروني"))
+        val email = AuthUi.field(this, "example@email.com",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS).apply {
+            textDirection = View.TEXT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+        }
+        card.addView(email)
+        card.addView(AuthUi.label(this, "الاسم الظاهر"))
+        val display = AuthUi.field(this, "الاسم الذي سيظهر للآخرين",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+        card.addView(display)
+        card.addView(AuthUi.label(this, "كلمة المرور"))
+        val pass = AuthUi.field(this, "8 أحرف على الأقل",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD).apply {
+            textDirection = View.TEXT_DIRECTION_LTR
+        }
+        card.addView(pass)
+        val show = CheckBox(this).apply {
+            text = "إظهار كلمة المرور"
+            textSize = 12f
+            setTextColor(0xFF77748B.toInt())
+            buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
+            setOnCheckedChangeListener { _, checked ->
+                val pos = pass.selectionStart
+                pass.inputType = InputType.TYPE_CLASS_TEXT or if (checked)
+                    InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                else InputType.TYPE_TEXT_VARIATION_PASSWORD
+                pass.setSelection(pos.coerceAtLeast(0))
+            }
+        }
+        card.addView(show)
+        submit = AuthUi.primaryButton(this, "إنشاء حساب")
+        card.addView(submit)
+        submit.setOnClickListener {
+            val mail = email.text.toString().trim().lowercase(Locale.ROOT)
+            val name = display.text.toString().trim()
+            val secret = pass.text.toString()
+            val error = when {
+                !Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(mail) -> "أدخل بريداً إلكترونياً صحيحاً"
+                name.isBlank() || name.length > 60 -> "أدخل اسماً ظاهراً لا يتجاوز 60 حرفاً"
+                secret.length < 8 || secret.toByteArray(Charsets.UTF_8).size > 72 -> "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
+                else -> null
+            }
+            if (error != null) {
+                AuthUi.showMessage(message, error)
+                return@setOnClickListener
+            }
+            val internalUsername = "bak_" + System.currentTimeMillis().toString().takeLast(10)
+            submit.isEnabled = false
+            submit.text = "جارٍ إنشاء الحساب..."
+            message.visibility = View.GONE
+            executor.execute {
+                try {
+                    val result = AuthApi.post("/api/auth/register", JSONObject().apply {
+                        put("username", internalUsername)
+                        put("email", mail)
+                        put("displayName", name)
+                        put("password", secret)
+                    })
+                    if (result.status in 200..299) {
+                        completeLogin(result.body)
+                        runOnUiThread {
+                            Toast.makeText(this, "تم إنشاء حسابك بنجاح 🎉", Toast.LENGTH_LONG).show()
+                            startActivity(Intent(this, HomeActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            })
+                            finish()
+                        }
+                    } else runOnUiThread {
+                        submit.isEnabled = true
+                        submit.text = "إنشاء حساب"
+                        val errorText = when (result.status) {
+                            409 -> "هذا البريد مسجل مسبقاً"
+                            400 -> "تحقق من البريد وكلمة المرور والاسم"
+                            else -> result.body.optString("error", "تعذر إنشاء الحساب")
+                        }
+                        AuthUi.showMessage(message, errorText)
+                    }
+                } catch (_: Exception) {
+                    runOnUiThread {
+                        submit.isEnabled = true
+                        submit.text = "إنشاء حساب"
+                        AuthUi.showMessage(message, "تعذر الاتصال بالخادم. حاول مرة أخرى")
+                    }
+                }
+            }
+        }
     }
 
     private fun renderPhoneStep() {
