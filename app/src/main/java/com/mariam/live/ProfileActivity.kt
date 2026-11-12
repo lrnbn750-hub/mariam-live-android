@@ -268,8 +268,8 @@ class ProfileActivity : Activity() {
         editPhotoPreview=photo
         photoRow.addView(photo,LinearLayout.LayoutParams(dp(76),dp(76)))
         val photoInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
-        photoInfo.addView(txt("الصورة الشخصية",15f,Color.rgb(45,55,51),true))
-        photoInfo.addView(txt("اختر صورة واضحة لحسابك",12f,Color.rgb(135,145,140)))
+        photoInfo.addView(TextView(this).apply{text="الصورة الشخصية";textSize=15f;setTextColor(Color.rgb(45,55,51));setTypeface(null,android.graphics.Typeface.BOLD)})
+        photoInfo.addView(TextView(this).apply{text="اختر صورة واضحة لحسابك";textSize=12f;setTextColor(Color.rgb(135,145,140))})
         photoRow.addView(photoInfo,LinearLayout.LayoutParams(0,-2,1f))
         val changePhoto=TextView(this).apply{
             text="تغيير";textSize=13f;gravity=Gravity.CENTER
