@@ -34,6 +34,7 @@ class ProfileActivity : Activity() {
     private var royalFrameEquipped=false
     private val royalFrameItemId="royal100-frame"
     private lateinit var status:TextView
+    private lateinit var levelShortcutTitle:TextView
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
     private lateinit var levelRank:TextView
@@ -127,7 +128,9 @@ class ProfileActivity : Activity() {
                 background=rounded(bg,15)
                 setOnClickListener{click()}
                 addView(txt(icon,32f,fg,true),LinearLayout.LayoutParams(-1,dp(62)))
-                addView(txt(title,12f,fg,true),LinearLayout.LayoutParams(-1,dp(25)))
+                val titleView=txt(title,12f,fg,true)
+                if(title=="LV 1")levelShortcutTitle=titleView
+                addView(titleView,LinearLayout.LayoutParams(-1,dp(25)))
             }
             shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
         }
@@ -348,6 +351,7 @@ class ProfileActivity : Activity() {
                     if(isFinishing)return@runOnUiThread
                     applyLevelTheme(level)
                     levelNumber.text="LV $level"
+                    if(::levelShortcutTitle.isInitialized)levelShortcutTitle.text="LV $level"
                     levelRank.text=rank
                     levelProgress.progress=(progress*1000).toInt()
                     levelXp.text=if(level>=100)"MAX LEVEL  •  $total XP" else "$current / $next XP  •  المجموع $total"
@@ -356,6 +360,7 @@ class ProfileActivity : Activity() {
                 runOnUiThread{
                     if(!isFinishing){
                         levelNumber.text="LV 1"
+                        if(::levelShortcutTitle.isInitialized)levelShortcutTitle.text="LV 1"
                         levelRank.text="تعذر تحميل المستوى"
                         levelXp.text="تحقق من اتصال الخادم"
                     }
