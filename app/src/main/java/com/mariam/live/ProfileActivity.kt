@@ -67,12 +67,12 @@ class ProfileActivity : Activity() {
         WindowCompat.setDecorFitsSystemWindows(window,true)
         if(android.os.Build.VERSION.SDK_INT>=29)window.isNavigationBarContrastEnforced=false
         val gold=Color.rgb(218,174,91)
-        val ink=Color.rgb(48,48,54)
-        val muted=Color.rgb(155,155,160)
+        val ink=Color.rgb(38,29,58)
+        val muted=Color.rgb(139,132,153)
         val cream=Color.rgb(255,248,231)
-        window.statusBarColor=Color.rgb(231,250,250)
-        window.navigationBarColor=Color.WHITE
-        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.statusBarColor=Color.rgb(35,24,57)
+        window.navigationBarColor=Color.rgb(248,246,251)
+        window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         fun rounded(color:Int,r:Int,stroke:Int=Color.TRANSPARENT)=android.graphics.drawable.GradientDrawable().apply{
             setColor(color);cornerRadius=dp(r).toFloat()
@@ -82,23 +82,23 @@ class ProfileActivity : Activity() {
             text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
             typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
         }
-        val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,248,250))}
+        val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(248,246,251))}
         val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
-        val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
+        val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(248,246,251))}
         scroll.addView(content)
 
         val hero=LinearLayout(this).apply{
             orientation=1;gravity=Gravity.CENTER_HORIZONTAL
-            setPadding(dp(18),dp(10),dp(18),dp(18))
+            setPadding(dp(18),dp(10),dp(18),dp(24))
             background=android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(211,250,248),Color.rgb(246,231,255),Color.WHITE,Color.WHITE)
+                intArrayOf(Color.rgb(31,20,54),Color.rgb(58,35,91),Color.rgb(39,27,66))
             )
         }
         val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
         tools.addView(ImageView(this).apply{
             setImageResource(R.drawable.ic_profile_close)
-            setColorFilter(ink,android.graphics.PorterDuff.Mode.SRC_IN)
+            setColorFilter(Color.rgb(235,218,177),android.graphics.PorterDuff.Mode.SRC_IN)
             scaleType=ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10),dp(10),dp(10),dp(10))
             contentDescription="إغلاق الملف الشخصي"
@@ -130,7 +130,7 @@ class ProfileActivity : Activity() {
             setPadding(dp(8),dp(8),dp(8),dp(8))
             contentDescription="تعديل الصورة الشخصية"
             background=android.graphics.drawable.GradientDrawable().apply{
-                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(35,157,120))
+                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(126,83,181))
                 setStroke(dp(2),Color.WHITE)
             }
             setOnClickListener{showEditProfile()}
@@ -139,12 +139,12 @@ class ProfileActivity : Activity() {
             topMargin=dp(8);marginStart=dp(3)
         })
         hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
-        profileTitle=txt("جارٍ تحميل الاسم...",19f,ink,true)
+        profileTitle=txt("جارٍ تحميل الاسم...",20f,Color.WHITE,true)
         hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(38)))
         val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-        publicIdLabel=TextView(this).apply{text="ID: جارٍ التحميل";textSize=13f;setTextColor(Color.rgb(120,120,130))}
+        publicIdLabel=TextView(this).apply{text="ID: جارٍ التحميل";textSize=13f;setTextColor(Color.rgb(204,192,220))}
         idRow.addView(publicIdLabel,LinearLayout.LayoutParams(-2,dp(30)))
-        idRow.addView(TextView(this).apply{text="نسخ";textSize=12f;setTextColor(Color.rgb(35,157,120));
+        idRow.addView(TextView(this).apply{text="نسخ";textSize=12f;setTextColor(Color.rgb(232,194,117));
             setPadding(dp(10),0,dp(10),0)
             setOnClickListener{
                 val value=idViewRef?.text?.toString().orEmpty()
@@ -158,7 +158,7 @@ class ProfileActivity : Activity() {
         hero.addView(idRow,LinearLayout.LayoutParams(-1,dp(30)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
-        val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(12))}
+        val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(14),dp(8),dp(14));background=rounded(Color.WHITE,18)}
         fun stat(value:String,title:String)=LinearLayout(this).apply{
             orientation=1;gravity=Gravity.CENTER
             addView(txt(value,23f,ink,true),LinearLayout.LayoutParams(-1,dp(34)))
@@ -169,11 +169,11 @@ class ProfileActivity : Activity() {
         stats.addView(stat("0","المُعجبين"),LinearLayout.LayoutParams(0,dp(70),1f))
         content.addView(stats)
 
-        val shortcuts=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(12),dp(5),dp(12),dp(20))}
+        val shortcuts=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(12),dp(10),dp(12),dp(18))}
         fun shortcut(icon:Int,title:String,bg:Int,fg:Int,click:()->Unit){
             val card=LinearLayout(this).apply{
                 orientation=1;gravity=Gravity.CENTER
-                background=rounded(bg,15)
+                background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(54,37,82),Color.rgb(35,25,57))).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.rgb(94,72,125))}
                 setOnClickListener{click()}
                 val iconView=ImageView(this@ProfileActivity).apply{
                     setImageResource(icon)
@@ -182,8 +182,8 @@ class ProfileActivity : Activity() {
                     setPadding(dp(16),dp(10),dp(16),dp(6))
                     contentDescription=title
                 }
-                addView(iconView,LinearLayout.LayoutParams(-1,dp(62)))
-                val titleView=txt(title,12f,fg,true)
+                addView(iconView,LinearLayout.LayoutParams(-1,dp(58)))
+                val titleView=txt(title,12f,Color.rgb(235,218,177),true)
                 if(title=="LV 1"){
                     levelShortcutTitle=titleView
                     levelShortcutIcon=iconView
@@ -191,7 +191,7 @@ class ProfileActivity : Activity() {
                 }
                 addView(titleView,LinearLayout.LayoutParams(-1,dp(25)))
             }
-            shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
+            shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(106),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
         }
         shortcut(R.drawable.ic_profile_wallet,"ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
         shortcut(R.drawable.ic_profile_crown,"العائلة",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
@@ -199,7 +199,7 @@ class ProfileActivity : Activity() {
         shortcut(R.drawable.ic_profile_level,"LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
 
-        val separator=View(this).apply{setBackgroundColor(Color.rgb(244,245,248))}
+        val separator=View(this).apply{setBackgroundColor(Color.rgb(238,233,244))}
         fun menuRow(icon:Int,title:String,detail:String="",click:()->Unit){
             val row=LinearLayout(this).apply{
                 orientation=0;gravity=Gravity.CENTER_VERTICAL
@@ -215,8 +215,8 @@ class ProfileActivity : Activity() {
             if(detail.isNotBlank())row.addView(txt(detail,13f,muted),LinearLayout.LayoutParams(-2,dp(48)).apply{marginEnd=dp(10)})
             row.addView(txt(title,17f,ink),LinearLayout.LayoutParams(-2,dp(52)))
             val badge=FrameLayout(this).apply{
-                val iconBackground=when(icon){R.drawable.ic_profile_creator,R.drawable.ic_profile_events->Color.rgb(205,249,244);R.drawable.ic_profile_wallet->Color.rgb(255,225,239);R.drawable.ic_profile_bag,R.drawable.ic_profile_publish,R.drawable.ic_profile_tasks->Color.rgb(255,240,205);else->Color.rgb(239,231,255)}
-                val iconForeground=when(icon){R.drawable.ic_profile_creator,R.drawable.ic_profile_events->Color.rgb(35,190,181);R.drawable.ic_profile_wallet->Color.rgb(225,93,151);else->Color.rgb(126,92,190)}
+                val iconBackground=Color.rgb(244,239,249)
+                val iconForeground=Color.rgb(111,75,151)
                 background=rounded(iconBackground,100)
                 addView(ImageView(this@ProfileActivity).apply{
                     setImageResource(icon)
@@ -226,9 +226,9 @@ class ProfileActivity : Activity() {
                 },FrameLayout.LayoutParams(dp(38),dp(38),Gravity.CENTER))
             }
             row.addView(badge,LinearLayout.LayoutParams(dp(42),dp(48)).apply{marginStart=dp(12)})
-            content.addView(row,LinearLayout.LayoutParams(-1,dp(70)))
+            content.addView(row,LinearLayout.LayoutParams(-1,dp(66)))
         }
-        fun sectionGap(){content.addView(View(this).apply{setBackgroundColor(Color.rgb(244,245,248))},LinearLayout.LayoutParams(-1,dp(10)))}
+        fun sectionGap(){content.addView(View(this).apply{setBackgroundColor(Color.rgb(238,233,244))},LinearLayout.LayoutParams(-1,dp(9)))}
         content.addView(separator,LinearLayout.LayoutParams(-1,dp(8)))
         menuRow(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
         menuRow(R.drawable.ic_profile_events,"مركز الفعاليات"){showInfo("مركز الفعاليات")}
