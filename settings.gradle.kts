@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MariamLive"
+rootProject.name = "BAKLive"
 include(":app")
