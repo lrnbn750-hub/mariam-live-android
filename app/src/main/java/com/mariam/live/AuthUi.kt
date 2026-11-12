@@ -47,7 +47,7 @@ object AuthUi {
             setPadding(0, dp(activity, 24), 0, dp(activity, 30))
         }
         val mark = TextView(activity).apply {
-            text = "M"
+            text = "B"
             textSize = 34f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
