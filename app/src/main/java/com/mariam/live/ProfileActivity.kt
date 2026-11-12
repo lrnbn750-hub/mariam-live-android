@@ -41,7 +41,7 @@ class ProfileActivity : Activity() {
     private val royalFrameItemId="royal100-frame"
     private lateinit var status:TextView
     private lateinit var levelShortcutTitle:TextView
-    private lateinit var levelShortcutIcon:TextView
+    private lateinit var levelShortcutIcon:ImageView
     private lateinit var levelShortcutCard:LinearLayout
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
@@ -96,7 +96,14 @@ class ProfileActivity : Activity() {
             )
         }
         val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-        tools.addView(txt("♧",30f,ink,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(42)))
+        tools.addView(ImageView(this).apply{
+            setImageResource(R.drawable.ic_profile_close)
+            setColorFilter(ink,android.graphics.PorterDuff.Mode.SRC_IN)
+            scaleType=ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(10),dp(10),dp(10),dp(10))
+            contentDescription="إغلاق الملف الشخصي"
+            setOnClickListener{finish()}
+        },LinearLayout.LayoutParams(dp(42),dp(42)))
         tools.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
         hero.addView(tools,LinearLayout.LayoutParams(-1,dp(46)))
 
@@ -116,8 +123,12 @@ class ProfileActivity : Activity() {
         avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(122),dp(122),Gravity.CENTER))
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
         avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(136),dp(132),Gravity.CENTER))
-        val avatarEdit=TextView(this).apply{
-            text="✎";textSize=17f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+        val avatarEdit=ImageView(this).apply{
+            setImageResource(R.drawable.ic_profile_edit)
+            setColorFilter(Color.WHITE,android.graphics.PorterDuff.Mode.SRC_IN)
+            scaleType=ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(8),dp(8),dp(8),dp(8))
+            contentDescription="تعديل الصورة الشخصية"
             background=android.graphics.drawable.GradientDrawable().apply{
                 shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(35,157,120))
                 setStroke(dp(2),Color.WHITE)
@@ -159,12 +170,18 @@ class ProfileActivity : Activity() {
         content.addView(stats)
 
         val shortcuts=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(12),dp(5),dp(12),dp(20))}
-        fun shortcut(icon:String,title:String,bg:Int,fg:Int,click:()->Unit){
+        fun shortcut(icon:Int,title:String,bg:Int,fg:Int,click:()->Unit){
             val card=LinearLayout(this).apply{
                 orientation=1;gravity=Gravity.CENTER
                 background=rounded(bg,15)
                 setOnClickListener{click()}
-                val iconView=txt(icon,32f,fg,true)
+                val iconView=ImageView(this).apply{
+                    setImageResource(icon)
+                    setColorFilter(fg,android.graphics.PorterDuff.Mode.SRC_IN)
+                    scaleType=ImageView.ScaleType.CENTER_INSIDE
+                    setPadding(dp(16),dp(10),dp(16),dp(6))
+                    contentDescription=title
+                }
                 addView(iconView,LinearLayout.LayoutParams(-1,dp(62)))
                 val titleView=txt(title,12f,fg,true)
                 if(title=="LV 1"){
@@ -176,41 +193,52 @@ class ProfileActivity : Activity() {
             }
             shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
         }
-        shortcut("💰","ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
-        shortcut("👑","العائلة",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
-        shortcut("V","شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
-        shortcut("✧","LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
+        shortcut(R.drawable.ic_profile_wallet,"ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
+        shortcut(R.drawable.ic_profile_crown,"العائلة",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
+        shortcut(R.drawable.ic_profile_vip,"شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
+        shortcut(R.drawable.ic_profile_level,"LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
 
         val separator=View(this).apply{setBackgroundColor(Color.rgb(244,245,248))}
-        fun menuRow(icon:String,title:String,detail:String="",click:()->Unit){
+        fun menuRow(icon:Int,title:String,detail:String="",click:()->Unit){
             val row=LinearLayout(this).apply{
                 orientation=0;gravity=Gravity.CENTER_VERTICAL
                 setPadding(dp(18),dp(9),dp(18),dp(9));setBackgroundColor(Color.WHITE)
                 setOnClickListener{click()}
             }
-            row.addView(txt("‹",27f,Color.rgb(195,198,203)),LinearLayout.LayoutParams(dp(28),dp(52)))
+            row.addView(ImageView(this).apply{
+                setImageResource(R.drawable.ic_profile_chevron)
+                setColorFilter(Color.rgb(195,198,203),android.graphics.PorterDuff.Mode.SRC_IN)
+                scaleType=ImageView.ScaleType.CENTER_INSIDE
+            },LinearLayout.LayoutParams(dp(28),dp(52)))
             row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
             if(detail.isNotBlank())row.addView(txt(detail,13f,muted),LinearLayout.LayoutParams(-2,dp(48)).apply{marginEnd=dp(10)})
             row.addView(txt(title,17f,ink),LinearLayout.LayoutParams(-2,dp(52)))
             val badge=FrameLayout(this).apply{
-                background=rounded(when(icon){ "↗"->Color.rgb(205,249,244);"📣"->Color.rgb(205,249,244);"＄"->Color.rgb(255,225,239);else->Color.rgb(255,240,205)},100)
-                addView(txt(icon,19f,when(icon){"↗","📣"->Color.rgb(35,190,181);"＄"->Color.rgb(225,93,151);else->Color.rgb(222,166,69)},true),FrameLayout.LayoutParams(dp(38),dp(38),Gravity.CENTER))
+                val iconBackground=when(icon){R.drawable.ic_profile_creator,R.drawable.ic_profile_events->Color.rgb(205,249,244);R.drawable.ic_profile_wallet->Color.rgb(255,225,239);R.drawable.ic_profile_bag,R.drawable.ic_profile_publish,R.drawable.ic_profile_tasks->Color.rgb(255,240,205);else->Color.rgb(239,231,255)}
+                val iconForeground=when(icon){R.drawable.ic_profile_creator,R.drawable.ic_profile_events->Color.rgb(35,190,181);R.drawable.ic_profile_wallet->Color.rgb(225,93,151);else->Color.rgb(126,92,190)}
+                background=rounded(iconBackground,100)
+                addView(ImageView(this@ProfileActivity).apply{
+                    setImageResource(icon)
+                    setColorFilter(iconForeground,android.graphics.PorterDuff.Mode.SRC_IN)
+                    scaleType=ImageView.ScaleType.CENTER_INSIDE
+                    setPadding(dp(8),dp(8),dp(8),dp(8))
+                },FrameLayout.LayoutParams(dp(38),dp(38),Gravity.CENTER))
             }
             row.addView(badge,LinearLayout.LayoutParams(dp(42),dp(48)).apply{marginStart=dp(12)})
             content.addView(row,LinearLayout.LayoutParams(-1,dp(70)))
         }
         fun sectionGap(){content.addView(View(this).apply{setBackgroundColor(Color.rgb(244,245,248))},LinearLayout.LayoutParams(-1,dp(10)))}
         content.addView(separator,LinearLayout.LayoutParams(-1,dp(8)))
-        menuRow("↗","مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
-        menuRow("📣","مركز الفعاليات"){showInfo("مركز الفعاليات")}
+        menuRow(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
+        menuRow(R.drawable.ic_profile_events,"مركز الفعاليات"){showInfo("مركز الفعاليات")}
         sectionGap()
-        menuRow("＄","المحفظة"){showInfo("المحفظة")}
-        menuRow("▣","الحقيبة","13"){startActivity(Intent(this,InventoryActivity::class.java))}
-        menuRow("▤","أنشر"){showInfo("أنشر")}
+        menuRow(R.drawable.ic_profile_wallet,"المحفظة"){showInfo("المحفظة")}
+        menuRow(R.drawable.ic_profile_bag,"الحقيبة","13"){startActivity(Intent(this,InventoryActivity::class.java))}
+        menuRow(R.drawable.ic_profile_publish,"أنشر"){showInfo("أنشر")}
         sectionGap()
-        menuRow("S","SVIP"){showInfo("SVIP")}
-        menuRow("▣","مركز المهام"){showInfo("مركز المهام")}
+        menuRow(R.drawable.ic_profile_svip,"SVIP"){showInfo("SVIP")}
+        menuRow(R.drawable.ic_profile_tasks,"مركز المهام"){showInfo("مركز المهام")}
         sectionGap()
 
         // Keep the existing profile fields available to the profile loader and editor.
@@ -502,7 +530,7 @@ class ProfileActivity : Activity() {
                 cornerRadius=dp(15).toFloat()
                 setStroke(dp(2),colors[3])
             }
-            levelShortcutIcon.setTextColor(colors[4])
+            levelShortcutIcon.setColorFilter(colors[4],android.graphics.PorterDuff.Mode.SRC_IN)
             levelShortcutTitle.setTextColor(colors[5])
         }
         levelRank.setTextColor(Color.WHITE)
