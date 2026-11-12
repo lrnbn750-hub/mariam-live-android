@@ -195,13 +195,8 @@ class LoginActivity : Activity() {
             }
             video.setOnErrorListener { _, _, _ -> true }
         } else {
-            val fallback = ImageView(this).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                val imageId = resources.getIdentifier("malak_splash", "drawable", packageName)
-                if (imageId != 0) setImageResource(imageId)
-                else setBackgroundColor(0xFF17152B.toInt())
-            }
-            root.addView(fallback, FrameLayout.LayoutParams(-1, -1))
+            // No mascot/splash image fallback: keep a clean dark background.
+            root.setBackgroundColor(0xFF17152B.toInt())
         }
         root.addView(View(this).apply { setBackgroundColor(0x990D0B1B.toInt()) },
             FrameLayout.LayoutParams(-1, -1))
