@@ -90,10 +90,22 @@ class RoomActivity : Activity() {
    topMargin=dp(1);bottomMargin=dp(1)
   })
   membersButton=LinearLayout(this).apply{
-   orientation=0;gravity=Gravity.CENTER;setPadding(dp(10),dp(4),dp(10),dp(4))
-   background=GradientDrawable().apply{setColor(Color.argb(62,255,255,255));cornerRadius=dp(14).toFloat();setStroke(dp(1),Color.argb(75,255,255,255))}
-   addView(label("●",9f,Color.rgb(220,194,255),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(6)})
-   addView(label("الموجودون 0",11f,Color.WHITE,true))
+   orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(8),dp(3),dp(8),dp(3))
+   background=GradientDrawable().apply{
+    setColor(Color.argb(48,255,255,255))
+    cornerRadius=dp(15).toFloat()
+    setStroke(dp(1),Color.argb(55,220,194,255))
+   }
+   addView(label("0",13f,Color.WHITE,true).apply{
+    gravity=Gravity.CENTER
+    includeFontPadding=false
+   },LinearLayout.LayoutParams(-2,dp(22)).apply{marginEnd=dp(5)})
+   addView(ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("user",Color.rgb(220,194,255),dp(18)))
+    contentDescription="عدد الموجودين"
+    scaleType=ImageView.ScaleType.CENTER
+   },LinearLayout.LayoutParams(dp(20),dp(22)))
    setOnClickListener{showRoomMembers()}
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-2,dp(28)).apply{gravity=Gravity.CENTER_HORIZONTAL;topMargin=dp(2);bottomMargin=dp(2)})
@@ -949,7 +961,7 @@ class RoomActivity : Activity() {
     roomMembers=fresh
     if(::membersButton.isInitialized){
      val count=fresh.length()
-     (membersButton.getChildAt(1) as? TextView)?.text="الموجودون $count"
+     (membersButton.getChildAt(0) as? TextView)?.text=count.toString()
     }
    }catch(_:Exception){}
   }
