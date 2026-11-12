@@ -1,7 +1,7 @@
 package com.mariam.live.config
 
 object AppPreferences {
-    const val APP_NAME = "Mariam Live"
+    const val APP_NAME = "BAK LIVE"
     const val BACKGROUND_COLOR = "#F6F7FB"
     const val PRIMARY_COLOR = "#704EFF"
     const val SECONDARY_COLOR = "#9A60FF"
