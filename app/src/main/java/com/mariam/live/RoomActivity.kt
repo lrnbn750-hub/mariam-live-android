@@ -85,7 +85,7 @@ class RoomActivity : Activity() {
    }
    contentDescription="مغادرة البث"
   },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(7)})
-  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(2)})
+  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
   })
@@ -98,7 +98,7 @@ class RoomActivity : Activity() {
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-2,dp(28)).apply{gravity=Gravity.CENTER_HORIZONTAL;topMargin=dp(2);bottomMargin=dp(2)})
   grid=LinearLayout(this).apply{orientation=1}
-  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
+  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(27)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
   mic.visibility=View.GONE
@@ -264,47 +264,55 @@ class RoomActivity : Activity() {
  }
 
  private fun buildPremiumRoomHeader():View{
-  val card=LinearLayout(this).apply{
-   orientation=0
-   gravity=Gravity.CENTER_VERTICAL
-   setPadding(0,0,0,0)
-   background=null
-   elevation=0f
+   val card=LinearLayout(this).apply{
+    orientation=LinearLayout.HORIZONTAL
+    layoutDirection=View.LAYOUT_DIRECTION_RTL
+    gravity=Gravity.CENTER_VERTICAL
+    setPadding(0,0,0,0)
+    background=null
+    elevation=0f
+   }
+   val avatarFrame=FrameLayout(this).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(90,255,255,255))}
+   }
+   ownerAvatarView=ImageView(this).apply{
+    scaleType=ImageView.ScaleType.CENTER_CROP
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(70,255,255,255))}
+    clipToOutline=true
+    setImageDrawable(VectorIcon("user",Color.WHITE,dp(19)))
+   }
+   avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(32),dp(32),Gravity.CENTER))
+   val details=LinearLayout(this).apply{
+    orientation=LinearLayout.VERTICAL
+    gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT
+    layoutDirection=View.LAYOUT_DIRECTION_RTL
+   }
+   ownerNameView=label("صاحب البث",13f,Color.WHITE,true).apply{
+    gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL
+    textDirection=View.TEXT_DIRECTION_RTL
+    maxLines=1
+    ellipsize=android.text.TextUtils.TruncateAt.END
+   }
+   details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(17)))
+   ownerIdView=label("ID: "+roomId,10f,Color.argb(225,255,255,255),false).apply{
+    gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL
+    textDirection=View.TEXT_DIRECTION_LTR
+    maxLines=1
+   }
+   details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(14)))
+   val follow=TextView(this).apply{
+    text="+";textSize=23f;gravity=Gravity.CENTER
+    setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(170,142,92,210));setStroke(dp(1),Color.argb(100,255,255,255))}
+    contentDescription="متابعة صاحب البث"
+    setOnClickListener{sendOwnerFollowRequest(this)}
+   }
+   card.addView(follow,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
+   card.addView(avatarFrame,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
+   card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
+   return card
   }
-  val avatarFrame=FrameLayout(this).apply{
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(90,255,255,255))}
-  }
-  ownerAvatarView=ImageView(this).apply{
-   scaleType=ImageView.ScaleType.CENTER_CROP
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(70,255,255,255))}
-   clipToOutline=true
-   setImageDrawable(VectorIcon("user",Color.WHITE,dp(19)))
-  }
-  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(30),dp(30),Gravity.CENTER))
-  val details=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-  ownerNameView=label("صاحب البث",13f,Color.WHITE,true).apply{
-   gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
-   ellipsize=android.text.TextUtils.TruncateAt.END
-  }
-  details.addView(ownerNameView,LinearLayout.LayoutParams(-1,dp(17)))
-  ownerIdView=label("ID: "+roomId,10f,Color.argb(225,255,255,255),false).apply{
-   gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
-  }
-  details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(14)))
-  card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
-  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(6)})
-  val follow=TextView(this).apply{
-   text="+";textSize=23f;gravity=Gravity.CENTER
-   setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(170,142,92,210));setStroke(dp(1),Color.argb(100,255,255,255))}
-   contentDescription="متابعة صاحب البث"
-   setOnClickListener{sendOwnerFollowRequest(this)}
-  }
-  card.addView(follow,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginStart=dp(5)})
-  return card
- }
-
- private fun sendOwnerFollowRequest(button:TextView){
+  private fun sendOwnerFollowRequest(button:TextView){
   if(roomOwnerUserId.isBlank() || roomOwnerUserId=="null" || roomOwnerUserId==currentUserId){
    Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show()
    return
