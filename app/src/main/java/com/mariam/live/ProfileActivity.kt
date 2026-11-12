@@ -193,10 +193,10 @@ class ProfileActivity : Activity() {
             }
             shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(106),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
         }
-        shortcut(R.drawable.ic_profile_wallet,"ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
-        shortcut(R.drawable.ic_profile_crown,"العائلة",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
-        shortcut(R.drawable.ic_profile_vip,"شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
-        shortcut(R.drawable.ic_profile_level,"LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
+        shortcut(R.drawable.ic_profile_wallet,"ربح النقود",Color.rgb(218,246,255),Color.rgb(232,194,117)){showInfo("ربح النقود")}
+        shortcut(R.drawable.ic_profile_crown,"العائلة",Color.rgb(255,239,218),Color.rgb(232,194,117)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
+        shortcut(R.drawable.ic_profile_vip,"شراء VIP",Color.rgb(255,242,211),Color.rgb(232,194,117)){showInfo("شراء VIP")}
+        shortcut(R.drawable.ic_profile_level,"LV 1",Color.rgb(213,250,249),Color.rgb(232,194,117)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
 
         val separator=View(this).apply{setBackgroundColor(Color.rgb(238,233,244))}
