@@ -61,7 +61,7 @@ class ProfileActivity : Activity() {
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window,true)
-        window.isNavigationBarContrastEnforced=false
+        if(android.os.Build.VERSION.SDK_INT>=29)window.isNavigationBarContrastEnforced=false
         val gold=Color.rgb(218,174,91)
         val ink=Color.rgb(48,48,54)
         val muted=Color.rgb(155,155,160)
