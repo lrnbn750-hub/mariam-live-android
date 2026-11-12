@@ -41,7 +41,7 @@ class LoginActivity : Activity() {
 
         val card = AuthUi.card(this)
         card.addView(AuthUi.heading(this, "أهلاً بعودتك"))
-        card.addView(AuthUi.hint(this, "سجّل دخولك إلى مجتمع مريم لايف"))
+        card.addView(AuthUi.hint(this, "سجّل دخولك إلى مجتمع BAK LIVE"))
 
         val phoneTab = TextView(this).apply {
             text = "رقم الهاتف"
