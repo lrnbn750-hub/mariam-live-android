@@ -98,7 +98,6 @@ class ProfileActivity : Activity() {
         val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
         tools.addView(txt("♧",30f,ink,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(42)))
         tools.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
-        tools.addView(txt("⚙",27f,ink).apply{setOnClickListener{showEditProfile()}},LinearLayout.LayoutParams(dp(42),dp(42)))
         hero.addView(tools,LinearLayout.LayoutParams(-1,dp(46)))
 
         avatarPreview=ImageView(this).apply{
