@@ -58,6 +58,9 @@ class RoomActivity : Activity() {
  private lateinit var chatMessages:LinearLayout
  private lateinit var chatScroll:ScrollView
  private lateinit var chatInput:EditText
+ private lateinit var chatIcon:ImageView
+ private lateinit var sendButton:TextView
+ private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
  private var previousMemberIds:MutableSet<String>?=null
@@ -82,8 +85,8 @@ class RoomActivity : Activity() {
    contentDescription="مغادرة البث"
   },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(36)))
-  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(50)).apply{
-   topMargin=dp(4);bottomMargin=dp(3)
+  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
+   topMargin=dp(1);bottomMargin=dp(1)
   })
   membersButton=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER;setPadding(dp(10),dp(4),dp(10),dp(4))
@@ -250,15 +253,12 @@ class RoomActivity : Activity() {
   val card=LinearLayout(this).apply{
    orientation=0
    gravity=Gravity.CENTER_VERTICAL
-   setPadding(dp(6),dp(3),dp(6),dp(3))
-   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.argb(72,25,19,43),Color.argb(58,76,48,103),Color.argb(72,25,19,43))).apply{
-     cornerRadius=dp(19).toFloat();setStroke(dp(1),Color.argb(55,255,255,255))
-   }
-   elevation=dp(1).toFloat()
+   setPadding(0,0,0,0)
+   background=null
+   elevation=0f
   }
   val avatarFrame=FrameLayout(this).apply{
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(190,255,255,255))}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(90,255,255,255))}
   }
   ownerAvatarView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
@@ -266,8 +266,8 @@ class RoomActivity : Activity() {
    clipToOutline=true
    setImageDrawable(VectorIcon("user",Color.WHITE,dp(19)))
   }
-  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(32),dp(32),Gravity.CENTER))
-  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
+  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
+  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(29),dp(29)).apply{marginEnd=dp(5)})
   val details=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
   ownerNameView=label("صاحب البث",13f,Color.WHITE,true).apply{
    gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
@@ -286,7 +286,7 @@ class RoomActivity : Activity() {
    contentDescription="متابعة صاحب البث"
    setOnClickListener{sendOwnerFollowRequest(this)}
   }
-  card.addView(follow,LinearLayout.LayoutParams(dp(29),dp(29)).apply{marginStart=dp(5)})
+  card.addView(follow,LinearLayout.LayoutParams(dp(25),dp(25)).apply{marginStart=dp(4)})
   return card
  }
 
@@ -432,15 +432,25 @@ class RoomActivity : Activity() {
      setStroke(dp(1),Color.argb(65,255,255,255))
     }
    }
-   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(36),1f).apply{marginEnd=dp(5)})
-   val send=TextView(this@RoomActivity).apply{
+   chatInput.visibility=View.GONE
+   chatIcon=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(135,139,91,190))}
+    contentDescription="فتح كتابة تعليق"
+    setOnClickListener{expandRoomComposer()}
+   }
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
+   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(34),1f).apply{marginEnd=dp(5)})
+   sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
     typeface=android.graphics.Typeface.DEFAULT_BOLD
-    setTextColor(Color.WHITE);setPadding(dp(10),0,dp(10),0)
+    setTextColor(Color.WHITE);setPadding(dp(8),0,dp(8),0)
     background=GradientDrawable().apply{setColor(Color.argb(130,139,91,190));cornerRadius=dp(13).toFloat()}
+    visibility=View.GONE
     setOnClickListener{sendRoomMessage()}
    }
-   composer.addView(send,LinearLayout.LayoutParams(dp(34),dp(34)))
+   composer.addView(sendButton,LinearLayout.LayoutParams(dp(32),dp(34)))
    val toolsButton=TextView(this@RoomActivity).apply{
     text="⋯";textSize=21f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE)
@@ -451,7 +461,7 @@ class RoomActivity : Activity() {
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(32),dp(34)).apply{marginStart=dp(4)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(32)).apply{marginStart=dp(4)})
    addView(composer,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})
    loadRoomMessages()
    chatPoll?.cancel()
@@ -460,6 +470,33 @@ class RoomActivity : Activity() {
    }
   }
 
+ private fun expandRoomComposer(){
+  if(composerExpanded){
+   chatInput.requestFocus()
+   val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+   imm.showSoftInput(chatInput,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+   return
+  }
+  composerExpanded=true
+  chatIcon.visibility=View.GONE
+  chatInput.visibility=View.VISIBLE
+  sendButton.visibility=View.VISIBLE
+  chatInput.requestFocus()
+  chatInput.post{
+   val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+   imm.showSoftInput(chatInput,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+  }
+ }
+ private fun collapseRoomComposer(){
+  composerExpanded=false
+  chatInput.setText("")
+  chatInput.clearFocus()
+  chatInput.visibility=View.GONE
+  sendButton.visibility=View.GONE
+  chatIcon.visibility=View.VISIBLE
+  val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+  imm.hideSoftInputFromWindow(chatInput.windowToken,0)
+ }
  private fun loadRoomMessages(){
   if(!isActiveChat())return
   scope.launch{
@@ -545,6 +582,7 @@ class RoomActivity : Activity() {
     }
     if(result.status in 200..299){
      chatInput.setText("")
+     collapseRoomComposer()
      loadRoomMessages()
     }else{
      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال الرسالة"),Toast.LENGTH_SHORT).show()
