@@ -54,207 +54,172 @@ class ProfileActivity : Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        val green=Color.rgb(35,157,91)
-        val dark=Color.rgb(34,48,40)
-        val muted=Color.rgb(112,128,118)
-        val pale=Color.rgb(241,249,244)
-        window.statusBarColor=Color.WHITE
+        val gold=Color.rgb(218,174,91)
+        val ink=Color.rgb(48,48,54)
+        val muted=Color.rgb(155,155,160)
+        val cream=Color.rgb(255,248,231)
+        window.statusBarColor=Color.rgb(231,250,250)
         window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
-        fun panel()=android.graphics.drawable.GradientDrawable().apply{
-            setColor(Color.WHITE);cornerRadius=dp(20).toFloat()
-            setStroke(dp(1),Color.rgb(225,237,228))
+        fun rounded(color:Int,r:Int,stroke:Int=Color.TRANSPARENT)=android.graphics.drawable.GradientDrawable().apply{
+            setColor(color);cornerRadius=dp(r).toFloat()
+            if(stroke!=Color.TRANSPARENT)setStroke(dp(1),stroke)
         }
-        fun actionButton(textValue:String,fill:Int,textColor:Int)=TextView(this).apply{
-            text=textValue;textSize=14f;gravity=Gravity.CENTER
-            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(textColor)
-            background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(fill);cornerRadius=dp(14).toFloat()
-            }
-            setPadding(dp(14),dp(13),dp(14),dp(13))
+        fun txt(value:String,size:Float,color:Int,bold:Boolean=false)=TextView(this).apply{
+            text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
+            typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
         }
-
-        val root=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(248,251,249))
-        }
-        val top=LinearLayout(this).apply{
-            orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
-            setPadding(dp(16),dp(8),dp(16),dp(8));setBackgroundColor(Color.WHITE)
-        }
-        val back=TextView(this).apply{
-            text="‹";textSize=32f;setTextColor(green);gravity=Gravity.CENTER
-            setOnClickListener{finish()}
-        }
-        top.addView(back,LinearLayout.LayoutParams(dp(42),dp(48)))
-        top.addView(TextView(this).apply{
-            text="ملفي الشخصي";textSize=20f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(dark)
-        },LinearLayout.LayoutParams(0,dp(48),1f))
-        top.addView(TextView(this).apply{
-            text="MARIAM LIVE";textSize=10f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(green)
-        })
-        root.addView(top,LinearLayout.LayoutParams(-1,-2))
-
-        val scroll=ScrollView(this).apply{clipToPadding=false;isFillViewport=false}
-        val content=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL
-            setPadding(dp(16),dp(16),dp(16),dp(28))
-        }
+        val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,248,250))}
+        val scroll=ScrollView(this).apply{fillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
+        val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
         scroll.addView(content)
-        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
 
         val hero=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-            setPadding(dp(18),dp(22),dp(18),dp(20))
+            orientation=1;gravity=Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18),dp(10),dp(18),dp(18))
             background=android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(28,139,78),Color.rgb(61,184,112),Color.rgb(20,119,67))
-            ).apply{cornerRadius=dp(24).toFloat()}
+                intArrayOf(Color.rgb(211,250,248),Color.rgb(246,231,255),Color.WHITE,Color.WHITE)
+            )
         }
-        hero.addView(TextView(this).apply{
-            text="حسابك • هويتك • حضورك";textSize=13f
-            setTextColor(Color.rgb(226,255,237))
-        })
+        val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
+        tools.addView(txt("♧",30f,ink,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(42)))
+        tools.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
+        tools.addView(txt("⚙",27f,ink).apply{setOnClickListener{showEditProfile()}},LinearLayout.LayoutParams(dp(42),dp(42)))
+        hero.addView(tools,LinearLayout.LayoutParams(-1,dp(46)))
+
         avatarPreview=ImageView(this).apply{
             scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true
-            background=android.graphics.drawable.GradientDrawable().apply{
-                shape=android.graphics.drawable.GradientDrawable.OVAL
-                setColor(Color.rgb(226,244,232));setStroke(dp(3),Color.WHITE)
-            }
-            setImageDrawable(android.graphics.drawable.GradientDrawable().apply{
-                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(226,244,232))
-            })
+            background=rounded(Color.rgb(230,230,230),100,gold)
+            setImageDrawable(android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(230,230,230))})
             contentDescription="الصورة الشخصية"
         }
         val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
-        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(108),dp(108),Gravity.CENTER))
+        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(112),dp(112),Gravity.CENTER))
         avatarRing=View(this).apply{
-            background=android.graphics.drawable.GradientDrawable().apply{
-                shape=android.graphics.drawable.GradientDrawable.OVAL
-                setColor(Color.TRANSPARENT);setStroke(dp(4),Color.rgb(255,225,145))
-            }
-            isClickable=false;isFocusable=false
+            background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.TRANSPARENT);setStroke(dp(4),gold)}
         }
-        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(120),dp(120),Gravity.CENTER))
+        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(122),dp(122),Gravity.CENTER))
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
-        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(130),dp(126),Gravity.CENTER))
-        hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(130),dp(130)).apply{topMargin=dp(10)})
-        hero.addView(TextView(this).apply{
-            text="صورتك الشخصية";textSize=16f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE);gravity=Gravity.CENTER
-        })
-        frameToggle=actionButton("جارٍ فحص الإطار...",Color.WHITE,green).apply{
-            setOnClickListener{toggleRoyalFrame()}
-        }
-        hero.addView(frameToggle,LinearLayout.LayoutParams(dp(205),-2).apply{topMargin=dp(10)})
+        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(136),dp(132),Gravity.CENTER))
+        hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
+        hero.addView(txt("مستخدم مريم",19f,ink,true).apply{tag="profile_name"},LinearLayout.LayoutParams(-1,dp(42)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
-        levelCard=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14))
+        val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(12))}
+        fun stat(value:String,title:String)=LinearLayout(this).apply{
+            orientation=1;gravity=Gravity.CENTER
+            addView(txt(value,23f,ink,true),LinearLayout.LayoutParams(-1,dp(34)))
+            addView(txt(title,13f,muted),LinearLayout.LayoutParams(-1,dp(28)))
+        }
+        stats.addView(stat("0","الأصدقاء"),LinearLayout.LayoutParams(0,dp(70),1f))
+        stats.addView(stat("0","المتابعون"),LinearLayout.LayoutParams(0,dp(70),1f))
+        stats.addView(stat("0","المُعجبين"),LinearLayout.LayoutParams(0,dp(70),1f))
+        content.addView(stats)
+
+        val shortcuts=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(12),dp(5),dp(12),dp(20))}
+        fun shortcut(icon:String,title:String,bg:Int,fg:Int,click:()->Unit){
+            val card=LinearLayout(this).apply{
+                orientation=1;gravity=Gravity.CENTER
+                background=rounded(bg,15)
+                setOnClickListener{click()}
+                addView(txt(icon,32f,fg,true),LinearLayout.LayoutParams(-1,dp(62)))
+                addView(txt(title,12f,fg,true),LinearLayout.LayoutParams(-1,dp(25)))
+            }
+            shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
+        }
+        shortcut("💰","ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
+        shortcut("👑","KING&QUEEN",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("KING&QUEEN")}
+        shortcut("V","شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
+        shortcut("✧","LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){scroll.smoothScrollTo(0,levelCard.top)}
+        content.addView(shortcuts)
+
+        val separator=View(this).apply{setBackgroundColor(Color.rgb(244,245,248))}
+        fun menuRow(icon:String,title:String,detail:String="",click:()->Unit){
+            val row=LinearLayout(this).apply{
+                orientation=0;gravity=Gravity.CENTER_VERTICAL
+                setPadding(dp(18),dp(9),dp(18),dp(9));setBackgroundColor(Color.WHITE)
+                setOnClickListener{click()}
+            }
+            row.addView(txt("‹",27f,Color.rgb(195,198,203)),LinearLayout.LayoutParams(dp(28),dp(52)))
+            row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
+            if(detail.isNotBlank())row.addView(txt(detail,13f,muted),LinearLayout.LayoutParams(-2,dp(48)).apply{marginEnd=dp(10)})
+            row.addView(txt(title,17f,ink),LinearLayout.LayoutParams(-2,dp(52)))
+            val badge=FrameLayout(this).apply{
+                background=rounded(when(icon){ "↗"->Color.rgb(205,249,244);"📣"->Color.rgb(205,249,244);"＄"->Color.rgb(255,225,239);else->Color.rgb(255,240,205)},100)
+                addView(txt(icon,19f,when(icon){"↗","📣"->Color.rgb(35,190,181);"＄"->Color.rgb(225,93,151);else->Color.rgb(222,166,69)},true),FrameLayout.LayoutParams(dp(38),dp(38),Gravity.CENTER))
+            }
+            row.addView(badge,LinearLayout.LayoutParams(dp(42),dp(48)).apply{marginStart=dp(12)})
+            content.addView(row,LinearLayout.LayoutParams(-1,dp(70)))
+        }
+        fun sectionGap(){content.addView(View(this).apply{setBackgroundColor(Color.rgb(244,245,248))},LinearLayout.LayoutParams(-1,dp(10)))}
+        content.addView(separator,LinearLayout.LayoutParams(-1,dp(8)))
+        menuRow("↗","مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
+        menuRow("📣","مركز الفعاليات"){showInfo("مركز الفعاليات")}
+        sectionGap()
+        menuRow("＄","المحفظة"){showInfo("المحفظة")}
+        menuRow("▣","الحقيبة","13"){startActivity(Intent(this,InventoryActivity::class.java))}
+        menuRow("▤","أنشر"){showInfo("أنشر")}
+        sectionGap()
+        menuRow("S","SVIP"){showInfo("SVIP")}
+        menuRow("▣","مركز المهام"){showInfo("مركز المهام")}
+        sectionGap()
+
+        // Keep the existing profile fields available to the profile loader and editor.
+        displayName=EditText(this)
+        bio=EditText(this)
+        country=EditText(this)
+        status=txt("",12f,Color.rgb(180,65,75))
+        levelCard=LinearLayout(this).apply{orientation=1}
+        levelNumber=txt("LV 1",14f,ink,true)
+        levelRank=txt("المبتدئ",12f,muted)
+        levelXp=txt("0 XP",10f,muted)
+        levelProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply{max=1000}
+        frameToggle=txt("",12f,ink)
+        content.addView(txt("تعديل الملف الشخصي",13f,Color.rgb(100,100,100)).apply{
+            setPadding(0,dp(10),0,dp(10));setOnClickListener{showEditProfile()}
+        },LinearLayout.LayoutParams(-1,dp(44)))
+        content.addView(levelCard,LinearLayout.LayoutParams(-1,dp(1)))
+        content.addView(status,LinearLayout.LayoutParams(-1,dp(32)))
+
+        val bottom=LinearLayout(this).apply{
+            orientation=0;gravity=Gravity.CENTER;setPadding(dp(5),dp(5),dp(5),dp(5))
             background=android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25,105,65),Color.rgb(38,143,83),Color.rgb(20,91,56))
-            ).apply{cornerRadius=dp(20).toFloat();setStroke(dp(1),Color.rgb(130,207,157))}
-        }
-        val levelHeader=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
-        levelHeader.addView(TextView(this).apply{
-            text="✦ مستوى Mariam Live";textSize=14f
-            typeface=android.graphics.Typeface.DEFAULT_BOLD;setTextColor(Color.WHITE)
-        },LinearLayout.LayoutParams(0,dp(30),1f))
-        levelNumber=TextView(this).apply{
-            text="LV 1";textSize=23f
-            typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(255,230,165));gravity=Gravity.CENTER
-        }
-        levelHeader.addView(levelNumber);levelCard.addView(levelHeader)
-        levelRank=TextView(this).apply{
-            text="المبتدئ";textSize=13f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE);setPadding(0,dp(4),0,dp(8))
-        }
-        levelCard.addView(levelRank)
-        levelProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply{
-            max=1000;progress=0
-            progressDrawable=android.graphics.drawable.ClipDrawable(
-                android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(255,237,177),Color.rgb(255,199,89))
-                ).apply{cornerRadius=dp(8).toFloat()},
-                Gravity.LEFT,android.graphics.drawable.ClipDrawable.HORIZONTAL
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(255,239,205),Color.rgb(255,250,238))
             )
-            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(24,92,57))
         }
-        levelCard.addView(levelProgress,LinearLayout.LayoutParams(-1,dp(9)))
-        levelXp=TextView(this).apply{
-            text="0 / 100 XP";textSize=11f;setTextColor(Color.rgb(226,255,237))
-            gravity=Gravity.END;setPadding(0,dp(7),0,0)
+        val navs=listOf("♟\nأنا","☷\nالدردشات","◉\nGALA","♜\nمجموعة","♙\nالبث")
+        navs.forEachIndexed{index,label->
+            bottom.addView(txt(label,12f,if(index==0)gold else Color.rgb(165,139,91),index==0).apply{
+                setOnClickListener{if(index!=0)showInfo(label.substringAfter('\n'))}
+            },LinearLayout.LayoutParams(0,dp(58),1f))
         }
-        levelCard.addView(levelXp)
-        content.addView(levelCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
-
-        val toolsCard=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(14),dp(14),dp(14));background=panel()
-        }
-        toolsCard.addView(TextView(this).apply{
-            text="أدوات الحساب";textSize=17f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(dark)
-        })
-        val inventoryButton=actionButton("🎒  حقيبتي — الإطارات والخلفيات",pale,green).apply{
-            setOnClickListener{startActivity(Intent(this@ProfileActivity,InventoryActivity::class.java))}
-        }
-        toolsCard.addView(inventoryButton,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
-        val choosePhoto=actionButton("＋  تغيير الصورة الشخصية",pale,green).apply{setOnClickListener{pickPhoto()}}
-        toolsCard.addView(choosePhoto,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
-        content.addView(toolsCard,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
-
-        val details=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(15),dp(16),dp(16));background=panel()
-        }
-        details.addView(TextView(this).apply{
-            text="بيانات الحساب";textSize=17f;typeface=android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(dark)
-        })
-        details.addView(caption("رقم الحساب (ID)"))
-        val idView=TextView(this).apply{
-            text="جارٍ تحميل المعرّف...";textSize=14f;setTextColor(green)
-            setPadding(dp(13),dp(13),dp(13),dp(13))
-            background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(pale);cornerRadius=dp(12).toFloat()
-            }
-        }
-        details.addView(idView,LinearLayout.LayoutParams(-1,-2))
-        details.addView(caption("اسم العرض"))
-        displayName=field("اكتب الاسم الذي يظهر للناس");details.addView(displayName,LinearLayout.LayoutParams(-1,-2))
-        details.addView(caption("نبذة عنك"))
-        bio=field("اكتب نبذة قصيرة").apply{minLines=2;gravity=Gravity.TOP or Gravity.START}
-        details.addView(bio,LinearLayout.LayoutParams(-1,-2))
-        details.addView(caption("الدولة"))
-        country=field("الدولة");details.addView(country,LinearLayout.LayoutParams(-1,-2))
-        status=TextView(this).apply{
-            textSize=12f;setTextColor(Color.rgb(180,65,75));setPadding(0,dp(10),0,dp(4))
-        }
-        details.addView(status)
-        val save=actionButton("حفظ التعديلات",green,Color.WHITE).apply{setOnClickListener{saveProfile()}}
-        details.addView(save,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
-        content.addView(details,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
-
-        val logout=actionButton("تسجيل الخروج",Color.rgb(255,242,242),Color.rgb(190,48,65)).apply{
-            setOnClickListener{
-                android.app.AlertDialog.Builder(this@ProfileActivity)
-                    .setTitle("تسجيل الخروج")
-                    .setMessage("هل تريد تسجيل الخروج من حسابك؟")
-                    .setNegativeButton("إلغاء",null)
-                    .setPositiveButton("تسجيل الخروج"){_,_->performLogout()}
-                    .show()
-            }
-        }
-        content.addView(logout,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(bottom,LinearLayout.LayoutParams(-1,dp(64)))
         setContentView(root)
-        loadProfile(idView)
+
+        loadProfile(TextView(this).also{it.tag="profile_id"})
         loadLevelProgress()
         loadRoyalFrameState()
+    }
+
+    private fun showInfo(title:String){
+        android.app.AlertDialog.Builder(this).setTitle(title).setMessage("هذه الخدمة ستتوفر ضمن تطبيق مريم لايف.").setPositiveButton("حسناً",null).show()
+    }
+
+    private fun showEditProfile(){
+        val box=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(8),dp(18),dp(4))}
+        fun input(hint:String,value:String)=EditText(this).apply{this.hint=hint;setText(value);textSize=14f}
+        val name=input("اسم العرض",displayName.text.toString())
+        val about=input("نبذة عنك",bio.text.toString())
+        val nation=input("الدولة",country.text.toString())
+        box.addView(name);box.addView(about);box.addView(nation)
+        android.app.AlertDialog.Builder(this).setTitle("تعديل الملف الشخصي").setView(box)
+            .setNegativeButton("إلغاء",null).setPositiveButton("حفظ"){_,_->
+                displayName.setText(name.text);bio.setText(about.text);country.setText(nation.text);saveProfile()
+            }.show()
     }
 
     override fun onResume(){
