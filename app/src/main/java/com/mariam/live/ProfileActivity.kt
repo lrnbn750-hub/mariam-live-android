@@ -32,6 +32,7 @@ class ProfileActivity : Activity() {
     private lateinit var bio:EditText
     private lateinit var country:EditText
     private lateinit var avatarPreview:ImageView
+    private var editPhotoPreview:ImageView?=null
     private lateinit var avatarRing:View
     private lateinit var royalFrame:RoyalGifFrame
     private lateinit var frameToggle:TextView
@@ -265,6 +266,7 @@ class ProfileActivity : Activity() {
             }
             clipToOutline=true
         }
+        editPhotoPreview=photo
         photoRow.addView(photo,LinearLayout.LayoutParams(dp(76),dp(76)))
         val photoInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
         photoInfo.addView(txt("الصورة الشخصية",15f,Color.rgb(45,55,51),true))
@@ -531,7 +533,7 @@ class ProfileActivity : Activity() {
             try{
                 contentResolver.openInputStream(uri)?.use{stream->
                     val bitmap=BitmapFactory.decodeStream(stream)
-                    if(bitmap!=null)avatarPreview.setImageBitmap(bitmap)
+                    if(bitmap!=null){avatarPreview.setImageBitmap(bitmap);editPhotoPreview?.setImageBitmap(bitmap)}
                 }
             }catch(_:Exception){}
             uploadPhoto(uri)
