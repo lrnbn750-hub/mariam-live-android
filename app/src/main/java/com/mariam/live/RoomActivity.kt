@@ -1018,28 +1018,32 @@ class RoomActivity : Activity() {
   }
  }
  private fun openMemberConversation(userId:String,name:String){
+  if(userId==currentUserId){
+   Toast.makeText(this,"هذا حسابك",Toast.LENGTH_SHORT).show()
+   return
+  }
   scope.launch{
    try{
-    val result=withContext(Dispatchers.IO){AuthApi.get("/api/messages/conversations",authToken)}
-    if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحميل المحادثات"))
-    val rows=result.body.optJSONArray("conversations")?:JSONArray()
-    var conversationId=""
-    for(i in 0 until rows.length()){
-     val item=rows.optJSONObject(i)?:continue
-     val members=item.optJSONArray("members")?:JSONArray()
-     for(j in 0 until members.length()){
-      val person=members.optJSONObject(j)?:continue
-      if(person.optString("user_id")==userId){conversationId=item.optString("id").ifBlank{item.optString("conversation_id")};break}
-     }
-     if(conversationId.isNotBlank())break
+    val result=withContext(Dispatchers.IO){
+     AuthApi.post("/api/messages/conversations",JSONObject().put("friendId",userId),authToken)
     }
+    if(result.status !in 200..299){
+     throw Exception(result.body.optString("error","تعذر إنشاء المحادثة"))
+    }
+    val conversation=result.body.optJSONObject("conversation")
+    val conversationId=result.body.optString("conversationId")
+     .ifBlank{conversation?.optString("id").orEmpty()}
+     .ifBlank{conversation?.optString("conversation_id").orEmpty()}
     if(conversationId.isBlank()){
-     Toast.makeText(this@RoomActivity,"لا توجد محادثة سابقة معه؛ بدء محادثة جديدة غير متاح من الخادم حالياً",Toast.LENGTH_LONG).show()
-     return@launch
+     throw Exception("الخادم لم يُرجع رقم المحادثة")
     }
     startActivity(Intent(this@RoomActivity,DirectChatActivity::class.java)
-     .putExtra("conversation_id",conversationId).putExtra("other_name",name).putExtra("other_user_id",userId))
-   }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر فتح المحادثة",Toast.LENGTH_LONG).show()}
+     .putExtra("conversation_id",conversationId)
+     .putExtra("other_name",name)
+     .putExtra("other_user_id",userId))
+   }catch(e:Exception){
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر فتح المحادثة",Toast.LENGTH_LONG).show()
+   }
   }
  }
  private fun startRoomMembershipWatch(){
