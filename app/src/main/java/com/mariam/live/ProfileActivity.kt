@@ -22,6 +22,7 @@ class ProfileActivity : Activity() {
     private var userId=""
     private var avatarUrl=""
     private var selectedPhoto:Uri?=null
+    private lateinit var profileTitle:TextView
     private lateinit var displayName:EditText
     private lateinit var bio:EditText
     private lateinit var country:EditText
@@ -104,7 +105,8 @@ class ProfileActivity : Activity() {
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
         avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(136),dp(132),Gravity.CENTER))
         hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
-        hero.addView(txt("مستخدم مريم",19f,ink,true).apply{tag="profile_name"},LinearLayout.LayoutParams(-1,dp(42)))
+        profileTitle=txt("جارٍ تحميل الاسم...",19f,ink,true)
+        hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(42)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(12))}
@@ -454,6 +456,7 @@ class ProfileActivity : Activity() {
                 runOnUiThread{
                     idView.text=if(publicId.isNotBlank())publicId else "حسابك"
                     displayName.setText(user.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
+                    profileTitle.text=displayName.text.toString().ifBlank{"مستخدم مريم"}
                     bio.setText(user.optString("bio").takeUnless{it=="null"}?:"")
                     country.setText(user.optString("country").takeUnless{it=="null"}?:"")
                     avatarUrl=when{
