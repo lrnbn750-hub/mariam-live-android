@@ -110,6 +110,17 @@ class ProfileActivity : Activity() {
         avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(122),dp(122),Gravity.CENTER))
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
         avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(136),dp(132),Gravity.CENTER))
+        val avatarEdit=TextView(this).apply{
+            text="✎";textSize=17f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+            background=android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(35,157,120))
+                setStroke(dp(2),Color.WHITE)
+            }
+            setOnClickListener{showEditProfile()}
+        }
+        avatarFrame.addView(avatarEdit,FrameLayout.LayoutParams(dp(34),dp(34),Gravity.TOP or Gravity.START).apply{
+            topMargin=dp(8);marginStart=dp(3)
+        })
         hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
         profileTitle=txt("جارٍ تحميل الاسم...",19f,ink,true)
         hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(42)))
@@ -501,6 +512,7 @@ class ProfileActivity : Activity() {
                     }
                     status.text=""
                     if(avatarUrl.isNotBlank())loadAvatarPreview(avatarUrl)
+                    if(intent.getBooleanExtra("open_edit_profile",false))showEditProfile()
                 }
             }catch(e:Exception){
                 runOnUiThread{status.text=e.message?:"تعذر تحميل البيانات"}
