@@ -103,7 +103,7 @@ class RoomActivity : Activity() {
   mic.visibility=View.GONE
   musicButton=action("موسيقى","music",Color.rgb(91,130,94),Color.rgb(157,178,145)){showMusicOptions()}
   musicButton.visibility=View.GONE
-  roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(205)).apply{topMargin=dp(5)})
+  roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(4)})
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
@@ -401,7 +401,7 @@ class RoomActivity : Activity() {
    setPadding(0,dp(2),0,0)
    background=null
    chatPanel=this
-   chatMessages=LinearLayout(this@RoomActivity).apply{orientation=1}
+   chatMessages=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.BOTTOM;setPadding(0,0,0,dp(5))}
    chatScroll=ScrollView(this@RoomActivity).apply{
     isFillViewport=true
     overScrollMode=View.OVER_SCROLL_NEVER
@@ -462,7 +462,7 @@ class RoomActivity : Activity() {
     setOnClickListener{showRoomTools()}
    }
    composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(32)).apply{marginStart=dp(4)})
-   addView(composer,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})
+   addView(composer,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4);bottomMargin=dp(2)})
    loadRoomMessages()
    chatPoll?.cancel()
    chatPoll=scope.launch{
@@ -512,11 +512,6 @@ class RoomActivity : Activity() {
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
     chatMessages.removeAllViews()
-    if(messages.length()==0){
-     chatMessages.addView(label("لا توجد رسائل بعد، كن أول من يرسل رسالة",13f,Color.LTGRAY).apply{
-      setPadding(dp(8),dp(22),dp(8),dp(22))
-     })
-    }
     for(i in 0 until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
@@ -526,9 +521,9 @@ class RoomActivity : Activity() {
       orientation=1
       setPadding(dp(11),dp(7),dp(11),dp(7))
       background=GradientDrawable().apply{
-       setColor(if(mine)Color.argb(92,85,56,112) else Color.argb(82,28,23,42))
-       cornerRadius=dp(12).toFloat()
-       setStroke(dp(1),Color.argb(35,255,255,255))
+       setColor(if(mine)Color.argb(105,93,58,130) else Color.argb(88,24,20,35))
+       cornerRadius=dp(15).toFloat()
+       setStroke(dp(1),Color.argb(22,255,255,255))
       }
      }
      bubble.addView(TextView(this@RoomActivity).apply{
