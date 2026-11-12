@@ -974,10 +974,10 @@ class RoomActivity : Activity() {
   metric(received,"ماس استلمه")
   root.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(8)})
   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-  fun actionButton(title:String,color:Int,click:()->Unit):TextView{
+  fun actionButton(title:String,color:Int,click:(TextView)->Unit):TextView{
    return label(title,14f,Color.WHITE,true).apply{
     background=GradientDrawable().apply{setColor(color);cornerRadius=dp(24).toFloat()}
-    setPadding(dp(12),dp(12),dp(12),dp(12));isClickable=true;setOnClickListener{click()}
+    setPadding(dp(12),dp(12),dp(12),dp(12));isClickable=true;setOnClickListener{click(this)}
    }
   }
   val message=actionButton("مراسلة",Color.rgb(145,153,165)){openMemberConversation(uid,name)}
