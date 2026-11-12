@@ -159,7 +159,7 @@ class LoginActivity : Activity() {
                 AuthUi.showMessage(message, "أدخل بيانات الدخول وكلمة المرور")
                 return@setOnClickListener
             }
-            if (usePhone && !Regex("^\\\\+?[1-9][0-9]{7,14}$").matches(id)) {
+            if (usePhone && !Regex("^\\+?[1-9][0-9]{7,14}$").matches(id)) {
                 AuthUi.showMessage(message, "أدخل رقم هاتف دولي صحيحاً، مثال +9647XXXXXXXXX")
                 return@setOnClickListener
             }
