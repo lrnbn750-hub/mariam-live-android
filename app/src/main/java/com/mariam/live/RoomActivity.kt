@@ -418,7 +418,7 @@ class RoomActivity : Activity() {
    }
    composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
-    hint="";textSize=14f;maxLines=1;setSingleLine(true)
+    hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
     inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
     gravity=Gravity.CENTER_VERTICAL or Gravity.END
@@ -426,12 +426,12 @@ class RoomActivity : Activity() {
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.WHITE);setHintTextColor(Color.rgb(190,181,205))
+    setTextColor(Color.rgb(45,43,50));setHintTextColor(Color.rgb(135,132,142))
     setPadding(dp(14),0,dp(14),0)
     background=GradientDrawable().apply{
-     setColor(Color.rgb(65,59,76))
+     setColor(Color.rgb(245,245,247))
      cornerRadius=dp(24).toFloat()
-     setStroke(dp(1),Color.argb(105,220,205,245))
+     setStroke(dp(1),Color.rgb(225,225,230))
     }
     minHeight=dp(46)
     includeFontPadding=false
@@ -449,8 +449,8 @@ class RoomActivity : Activity() {
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
     typeface=android.graphics.Typeface.DEFAULT_BOLD
-    setTextColor(Color.WHITE);setPadding(dp(8),0,dp(8),0)
-    background=GradientDrawable().apply{setColor(Color.rgb(91,53,133));cornerRadius=dp(20).toFloat()}
+    setTextColor(Color.rgb(75,75,82));setPadding(dp(8),0,dp(8),0)
+    background=GradientDrawable().apply{setColor(Color.rgb(225,225,230));cornerRadius=dp(20).toFloat()}
     visibility=View.GONE
     setOnClickListener{sendRoomMessage()}
    }
