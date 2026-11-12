@@ -109,6 +109,26 @@ class RoomActivity : Activity() {
   room=LiveKit.create(applicationContext);loadIdentity()
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
+
+ override fun onResume(){
+  super.onResume()
+  hidePhoneNavigation()
+ }
+
+ override fun onPause(){
+  window.decorView.systemUiVisibility =
+   View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+  super.onPause()
+ }
+
+ private fun hidePhoneNavigation(){
+  window.decorView.systemUiVisibility =
+   View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+   View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+   View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+   View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+ }
+
  private fun switchLiveRoom(direction:Int){
   if(switchingRoom || leaving || roomId.isBlank())return
   switchingRoom=true
