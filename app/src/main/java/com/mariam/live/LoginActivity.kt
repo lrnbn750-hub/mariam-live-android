@@ -202,7 +202,11 @@ class LoginActivity : Activity() {
         page.addView(form)
         val create = AuthUi.link(this, "ليس لديك حساب؟ أنشئ حساباً جديداً").apply {
             setTextColor(Color.WHITE)
-            setOnClickListener { startActivity(Intent(this@LoginActivity, RegisterActivity::class.java)) }
+            setOnClickListener {
+                startActivity(Intent(this@LoginActivity, RegisterActivity::class.java).apply {
+                    putExtra("registration_mode", if (usePhone) "phone" else "email")
+                })
+            }
         }
         val forgot = AuthUi.link(this, "نسيت كلمة المرور؟").apply {
             setTextColor(0xFFE0D9F5.toInt())
