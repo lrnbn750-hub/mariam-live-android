@@ -236,6 +236,13 @@ class ProfileActivity : Activity() {
         loadRoyalFrameState()
     }
 
+    private fun openProfileShowcase(){
+        startActivity(Intent(this,MyProfileShowcaseActivity::class.java)
+            .putExtra("display_name",profileTitle.text.toString())
+            .putExtra("public_id",idViewRef?.text?.toString().orEmpty())
+            .putExtra("avatar_url",avatarUrl))
+    }
+
     private fun showInfo(title:String){
         android.app.AlertDialog.Builder(this).setTitle(title).setMessage("هذه الخدمة ستتوفر ضمن تطبيق مريم لايف.").setPositiveButton("حسناً",null).show()
     }
