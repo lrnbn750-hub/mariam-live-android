@@ -148,7 +148,7 @@ class LevelActivity : Activity() {
         val pct = if (level >= 100) 100 else (progressValue * 100).toInt().coerceIn(0,100)
         progressText.text = "$pct%"
         progress.progress = pct * 10
-        remainingText.text = if (level >= 100) "وصلت إلى أعلى رتبة في مريم لايف"
+        remainingText.text = if (level >= 100) "وصلت إلى أعلى رتبة في BAK LIVE"
             else "باقي ${(nextXp-currentXp).coerceAtLeast(0)} XP للمستوى التالي"
 
         tierList.removeAllViews()
