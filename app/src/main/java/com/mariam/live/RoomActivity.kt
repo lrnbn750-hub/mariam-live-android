@@ -906,10 +906,141 @@ class RoomActivity : Activity() {
    info.addView(label("@$username  •  ID: $account",10f,Color.rgb(103,111,101)).apply{gravity=Gravity.START})
    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
    row.addView(label(role,10f,if(isOwnerMember)Color.rgb(83,126,94) else Color.rgb(103,111,101),true))
+   row.isClickable=true
+   row.setOnClickListener{showMemberProfile(member)}
    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
   }
   val scroll=ScrollView(this).apply{addView(list)}
   AlertDialog.Builder(this).setTitle("الموجودون في الغرفة • ${roomMembers.length()}").setView(scroll).setPositiveButton("إغلاق",null).show()
+ }
+ private fun profileValue(item:JSONObject,keys:List<String>):String{
+  for(key in keys){
+   val value=item.opt(key)
+   if(value!=null && value!=JSONObject.NULL){
+    val text=value.toString()
+    if(text.isNotBlank() && text!="null" && text!="0")return text
+   }
+  }
+  return "—"
+ }
+ private fun showMemberProfile(member:JSONObject){
+  val uid=member.optString("user_id")
+  if(uid.isBlank() || uid=="null")return
+  val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+  val account=member.optString("public_id").ifBlank{member.optString("account_id","—")}
+  val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+  val level=profileValue(member,listOf("level","user_level","wealth_level","wealthLevel"))
+  val fans=profileValue(member,listOf("fans_count","fans","followers_count","followersCount"))
+  val followers=profileValue(member,listOf("following_count","following","follow_count","followings_count"))
+  val sent=profileValue(member,listOf("diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent"))
+  val received=profileValue(member,listOf("diamonds_received","total_diamonds_received","received_diamonds","total_received"))
+  val dialog=android.app.Dialog(this)
+  val root=LinearLayout(this).apply{
+   orientation=1;gravity=Gravity.CENTER_HORIZONTAL;setPadding(dp(18),dp(16),dp(18),dp(18))
+   background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
+  }
+  val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+  top.addView(label("إبلاغ  ⚑",11f,Color.rgb(125,130,135)).apply{setOnClickListener{
+   Toast.makeText(this@RoomActivity,"سيتم إضافة الإبلاغ من بطاقة المستخدم لاحقاً",Toast.LENGTH_SHORT).show()
+  }},LinearLayout.LayoutParams(0,dp(34),1f))
+  top.addView(label("×",25f,Color.rgb(90,95,100)).apply{setOnClickListener{dialog.dismiss()}},LinearLayout.LayoutParams(dp(38),dp(34)))
+  root.addView(top)
+  val avatar=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(235,239,235));setStroke(dp(2),Color.rgb(52,196,187))}
+   clipToOutline=true
+   setImageDrawable(VectorIcon("user",Color.rgb(110,130,115),dp(28)))
+  }
+  root.addView(avatar,LinearLayout.LayoutParams(dp(104),dp(104)).apply{topMargin=dp(-2)})
+  if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
+  root.addView(label(name,20f,Color.rgb(35,36,43),true),LinearLayout.LayoutParams(-1,dp(42)))
+  root.addView(label("ID: $account",13f,Color.rgb(139,142,150)),LinearLayout.LayoutParams(-1,dp(26)))
+  val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  badges.addView(label("LV. $level",12f,Color.rgb(110,105,90),true).apply{
+   setPadding(dp(12),dp(6),dp(12),dp(6))
+   background=GradientDrawable().apply{setColor(Color.rgb(245,241,224));cornerRadius=dp(12).toFloat()}
+  })
+  root.addView(badges,LinearLayout.LayoutParams(-1,dp(38)))
+  val stats=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  fun metric(value:String,title:String){
+   val col=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER}
+   col.addView(label(value,19f,Color.rgb(35,36,43),true),LinearLayout.LayoutParams(-1,dp(30)))
+   col.addView(label(title,11f,Color.rgb(150,151,156)),LinearLayout.LayoutParams(-1,dp(25)))
+   stats.addView(col,LinearLayout.LayoutParams(0,dp(58),1f))
+  }
+  metric(fans,"المعجبون")
+  metric(followers,"يتابعهم")
+  metric(sent,"ماس أرسله")
+  metric(received,"ماس استلمه")
+  root.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(8)})
+  val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  fun actionButton(title:String,color:Int,click:()->Unit):TextView{
+   return label(title,14f,Color.WHITE,true).apply{
+    background=GradientDrawable().apply{setColor(color);cornerRadius=dp(24).toFloat()}
+    setPadding(dp(12),dp(12),dp(12),dp(12));isClickable=true;setOnClickListener{click()}
+   }
+  }
+  val message=actionButton("مراسلة",Color.rgb(145,153,165)){openMemberConversation(uid,name)}
+  actions.addView(message,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(6)})
+  val gift=actionButton("🎁",Color.rgb(171,92,196)){
+   Toast.makeText(this,"إرسال الهدية يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()
+  }
+  actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
+  val follow=actionButton("＋ متابعة",Color.rgb(22,194,190)){sendMemberFollow(uid,it)}
+  actions.addView(follow,LinearLayout.LayoutParams(0,dp(48),1f))
+  root.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(12)})
+  dialog.setContentView(root)
+  dialog.window?.apply{
+   setBackgroundDrawableResource(android.R.color.transparent)
+   setLayout(-1,-2)
+   setGravity(Gravity.BOTTOM)
+   addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+   attributes=attributes.apply{dimAmount=0.58f}
+  }
+  dialog.show()
+  dialog.window?.setLayout(-1,-2)
+  dialog.window?.setGravity(Gravity.BOTTOM)
+ }
+ private fun sendMemberFollow(userId:String,button:TextView){
+  if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
+  button.isEnabled=false
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){AuthApi.post("/api/friends/requests",JSONObject().put("user_id",userId),authToken)}
+    if(result.status in 200..299){
+     button.text="✓ تم الإرسال"
+     button.setBackgroundColor(Color.rgb(80,145,105))
+    }else{
+     button.isEnabled=true
+     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال طلب المتابعة"),Toast.LENGTH_SHORT).show()
+    }
+   }catch(_:Exception){button.isEnabled=true;Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+  }
+ }
+ private fun openMemberConversation(userId:String,name:String){
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){AuthApi.get("/api/messages/conversations",authToken)}
+    if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحميل المحادثات"))
+    val rows=result.body.optJSONArray("conversations")?:JSONArray()
+    var conversationId=""
+    for(i in 0 until rows.length()){
+     val item=rows.optJSONObject(i)?:continue
+     val members=item.optJSONArray("members")?:JSONArray()
+     for(j in 0 until members.length()){
+      val person=members.optJSONObject(j)?:continue
+      if(person.optString("user_id")==userId){conversationId=item.optString("id").ifBlank{item.optString("conversation_id")};break}
+     }
+     if(conversationId.isNotBlank())break
+    }
+    if(conversationId.isBlank()){
+     Toast.makeText(this@RoomActivity,"لا توجد محادثة سابقة معه؛ بدء محادثة جديدة غير متاح من الخادم حالياً",Toast.LENGTH_LONG).show()
+     return@launch
+    }
+    startActivity(Intent(this@RoomActivity,DirectChatActivity::class.java)
+     .putExtra("conversation_id",conversationId).putExtra("other_name",name).putExtra("other_user_id",userId))
+   }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر فتح المحادثة",Toast.LENGTH_LONG).show()}
+  }
  }
  private fun startRoomMembershipWatch(){
   membershipWatch?.cancel()
