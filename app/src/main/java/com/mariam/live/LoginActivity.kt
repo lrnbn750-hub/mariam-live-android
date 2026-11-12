@@ -2,33 +2,42 @@ package com.mariam.live
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.SurfaceTexture
+import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.Surface
+import android.view.TextureView
 import android.view.View
 import android.widget.*
-import android.graphics.Typeface
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.net.Uri
-import android.media.MediaPlayer
-import android.view.TextureView
-import android.view.Surface
-import android.graphics.SurfaceTexture
-import android.graphics.drawable.GradientDrawable
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
 class LoginActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var loginPlayer: MediaPlayer? = null
+    private var loginSurface: Surface? = null
 
-    private fun rounded(color: Int, stroke: Int = 0): GradientDrawable =
-        GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = AuthUi.dp(this@LoginActivity, 15).toFloat()
-            if (stroke != 0) setStroke(AuthUi.dp(this@LoginActivity, 1), stroke)
+    private fun actionButton(text: String, colors: IntArray): TextView = TextView(this).apply {
+        this.text = text
+        textSize = 18f
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setTextColor(Color.WHITE)
+        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, colors).apply {
+            cornerRadius = AuthUi.dp(this@LoginActivity, 28).toFloat()
         }
+        elevation = AuthUi.dp(this@LoginActivity, 3).toFloat()
+        layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 62)).apply {
+            topMargin = AuthUi.dp(this@LoginActivity, 12)
+        }
+    }
 
     private fun saveSession(result: JSONObject) {
         val token = result.optString("token")
@@ -44,110 +53,113 @@ class LoginActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val page = AuthUi.page(this).apply { background = ColorDrawable(Color.TRANSPARENT) }
-        page.addView(AuthUi.brand(this, "صوتك وأصدقاؤك وعالمك يبدأ من هنا"))
 
-        val card = AuthUi.card(this).apply {
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(AuthUi.dp(this@LoginActivity, 30), AuthUi.dp(this@LoginActivity, 28),
+                AuthUi.dp(this@LoginActivity, 30), AuthUi.dp(this@LoginActivity, 24))
+            background = ColorDrawable(Color.TRANSPARENT)
+        }
+
+        // Brand area, centered like the reference screen.
+        val brand = AuthUi.brand(this, "صوتك وأصدقاؤك وعالمك يبدأ من هنا")
+        page.addView(brand, LinearLayout.LayoutParams(-1, AuthUi.dp(this, 190)).apply {
+            bottomMargin = AuthUi.dp(this@LoginActivity, 34)
+        })
+
+        val intro = TextView(this).apply {
+            text = "قم بتسجيل الدخول لإكمال ملفك"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setShadowLayer(5f, 0f, 2f, 0x99000000.toInt())
+            setPadding(0, 0, 0, AuthUi.dp(this@LoginActivity, 22))
+        }
+        page.addView(intro)
+
+        val emailChoice = actionButton("البريد الإلكتروني", intArrayOf(0xFF7650F5.toInt(), 0xFFB24CEB.toInt()))
+        val phoneChoice = actionButton("رقم الهاتف", intArrayOf(0xFF1686F8.toInt(), 0xFF3766E8.toInt()))
+        page.addView(emailChoice)
+        page.addView(phoneChoice)
+
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(AuthUi.dp(this@LoginActivity, 18), AuthUi.dp(this@LoginActivity, 18),
+                AuthUi.dp(this@LoginActivity, 18), AuthUi.dp(this@LoginActivity, 18))
             background = GradientDrawable().apply {
                 setColor(0xCC17152B.toInt())
-                cornerRadius = AuthUi.dp(this@LoginActivity, 26).toFloat()
+                cornerRadius = AuthUi.dp(this@LoginActivity, 22).toFloat()
                 setStroke(AuthUi.dp(this@LoginActivity, 1), 0x44FFFFFF)
             }
         }
-        card.addView(AuthUi.heading(this, "أهلاً بعودتك").apply { setTextColor(Color.WHITE) })
-        card.addView(AuthUi.hint(this, "سجّل دخولك إلى مجتمع BAK LIVE").apply { setTextColor(0xFFD8D3E8.toInt()) })
-
-        val phoneTab = TextView(this).apply {
-            text = "رقم الهاتف"
-            gravity = Gravity.CENTER
-            textSize = 14f
+        val formTitle = TextView(this).apply {
+            textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF7957F6.toInt())
-            background = rounded(0xFFF1ECFF.toInt())
-            layoutParams = LinearLayout.LayoutParams(0, AuthUi.dp(this@LoginActivity, 46), 1f)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.RIGHT
         }
-        val emailTab = TextView(this).apply {
-            text = "البريد الإلكتروني"
-            gravity = Gravity.CENTER
-            textSize = 14f
-            setTextColor(0xFF77748B.toInt())
-            background = rounded(0xFFF3F1F8.toInt())
-            layoutParams = LinearLayout.LayoutParams(0, AuthUi.dp(this@LoginActivity, 46), 1f).apply {
-                marginStart = AuthUi.dp(this@LoginActivity, 8)
-            }
-        }
-        val tabs = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        phoneTab.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 52)).apply {
-            bottomMargin = AuthUi.dp(this@LoginActivity, 10)
-        }
-        emailTab.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 52))
-        tabs.addView(emailTab)
-        tabs.addView(phoneTab)
-        card.addView(tabs)
+        form.addView(formTitle)
 
-        card.addView(AuthUi.label(this, "رقم الهاتف").apply { setTextColor(Color.WHITE) })
-        val phone = AuthUi.field(this, "+964 7XX XXX XXXX", InputType.TYPE_CLASS_PHONE)
-        phone.textDirection = View.TEXT_DIRECTION_LTR
-        phone.gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
-        card.addView(phone)
-
-        card.addView(AuthUi.label(this, "كلمة المرور").apply { setTextColor(Color.WHITE) })
+        val identifierLabel = AuthUi.label(this, "البريد الإلكتروني").apply { setTextColor(Color.WHITE) }
+        val identifier = AuthUi.field(this, "أدخل البريد الإلكتروني", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        val phoneLabel = AuthUi.label(this, "رقم الهاتف").apply { setTextColor(Color.WHITE) }
+        val phone = AuthUi.field(this, "+964 7XX XXX XXXX", InputType.TYPE_CLASS_PHONE).apply {
+            textDirection = View.TEXT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+        }
+        val passwordLabel = AuthUi.label(this, "كلمة المرور").apply { setTextColor(Color.WHITE) }
         val password = AuthUi.field(this, "أدخل كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         password.textDirection = View.TEXT_DIRECTION_LTR
-        card.addView(password)
 
-        val show = CheckBox(this).apply {
+        form.addView(identifierLabel); form.addView(identifier)
+        form.addView(phoneLabel); form.addView(phone)
+        form.addView(passwordLabel); form.addView(password)
+
+        val showPassword = CheckBox(this).apply {
             text = "إظهار كلمة المرور"
             textSize = 12f
-            setTextColor(0xFF77748B.toInt())
-            buttonTintList = android.content.res.ColorStateList.valueOf(0xFF7957F6.toInt())
+            setTextColor(Color.WHITE)
+            buttonTintList = android.content.res.ColorStateList.valueOf(0xFFB58BFF.toInt())
             setOnCheckedChangeListener { _, checked ->
                 val pos = password.selectionStart
-                password.inputType = if (checked) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                password.inputType = if (checked) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                    else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 password.setSelection(pos.coerceAtLeast(0))
             }
         }
-        card.addView(show)
-
-        val emailPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-        }
-        emailPanel.addView(AuthUi.label(this, "البريد الإلكتروني").apply { setTextColor(Color.WHITE) })
-        val identifier = AuthUi.field(this, "البريد الإلكتروني أو اسم المستخدم", InputType.TYPE_CLASS_TEXT)
-        emailPanel.addView(identifier)
-        card.addView(emailPanel)
-
+        form.addView(showPassword)
         val message = AuthUi.message(this)
-        card.addView(message)
+        form.addView(message)
         val submit = AuthUi.primaryButton(this, "تسجيل الدخول")
-        card.addView(submit)
+        form.addView(submit)
 
-        var usePhone = true
-        fun selectPhone(enabled: Boolean) {
-            usePhone = enabled
-            phone.visibility = if (enabled) View.VISIBLE else View.GONE
-            password.visibility = View.VISIBLE
-            emailPanel.visibility = if (enabled) View.GONE else View.VISIBLE
-            phoneTab.background = rounded(if (enabled) 0xFFF1ECFF.toInt() else 0xFFF3F1F8.toInt())
-            emailTab.background = rounded(if (!enabled) 0xFFF1ECFF.toInt() else 0xFFF3F1F8.toInt())
-            phoneTab.setTextColor(if (enabled) 0xFF7957F6.toInt() else 0xFF77748B.toInt())
-            emailTab.setTextColor(if (!enabled) 0xFF7957F6.toInt() else 0xFF77748B.toInt())
+        var usePhone = false
+        fun choose(phoneMode: Boolean) {
+            usePhone = phoneMode
+            formTitle.text = if (phoneMode) "تسجيل الدخول برقم الهاتف" else "تسجيل الدخول بالبريد الإلكتروني"
+            identifierLabel.visibility = if (phoneMode) View.GONE else View.VISIBLE
+            identifier.visibility = if (phoneMode) View.GONE else View.VISIBLE
+            phoneLabel.visibility = if (phoneMode) View.VISIBLE else View.GONE
+            phone.visibility = if (phoneMode) View.VISIBLE else View.GONE
             message.visibility = View.GONE
+            form.visibility = View.VISIBLE
+            emailChoice.visibility = View.GONE
+            phoneChoice.visibility = View.GONE
         }
-        phoneTab.setOnClickListener { selectPhone(true) }
-        emailTab.setOnClickListener { selectPhone(false) }
+        emailChoice.setOnClickListener { choose(false) }
+        phoneChoice.setOnClickListener { choose(true) }
 
         submit.setOnClickListener {
-            val id = if (usePhone) phone.text.toString().trim().replace(" ", "").replace("-", "") else identifier.text.toString().trim()
+            val id = if (usePhone) phone.text.toString().trim().replace(" ", "").replace("-", "")
+                else identifier.text.toString().trim()
             val pass = password.text.toString()
             if (id.isBlank() || pass.isBlank()) {
-                AuthUi.showMessage(message, "أدخل رقم الهاتف وكلمة المرور")
+                AuthUi.showMessage(message, "أدخل بيانات الدخول وكلمة المرور")
                 return@setOnClickListener
             }
-            if (usePhone && !Regex("^\\+?[1-9][0-9]{7,14}$").matches(id)) {
+            if (usePhone && !Regex("^\\\\+?[1-9][0-9]{7,14}$").matches(id)) {
                 AuthUi.showMessage(message, "أدخل رقم هاتف دولي صحيحاً، مثال +9647XXXXXXXXX")
                 return@setOnClickListener
             }
@@ -170,7 +182,7 @@ class LoginActivity : Activity() {
                         }
                     } else {
                         val error = when (result.status) {
-                            401 -> "رقم الهاتف أو كلمة المرور غير صحيحة"
+                            401 -> "بيانات الدخول أو كلمة المرور غير صحيحة"
                             403 -> "هذا الحساب غير نشط"
                             404 -> "الحساب غير موجود"
                             else -> result.body.optString("error", "تعذر تسجيل الدخول")
@@ -187,25 +199,31 @@ class LoginActivity : Activity() {
             }
         }
 
-        val create = AuthUi.link(this, "ليس لديك حساب؟ أنشئ حساباً جديداً")
-        create.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
-        val forgot = AuthUi.link(this, "نسيت كلمة المرور؟")
-        forgot.setOnClickListener { Toast.makeText(this, "استعادة كلمة المرور ستُضاف بعد ربط التحقق من الهاتف", Toast.LENGTH_LONG).show() }
+        page.addView(form)
+        val create = AuthUi.link(this, "ليس لديك حساب؟ أنشئ حساباً جديداً").apply {
+            setTextColor(Color.WHITE)
+            setOnClickListener { startActivity(Intent(this@LoginActivity, RegisterActivity::class.java)) }
+        }
+        val forgot = AuthUi.link(this, "نسيت كلمة المرور؟").apply {
+            setTextColor(0xFFE0D9F5.toInt())
+            setOnClickListener { Toast.makeText(this@LoginActivity, "استعادة كلمة المرور ستُضاف بعد ربط التحقق", Toast.LENGTH_LONG).show() }
+        }
+        page.addView(create)
+        page.addView(forgot)
 
-        page.addView(card)
-        page.addView(create.apply { setTextColor(Color.WHITE) })
-        page.addView(forgot.apply { setTextColor(0xFFD8D3E8.toInt()) })
         val root = FrameLayout(this).apply { setBackgroundColor(0xFF17152B.toInt()) }
         val videoId = resources.getIdentifier("login_background", "raw", packageName)
         if (videoId != 0) {
             val video = TextureView(this)
             root.addView(video, FrameLayout.LayoutParams(-1, -1))
             video.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+                override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
                     try {
+                        val surface = Surface(texture)
+                        loginSurface = surface
                         val player = MediaPlayer()
                         loginPlayer = player
-                        player.setSurface(Surface(surfaceTexture))
+                        player.setSurface(surface)
                         player.setDataSource(this@LoginActivity, Uri.parse("android.resource://$packageName/$videoId"))
                         player.isLooping = true
                         player.setVolume(0f, 0f)
@@ -222,27 +240,33 @@ class LoginActivity : Activity() {
                     }
                 }
                 override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-                override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
-                    loginPlayer?.release()
-                    loginPlayer = null
+                override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                    loginPlayer?.release(); loginPlayer = null
+                    loginSurface?.release(); loginSurface = null
                     return true
                 }
-                override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {}
+                override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {}
             }
         }
-        root.addView(View(this).apply { setBackgroundColor(0x990D0B1B.toInt()) },
+        root.addView(View(this).apply { setBackgroundColor(0x660D0B1B) },
             FrameLayout.LayoutParams(-1, -1))
-        val content = AuthUi.scroll(this, page).apply {
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+            addView(page)
             background = ColorDrawable(Color.TRANSPARENT)
-            setFillViewport(true)
         }
-        root.addView(content, FrameLayout.LayoutParams(-1, -1))
-        window.statusBarColor = 0xFF17152B.toInt()
+        root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = 0xFF17152B.toInt()
-        window.decorView.systemUiVisibility = 0
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         setContentView(root)
-        selectPhone(true)
     }
 
-    override fun onDestroy() { loginPlayer?.release(); loginPlayer = null; executor.shutdown(); super.onDestroy() }
+    override fun onDestroy() {
+        loginPlayer?.release(); loginPlayer = null
+        loginSurface?.release(); loginSurface = null
+        executor.shutdown()
+        super.onDestroy()
+    }
 }
