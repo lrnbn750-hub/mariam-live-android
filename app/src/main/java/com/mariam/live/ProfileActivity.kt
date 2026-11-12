@@ -23,6 +23,7 @@ class ProfileActivity : Activity() {
     private var avatarUrl=""
     private var selectedPhoto:Uri?=null
     private lateinit var profileTitle:TextView
+    private var idViewRef:TextView?=null
     private lateinit var displayName:EditText
     private lateinit var bio:EditText
     private lateinit var country:EditText
@@ -90,7 +91,7 @@ class ProfileActivity : Activity() {
         val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
         tools.addView(txt("♧",30f,ink,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(42)))
         tools.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
-        tools.addView(txt("⚙",27f,ink).apply{setOnClickListener{showEditProfile()}},LinearLayout.LayoutParams(dp(42),dp(42)))
+        tools.addView(txt("⚙",27f,ink).apply{setOnClickListener{openProfileShowcase()}},LinearLayout.LayoutParams(dp(42),dp(42)))
         hero.addView(tools,LinearLayout.LayoutParams(-1,dp(46)))
 
         avatarPreview=ImageView(this).apply{
@@ -101,6 +102,8 @@ class ProfileActivity : Activity() {
         }
         val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
         avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(112),dp(112),Gravity.CENTER))
+        avatarPreview.isClickable=true
+        avatarPreview.setOnClickListener{openProfileShowcase()}
         avatarRing=View(this).apply{
             background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.TRANSPARENT);setStroke(dp(4),gold)}
         }
@@ -212,9 +215,18 @@ class ProfileActivity : Activity() {
         root.addView(bottom,LinearLayout.LayoutParams(-1,dp(64)))
         setContentView(root)
 
-        loadProfile(TextView(this).also{it.tag="profile_id"})
+        loadProfile(TextView(this).also{it.tag="profile_id"; idViewRef=it})
         loadLevelProgress()
         loadRoyalFrameState()
+    }
+
+    private fun openProfileShowcase(){
+        val name=profileTitle.text.toString().ifBlank{"مستخدم مريم"}
+        val publicId=idViewRef?.text?.toString().orEmpty()
+        startActivity(Intent(this,MyProfileShowcaseActivity::class.java)
+            .putExtra("display_name",name)
+            .putExtra("public_id",publicId)
+            .putExtra("avatar_url",avatarUrl))
     }
 
     private fun showInfo(title:String){
