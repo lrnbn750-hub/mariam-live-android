@@ -280,8 +280,7 @@ class RoomActivity : Activity() {
    clipToOutline=true
    setImageDrawable(VectorIcon("user",Color.WHITE,dp(19)))
   }
-  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
-  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(29),dp(29)).apply{marginEnd=dp(5)})
+  avatarFrame.addView(ownerAvatarView,FrameLayout.LayoutParams(dp(30),dp(30),Gravity.CENTER))
   val details=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
   ownerNameView=label("صاحب البث",13f,Color.WHITE,true).apply{
    gravity=Gravity.END or Gravity.CENTER_VERTICAL;maxLines=1
@@ -293,6 +292,7 @@ class RoomActivity : Activity() {
   }
   details.addView(ownerIdView,LinearLayout.LayoutParams(-1,dp(14)))
   card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
+  card.addView(avatarFrame,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(6)})
   val follow=TextView(this).apply{
    text="+";textSize=23f;gravity=Gravity.CENTER
    setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
