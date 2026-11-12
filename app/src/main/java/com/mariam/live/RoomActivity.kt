@@ -266,7 +266,7 @@ class RoomActivity : Activity() {
  private fun buildPremiumRoomHeader():View{
    val card=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
-    layoutDirection=View.LAYOUT_DIRECTION_RTL
+    layoutDirection=View.LAYOUT_DIRECTION_LTR
     gravity=Gravity.CENTER_VERTICAL
     setPadding(0,0,0,0)
     background=null
@@ -307,9 +307,9 @@ class RoomActivity : Activity() {
     contentDescription="متابعة صاحب البث"
     setOnClickListener{sendOwnerFollowRequest(this)}
    }
-   card.addView(follow,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
-   card.addView(avatarFrame,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
    card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
+   card.addView(avatarFrame,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
+   card.addView(follow,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
    return card
   }
   private fun sendOwnerFollowRequest(button:TextView){
