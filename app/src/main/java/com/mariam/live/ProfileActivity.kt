@@ -175,7 +175,7 @@ class ProfileActivity : Activity() {
                 orientation=1;gravity=Gravity.CENTER
                 background=rounded(bg,15)
                 setOnClickListener{click()}
-                val iconView=ImageView(this).apply{
+                val iconView=ImageView(this@ProfileActivity).apply{
                     setImageResource(icon)
                     setColorFilter(fg,android.graphics.PorterDuff.Mode.SRC_IN)
                     scaleType=ImageView.ScaleType.CENTER_INSIDE
