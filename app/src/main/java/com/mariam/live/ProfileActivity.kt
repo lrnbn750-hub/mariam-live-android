@@ -35,6 +35,8 @@ class ProfileActivity : Activity() {
     private val royalFrameItemId="royal100-frame"
     private lateinit var status:TextView
     private lateinit var levelShortcutTitle:TextView
+    private lateinit var levelShortcutIcon:TextView
+    private lateinit var levelShortcutCard:LinearLayout
     private lateinit var levelNumber:TextView
     private lateinit var levelCard:LinearLayout
     private lateinit var levelRank:TextView
@@ -127,9 +129,14 @@ class ProfileActivity : Activity() {
                 orientation=1;gravity=Gravity.CENTER
                 background=rounded(bg,15)
                 setOnClickListener{click()}
-                addView(txt(icon,32f,fg,true),LinearLayout.LayoutParams(-1,dp(62)))
+                val iconView=txt(icon,32f,fg,true)
+                addView(iconView,LinearLayout.LayoutParams(-1,dp(62)))
                 val titleView=txt(title,12f,fg,true)
-                if(title=="LV 1")levelShortcutTitle=titleView
+                if(title=="LV 1"){
+                    levelShortcutTitle=titleView
+                    levelShortcutIcon=iconView
+                    levelShortcutCard=this
+                }
                 addView(titleView,LinearLayout.LayoutParams(-1,dp(25)))
             }
             shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
@@ -403,6 +410,17 @@ class ProfileActivity : Activity() {
             setStroke(dp(if(level==100)2 else 1),colors[3])
         }
         levelNumber.setTextColor(colors[4])
+        if(::levelShortcutCard.isInitialized){
+            levelShortcutCard.background=android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                intArrayOf(colors[0],colors[1],colors[2])
+            ).apply{
+                cornerRadius=dp(15).toFloat()
+                setStroke(dp(2),colors[3])
+            }
+            levelShortcutIcon.setTextColor(colors[4])
+            levelShortcutTitle.setTextColor(colors[5])
+        }
         levelRank.setTextColor(Color.WHITE)
         levelXp.setTextColor(colors[5])
         levelProgress.progressDrawable=android.graphics.drawable.ClipDrawable(
