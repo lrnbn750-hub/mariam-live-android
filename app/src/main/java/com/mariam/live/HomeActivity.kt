@@ -1,4 +1,6 @@
 package com.mariam.live
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 import android.app.Activity
 import android.os.Bundle
@@ -101,7 +103,16 @@ class HomeActivity : Activity() {
         nav.addView(navItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
         nav.addView(navItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
+        ViewCompat.setOnApplyWindowInsetsListener(nav){ view,insets->
+            val bottomInset=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            val lp=view.layoutParams
+            val targetHeight=dp(82)+bottomInset
+            if(lp.height!=targetHeight){lp.height=targetHeight;view.layoutParams=lp}
+            view.setPadding(dp(5),dp(6),dp(5),dp(6)+bottomInset)
+            insets
+        }
         setContentView(root)
+        ViewCompat.requestApplyInsets(nav)
         verifyAccount()
     }
 
