@@ -7,6 +7,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.content.Intent
+import android.content.ClipboardManager
+import android.content.ClipData
 import android.net.Uri
 import android.util.Base64
 import android.view.Gravity
@@ -24,6 +26,7 @@ class ProfileActivity : Activity() {
     private var avatarUrl=""
     private var selectedPhoto:Uri?=null
     private lateinit var profileTitle:TextView
+    private lateinit var publicIdLabel:TextView
     private var idViewRef:TextView?=null
     private lateinit var displayName:EditText
     private lateinit var bio:EditText
@@ -126,7 +129,22 @@ class ProfileActivity : Activity() {
         })
         hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
         profileTitle=txt("جارٍ تحميل الاسم...",19f,ink,true)
-        hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(42)))
+        hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(38)))
+        val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+        publicIdLabel=txt("ID: جارٍ التحميل",13f,Color.rgb(120,120,130))
+        idRow.addView(publicIdLabel,LinearLayout.LayoutParams(-2,dp(30)))
+        idRow.addView(txt("نسخ",12f,Color.rgb(35,157,120),true).apply{
+            setPadding(dp(10),0,dp(10),0)
+            setOnClickListener{
+                val value=idViewRef?.text?.toString().orEmpty()
+                if(value.isNotBlank() && value!="حسابك"){
+                    val clipboard=getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Mariam ID",value))
+                    Toast.makeText(this@ProfileActivity,"تم نسخ ID",Toast.LENGTH_SHORT).show()
+                }
+            }
+        },LinearLayout.LayoutParams(-2,dp(30)))
+        hero.addView(idRow,LinearLayout.LayoutParams(-1,dp(30)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(12))}
@@ -159,7 +177,7 @@ class ProfileActivity : Activity() {
             shortcuts.addView(card,LinearLayout.LayoutParams(0,dp(112),1f).apply{marginStart=dp(5);marginEnd=dp(5)})
         }
         shortcut("💰","ربح النقود",Color.rgb(218,246,255),Color.rgb(86,160,192)){showInfo("ربح النقود")}
-        shortcut("👑","KING&QUEEN",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("KING&QUEEN")}
+        shortcut("👑","العائلة",Color.rgb(255,239,218),Color.rgb(185,126,72)){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
         shortcut("V","شراء VIP",Color.rgb(255,242,211),Color.rgb(199,151,58)){showInfo("شراء VIP")}
         shortcut("✧","LV 1",Color.rgb(213,250,249),Color.rgb(39,181,187)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
@@ -206,9 +224,6 @@ class ProfileActivity : Activity() {
         levelXp=txt("0 XP",10f,muted)
         levelProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply{max=1000}
         frameToggle=txt("",12f,ink)
-        content.addView(txt("تعديل الملف الشخصي",13f,Color.rgb(100,100,100)).apply{
-            setPadding(0,dp(10),0,dp(10));setOnClickListener{showEditProfile()}
-        },LinearLayout.LayoutParams(-1,dp(44)))
         content.addView(levelCard,LinearLayout.LayoutParams(-1,dp(1)))
         content.addView(status,LinearLayout.LayoutParams(-1,dp(32)))
 
@@ -490,6 +505,7 @@ class ProfileActivity : Activity() {
 
                 runOnUiThread{
                     idView.text=if(publicId.isNotBlank())publicId else "حسابك"
+                    publicIdLabel.text=if(publicId.isNotBlank())"ID: $publicId" else "ID: غير متوفر"
                     displayName.setText(user.optString("display_name").takeUnless{it=="null"}?:user.optString("username"))
                     profileTitle.text=displayName.text.toString().ifBlank{"مستخدم مريم"}
                     bio.setText(user.optString("bio").takeUnless{it=="null"}?:"")
