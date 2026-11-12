@@ -929,7 +929,16 @@ class RoomActivity : Activity() {
   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
   val account=member.optString("public_id").ifBlank{member.optString("account_id","—")}
   val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
-  val level=profileValue(member,listOf("level","user_level","wealth_level","wealthLevel"))
+  val xp=member.optLong("total_xp",0L).coerceAtLeast(0L)
+  val level=member.optInt("level",0).takeIf{it>0} ?: run {
+   var calculated=1
+   var threshold=100L
+   while(calculated<100 && xp>=threshold){
+    calculated++
+    threshold=calculated.toLong()*calculated.toLong()*100L
+   }
+   calculated
+  }
   val fans=profileValue(member,listOf("fans_count","fans","followers_count","followersCount"))
   val followers=profileValue(member,listOf("following_count","following","follow_count","followings_count"))
   val sent=profileValue(member,listOf("diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent"))
