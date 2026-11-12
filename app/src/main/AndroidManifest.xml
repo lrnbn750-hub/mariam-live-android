@@ -10,7 +10,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="Mariam Live"
+        android:label="BAK LIVE"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 
