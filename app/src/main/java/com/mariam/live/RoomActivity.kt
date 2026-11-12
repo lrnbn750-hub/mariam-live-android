@@ -913,6 +913,19 @@ class RoomActivity : Activity() {
   val scroll=ScrollView(this).apply{addView(list)}
   AlertDialog.Builder(this).setTitle("الموجودون في الغرفة • ${roomMembers.length()}").setView(scroll).setPositiveButton("إغلاق",null).show()
  }
+ private fun memberLevelColors(level:Int):IntArray = when(level){
+  in 1..10 -> intArrayOf(Color.rgb(54,37,25),Color.rgb(112,75,43),Color.rgb(43,29,22),Color.rgb(218,157,91),Color.rgb(255,220,174),Color.rgb(226,173,113),Color.rgb(88,61,39))
+  in 11..20 -> intArrayOf(Color.rgb(37,43,55),Color.rgb(104,116,133),Color.rgb(34,39,51),Color.rgb(192,205,221),Color.rgb(245,249,255),Color.rgb(218,228,241),Color.rgb(91,103,122))
+  in 21..30 -> intArrayOf(Color.rgb(55,39,10),Color.rgb(150,105,20),Color.rgb(64,43,10),Color.rgb(255,207,70),Color.rgb(255,239,164),Color.rgb(255,218,105),Color.rgb(111,76,16))
+  in 31..40 -> intArrayOf(Color.rgb(9,55,43),Color.rgb(17,119,83),Color.rgb(8,45,39),Color.rgb(72,222,164),Color.rgb(190,255,225),Color.rgb(102,238,184),Color.rgb(20,105,78))
+  in 41..50 -> intArrayOf(Color.rgb(9,35,75),Color.rgb(22,91,160),Color.rgb(8,29,67),Color.rgb(83,174,255),Color.rgb(196,231,255),Color.rgb(112,190,255),Color.rgb(26,87,145))
+  in 51..60 -> intArrayOf(Color.rgb(48,18,78),Color.rgb(117,48,160),Color.rgb(39,15,67),Color.rgb(206,130,255),Color.rgb(239,207,255),Color.rgb(211,151,255),Color.rgb(100,45,145))
+  in 61..70 -> intArrayOf(Color.rgb(75,12,28),Color.rgb(164,31,59),Color.rgb(58,10,27),Color.rgb(255,105,132),Color.rgb(255,204,213),Color.rgb(255,137,157),Color.rgb(130,27,57))
+  in 71..80 -> intArrayOf(Color.rgb(13,48,61),Color.rgb(34,133,151),Color.rgb(9,37,53),Color.rgb(105,231,245),Color.rgb(213,255,255),Color.rgb(135,239,247),Color.rgb(38,119,139))
+  in 81..90 -> intArrayOf(Color.rgb(34,22,76),Color.rgb(81,48,151),Color.rgb(23,16,61),Color.rgb(169,145,255),Color.rgb(232,222,255),Color.rgb(183,165,255),Color.rgb(83,57,157))
+  in 91..99 -> intArrayOf(Color.rgb(67,13,24),Color.rgb(151,28,44),Color.rgb(42,12,28),Color.rgb(255,180,83),Color.rgb(255,235,187),Color.rgb(255,197,112),Color.rgb(154,48,51))
+  else -> intArrayOf(Color.rgb(38,12,54),Color.rgb(126,25,91),Color.rgb(43,12,65),Color.rgb(255,210,92),Color.rgb(255,245,190),Color.rgb(255,221,128),Color.rgb(190,53,112))
+ }
  private fun profileValue(item:JSONObject,keys:List<String>):String{
   for(key in keys){
    val value=item.opt(key)
@@ -949,10 +962,24 @@ class RoomActivity : Activity() {
    background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
   }
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-  top.addView(label("إبلاغ  ⚑",11f,Color.rgb(125,130,135)).apply{setOnClickListener{
-   Toast.makeText(this@RoomActivity,"سيتم إضافة الإبلاغ من بطاقة المستخدم لاحقاً",Toast.LENGTH_SHORT).show()
-  }},LinearLayout.LayoutParams(0,dp(34),1f))
-  top.addView(label("×",25f,Color.rgb(90,95,100)).apply{setOnClickListener{dialog.dismiss()}},LinearLayout.LayoutParams(dp(38),dp(34)))
+  val report=LinearLayout(this).apply{
+   gravity=Gravity.CENTER_VERTICAL
+   val flag=ImageView(this@RoomActivity).apply{
+    setImageResource(R.drawable.ic_profile_flag)
+    setColorFilter(Color.rgb(125,130,135),PorterDuff.Mode.SRC_IN)
+   }
+   addView(flag,LinearLayout.LayoutParams(dp(14),dp(14)).apply{marginEnd=dp(5)})
+   addView(label("إبلاغ",11f,Color.rgb(125,130,135),true))
+   setOnClickListener{Toast.makeText(this@RoomActivity,"سيتم إضافة الإبلاغ من بطاقة المستخدم لاحقاً",Toast.LENGTH_SHORT).show()}
+  }
+  top.addView(report,LinearLayout.LayoutParams(0,dp(34),1f))
+  top.addView(ImageView(this).apply{
+   setImageResource(R.drawable.ic_profile_close)
+   setColorFilter(Color.rgb(90,95,100),PorterDuff.Mode.SRC_IN)
+   setPadding(dp(9),dp(9),dp(9),dp(9))
+   contentDescription="إغلاق الملف الشخصي"
+   setOnClickListener{dialog.dismiss()}
+  },LinearLayout.LayoutParams(dp(38),dp(34)))
   root.addView(top)
   val avatar=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
@@ -964,12 +991,24 @@ class RoomActivity : Activity() {
   if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
   root.addView(label(name,20f,Color.rgb(35,36,43),true),LinearLayout.LayoutParams(-1,dp(42)))
   root.addView(label("ID: $account",13f,Color.rgb(139,142,150)),LinearLayout.LayoutParams(-1,dp(26)))
+  val levelColors=memberLevelColors(level)
   val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-  badges.addView(label("LV. $level",12f,Color.rgb(110,105,90),true).apply{
-   setPadding(dp(12),dp(6),dp(12),dp(6))
-   background=GradientDrawable().apply{setColor(Color.rgb(245,241,224));cornerRadius=dp(12).toFloat()}
-  })
-  root.addView(badges,LinearLayout.LayoutParams(-1,dp(38)))
+  val levelBadge=LinearLayout(this).apply{
+   orientation=0;gravity=Gravity.CENTER
+   setPadding(dp(16),dp(8),dp(16),dp(8))
+   background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(levelColors[0],levelColors[1],levelColors[2])).apply{
+    cornerRadius=dp(14).toFloat()
+    setStroke(dp(1),levelColors[3])
+   }
+   val levelIcon=ImageView(this@RoomActivity).apply{
+    setImageResource(R.drawable.ic_profile_level)
+    setColorFilter(levelColors[4],PorterDuff.Mode.SRC_IN)
+   }
+   addView(levelIcon,LinearLayout.LayoutParams(dp(19),dp(19)).apply{marginEnd=dp(7)})
+   addView(label("LV $level",14f,levelColors[4],true))
+  }
+  badges.addView(levelBadge)
+  root.addView(badges,LinearLayout.LayoutParams(-1,dp(48)))
   val stats=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun metric(value:String,title:String){
    val col=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER}
@@ -991,8 +1030,16 @@ class RoomActivity : Activity() {
   }
   val message=actionButton("مراسلة",Color.rgb(145,153,165)){openMemberConversation(uid,name)}
   actions.addView(message,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(6)})
-  val gift=actionButton("🎁",Color.rgb(171,92,196)){
-   Toast.makeText(this,"إرسال الهدية يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()
+  val gift=FrameLayout(this).apply{
+   background=GradientDrawable().apply{setColor(Color.rgb(171,92,196));cornerRadius=dp(24).toFloat()}
+   val giftIcon=ImageView(this@RoomActivity).apply{
+    setImageResource(R.drawable.ic_profile_gift)
+    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
+    setPadding(dp(14),dp(12),dp(14),dp(12))
+    contentDescription="هدية"
+   }
+   addView(giftIcon,FrameLayout.LayoutParams(-1,-1))
+   setOnClickListener{Toast.makeText(this@RoomActivity,"إرسال الهدية يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()}
   }
   actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
   val follow=actionButton("＋ متابعة",Color.rgb(22,194,190)){sendMemberFollow(uid,it)}
