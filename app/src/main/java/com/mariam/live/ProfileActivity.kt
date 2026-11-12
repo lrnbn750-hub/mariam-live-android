@@ -1,6 +1,7 @@
 package com.mariam.live
 
 import android.app.Activity
+import androidx.core.view.WindowCompat
 import android.os.Bundle
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -59,6 +60,8 @@ class ProfileActivity : Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window,true)
+        window.isNavigationBarContrastEnforced=false
         val gold=Color.rgb(218,174,91)
         val ink=Color.rgb(48,48,54)
         val muted=Color.rgb(155,155,160)
@@ -209,21 +212,7 @@ class ProfileActivity : Activity() {
         content.addView(levelCard,LinearLayout.LayoutParams(-1,dp(1)))
         content.addView(status,LinearLayout.LayoutParams(-1,dp(32)))
 
-        val bottom=LinearLayout(this).apply{
-            orientation=0;gravity=Gravity.CENTER;setPadding(dp(5),dp(5),dp(5),dp(5))
-            background=android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,239,205),Color.rgb(255,250,238))
-            )
-        }
-        val navs=listOf("♟\nأنا","☷\nالدردشات","◉\nGALA","♜\nمجموعة","♙\nالبث")
-        navs.forEachIndexed{index,label->
-            bottom.addView(txt(label,12f,if(index==0)gold else Color.rgb(165,139,91),index==0).apply{
-                setOnClickListener{if(index!=0)showInfo(label.substringAfter('\n'))}
-            },LinearLayout.LayoutParams(0,dp(58),1f))
-        }
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        root.addView(bottom,LinearLayout.LayoutParams(-1,dp(64)))
         setContentView(root)
 
         loadProfile(TextView(this).also{it.tag="profile_id"; idViewRef=it})
