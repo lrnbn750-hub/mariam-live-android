@@ -60,7 +60,7 @@ object AuthUi {
             elevation = dp(activity, 12).toFloat()
         }
         val title = TextView(activity).apply {
-            text = "Mariam Live"
+            text = "BAK LIVE"
             textSize = 29f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -169,7 +169,7 @@ object AuthUi {
                 topMargin = dp(activity, 9)
             }
             setOnClickListener {
-                android.widget.Toast.makeText(activity, "قريباً في Mariam Live ✨", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(activity, "قريباً في BAK LIVE ✨", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
 
