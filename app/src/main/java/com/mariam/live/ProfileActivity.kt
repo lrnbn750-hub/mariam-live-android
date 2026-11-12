@@ -240,16 +240,81 @@ class ProfileActivity : Activity() {
     }
 
     private fun showEditProfile(){
-        val box=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(8),dp(18),dp(4))}
-        fun input(hint:String,value:String)=EditText(this).apply{this.hint=hint;setText(value);textSize=14f}
-        val name=input("اسم العرض",displayName.text.toString())
-        val about=input("نبذة عنك",bio.text.toString())
+        val card=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(18),dp(18),dp(18),dp(12))
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.rgb(248,250,249));cornerRadius=dp(22).toFloat()
+                setStroke(dp(1),Color.rgb(226,235,230))
+            }
+        }
+        val photoRow=LinearLayout(this).apply{
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(12),dp(12),dp(12),dp(12))
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.WHITE);cornerRadius=dp(18).toFloat()
+                setStroke(dp(1),Color.rgb(230,235,232))
+            }
+        }
+        val photo=ImageView(this).apply{
+            scaleType=ImageView.ScaleType.CENTER_CROP
+            setImageDrawable(avatarPreview.drawable)
+            background=android.graphics.drawable.GradientDrawable().apply{
+                shape=android.graphics.drawable.GradientDrawable.OVAL
+                setColor(Color.rgb(230,235,232));setStroke(dp(2),Color.rgb(45,160,119))
+            }
+            clipToOutline=true
+        }
+        photoRow.addView(photo,LinearLayout.LayoutParams(dp(76),dp(76)))
+        val photoInfo=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
+        photoInfo.addView(txt("الصورة الشخصية",15f,Color.rgb(45,55,51),true))
+        photoInfo.addView(txt("اختر صورة واضحة لحسابك",12f,Color.rgb(135,145,140)))
+        photoRow.addView(photoInfo,LinearLayout.LayoutParams(0,-2,1f))
+        val changePhoto=TextView(this).apply{
+            text="تغيير";textSize=13f;gravity=Gravity.CENTER
+            setTextColor(Color.WHITE);setPadding(dp(13),dp(9),dp(13),dp(9))
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.rgb(38,155,112));cornerRadius=dp(14).toFloat()
+            }
+            setOnClickListener{pickPhoto()}
+        }
+        photoRow.addView(changePhoto)
+        card.addView(photoRow,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(16)})
+        fun input(hint:String,value:String)=field(hint).apply{
+            setText(value);textSize=14f
+            background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.WHITE);cornerRadius=dp(14).toFloat()
+                setStroke(dp(1),Color.rgb(225,231,228))
+            }
+        }
+        card.addView(caption("اسم العرض"))
+        val name=input("اكتب اسمك",displayName.text.toString())
+        card.addView(name,LinearLayout.LayoutParams(-1,dp(50)))
+        card.addView(caption("نبذة عنك"))
+        val about=input("اكتب نبذة قصيرة",bio.text.toString())
+        card.addView(about,LinearLayout.LayoutParams(-1,dp(50)))
+        card.addView(caption("الدولة"))
         val nation=input("الدولة",country.text.toString())
-        box.addView(name);box.addView(about);box.addView(nation)
-        android.app.AlertDialog.Builder(this).setTitle("تعديل الملف الشخصي").setView(box)
-            .setNegativeButton("إلغاء",null).setPositiveButton("حفظ"){_,_->
-                displayName.setText(name.text);bio.setText(about.text);country.setText(nation.text);saveProfile()
-            }.show()
+        card.addView(nation,LinearLayout.LayoutParams(-1,dp(50)))
+        val scroll=ScrollView(this).apply{isFillViewport=true;setPadding(dp(4),dp(4),dp(4),dp(4));addView(card)}
+        val dialog=android.app.AlertDialog.Builder(this)
+            .setTitle("تعديل الملف الشخصي")
+            .setView(scroll)
+            .setNegativeButton("إلغاء",null)
+            .setPositiveButton("حفظ",null)
+            .create()
+        dialog.setOnShowListener{
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(Color.rgb(38,155,112))
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.rgb(130,140,135))
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener{
+                displayName.setText(name.text.toString())
+                bio.setText(about.text.toString())
+                country.setText(nation.text.toString())
+                saveProfile()
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     override fun onResume(){
