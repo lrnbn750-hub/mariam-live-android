@@ -76,19 +76,6 @@ class MyProfileShowcaseActivity : Activity() {
         root.addView(text("بيانات الدعم ستظهر بعد ربطها بإحصائيات الخادم.",12f,muted).apply{
             setPadding(dp(8),dp(12),dp(8),dp(12))
         },LinearLayout.LayoutParams(-1,-2))
-        val edit=TextView(this).apply{
-            text="✎  تعديل الملف الشخصي";textSize=15f;gravity=Gravity.CENTER
-            setTextColor(Color.WHITE);typeface=Typeface.DEFAULT_BOLD
-            background=android.graphics.drawable.GradientDrawable().apply{
-                setColor(Color.rgb(38,164,126));cornerRadius=dp(15).toFloat()
-            }
-            setOnClickListener{
-                startActivity(Intent(this@MyProfileShowcaseActivity,ProfileActivity::class.java)
-                    .putExtra("open_edit_profile",true))
-                finish()
-            }
-        }
-        root.addView(edit,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(14)})
         setContentView(root)
         val url=intent.getStringExtra("avatar_url").orEmpty()
         if(url.startsWith("https://")){
