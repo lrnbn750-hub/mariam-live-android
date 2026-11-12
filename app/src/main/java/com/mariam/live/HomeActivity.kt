@@ -63,7 +63,7 @@ class HomeActivity : Activity() {
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         val brand=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-        brand.addView(TextView(this).apply{text="MARIAM LIVE ✦";textSize=22f;typeface=Typeface.create("sans-serif",Typeface.BOLD);setTextColor(ink)})
+        brand.addView(TextView(this).apply{text="BAK LIVE ✦";textSize=22f;typeface=Typeface.create("sans-serif",Typeface.BOLD);setTextColor(ink)})
         brand.addView(TextView(this).apply{text="مساحتك للأصدقاء والأحاديث";textSize=11f;setTextColor(muted)})
         header.addView(brand,LinearLayout.LayoutParams(0,-2,1f))
         val searchButton=TextView(this).apply{text="⌕";textSize=29f;gravity=Gravity.CENTER;setTextColor(Color.rgb(34,158,92));background=GradientDrawable().apply{setColor(Color.rgb(242,250,245));cornerRadius=dp(15).toFloat();setStroke(dp(1),Color.rgb(190,225,202))};setOnClickListener{showSearchDialog()}}
