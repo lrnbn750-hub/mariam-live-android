@@ -5,11 +5,12 @@ plugins {
 }
 
 android {
+    // Keep the existing Kotlin/Compose namespace so current source imports remain stable.
     namespace = "com.mariam.live"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mariam.live"
+        applicationId = "com.bak.live"
         minSdk = 23
         targetSdk = 35
         versionCode = 2
