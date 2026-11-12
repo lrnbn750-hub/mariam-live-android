@@ -109,8 +109,8 @@ class ProfileActivity : Activity() {
         }
         val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
         avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(112),dp(112),Gravity.CENTER))
-        avatarPreview.isClickable=true
-        avatarPreview.setOnClickListener{openProfileShowcase()}
+        avatarPreview.isClickable=false
+        avatarPreview.setOnClickListener(null)
         avatarRing=View(this).apply{
             background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.TRANSPARENT);setStroke(dp(4),gold)}
         }
@@ -132,9 +132,9 @@ class ProfileActivity : Activity() {
         profileTitle=txt("جارٍ تحميل الاسم...",19f,ink,true)
         hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(38)))
         val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-        publicIdLabel=txt("ID: جارٍ التحميل",13f,Color.rgb(120,120,130))
+        publicIdLabel=TextView(this).apply{text="ID: جارٍ التحميل";textSize=13f;setTextColor(Color.rgb(120,120,130))}
         idRow.addView(publicIdLabel,LinearLayout.LayoutParams(-2,dp(30)))
-        idRow.addView(txt("نسخ",12f,Color.rgb(35,157,120),true).apply{
+        idRow.addView(TextView(this).apply{text="نسخ";textSize=12f;setTextColor(Color.rgb(35,157,120));
             setPadding(dp(10),0,dp(10),0)
             setOnClickListener{
                 val value=idViewRef?.text?.toString().orEmpty()
@@ -234,13 +234,6 @@ class ProfileActivity : Activity() {
         loadProfile(TextView(this).also{it.tag="profile_id"; idViewRef=it})
         loadLevelProgress()
         loadRoyalFrameState()
-    }
-
-    private fun openProfileShowcase(){
-        startActivity(Intent(this,MyProfileShowcaseActivity::class.java)
-            .putExtra("display_name",profileTitle.text.toString())
-            .putExtra("public_id",idViewRef?.text?.toString().orEmpty())
-            .putExtra("avatar_url",avatarUrl))
     }
 
     private fun showInfo(title:String){
