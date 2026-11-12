@@ -418,19 +418,19 @@ class RoomActivity : Activity() {
    }
    composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
-    hint="اكتب تعليقاً...";textSize=12f;maxLines=1;setSingleLine(true)
+    hint="";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
     inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+    gravity=Gravity.CENTER_VERTICAL or Gravity.END
     setOnEditorActionListener{_,actionId,event->
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.WHITE);setHintTextColor(Color.argb(225,255,255,255))
-    setPadding(dp(12),dp(7),dp(12),dp(7))
-    background=GradientDrawable().apply{
-     setColor(Color.argb(45,255,255,255));cornerRadius=dp(18).toFloat()
-     setStroke(dp(1),Color.argb(65,255,255,255))
-    }
+    setTextColor(Color.WHITE);setHintTextColor(Color.TRANSPARENT)
+    setPadding(0,0,0,0)
+    background=null
+    minHeight=0
+    includeFontPadding=false
    }
    chatInput.visibility=View.GONE
    chatIcon=ImageView(this@RoomActivity).apply{
@@ -441,7 +441,7 @@ class RoomActivity : Activity() {
     setOnClickListener{expandRoomComposer()}
    }
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
-   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(34),1f).apply{marginEnd=dp(5)})
+   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(30),1f).apply{marginEnd=dp(5)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
     typeface=android.graphics.Typeface.DEFAULT_BOLD
