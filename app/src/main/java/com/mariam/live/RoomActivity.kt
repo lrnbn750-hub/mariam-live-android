@@ -426,10 +426,14 @@ class RoomActivity : Activity() {
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.WHITE);setHintTextColor(Color.TRANSPARENT)
-    setPadding(0,0,0,0)
-    background=null
-    minHeight=0
+    setTextColor(Color.WHITE);setHintTextColor(Color.rgb(190,181,205))
+    setPadding(dp(14),0,dp(14),0)
+    background=GradientDrawable().apply{
+     setColor(Color.rgb(65,59,76))
+     cornerRadius=dp(24).toFloat()
+     setStroke(dp(1),Color.argb(105,220,205,245))
+    }
+    minHeight=dp(46)
     includeFontPadding=false
    }
    chatInput.visibility=View.GONE
@@ -441,16 +445,16 @@ class RoomActivity : Activity() {
     setOnClickListener{expandRoomComposer()}
    }
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
-   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(30),1f).apply{marginEnd=dp(5)})
+   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
     typeface=android.graphics.Typeface.DEFAULT_BOLD
     setTextColor(Color.WHITE);setPadding(dp(8),0,dp(8),0)
-    background=GradientDrawable().apply{setColor(Color.argb(130,139,91,190));cornerRadius=dp(13).toFloat()}
+    background=GradientDrawable().apply{setColor(Color.rgb(91,53,133));cornerRadius=dp(20).toFloat()}
     visibility=View.GONE
     setOnClickListener{sendRoomMessage()}
    }
-   composer.addView(sendButton,LinearLayout.LayoutParams(dp(32),dp(34)))
+   composer.addView(sendButton,LinearLayout.LayoutParams(dp(40),dp(40)))
    val toolsButton=TextView(this@RoomActivity).apply{
     text="⋯";textSize=21f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE)
