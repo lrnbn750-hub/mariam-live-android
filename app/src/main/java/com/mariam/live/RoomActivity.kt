@@ -73,7 +73,7 @@ class RoomActivity : Activity() {
   super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(30,22,48);window.navigationBarColor=Color.rgb(18,15,28);window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(7),dp(10),dp(7));setBackgroundColor(Color.rgb(25,20,38))}
+  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(12),dp(10),dp(7));setBackgroundColor(Color.rgb(25,20,38))}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
   top.addView(label("×",30f,Color.rgb(83,126,94),true).apply{
@@ -84,8 +84,8 @@ class RoomActivity : Activity() {
     setStroke(dp(1),Color.rgb(215,220,209))
    }
    contentDescription="مغادرة البث"
-  },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(3)})
-  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(36)))
+  },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(7)})
+  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(2)})
   roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
   })
@@ -98,7 +98,7 @@ class RoomActivity : Activity() {
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-2,dp(28)).apply{gravity=Gravity.CENTER_HORIZONTAL;topMargin=dp(2);bottomMargin=dp(2)})
   grid=LinearLayout(this).apply{orientation=1}
-  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
   mic.visibility=View.GONE
