@@ -167,7 +167,7 @@ class LevelActivity : Activity() {
                     20, if (active) colors[2] else Color.rgb(42,57,75))
             }
             val iconWrap = FrameLayout(this).apply {
-                background = panel(intArrayOf(Color.argb(70,colors[1]), Color.argb(25,colors[2])), 16)
+                background = panel(intArrayOf(Color.argb(70, Color.red(colors[1]), Color.green(colors[1]), Color.blue(colors[1])), Color.argb(25, Color.red(colors[2]), Color.green(colors[2]), Color.blue(colors[2]))), 16)
             }
             iconWrap.addView(label(if (unlocked) "✓" else if (active) "✦" else "◇", 27f, colors[2], true),
                 FrameLayout.LayoutParams(-1, -1))
