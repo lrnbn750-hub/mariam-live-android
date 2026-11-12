@@ -50,6 +50,7 @@ class RoomActivity : Activity() {
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
+ private lateinit var micControl:ImageView
  private lateinit var musicButton:LinearLayout
  private var musicMixer:RoomMusicMixer?=null
  private lateinit var chatPanel:LinearLayout
@@ -99,7 +100,7 @@ class RoomActivity : Activity() {
   mic.visibility=View.GONE
   musicButton=action("موسيقى","music",Color.rgb(91,130,94),Color.rgb(157,178,145)){showMusicOptions()}
   musicButton.visibility=View.GONE
-  roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(5)})
+  roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,dp(205)).apply{topMargin=dp(5)})
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
@@ -408,6 +409,14 @@ class RoomActivity : Activity() {
    }
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(2)})
    val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   micControl=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(105,140,91,190));setStroke(dp(1),Color.argb(75,255,255,255))}
+    contentDescription="تشغيل أو إيقاف المايك"
+    setOnClickListener{toggleMic();refreshMicControl()}
+   }
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=12f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -620,7 +629,8 @@ class RoomActivity : Activity() {
       Toast.makeText(this@RoomActivity,"المقعد الأول محجوز؛ يرجى مراجعة حالة الغرفة",Toast.LENGTH_LONG).show()
      }
     }
-    mic.visibility=if(isSeated)View.VISIBLE else View.GONE
+    mic.visibility=View.GONE
+    if(::micControl.isInitialized)micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
@@ -1210,8 +1220,10 @@ class RoomActivity : Activity() {
   if(mixer!=null){
    mixer.microphoneEnabled=microphoneEnabled
    status.text=if(microphoneEnabled)"المايك يعمل مع الموسيقى" else "المايك مكتوم والموسيقى مستمرة"
+   refreshMicControl()
    return
   }
+  refreshMicControl()
   scope.launch{
    try{
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
@@ -1220,6 +1232,16 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun refreshMicControl(){
+  if(!::micControl.isInitialized)return
+  micControl.setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
+  micControl.background=GradientDrawable().apply{
+   shape=GradientDrawable.OVAL
+   setColor(if(microphoneEnabled)Color.argb(150,133,88,190) else Color.argb(185,160,65,78))
+   setStroke(dp(1),Color.argb(75,255,255,255))
+  }
+  micControl.contentDescription=if(microphoneEnabled)"إيقاف المايك" else "تشغيل المايك"
+ }
  private fun showMusicOptions(){
   if(!isOwner || !connected){
    Toast.makeText(this,"الموسيقى متاحة لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
