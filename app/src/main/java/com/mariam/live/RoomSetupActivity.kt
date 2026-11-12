@@ -53,7 +53,7 @@ class RoomSetupActivity : Activity() {
             intArrayOf(Color.rgb(224,234,220),Color.rgb(192,211,190)),null,android.graphics.Shader.TileMode.CLAMP)
         canvas.drawRect(0f,0f,512f,512f,paint)
         paint.shader=null;paint.color=green;paint.textAlign=Paint.Align.CENTER;paint.textSize=190f;paint.typeface=Typeface.DEFAULT_BOLD
-        canvas.drawText("M",256f,325f,paint)
+        canvas.drawText("B",256f,325f,paint)
         return bitmap
     }
     override fun onCreate(savedInstanceState:Bundle?){
@@ -74,7 +74,7 @@ class RoomSetupActivity : Activity() {
         }
         top.addView(text("×",30f,green,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(46)))
         top.addView(text("إعداد البث المباشر",19f,dark,true),LinearLayout.LayoutParams(0,dp(46),1f))
-        top.addView(text("MARIAM LIVE",11f,green,true),LinearLayout.LayoutParams(-2,dp(46)))
+        top.addView(text("BAK LIVE",11f,green,true),LinearLayout.LayoutParams(-2,dp(46)))
         root.addView(top,LinearLayout.LayoutParams(-1,-2))
         val scroll=ScrollView(this).apply{clipToPadding=false}
         val content=LinearLayout(this).apply{
