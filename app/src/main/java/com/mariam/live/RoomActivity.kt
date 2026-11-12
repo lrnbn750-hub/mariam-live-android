@@ -54,6 +54,7 @@ class RoomActivity : Activity() {
  private lateinit var musicButton:LinearLayout
  private var musicMixer:RoomMusicMixer?=null
  private lateinit var chatPanel:LinearLayout
+ private lateinit var roomComposer:LinearLayout
  private var chatPoll:Job?=null
  private lateinit var chatMessages:LinearLayout
  private lateinit var chatScroll:ScrollView
@@ -69,7 +70,7 @@ class RoomActivity : Activity() {
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(91,72,145))}
  override fun onCreate(savedInstanceState:Bundle?){
-  super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(30,22,48);window.navigationBarColor=Color.rgb(18,15,28);window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
+  super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(30,22,48);window.navigationBarColor=Color.rgb(18,15,28);window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
   roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(7),dp(10),dp(7));setBackgroundColor(Color.rgb(25,20,38))}
@@ -107,23 +108,18 @@ class RoomActivity : Activity() {
   val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
   roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
-  // Keep the room composer above the IME. Leave immersive navigation mode
-  // while the keyboard is visible so adjustResize can move the bottom controls.
-  val visibleFrame=Rect()
-  var imeWasVisible=false
-  roomRoot.viewTreeObserver.addOnGlobalLayoutListener{
-   roomRoot.getWindowVisibleDisplayFrame(visibleFrame)
-   val keyboardHeight=roomRoot.rootView.height-visibleFrame.bottom
-   val imeVisible=keyboardHeight>dp(180)
-   if(imeVisible!=imeWasVisible){
-    imeWasVisible=imeVisible
-    if(imeVisible){
-     window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_VISIBLE
-     window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-    }else{
-     hidePhoneNavigation()
-    }
+  // Android 11+: move the composer by the exact keyboard inset instead of
+  // relying on resize while immersive navigation flags are active.
+  if(Build.VERSION.SDK_INT>=30){
+   roomRoot.setOnApplyWindowInsetsListener{_,insets->
+    val imeVisible=insets.isVisible(android.view.WindowInsets.Type.ime())
+    val imeBottom=insets.getInsets(android.view.WindowInsets.Type.ime()).bottom
+    roomComposer.translationY= -imeBottom.toFloat()
+    if(imeVisible) window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_VISIBLE
+    else hidePhoneNavigation()
+    insets
    }
+   roomRoot.requestApplyInsets()
   }
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
@@ -427,6 +423,7 @@ class RoomActivity : Activity() {
    }
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(2)})
    val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   roomComposer=composer
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
