@@ -11,12 +11,17 @@ import android.graphics.Typeface
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.media.MediaPlayer
+import android.view.TextureView
+import android.view.Surface
+import android.graphics.SurfaceTexture
 import android.graphics.drawable.GradientDrawable
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
 class LoginActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
+    private var loginPlayer: MediaPlayer? = null
 
     private fun rounded(color: Int, stroke: Int = 0): GradientDrawable =
         GradientDrawable().apply {
@@ -71,8 +76,16 @@ class LoginActivity : Activity() {
                 marginStart = AuthUi.dp(this@LoginActivity, 8)
             }
         }
-        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        tabs.addView(phoneTab); tabs.addView(emailTab); card.addView(tabs)
+        val tabs = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        phoneTab.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 52)).apply {
+            bottomMargin = AuthUi.dp(this@LoginActivity, 10)
+        }
+        emailTab.layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 52))
+        tabs.addView(emailTab)
+        tabs.addView(phoneTab)
+        card.addView(tabs)
 
         card.addView(AuthUi.label(this, "رقم الهاتف").apply { setTextColor(Color.WHITE) })
         val phone = AuthUi.field(this, "+964 7XX XXX XXXX", InputType.TYPE_CLASS_PHONE)
@@ -182,25 +195,47 @@ class LoginActivity : Activity() {
         page.addView(card)
         page.addView(create.apply { setTextColor(Color.WHITE) })
         page.addView(forgot.apply { setTextColor(0xFFD8D3E8.toInt()) })
-        val root = FrameLayout(this)
+        val root = FrameLayout(this).apply { setBackgroundColor(0xFF17152B.toInt()) }
         val videoId = resources.getIdentifier("login_background", "raw", packageName)
         if (videoId != 0) {
-            val video = VideoView(this)
+            val video = TextureView(this)
             root.addView(video, FrameLayout.LayoutParams(-1, -1))
-            video.setVideoURI(Uri.parse("android.resource://$packageName/$videoId"))
-            video.setOnPreparedListener { player ->
-                player.isLooping = true
-                player.setVolume(0f, 0f)
-                video.start()
+            video.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+                    try {
+                        val player = MediaPlayer()
+                        loginPlayer = player
+                        player.setSurface(Surface(surfaceTexture))
+                        player.setDataSource(this@LoginActivity, Uri.parse("android.resource://$packageName/$videoId"))
+                        player.isLooping = true
+                        player.setVolume(0f, 0f)
+                        player.setOnPreparedListener {
+                            try {
+                                it.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+                                it.start()
+                            } catch (_: Exception) { }
+                        }
+                        player.setOnErrorListener { _, _, _ -> true }
+                        player.prepareAsync()
+                    } catch (_: Exception) {
+                        root.setBackgroundColor(0xFF17152B.toInt())
+                    }
+                }
+                override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+                override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
+                    loginPlayer?.release()
+                    loginPlayer = null
+                    return true
+                }
+                override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {}
             }
-            video.setOnErrorListener { _, _, _ -> true }
-        } else {
-            // No mascot/splash image fallback: keep a clean dark background.
-            root.setBackgroundColor(0xFF17152B.toInt())
         }
         root.addView(View(this).apply { setBackgroundColor(0x990D0B1B.toInt()) },
             FrameLayout.LayoutParams(-1, -1))
-        val content = AuthUi.scroll(this, page).apply { background = ColorDrawable(Color.TRANSPARENT) }
+        val content = AuthUi.scroll(this, page).apply {
+            background = ColorDrawable(Color.TRANSPARENT)
+            setFillViewport(true)
+        }
         root.addView(content, FrameLayout.LayoutParams(-1, -1))
         window.statusBarColor = 0xFF17152B.toInt()
         window.navigationBarColor = 0xFF17152B.toInt()
@@ -209,5 +244,5 @@ class LoginActivity : Activity() {
         selectPhone(true)
     }
 
-    override fun onDestroy() { executor.shutdown(); super.onDestroy() }
+    override fun onDestroy() { loginPlayer?.release(); loginPlayer = null; executor.shutdown(); super.onDestroy() }
 }
