@@ -2,7 +2,7 @@ package com.mariam.live.data
 
 class HomeRepository {
     fun getWelcomeMessage(): String {
-        return "Welcome to Mariam Live"
+        return "Welcome to BAK LIVE"
     }
 
     fun getMainSections(): List<String> {
