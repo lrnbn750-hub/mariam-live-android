@@ -8,6 +8,9 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import android.graphics.Typeface
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.graphics.drawable.GradientDrawable
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -36,12 +39,18 @@ class LoginActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val page = AuthUi.page(this)
+        val page = AuthUi.page(this).apply { background = ColorDrawable(Color.TRANSPARENT) }
         page.addView(AuthUi.brand(this, "صوتك وأصدقاؤك وعالمك يبدأ من هنا"))
 
-        val card = AuthUi.card(this)
-        card.addView(AuthUi.heading(this, "أهلاً بعودتك"))
-        card.addView(AuthUi.hint(this, "سجّل دخولك إلى مجتمع BAK LIVE"))
+        val card = AuthUi.card(this).apply {
+            background = GradientDrawable().apply {
+                setColor(0xCC17152B.toInt())
+                cornerRadius = AuthUi.dp(this@LoginActivity, 26).toFloat()
+                setStroke(AuthUi.dp(this@LoginActivity, 1), 0x44FFFFFF)
+            }
+        }
+        card.addView(AuthUi.heading(this, "أهلاً بعودتك").apply { setTextColor(Color.WHITE) })
+        card.addView(AuthUi.hint(this, "سجّل دخولك إلى مجتمع BAK LIVE").apply { setTextColor(0xFFD8D3E8.toInt()) })
 
         val phoneTab = TextView(this).apply {
             text = "رقم الهاتف"
@@ -65,13 +74,13 @@ class LoginActivity : Activity() {
         val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         tabs.addView(phoneTab); tabs.addView(emailTab); card.addView(tabs)
 
-        card.addView(AuthUi.label(this, "رقم الهاتف"))
+        card.addView(AuthUi.label(this, "رقم الهاتف").apply { setTextColor(Color.WHITE) })
         val phone = AuthUi.field(this, "+964 7XX XXX XXXX", InputType.TYPE_CLASS_PHONE)
         phone.textDirection = View.TEXT_DIRECTION_LTR
         phone.gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
         card.addView(phone)
 
-        card.addView(AuthUi.label(this, "كلمة المرور"))
+        card.addView(AuthUi.label(this, "كلمة المرور").apply { setTextColor(Color.WHITE) })
         val password = AuthUi.field(this, "أدخل كلمة المرور", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         password.textDirection = View.TEXT_DIRECTION_LTR
         card.addView(password)
@@ -93,7 +102,7 @@ class LoginActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
         }
-        emailPanel.addView(AuthUi.label(this, "البريد أو اسم المستخدم"))
+        emailPanel.addView(AuthUi.label(this, "البريد الإلكتروني").apply { setTextColor(Color.WHITE) })
         val identifier = AuthUi.field(this, "البريد الإلكتروني أو اسم المستخدم", InputType.TYPE_CLASS_TEXT)
         emailPanel.addView(identifier)
         card.addView(emailPanel)
@@ -171,9 +180,37 @@ class LoginActivity : Activity() {
         forgot.setOnClickListener { Toast.makeText(this, "استعادة كلمة المرور ستُضاف بعد ربط التحقق من الهاتف", Toast.LENGTH_LONG).show() }
 
         page.addView(card)
-        page.addView(create)
-        page.addView(forgot)
-        AuthUi.background(this, AuthUi.scroll(this, page))
+        page.addView(create.apply { setTextColor(Color.WHITE) })
+        page.addView(forgot.apply { setTextColor(0xFFD8D3E8.toInt()) })
+        val root = FrameLayout(this)
+        val videoId = resources.getIdentifier("login_background", "raw", packageName)
+        if (videoId != 0) {
+            val video = VideoView(this)
+            root.addView(video, FrameLayout.LayoutParams(-1, -1))
+            video.setVideoURI(Uri.parse("android.resource://$packageName/$videoId"))
+            video.setOnPreparedListener { player ->
+                player.isLooping = true
+                player.setVolume(0f, 0f)
+                video.start()
+            }
+            video.setOnErrorListener { _, _, _ -> true }
+        } else {
+            val fallback = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                val imageId = resources.getIdentifier("malak_splash", "drawable", packageName)
+                if (imageId != 0) setImageResource(imageId)
+                else setBackgroundColor(0xFF17152B.toInt())
+            }
+            root.addView(fallback, FrameLayout.LayoutParams(-1, -1))
+        }
+        root.addView(View(this).apply { setBackgroundColor(0x990D0B1B.toInt()) },
+            FrameLayout.LayoutParams(-1, -1))
+        val content = AuthUi.scroll(this, page).apply { background = ColorDrawable(Color.TRANSPARENT) }
+        root.addView(content, FrameLayout.LayoutParams(-1, -1))
+        window.statusBarColor = 0xFF17152B.toInt()
+        window.navigationBarColor = 0xFF17152B.toInt()
+        window.decorView.systemUiVisibility = 0
+        setContentView(root)
         selectPhone(true)
     }
 
