@@ -16,7 +16,7 @@ class VoiceForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Mariam Live voice",
+                "BAK LIVE voice",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Keeps your voice room connected while using other apps"
@@ -48,7 +48,7 @@ class VoiceForegroundService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }.setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle("Mariam Live")
+            .setContentTitle("BAK LIVE")
             .setContentText("أنت متصل بغرفة صوتية — الصوت يعمل في الخلفية")
             .setContentIntent(openApp)
             .setOngoing(true)
