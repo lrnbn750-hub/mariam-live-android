@@ -108,7 +108,7 @@ class RoomActivity : Activity() {
    },LinearLayout.LayoutParams(dp(20),dp(22)))
    setOnClickListener{showRoomMembers()}
   }
-  roomPage.addView(membersButton,LinearLayout.LayoutParams(-2,dp(28)).apply{gravity=Gravity.CENTER_HORIZONTAL;topMargin=dp(2);bottomMargin=dp(2)})
+  roomPage.addView(membersButton,LinearLayout.LayoutParams(-1,dp(28)).apply{gravity=Gravity.START;topMargin=dp(2);bottomMargin=dp(2)})
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(27)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
@@ -791,12 +791,6 @@ class RoomActivity : Activity() {
      }
      addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
     }
-    val totalXp=seat.optLong("total_xp",0L)
-    if(occupied && totalXp>=980100L){
-     val royal=RoyalSeatGifView(this)
-     avatarStage.addView(royal,FrameLayout.LayoutParams(dp(64),dp(64),Gravity.CENTER))
-     royal.start()
-    }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(54),dp(54)).apply{bottomMargin=dp(1)})
     if(occupied){
      tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
@@ -805,14 +799,6 @@ class RoomActivity : Activity() {
       gravity=Gravity.CENTER
       includeFontPadding=false
      },LinearLayout.LayoutParams(-1,dp(18)))
-     if(publicId.isNotBlank()){
-      tile.addView(label("ID: $publicId",9f,Color.rgb(125,130,123),false).apply{
-       maxLines=1
-       ellipsize=android.text.TextUtils.TruncateAt.END
-       gravity=Gravity.CENTER
-       includeFontPadding=false
-      },LinearLayout.LayoutParams(-1,dp(15)))
-     }
     }else{
      tile.addView(label((i+1).toString(),10f,Color.rgb(125,130,123),false))
     }
@@ -1516,6 +1502,11 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  private val p=Paint(3).apply{this.color=color;style=Paint.Style.STROKE;strokeWidth=size*.09f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
  override fun draw(c:Canvas){val b=bounds;val save=c.save();c.translate(b.left.toFloat(),b.top.toFloat());c.scale(b.width().toFloat()/size,b.height().toFloat()/size);val m=size/2f
  when(kind){
+ "user"->{
+  c.drawCircle(m,9f,5f,p)
+  val body=Path().apply{moveTo(m-10f,27f);lineTo(m-10f,24f);quadTo(m-10f,17f,m,17f);quadTo(m+10f,17f,m+10f,24f);lineTo(m+10f,27f)}
+  c.drawPath(body,p)
+ }
  "mic"->{c.drawRoundRect(m-4f,2f,m+4f,17f,5f,5f,p);c.drawArc(RectF(m-10f,8f,m+10f,26f),0f,180f,false,p);c.drawLine(m,26f,m,30f,p);c.drawLine(m-6f,30f,m+6f,30f,p)}
  "hand"->{val q=Path().apply{moveTo(10f,27f);lineTo(7f,19f);lineTo(7f,15f);lineTo(11f,18f);lineTo(11f,7f);quadTo(15f,4f,16f,8f);lineTo(16f,16f);lineTo(19f,10f);quadTo(23f,9f,22f,14f);lineTo(22f,18f);lineTo(25f,14f);quadTo(29f,14f,27f,20f);lineTo(24f,27f);close()};c.drawPath(q,p)}
  "chat"->{c.drawRoundRect(3f,5f,29f,23f,5f,5f,p);c.drawLine(9f,23f,7f,29f,p);for(x in listOf(10f,16f,22f))c.drawCircle(x,14f,1f,p)}
