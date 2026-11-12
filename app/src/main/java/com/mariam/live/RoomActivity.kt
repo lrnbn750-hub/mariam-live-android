@@ -60,6 +60,9 @@ class RoomActivity : Activity() {
  private lateinit var chatInput:EditText
  private lateinit var chatIcon:ImageView
  private lateinit var sendButton:TextView
+ private lateinit var emojiButton:TextView
+ private lateinit var toolsButton:TextView
+ private lateinit var composerBar:LinearLayout
  private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
@@ -408,7 +411,8 @@ class RoomActivity : Activity() {
     addView(chatMessages,android.widget.FrameLayout.LayoutParams(-1,-2))
    }
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(2)})
-   val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+    composerBar=composer
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
@@ -418,7 +422,7 @@ class RoomActivity : Activity() {
    }
    composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
-    hint="";textSize=14f;maxLines=1;setSingleLine(true)
+    hint="اكتب رسالة...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
     inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
     gravity=Gravity.CENTER_VERTICAL or Gravity.END
@@ -426,163 +430,49 @@ class RoomActivity : Activity() {
      val enterPressed=event?.keyCode==android.view.KeyEvent.KEYCODE_ENTER && event.action==android.view.KeyEvent.ACTION_DOWN
      if(actionId==EditorInfo.IME_ACTION_SEND || enterPressed){sendRoomMessage();true}else false
     }
-    setTextColor(Color.WHITE);setHintTextColor(Color.rgb(190,181,205))
+    setTextColor(Color.rgb(45,43,51));setHintTextColor(Color.rgb(145,142,151))
     setPadding(dp(14),0,dp(14),0)
-    background=GradientDrawable().apply{
-     setColor(Color.rgb(65,59,76))
-     cornerRadius=dp(24).toFloat()
-     setStroke(dp(1),Color.argb(105,220,205,245))
-    }
-    minHeight=dp(46)
-    includeFontPadding=false
+    background=GradientDrawable().apply{setColor(Color.rgb(242,242,245));cornerRadius=dp(24).toFloat()}
+    minHeight=dp(42);includeFontPadding=false
    }
    chatInput.visibility=View.GONE
-   chatIcon=ImageView(this@RoomActivity).apply{
-    setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
-    scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(135,139,91,190))}
-    contentDescription="فتح كتابة تعليق"
-    setOnClickListener{expandRoomComposer()}
-   }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(5)})
-   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
-    text="➤";textSize=15f;gravity=Gravity.CENTER
-    typeface=android.graphics.Typeface.DEFAULT_BOLD
-    setTextColor(Color.WHITE);setPadding(dp(8),0,dp(8),0)
-    background=GradientDrawable().apply{setColor(Color.rgb(91,53,133));cornerRadius=dp(20).toFloat()}
+    text="إرسال";textSize=13f;gravity=Gravity.CENTER
+    setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+    background=GradientDrawable().apply{setColor(Color.rgb(194,195,204));cornerRadius=dp(22).toFloat()}
     visibility=View.GONE
     setOnClickListener{sendRoomMessage()}
    }
-   composer.addView(sendButton,LinearLayout.LayoutParams(dp(40),dp(40)))
-   val toolsButton=TextView(this@RoomActivity).apply{
-    text="⋯";textSize=21f;gravity=Gravity.CENTER
-    setTextColor(Color.WHITE)
-    background=GradientDrawable().apply{
-     setColor(Color.argb(45,255,255,255));cornerRadius=dp(13).toFloat()
-     setStroke(dp(1),Color.argb(65,255,255,255))
-    }
-    contentDescription="إعدادات الغرفة"
-    setOnClickListener{showRoomTools()}
+   emojiButton=TextView(this@RoomActivity).apply{
+    text="☻";textSize=25f;gravity=Gravity.CENTER;setTextColor(Color.rgb(125,125,133))
+    visibility=View.GONE;contentDescription="إدراج رمز تعبيري"
+    setOnClickListener{showRoomEmojiPicker()}
    }
+   chatIcon=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("message-circle",Color.WHITE,dp(19)))
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(135,139,91,190))}
+    contentDescription="فتح كتابة تعليق";setOnClickListener{expandRoomComposer()}
+   }
+   micControl=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(105,140,91,190));setStroke(dp(1),Color.argb(75,255,255,255))}
+    contentDescription="تشغيل أو إيقاف المايك";setOnClickListener{toggleMic();refreshMicControl()}
+   }
+   toolsButton=TextView(this@RoomActivity).apply{
+    text="⋯";textSize=21f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+    background=GradientDrawable().apply{setColor(Color.argb(45,255,255,255));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.argb(65,255,255,255))}
+    contentDescription="إعدادات الغرفة";setOnClickListener{showRoomTools()}
+   }
+   composer.addView(sendButton,LinearLayout.LayoutParams(dp(72),dp(40)).apply{marginEnd=dp(7)})
+   composer.addView(emojiButton,LinearLayout.LayoutParams(dp(38),dp(40)).apply{marginEnd=dp(7)})
+   composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(42),1f))
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginStart=dp(5)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
    composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(32)).apply{marginStart=dp(4)})
-   addView(composer,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4);bottomMargin=dp(2)})
-   loadRoomMessages()
-   chatPoll?.cancel()
-   chatPoll=scope.launch{
-    while(isActive){delay(3000);loadRoomMessages()}
-   }
-  }
-
- private fun expandRoomComposer(){
-  if(composerExpanded){
-   chatInput.requestFocus()
-   val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-   imm.showSoftInput(chatInput,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-   return
-  }
-  composerExpanded=true
-  chatIcon.visibility=View.GONE
-  chatInput.visibility=View.VISIBLE
-  sendButton.visibility=View.VISIBLE
-  chatInput.requestFocus()
-  chatInput.post{
-   val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-   imm.showSoftInput(chatInput,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-  }
- }
- private fun collapseRoomComposer(){
-  composerExpanded=false
-  chatInput.setText("")
-  chatInput.clearFocus()
-  chatInput.visibility=View.GONE
-  sendButton.visibility=View.GONE
-  chatIcon.visibility=View.VISIBLE
-  val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-  imm.hideSoftInputFromWindow(chatInput.windowToken,0)
- }
- private fun loadRoomMessages(){
-  if(!isActiveChat())return
-  scope.launch{
-   try{
-    val result=withContext(Dispatchers.IO){
-     AuthApi.get("/api/voice-rooms/$roomId/messages",authToken)
-    }
-    if(result.status !in 200..299){
-     if(chatMessages.childCount==0){
-      chatMessages.addView(label(result.body.optString("error","تعذر تحميل الرسائل"),13f,Color.rgb(100,116,104)))
-     }
-     return@launch
-    }
-    val messages=result.body.optJSONArray("messages")?:JSONArray()
-    chatMessages.removeAllViews()
-    for(i in 0 until messages.length()){
-     val item=messages.optJSONObject(i)?:continue
-     val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
-     val body=item.optString("message")
-     val mine=item.optString("user_id")==currentUserId
-     val bubble=LinearLayout(this@RoomActivity).apply{
-      orientation=1
-      setPadding(dp(11),dp(7),dp(11),dp(7))
-      background=GradientDrawable().apply{
-       setColor(if(mine)Color.argb(105,93,58,130) else Color.argb(88,24,20,35))
-       cornerRadius=dp(15).toFloat()
-       setStroke(dp(1),Color.argb(22,255,255,255))
-      }
-     }
-     bubble.addView(TextView(this@RoomActivity).apply{
-      text=sender
-      textSize=10f
-      setTextColor(Color.rgb(226,205,255))
-      typeface=android.graphics.Typeface.DEFAULT_BOLD
-     })
-     bubble.addView(TextView(this@RoomActivity).apply{
-      text=body
-      textSize=12f
-      setTextColor(Color.WHITE)
-      setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.NORMAL)
-     })
-     val line=LinearLayout(this@RoomActivity).apply{
-      orientation=0
-      gravity=if(mine)Gravity.END else Gravity.START
-      setPadding(0,dp(3),0,dp(3))
-      addView(bubble,LinearLayout.LayoutParams(-2,-2))
-     }
-     chatMessages.addView(line,LinearLayout.LayoutParams(-1,-2))
-    }
-    for(notice in joinNotices.takeLast(12)){
-     val event=TextView(this@RoomActivity).apply{
-      text=notice;textSize=12f;gravity=Gravity.CENTER
-      setTextColor(Color.rgb(77,91,76));setPadding(dp(8),dp(7),dp(8),dp(7))
-      background=GradientDrawable().apply{setColor(Color.rgb(235,237,229));cornerRadius=dp(12).toFloat()}
-     }
-     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
-    }
-    chatScroll.post{chatScroll.fullScroll(View.FOCUS_DOWN)}
-   }catch(_:Exception){
-    if(chatMessages.childCount==0)chatMessages.addView(label("تعذر الاتصال بالدردشة",13f,Color.LTGRAY))
-   }
-  }
- }
-
- private fun sendRoomMessage(){
-  val message=chatInput.text.toString().trim()
-  if(message.isEmpty())return
-  if(message.length>500){
-   Toast.makeText(this,"الحد الأقصى 500 حرف",Toast.LENGTH_SHORT).show()
-   return
-  }
-  chatInput.isEnabled=false
-  scope.launch{
-   try{
-    val result=withContext(Dispatchers.IO){
-     AuthApi.post("/api/voice-rooms/$roomId/messages",
-      JSONObject().put("message",message),authToken)
-    }
-    if(result.status in 200..299){
-     chatInput.setText("")
-     collapseRoomComposer()
-     loadRoomMessages()
+   addView(composer,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(4);bottomMargin=dp(2)})
+    loadRoomMessages()
     }else{
      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال الرسالة"),Toast.LENGTH_SHORT).show()
     }
