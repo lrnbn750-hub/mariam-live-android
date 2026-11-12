@@ -13,6 +13,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.URL
@@ -154,7 +156,16 @@ class RoomSetupActivity : Activity() {
         }
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         root.addView(startButton,LinearLayout.LayoutParams(-1,dp(56)).apply{setMargins(dp(18),dp(8),dp(18),dp(12))})
+        ViewCompat.setOnApplyWindowInsetsListener(startButton){ view,insets->
+            val bottomInset=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            val lp=view.layoutParams
+            val targetHeight=dp(56)+bottomInset
+            if(lp.height!=targetHeight){lp.height=targetHeight;view.layoutParams=lp}
+            view.setPadding(0,0,0,bottomInset)
+            insets
+        }
         setContentView(root)
+        ViewCompat.requestApplyInsets(startButton)
         loadProfileAvatar(token)
     }
     private fun loadProfileAvatar(token:String){
