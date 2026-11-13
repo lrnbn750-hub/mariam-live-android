@@ -629,12 +629,17 @@ class RoomActivity : Activity() {
        }
        if(selectionResult.status in 200..299){
         val selections=selectionResult.body.optJSONArray("selections")?:JSONArray()
+        val selectedUserIds=HashSet<String>()
         for(index in 0 until selections.length()){
          val selected=selections.optJSONObject(index)?:continue
          val userId=selected.optString("user_id")
          val itemId=selected.optString("item_id")
-         if(userId.isNotBlank() && itemId.startsWith("chat-bubble-"))chatBubbleStylesByUser[userId]=itemId
+         if(userId.isNotBlank() && itemId.startsWith("chat-bubble-")){
+          chatBubbleStylesByUser[userId]=itemId
+          selectedUserIds.add(userId)
+         }
         }
+        for(userId in senderIds)if(!selectedUserIds.contains(userId))chatBubbleStylesByUser.remove(userId)
         chatBubbleSelectionRefreshAt=nowForBubbleSync
        }
       }catch(_:Exception){ /* Keep the last known skin if the optional lookup is unavailable. */ }
