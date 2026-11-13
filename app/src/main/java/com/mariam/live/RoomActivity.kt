@@ -1405,32 +1405,55 @@ class RoomActivity : Activity() {
   }
  }
  private fun showRoomGiftPicker(){
-  if(roomId.isBlank() || authToken.isBlank()){ Toast.makeText(this,"تعذر التحقق من الغرفة أو تسجيل الدخول",Toast.LENGTH_SHORT).show();return }
+  if(roomId.isBlank() || authToken.isBlank()){Toast.makeText(this,"تعذر التحقق من الغرفة أو تسجيل الدخول",Toast.LENGTH_SHORT).show();return}
   val recipients=(0 until roomMembers.length()).mapNotNull{roomMembers.optJSONObject(it)}
    .filter{it.optString("user_id").isNotBlank() && it.optString("user_id")!="null" && it.optString("user_id")!=currentUserId}
-  if(recipients.isEmpty()){ loadRoomMembers(); Toast.makeText(this,"انتظر تحميل أعضاء الغرفة ثم افتح الهدايا مرة ثانية",Toast.LENGTH_SHORT).show();return }
+  if(recipients.isEmpty()){loadRoomMembers();Toast.makeText(this,"لا يوجد أعضاء آخرون في الغرفة حالياً",Toast.LENGTH_SHORT).show();return}
   val names=recipients.map{it.optString("display_name").ifBlank{it.optString("username","مستخدم")}}.toTypedArray()
-  AlertDialog.Builder(this).setTitle("اختر مستلم الهدية").setItems(names){_,which->loadGiftCatalogAndChoose(recipients[which].optString("user_id"),names[which])}.setNegativeButton("إلغاء",null).show()
+  AlertDialog.Builder(this).setTitle("إلى من ترسل الهدية؟").setItems(names){_,which->
+   val selected=recipients[which];loadGiftCatalogAndChoose(selected.optString("user_id"),names[which])
+  }.setNegativeButton("إلغاء",null).show()
  }
  private fun loadGiftCatalogAndChoose(recipientId:String,recipientName:String){
-  scope.launch{ try {
+  scope.launch{try{
    val response=withContext(Dispatchers.IO){giftRepository.loadCatalog(authToken)}
    if(response.status !in 200..299){Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر تحميل الهدايا"),Toast.LENGTH_LONG).show();return@launch}
    val gifts=giftRepository.getGifts()
    if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"لا توجد هدايا متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
-   val labels=gifts.map{it.name+" • "+it.price+" عملة"}.toTypedArray()
-   AlertDialog.Builder(this@RoomActivity).setTitle("الهدايا إلى "+recipientName).setItems(labels){_,which->confirmGiftSend(gifts[which],recipientId,recipientName)}.setNegativeButton("إلغاء",null).show()
-  }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()} }
+   showGiftCatalogDialog(gifts,recipientId,recipientName)
+  }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()}}
  }
- private fun confirmGiftSend(gift:Gift,recipientId:String,recipientName:String){
-  AlertDialog.Builder(this).setTitle("إرسال "+gift.name).setMessage("سيتم خصم "+gift.price+" عملة وإرسالها إلى "+recipientName+". هل تريد المتابعة؟").setPositiveButton("إرسال"){_,_->sendRoomGift(gift,recipientId)}.setNegativeButton("إلغاء",null).show()
+ private fun showGiftCatalogDialog(gifts:List<Gift>,recipientId:String,recipientName:String){
+  val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(12));background=GradientDrawable().apply{setColor(Color.rgb(30,25,39));cornerRadius=dp(22).toFloat()}}
+  content.addView(label("إرسال هدية إلى ${recipientName}",14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(38)))
+  content.addView(label("اختر هديتك — سيتم خصم العملات بعد التأكيد",11f,Color.rgb(207,197,218)),LinearLayout.LayoutParams(-1,dp(28)))
+  val grid=android.widget.GridLayout(this).apply{columnCount=2;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_MARGINS}
+  gifts.forEachIndexed{index,gift->
+   val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
+   val icon=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))};addView(ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)));scaleType=ImageView.ScaleType.CENTER_INSIDE;contentDescription=gift.name},FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))}
+   card.addView(icon,LinearLayout.LayoutParams(dp(58),dp(58)))
+   card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
+   card.addView(label("${gift.price} عملة",12f,Color.rgb(255,213,145),true),LinearLayout.LayoutParams(-1,dp(25)))
+   card.setOnClickListener{showGiftQuantityDialog(gift,recipientId,recipientName)}
+   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(145);columnSpec=android.widget.GridLayout.spec(index%2,1f);rowSpec=android.widget.GridLayout.spec(index/2);setMargins(dp(4),dp(4),dp(4),dp(4))}
+   grid.addView(card,params)
+  }
+  val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid)}
+  content.addView(scroll,LinearLayout.LayoutParams(-1,dp(350)))
+  val dialog=AlertDialog.Builder(this).setView(content).setNegativeButton("إغلاق",null).create()
+  dialog.show();dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.94f).toInt(),-2)
  }
- private fun sendRoomGift(gift:Gift,recipientId:String){
-  scope.launch{ try {
-   val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,1,authToken)}
-   if(response.status in 200..299) Toast.makeText(this@RoomActivity,"تم إرسال "+gift.name+" بنجاح",Toast.LENGTH_LONG).show()
-   else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()
-  }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()} }
+ private fun showGiftQuantityDialog(gift:Gift,recipientId:String,recipientName:String){
+  val quantityInput=EditText(this).apply{inputType=android.text.InputType.TYPE_CLASS_NUMBER;setText("1");gravity=Gravity.CENTER;textSize=20f;setTextColor(Color.WHITE);setSelectAllOnFocus(true);filters=arrayOf(android.text.InputFilter.LengthFilter(2));background=GradientDrawable().apply{cornerRadius=dp(12).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))}}
+  val wrapper=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(22),dp(8),dp(22),dp(4));addView(label("الهدية: ${gift.name}",14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(32)));addView(label("السعر: ${gift.price} عملة للواحدة",12f,Color.rgb(255,213,145)),LinearLayout.LayoutParams(-1,dp(28)));addView(quantityInput,LinearLayout.LayoutParams(-1,dp(52)))}
+  AlertDialog.Builder(this).setTitle("كمية الهدية").setView(wrapper).setPositiveButton("متابعة"){_,_->val quantity=quantityInput.text.toString().toIntOrNull()?:0;if(quantity !in 1..99)Toast.makeText(this,"اختر كمية من 1 إلى 99",Toast.LENGTH_SHORT).show() else confirmGiftSend(gift,recipientId,recipientName,quantity)}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun confirmGiftSend(gift:Gift,recipientId:String,recipientName:String,quantity:Int){
+  val total=gift.price*quantity
+  AlertDialog.Builder(this).setTitle("تأكيد إرسال الهدية").setMessage("الهدية: ${gift.name}\nالمستلم: $recipientName\nالكمية: $quantity\nالإجمالي: $total عملة\n\nهل تريد الإرسال؟").setPositiveButton("إرسال"){_,_->sendRoomGift(gift,recipientId,quantity)}.setNegativeButton("رجوع",null).show()
+ }
+ private fun sendRoomGift(gift:Gift,recipientId:String,quantity:Int){
+  scope.launch{try{val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,quantity,authToken)};if(response.status in 200..299)Toast.makeText(this@RoomActivity,"تم إرسال ${gift.name} × $quantity بنجاح",Toast.LENGTH_LONG).show() else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()}}
  }
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
