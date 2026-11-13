@@ -1178,7 +1178,7 @@ class RoomActivity : Activity() {
         joinToastShowing=false
         showNextRoomJoinToast()
        }.start()
-     },650)
+     },1500)
     }.start()
   }
  }
