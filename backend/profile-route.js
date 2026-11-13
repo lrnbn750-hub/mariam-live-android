@@ -310,6 +310,15 @@ module.exports = function(app, db, authenticateToken) {
   // Persistent inventory: equipping is allowed only for items owned by this account.
   app.get("/api/inventory", authenticateToken, async (req, res) => {
     try {
+      // Seven launch chat-bubble skins are free starter inventory items.
+      await db.query(
+        `INSERT INTO user_inventory(user_id,item_id,obtained_from)
+         SELECT $1, item_id, 'offer'
+         FROM store_items
+         WHERE active=TRUE AND item_type='chat_bubble' AND price_iqd=0
+         ON CONFLICT(user_id,item_id) DO NOTHING`,
+        [req.userId]
+      );
       // Grant LV100 exclusive frames automatically and persistently.
       await db.query(
         `
@@ -377,9 +386,31 @@ module.exports = function(app, db, authenticateToken) {
     } finally { client.release(); }
   });
 
+  // Resolve equipped chat-bubble skins for room-message senders in one request.
+  app.get("/api/chat-bubbles/selected", authenticateToken, async (req, res) => {
+    try {
+      const raw = String(req.query.user_ids || "");
+      const userIds = [...new Set(raw.split(",").map(x => x.trim()).filter(x =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x)
+      ))].slice(0, 100);
+      if (!userIds.length) return res.json({ selections: [] });
+      const result = await db.query(
+        `SELECT e.user_id, e.item_id
+         FROM user_equipped_items e
+         JOIN store_items i ON i.item_id=e.item_id AND i.active=TRUE
+         WHERE e.item_type='chat_bubble' AND e.user_id=ANY($1::uuid[])`,
+        [userIds]
+      );
+      return res.json({ selections: result.rows });
+    } catch (error) {
+      console.error("Load chat bubble selections:", error.message);
+      return res.status(500).json({ error: "Could not load chat bubble selections" });
+    }
+  });
+
   app.post("/api/inventory/unequip", authenticateToken, async (req, res) => {
     const itemType = String(req.body?.item_type || "");
-    if (!["frame", "background"].includes(itemType)) return res.status(400).json({ error: "Invalid item type" });
+    if (!["frame", "background", "chat_bubble"].includes(itemType)) return res.status(400).json({ error: "Invalid item type" });
     try {
       await db.query("DELETE FROM user_equipped_items WHERE user_id=$1 AND item_type=$2", [req.userId, itemType]);
       return res.json({ message: "Item unequipped", item_type: itemType });
