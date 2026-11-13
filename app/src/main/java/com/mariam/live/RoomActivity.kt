@@ -604,26 +604,58 @@ class RoomActivity : Activity() {
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
      val body=item.optString("message")
      val mine=item.optString("user_id")==currentUserId
+     // Read level when the chat API supplies it, including nested user payloads.
+     val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
+     val senderLevel=(if(item.has("level"))item.optInt("level",1) else
+      if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
+     val isMaxLevel=senderLevel>=100
      val bubble=LinearLayout(this@RoomActivity).apply{
       orientation=1
-      setPadding(dp(11),dp(7),dp(11),dp(7))
+      setPadding(dp(if(isMaxLevel)12 else 10),dp(if(isMaxLevel)8 else 6),dp(if(isMaxLevel)12 else 10),dp(if(isMaxLevel)8 else 6))
+      background=GradientDrawable(
+       GradientDrawable.Orientation.TL_BR,
+       if(isMaxLevel) intArrayOf(Color.argb(232,65,43,12),Color.argb(224,34,25,19))
+       else intArrayOf(if(mine)Color.argb(145,73,48,104) else Color.argb(150,20,23,31),Color.argb(142,25,22,34))
+      ).apply{
+       cornerRadius=dp(14).toFloat()
+       setStroke(dp(if(isMaxLevel)1.5f.toInt() else 1),if(isMaxLevel)Color.rgb(224,181,83) else Color.argb(55,255,255,255))
+      }
+      if(isMaxLevel)elevation=dp(3).toFloat()
+     }
+     val senderLine=LinearLayout(this@RoomActivity).apply{
+      orientation=0
+      gravity=Gravity.CENTER_VERTICAL
+      layoutDirection=View.LAYOUT_DIRECTION_LTR
+     }
+     val levelBadge=TextView(this@RoomActivity).apply{
+      text=if(isMaxLevel)"♛ LV 100" else "LV $senderLevel"
+      textSize=if(isMaxLevel)9.5f else 8.5f
+      setTextColor(if(isMaxLevel)Color.rgb(255,224,145) else Color.rgb(220,210,245))
+      typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+      gravity=Gravity.CENTER
+      setPadding(dp(6),dp(2),dp(6),dp(2))
       background=GradientDrawable().apply{
-       setColor(if(mine)Color.argb(105,93,58,130) else Color.argb(88,24,20,35))
-       cornerRadius=dp(15).toFloat()
-       setStroke(dp(1),Color.argb(22,255,255,255))
+       cornerRadius=dp(8).toFloat()
+       setColor(if(isMaxLevel)Color.argb(75,220,166,48) else Color.argb(65,160,140,205))
+       setStroke(dp(1),if(isMaxLevel)Color.rgb(218,174,78) else Color.argb(90,190,170,225))
       }
      }
-     bubble.addView(TextView(this@RoomActivity).apply{
+     senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(19)).apply{marginEnd=dp(5)})
+     senderLine.addView(TextView(this@RoomActivity).apply{
       text=sender
       textSize=10f
-      setTextColor(Color.rgb(226,205,255))
+      setTextColor(if(isMaxLevel)Color.rgb(255,221,151) else Color.rgb(226,205,255))
       typeface=android.graphics.Typeface.DEFAULT_BOLD
-     })
+      maxLines=1
+      ellipsize=android.text.TextUtils.TruncateAt.END
+     },LinearLayout.LayoutParams(-2,dp(20)))
+     bubble.addView(senderLine)
      bubble.addView(TextView(this@RoomActivity).apply{
       text=body
-      textSize=12f
-      setTextColor(Color.WHITE)
-      setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.NORMAL)
+      textSize=if(isMaxLevel)13f else 12f
+      setTextColor(if(isMaxLevel)Color.rgb(255,226,166) else Color.WHITE)
+      typeface=android.graphics.Typeface.create("sans-serif",if(isMaxLevel)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+      setShadowLayer(if(isMaxLevel)1.2f else 0f,0f,0f,Color.argb(100,230,174,67))
      })
      val line=LinearLayout(this@RoomActivity).apply{
       orientation=0
@@ -856,12 +888,21 @@ class RoomActivity : Activity() {
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(68),dp(68)).apply{bottomMargin=dp(1)})
     if(occupied){
-     tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
+     val seatLevel=(if(seat.has("level"))seat.optInt("level",1) else seat.optInt("user_level",1)).coerceIn(1,100)
+     val isLevel100=seatLevel>=100
+     val nameLine=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+     nameLine.addView(label(name,10f,if(isLevel100)Color.rgb(255,220,142) else Color.WHITE,true).apply{
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
-      gravity=Gravity.CENTER
       includeFontPadding=false
-     },LinearLayout.LayoutParams(-1,dp(18)))
+     },LinearLayout.LayoutParams(0,dp(18),1f))
+     if(isLevel100){
+      nameLine.addView(label("♛100",9f,Color.rgb(255,224,151),true).apply{
+       background=GradientDrawable().apply{cornerRadius=dp(7).toFloat();setColor(Color.argb(155,95,65,18));setStroke(dp(1),Color.rgb(218,174,78))}
+       setPadding(dp(4),0,dp(4),0)
+      },LinearLayout.LayoutParams(-2,dp(17)))
+     }
+     tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(18)))
     }else{
      tile.addView(label((i+1).toString(),10f,Color.rgb(125,130,123),false))
     }
