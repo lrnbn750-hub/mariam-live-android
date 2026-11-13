@@ -631,59 +631,85 @@ class RoomActivity : Activity() {
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
+     // Red dragon chat bubble: the message remains live data from the room API.
+     // Width is capped so long Arabic messages wrap inside the bubble on small phones.
+     val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.76f).toInt()
      val bubble=LinearLayout(this@RoomActivity).apply{
       orientation=1
-      setPadding(dp(if(isMaxLevel)12 else 10),dp(if(isMaxLevel)8 else 6),dp(if(isMaxLevel)12 else 10),dp(if(isMaxLevel)8 else 6))
+      layoutDirection=View.LAYOUT_DIRECTION_RTL
+      gravity=Gravity.CENTER_VERTICAL
+      setPadding(dp(11),dp(8),dp(11),dp(8))
       background=GradientDrawable(
        GradientDrawable.Orientation.TL_BR,
-       if(isMaxLevel) intArrayOf(Color.argb(232,65,43,12),Color.argb(224,34,25,19))
-       else intArrayOf(if(mine)Color.argb(145,73,48,104) else Color.argb(150,20,23,31),Color.argb(142,25,22,34))
+       intArrayOf(
+        Color.rgb(112,8,18),
+        Color.rgb(67,5,14),
+        Color.rgb(38,7,14)
+       )
       ).apply{
-       cornerRadius=dp(14).toFloat()
-       setStroke(dp(if(isMaxLevel)1.5f.toInt() else 1),if(isMaxLevel)Color.rgb(224,181,83) else Color.argb(55,255,255,255))
+       cornerRadius=dp(16).toFloat()
+       setStroke(dp(1.4f.toInt()),Color.rgb(235,164,65))
+       setDither(true)
       }
-      if(isMaxLevel)elevation=dp(3).toFloat()
+      elevation=dp(3).toFloat()
      }
      val senderLine=LinearLayout(this@RoomActivity).apply{
       orientation=0
       gravity=Gravity.CENTER_VERTICAL
-      layoutDirection=View.LAYOUT_DIRECTION_LTR
+      layoutDirection=View.LAYOUT_DIRECTION_RTL
      }
+     senderLine.addView(TextView(this@RoomActivity).apply{
+      text="🐉"
+      textSize=17f
+      gravity=Gravity.CENTER
+      includeFontPadding=false
+     },LinearLayout.LayoutParams(dp(23),dp(22)).apply{marginStart=dp(4)})
      val levelBadge=TextView(this@RoomActivity).apply{
       text="LV $senderLevel"
-      textSize=if(isMaxLevel)9.5f else 8.5f
-      setTextColor(if(isMaxLevel)Color.rgb(255,224,145) else Color.rgb(220,210,245))
+      textSize=9f
+      setTextColor(Color.rgb(255,231,190))
       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
       gravity=Gravity.CENTER
       setPadding(dp(6),dp(2),dp(6),dp(2))
       background=GradientDrawable().apply{
-       cornerRadius=dp(8).toFloat()
-       setColor(if(isMaxLevel)Color.argb(75,220,166,48) else Color.argb(65,160,140,205))
-       setStroke(dp(1),if(isMaxLevel)Color.rgb(218,174,78) else Color.argb(90,190,170,225))
+       cornerRadius=dp(9).toFloat()
+       setColor(Color.argb(190,132,24,31))
+       setStroke(dp(1),Color.rgb(231,164,76))
       }
      }
      senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(19)).apply{marginEnd=dp(5)})
      senderLine.addView(TextView(this@RoomActivity).apply{
       text=sender
-      textSize=10f
-      setTextColor(if(isMaxLevel)Color.rgb(255,221,151) else Color.rgb(226,205,255))
+      textSize=10.5f
+      setTextColor(Color.rgb(255,226,190))
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
-     },LinearLayout.LayoutParams(-2,dp(20)))
-     bubble.addView(senderLine)
+      includeFontPadding=false
+     },LinearLayout.LayoutParams(-2,dp(21)))
+     bubble.addView(senderLine,LinearLayout.LayoutParams(-2,-2))
      bubble.addView(TextView(this@RoomActivity).apply{
       text=body
-      textSize=if(isMaxLevel)13f else 12f
-      setTextColor(if(isMaxLevel)Color.rgb(255,226,166) else Color.WHITE)
+      textSize=13f
+      setTextColor(Color.WHITE)
       typeface=android.graphics.Typeface.create("sans-serif",if(isMaxLevel)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
-      setShadowLayer(if(isMaxLevel)1.2f else 0f,0f,0f,Color.argb(100,230,174,67))
-     })
+      gravity=Gravity.END
+      textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
+      maxWidth=maxBubbleWidth
+      maxLines=8
+      ellipsize=android.text.TextUtils.TruncateAt.END
+      includeFontPadding=false
+      setLineSpacing(dp(2).toFloat(),1f)
+      setPadding(0,dp(5),0,0)
+      setShadowLayer(1.1f,0f,1f,Color.argb(160,0,0,0))
+     },LinearLayout.LayoutParams(-2,-2))
      val line=LinearLayout(this@RoomActivity).apply{
       orientation=0
       gravity=if(mine)Gravity.END else Gravity.START
       setPadding(0,dp(3),0,dp(3))
-      addView(bubble,LinearLayout.LayoutParams(-2,-2))
+      addView(bubble,LinearLayout.LayoutParams(-2,-2).apply{
+       marginStart=dp(2);marginEnd=dp(2)
+      })
      }
      chatMessages.addView(line,LinearLayout.LayoutParams(-1,-2))
     }
