@@ -116,7 +116,8 @@ class RoomActivity : Activity() {
   top.addView(topRoomButton("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(9)})
   top.addView(topRoomButton("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)))
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
-  roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
+  val premiumHeader=buildPremiumRoomHeader().apply{translationY=dp(8).toFloat()}
+  roomPage.addView(premiumHeader,LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
   })
   membersButton=LinearLayout(this).apply{
@@ -138,8 +139,9 @@ class RoomActivity : Activity() {
    },LinearLayout.LayoutParams(dp(20),dp(22)))
    setOnClickListener{showRoomMembers()}
   }
+  membersButton.translationY=dp(8).toFloat()
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-1,dp(28)).apply{gravity=Gravity.START;topMargin=dp(2);bottomMargin=dp(2)})
-  grid=LinearLayout(this).apply{orientation=1}
+  grid=LinearLayout(this).apply{orientation=1;translationY=dp(8).toFloat()}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
