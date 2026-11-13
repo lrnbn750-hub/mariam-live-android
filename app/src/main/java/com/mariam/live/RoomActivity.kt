@@ -128,7 +128,7 @@ class RoomActivity : Activity() {
   val roomRoot=FrameLayout(this).apply{setBackgroundColor(Color.rgb(20,18,28))}
   roomBackgroundView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.FIT_CENTER
-   setBackgroundColor(Color.rgb(20,18,28))
+   setBackgroundColor(Color.TRANSPARENT)
    contentDescription="خلفية الغرفة"
   }
   roomBackgroundFillView=ImageView(this).apply{
@@ -789,7 +789,9 @@ class RoomActivity : Activity() {
    }catch(_:Exception){
     if(loadedBackgroundUrl==url){
      roomBackgroundView.setImageDrawable(null)
-     roomBackgroundView.setBackgroundColor(Color.rgb(20,18,28))
+     roomBackgroundView.setBackgroundColor(Color.TRANSPARENT)
+     roomBackgroundFillView.setImageDrawable(null)
+     roomBackgroundFillView.setBackgroundColor(Color.rgb(20,18,28))
     }
    }
   }
