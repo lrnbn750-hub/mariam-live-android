@@ -68,12 +68,12 @@ class ProfileActivity : Activity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window,true)
         if(android.os.Build.VERSION.SDK_INT>=29)window.isNavigationBarContrastEnforced=false
-        val gold=Color.rgb(218,174,91)
-        val ink=Color.rgb(38,29,58)
-        val muted=Color.rgb(139,132,153)
-        val cream=Color.rgb(255,248,231)
-        window.statusBarColor=Color.rgb(35,24,57)
-        window.navigationBarColor=Color.rgb(248,246,251)
+        val gold=Color.rgb(34,158,92)
+        val ink=Color.rgb(35,45,39)
+        val muted=Color.rgb(116,130,120)
+        val cream=Color.WHITE
+        window.statusBarColor=Color.WHITE
+        window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         fun rounded(color:Int,r:Int,stroke:Int=Color.TRANSPARENT)=android.graphics.drawable.GradientDrawable().apply{
@@ -84,23 +84,20 @@ class ProfileActivity : Activity() {
             text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
             typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
         }
-        val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(248,246,251))}
+        val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
         val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
-        val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(248,246,251))}
+        val content=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.WHITE)}
         scroll.addView(content)
 
         val hero=LinearLayout(this).apply{
             orientation=1;gravity=Gravity.CENTER_HORIZONTAL
             setPadding(dp(18),dp(10),dp(18),dp(24))
-            background=android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(31,20,54),Color.rgb(58,35,91),Color.rgb(39,27,66))
-            )
+            background=rounded(Color.WHITE,0,Color.rgb(238,243,239))
         }
         val tools=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
         tools.addView(ImageView(this).apply{
             setImageResource(R.drawable.ic_profile_close)
-            setColorFilter(Color.rgb(235,218,177),android.graphics.PorterDuff.Mode.SRC_IN)
+            setColorFilter(Color.rgb(34,158,92),android.graphics.PorterDuff.Mode.SRC_IN)
             scaleType=ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10),dp(10),dp(10),dp(10))
             contentDescription="إغلاق الملف الشخصي"
@@ -132,7 +129,7 @@ class ProfileActivity : Activity() {
             setPadding(dp(8),dp(8),dp(8),dp(8))
             contentDescription="تعديل الصورة الشخصية"
             background=android.graphics.drawable.GradientDrawable().apply{
-                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(126,83,181))
+                shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(Color.rgb(34,158,92))
                 setStroke(dp(2),Color.WHITE)
             }
             setOnClickListener{showEditProfile()}
@@ -141,12 +138,12 @@ class ProfileActivity : Activity() {
             topMargin=dp(8);marginStart=dp(3)
         })
         hero.addView(avatarFrame,LinearLayout.LayoutParams(dp(140),dp(140)).apply{topMargin=dp(22)})
-        profileTitle=txt("جارٍ تحميل الاسم...",20f,Color.WHITE,true)
+        profileTitle=txt("جارٍ تحميل الاسم...",20f,ink,true)
         hero.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(38)))
         val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-        publicIdLabel=TextView(this).apply{text="ID: جارٍ التحميل";textSize=13f;setTextColor(Color.rgb(204,192,220))}
+        publicIdLabel=TextView(this).apply{text="ID: جارٍ التحميل";textSize=13f;setTextColor(muted)}
         idRow.addView(publicIdLabel,LinearLayout.LayoutParams(-2,dp(30)))
-        idRow.addView(TextView(this).apply{text="نسخ";textSize=12f;setTextColor(Color.rgb(232,194,117));
+        idRow.addView(TextView(this).apply{text="نسخ";textSize=12f;setTextColor(gold);
             setPadding(dp(10),0,dp(10),0)
             setOnClickListener{
                 val value=idViewRef?.text?.toString().orEmpty()
@@ -180,7 +177,7 @@ class ProfileActivity : Activity() {
         fun shortcut(icon:Int,title:String,bg:Int,fg:Int,click:()->Unit){
             val card=LinearLayout(this).apply{
                 orientation=1;gravity=Gravity.CENTER
-                background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(54,37,82),Color.rgb(35,25,57))).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.rgb(94,72,125))}
+                background=rounded(Color.WHITE,17,Color.rgb(225,237,228))
                 setOnClickListener{click()}
                 val iconView=ImageView(this@ProfileActivity).apply{
                     setImageResource(icon)
@@ -190,7 +187,7 @@ class ProfileActivity : Activity() {
                     contentDescription=title
                 }
                 addView(iconView,LinearLayout.LayoutParams(-1,dp(58)))
-                val titleView=txt(title,12f,Color.rgb(235,218,177),true)
+                val titleView=txt(title,12f,ink,true)
                 if(title=="LV 1"){
                     levelShortcutTitle=titleView
                     levelShortcutIcon=iconView
@@ -206,7 +203,7 @@ class ProfileActivity : Activity() {
         shortcut(R.drawable.ic_profile_level,"LV 1",Color.rgb(213,250,249),Color.rgb(232,194,117)){startActivity(Intent(this,LevelActivity::class.java))}
         content.addView(shortcuts)
 
-        val separator=View(this).apply{setBackgroundColor(Color.rgb(238,233,244))}
+        val separator=View(this).apply{setBackgroundColor(Color.rgb(240,244,241))}
         fun menuRow(icon:Int,title:String,detail:String="",click:()->Unit){
             val row=LinearLayout(this).apply{
                 orientation=0;gravity=Gravity.CENTER_VERTICAL
@@ -580,15 +577,13 @@ class ProfileActivity : Activity() {
         }
         levelNumber.setTextColor(colors[4])
         if(::levelShortcutCard.isInitialized){
-            levelShortcutCard.background=android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                intArrayOf(colors[0],colors[1],colors[2])
-            ).apply{
+            levelShortcutCard.background=android.graphics.drawable.GradientDrawable().apply{
+                setColor(Color.WHITE)
                 cornerRadius=dp(15).toFloat()
-                setStroke(dp(2),colors[3])
+                setStroke(dp(2),Color.rgb(190,225,202))
             }
-            levelShortcutIcon.setColorFilter(colors[4],android.graphics.PorterDuff.Mode.SRC_IN)
-            levelShortcutTitle.setTextColor(colors[5])
+            levelShortcutIcon.setColorFilter(Color.rgb(34,158,92),android.graphics.PorterDuff.Mode.SRC_IN)
+            levelShortcutTitle.setTextColor(Color.rgb(35,45,39))
         }
         levelRank.setTextColor(Color.WHITE)
         levelXp.setTextColor(colors[5])
