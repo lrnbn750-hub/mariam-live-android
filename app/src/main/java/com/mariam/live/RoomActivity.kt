@@ -619,7 +619,7 @@ class RoomActivity : Activity() {
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
      for(index in 0 until messages.length()){
-      val senderId=messages.optJSONObject(index)?.optString("user_id").orEmpty()
+      val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } }.orEmpty()
       if(senderId.isNotBlank())senderIds.add(senderId)
      }
      if(senderIds.isNotEmpty()){
@@ -659,15 +659,15 @@ class RoomActivity : Activity() {
      val mine=item.optString("user_id")==currentUserId
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
-     val senderId=item.optString("user_id")
+     val senderId=item.optString("user_id").ifBlank { senderUser?.optString("id").orEmpty() }
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
-     val bubbleWidth=(resources.displayMetrics.widthPixels*0.94f).toInt()
+     val bubbleWidth=(resources.displayMetrics.widthPixels*0.86f).toInt()
      val estimatedLines=((body.length+27)/28).coerceIn(1,10)
-     val bubbleHeight=dp(74+estimatedLines*17)
+     val bubbleHeight=dp(48+estimatedLines*15)
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
       background=ChatBubbleStyleDrawable(chatBubbleStylesByUser[senderId] ?: "chat-bubble-dragon")
@@ -677,7 +677,7 @@ class RoomActivity : Activity() {
       orientation=LinearLayout.VERTICAL
       gravity=Gravity.CENTER
       layoutDirection=View.LAYOUT_DIRECTION_RTL
-      setPadding(dp(5),dp(4),dp(5),dp(4))
+      setPadding(dp(4),dp(2),dp(4),dp(2))
      }
      val senderLine=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.HORIZONTAL
@@ -709,7 +709,7 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-2,dp(22)))
-     content.addView(senderLine,LinearLayout.LayoutParams(-1,dp(25)))
+     content.addView(senderLine,LinearLayout.LayoutParams(-1,dp(21)))
      content.addView(TextView(this@RoomActivity).apply{
       text=body
       textSize=13f
@@ -726,10 +726,10 @@ class RoomActivity : Activity() {
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-1,0,1f))
      val contentParams=FrameLayout.LayoutParams(
-      (bubbleWidth*0.70f).toInt(),-1,Gravity.CENTER
+      (bubbleWidth*0.76f).toInt(),-1,Gravity.CENTER
      ).apply{
-      leftMargin=dp(12);rightMargin=dp(12)
-      topMargin=dp(13);bottomMargin=dp(12)
+      leftMargin=dp(10);rightMargin=dp(10)
+      topMargin=dp(6);bottomMargin=dp(6)
      }
      bubble.addView(content,contentParams)
      val line=LinearLayout(this@RoomActivity).apply{
