@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - branding/bak-live-package
+      - feature/live-room-chat-bubbles
 
 permissions:
   contents: read
