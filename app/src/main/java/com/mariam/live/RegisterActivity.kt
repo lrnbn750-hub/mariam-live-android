@@ -110,8 +110,20 @@ class RegisterActivity : Activity() {
     }
 
 
+    private fun addChangeMethodButton() {
+        val back = AuthUi.link(this, "← تغيير طريقة التسجيل")
+        back.setOnClickListener {
+            startActivity(Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+            finish()
+        }
+        card.addView(back, 0)
+    }
+
     private fun renderEmailStep() {
         card.removeAllViews()
+        addChangeMethodButton()
         card.addView(AuthUi.heading(this, "إنشاء حساب بالبريد الإلكتروني"))
         card.addView(AuthUi.hint(this, "أدخل بريدك واسمك الظاهر وكلمة المرور لإكمال التسجيل"))
         card.addView(AuthUi.label(this, "البريد الإلكتروني"))
@@ -206,6 +218,7 @@ class RegisterActivity : Activity() {
     private fun renderPhoneStep() {
         otpRequested = false
         card.removeAllViews()
+        addChangeMethodButton()
         card.addView(AuthUi.heading(this, "إنشاء حساب جديد"))
         card.addView(AuthUi.hint(this, "أدخل رقم هاتفك لنرسل لك رمز تحقق"))
         card.addView(AuthUi.label(this, "الدولة ورمز الاتصال"))
@@ -263,6 +276,7 @@ class RegisterActivity : Activity() {
     private fun renderOtpStep() {
         otpRequested = true
         card.removeAllViews()
+        addChangeMethodButton()
         card.addView(AuthUi.heading(this, "تأكيد رقم الهاتف"))
         card.addView(AuthUi.hint(this, "أدخل رمز التحقق المرسل إلى $normalizedPhone، ثم أكمل بيانات حسابك"))
         card.addView(AuthUi.label(this, "رمز التحقق"))
