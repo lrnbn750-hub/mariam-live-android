@@ -110,7 +110,7 @@ class WalletActivity:Activity(){
   }
   content.addView(grid)
   section("طرق الدفع")
-  val methods= listOf("زين كاش","آسيا حوالة","USDT","دفع إلكتروني")
+  val methods= listOf("زين كاش — تحويل يدوي","آسيا حوالة — تحويل يدوي","USDT — تحويل يدوي","بوابة دفع تلقائية — تتطلب ربط حساب التاجر")
   methods.forEach{m->content.addView(text("•  $m",14f,Color.rgb(224,211,239)),LinearLayout.LayoutParams(-1,dp(30)))}
   content.addView(text("طلبات الشحن اليدوية تبقى معلّقة حتى تتحقق الإدارة من التحويل. الدفع التلقائي لا يُفعّل قبل ربط بوابة دفع معتمدة.",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
  }
@@ -121,11 +121,11 @@ class WalletActivity:Activity(){
   box.addView(text("الباقة: "+String.format("%,d",p.optLong("diamonds"))+" ماسة",16f,ink,true))
   box.addView(text("المبلغ: "+String.format("%,d",p.optLong("amount_iqd"))+" دينار عراقي",14f,ink))
   val method=Spinner(this)
-  val labels=listOf("زين كاش","آسيا حوالة","USDT")
+  val labels=listOf("زين كاش","آسيا حوالة","USDT","بوابة دفع تلقائية")
   method.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,labels)
   method.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener{
    override fun onNothingSelected(parent:android.widget.AdapterView<*>?){}
-   override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long){selectedMethod=listOf("zain_cash","asia_hawala","usdt")[position]}
+   override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long){selectedMethod=listOf("zain_cash","asia_hawala","usdt","gateway")[position]}
   }
   box.addView(text("اختر طريقة الدفع",13f,ink,true));box.addView(method)
   val ref=EditText(this).apply{hint="رقم الحوالة / مرجع التحويل";textSize=14f}
