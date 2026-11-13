@@ -70,26 +70,23 @@ class HomeActivity : Activity() {
         header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)))
         content.addView(header,LinearLayout.LayoutParams(-1,dp(58)))
 
-        val filters=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;gravity=Gravity.CENTER_VERTICAL}
-        lateinit var refreshFilters: () -> Unit
-        fun filterChip(title:String,mode:String):TextView {
-            val chip=TextView(this)
-            chip.text=title
-            chip.textSize=12f
-            chip.gravity=Gravity.CENTER
-            chip.setPadding(dp(16),dp(9),dp(16),dp(9))
-            chip.background=GradientDrawable().apply{setColor(if(filterMode==mode)accent else Color.WHITE);cornerRadius=dp(18).toFloat();if(filterMode!=mode)setStroke(dp(1),Color.rgb(232,230,240))}
-            chip.setTextColor(if(filterMode==mode)Color.WHITE else muted)
-            chip.typeface=if(filterMode==mode)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            chip.setOnClickListener{filterMode=mode;refreshFilters();buildCards()}
-            return chip
+        val sectionHeader=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(2),dp(10),dp(2),dp(5))
         }
-        refreshFilters = {
-            filters.removeAllViews()
-            filters.addView(filterChip("الأكثر شعبية","popular"))
-        }
-        refreshFilters()
-        content.addView(filters)
+        sectionHeader.addView(TextView(this).apply{
+            text="الغرف المباشرة"
+            textSize=17f
+            setTextColor(ink)
+            typeface=Typeface.DEFAULT_BOLD
+        })
+        sectionHeader.addView(TextView(this).apply{
+            text="اكتشف الأحاديث وانضم إلى أصدقائك"
+            textSize=11f
+            setTextColor(muted)
+        })
+        content.addView(sectionHeader,LinearLayout.LayoutParams(-1,-2))
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(-dp(5),dp(8),-dp(5),0)})
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
@@ -165,7 +162,7 @@ class HomeActivity : Activity() {
         val width=(resources.displayMetrics.widthPixels-dp(42))/2
         val imageHeight=(width*1.02f).toInt()
         val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
-        val visible=if(filterMode=="popular")filtered.sortedByDescending{it.count}else filtered.filter{it.count>0}
+        val visible=filtered.filter{it.count>0}.sortedByDescending{it.count}
         if(visible.isEmpty()){
             roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
             return
@@ -184,27 +181,6 @@ class HomeActivity : Activity() {
                 setPadding(dp(9),dp(6),dp(9),dp(6));background=shape(0x99000000.toInt(),16)
             }
             frame.addView(overlay,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
-            val topBadge=LinearLayout(this).apply{
-                orientation=LinearLayout.HORIZONTAL
-                layoutDirection=View.LAYOUT_DIRECTION_LTR
-                gravity=Gravity.CENTER
-                setPadding(dp(8),dp(4),dp(8),dp(4))
-                background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(255,91,45),Color.rgb(225,43,36))).apply{cornerRadius=dp(14).toFloat()}
-                elevation=dp(3).toFloat()
-                isClickable=false
-            }
-            topBadge.addView(TextView(this).apply{
-                text="TOP";textSize=11f;typeface=Typeface.DEFAULT_BOLD
-                setTextColor(Color.WHITE);gravity=Gravity.CENTER
-            })
-            val fire=TextView(this).apply{
-                text=" 🔥";textSize=13f;gravity=Gravity.CENTER
-                setPadding(dp(2),0,0,0)
-            }
-            topBadge.addView(fire)
-            frame.addView(topBadge,FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.RIGHT).apply{setMargins(0,dp(8),dp(8),0)})
-            ObjectAnimator.ofFloat(fire,View.SCALE_X,1f,1.28f).apply{duration=480;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-            ObjectAnimator.ofFloat(fire,View.SCALE_Y,1f,1.28f).apply{duration=480;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
             if(!room.imageUrl.isNullOrBlank()){
                 loadRoomCover(cover,room.imageUrl)
             }
