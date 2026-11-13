@@ -27,6 +27,7 @@
         <activity android:name=".MessagesActivity" android:exported="false" />
         <activity android:name=".DirectChatActivity" android:exported="false" />
         <activity android:name=".InventoryActivity" android:exported="false" />
+        <activity android:name=".WalletActivity" android:exported="false" />
         <activity android:name=".MalakWelcomeActivity" android:exported="false" />
         <activity android:name=".RegisterActivity" android:exported="false" />
         <activity android:name=".LoginActivity" android:exported="false" />
