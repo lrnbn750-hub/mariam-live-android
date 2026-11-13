@@ -28,6 +28,7 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 
 class RoomActivity : Activity() {
  private lateinit var room: Room
@@ -1622,7 +1623,7 @@ private class CircularAudioWaveView(context:android.content.Context):View(contex
   for(i in 0 until 48){
    val angle=(Math.PI*2.0*i/48.0)-Math.PI/2.0
    val pulse=(kotlin.math.sin(phase+i*0.58)+1.0)/2.0
-   val length=(2.0+strength*5.0+pulse*strength*3.0)*density
+   val length=((2.0+strength*5.0+pulse*strength*3.0)*density).toFloat()
    val r1=base
    val r2=base+length
    val x1=cx+kotlin.math.cos(angle).toFloat()*r1
