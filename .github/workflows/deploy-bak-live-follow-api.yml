@@ -1,0 +1,74 @@
+name: Deploy BAK LIVE follow API
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - branding/bak-live-package
+    paths:
+      - backend/profile-route.js
+      - backend/follows-migration.sql
+      - .github/workflows/deploy-bak-live-follow-api.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-follow-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout BAK LIVE branch
+        uses: actions/checkout@v4
+        with:
+          ref: branding/bak-live-package
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload follow API and migration
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 \
+            backend/profile-route.js backend/follows-migration.sql \
+            mariam-admin@185.174.252.118:/tmp/
+
+      - name: Migrate database, install API, and restart safely
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 \
+            mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME"
+          test -n "$DB_USER"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/follows-migration.sql
+          rm -f /tmp/follows-migration.sql
+          test -f src/routes/profile.js
+          backup="src/routes/profile.js.backup-follows-$(date +%Y%m%d%H%M%S)"
+          cp -a src/routes/profile.js "$backup"
+          install -o mariam-admin -g mariam-admin -m 640 /tmp/profile-route.js src/routes/profile.js
+          rm -f /tmp/profile-route.js
+          node --check src/routes/profile.js
+          sudo -n /usr/local/sbin/restart-mariam-live
+          healthy=0
+          for attempt in $(seq 1 15); do
+            if curl -fsS --max-time 3 http://127.0.0.1:3000/api/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          test "$healthy" -eq 1
+          echo "BAK LIVE follow API deployed and health check passed."
+          REMOTE
