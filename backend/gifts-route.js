@@ -61,7 +61,7 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
     const client = await db.connect();
     try {
       await client.query("BEGIN");
-      const prior = await client.query("SELECT id FROM voice_room_gift_events WHERE event_key=$1", ["gift:" + requestKey]);
+      const prior = await client.query("SELECT id FROM voice_room_gift_events WHERE event_key=$1", ["gift:" + String(req.userId) + ":" + requestKey]);
       if (prior.rows.length) {
         await client.query("ROLLBACK");
         return res.status(409).json({ error: "تمت معالجة هذا الطلب مسبقاً" });
@@ -131,7 +131,7 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
          WHERE user_id=$1`,
         [recipientId, diamonds.toString(), creatorCents.toString()]
       );
-      const eventKey = "gift:" + requestKey;
+      const eventKey = "gift:" + String(req.userId) + ":" + requestKey;
       const event = await client.query(
         `INSERT INTO voice_room_gift_events
           (room_id,sender_id,recipient_id,gift_id,quantity,total_coins,diamonds_awarded,creator_earnings_usd_cents,platform_share_usd_cents,event_key)
