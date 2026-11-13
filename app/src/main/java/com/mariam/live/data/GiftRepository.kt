@@ -36,7 +36,7 @@ class GiftRepository {
             parsed += Gift(
                 id = item.optString("gift_id"),
                 name = item.optString("name"),
-                imageUrl = item.optString("image_url"),
+                imageUrl = item.optString("image_url").ifBlank { item.optString("animation_url") },
                 price = item.optLong("price_coins"),
                 animationUrl = item.optString("animation_url")
             )
