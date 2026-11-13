@@ -685,6 +685,7 @@ class RoomActivity : Activity() {
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
+      maxWidth=(resources.displayMetrics.widthPixels*0.42f).toInt()
       includeFontPadding=false
      },LinearLayout.LayoutParams(-2,dp(21)))
      bubble.addView(senderLine,LinearLayout.LayoutParams(-2,-2))
@@ -696,8 +697,6 @@ class RoomActivity : Activity() {
       gravity=Gravity.END
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
       maxWidth=maxBubbleWidth
-      maxLines=8
-      ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
       setLineSpacing(dp(2).toFloat(),1f)
       setPadding(0,dp(5),0,0)
