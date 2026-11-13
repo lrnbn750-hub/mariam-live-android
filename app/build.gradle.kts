@@ -41,6 +41,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
 
+    implementation("com.airbnb.android:lottie:6.6.2")
     implementation("com.airbnb.android:lottie-compose:6.6.2")
     implementation("io.coil-kt:coil-compose:2.7.0")
 
