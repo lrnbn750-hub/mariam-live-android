@@ -28,7 +28,7 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.FlowCollector
+import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
  private lateinit var room: Room
@@ -959,24 +959,22 @@ class RoomActivity : Activity() {
   speakerEventsJob?.cancel()
   speakerEventsJob=scope.launch{
    try{
-    room.events.collect(object:FlowCollector<RoomEvent>{
-     override suspend fun emit(event:RoomEvent){
-      if(event is RoomEvent.ActiveSpeakersChanged){
-       val fresh=HashMap<String,Float>()
-       for(participant in event.speakers){
-        val identity=participant.identity?.value ?: continue
-        if(participant.isSpeaking){
-         fresh[identity]=participant.audioLevel.toFloat().coerceIn(0f,1f).coerceAtLeast(0.18f)
-        }
-       }
-       activeSpeakerLevels.clear()
-       activeSpeakerLevels.putAll(fresh)
-       for((userId,wave) in speakerWaveViews){
-        wave.setLevel(activeSpeakerLevels[userId]?:0f)
+    room.events.collect{event->
+     if(event is RoomEvent.ActiveSpeakersChanged){
+      val fresh=HashMap<String,Float>()
+      for(participant in event.speakers){
+       val identity=participant.identity?.value ?: continue
+       if(participant.isSpeaking){
+        fresh[identity]=participant.audioLevel.toFloat().coerceIn(0f,1f).coerceAtLeast(0.18f)
        }
       }
+      activeSpeakerLevels.clear()
+      activeSpeakerLevels.putAll(fresh)
+      for((userId,wave) in speakerWaveViews){
+       wave.setLevel(activeSpeakerLevels[userId]?:0f)
+      }
      }
-    })
+    }
    }catch(_:CancellationException){}
    catch(_:Exception){}
   }
