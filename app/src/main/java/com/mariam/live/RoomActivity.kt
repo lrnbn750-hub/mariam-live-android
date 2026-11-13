@@ -639,18 +639,7 @@ class RoomActivity : Activity() {
       layoutDirection=View.LAYOUT_DIRECTION_RTL
       gravity=Gravity.CENTER_VERTICAL
       setPadding(dp(11),dp(8),dp(11),dp(8))
-      background=GradientDrawable(
-       GradientDrawable.Orientation.TL_BR,
-       intArrayOf(
-        Color.rgb(112,8,18),
-        Color.rgb(67,5,14),
-        Color.rgb(38,7,14)
-       )
-      ).apply{
-       cornerRadius=dp(16).toFloat()
-       setStroke(dp(1.4f.toInt()),Color.rgb(235,164,65))
-       setDither(true)
-      }
+      background=ChatBubbleGifDrawable(this@RoomActivity,R.drawable.file_000000006564820aa7558363346feb4c)
       elevation=dp(3).toFloat()
      }
      val senderLine=LinearLayout(this@RoomActivity).apply{
@@ -2029,6 +2018,48 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  override fun setAlpha(a:Int){p.alpha=a};override fun setColorFilter(f:ColorFilter?){p.colorFilter=f};override fun getOpacity()=PixelFormat.TRANSLUCENT;override fun getIntrinsicWidth()=size;override fun getIntrinsicHeight()=size
 }
 
+
+/** Animated red chat bubble background; message text is drawn by live TextViews above it. */
+private class ChatBubbleGifDrawable(
+ private val context:android.content.Context,
+ resourceId:Int
+):Drawable(){
+ private val movie:Movie?=try{
+  context.resources.openRawResource(resourceId).use{Movie.decodeStream(it)}
+ }catch(_:Exception){null}
+ private val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+ private var startedAt=0L
+ private val frame=Runnable{invalidateSelf()}
+ override fun draw(canvas:Canvas){
+  val gif=movie?:return
+  val b=bounds
+  if(b.width()<=0||b.height()<=0)return
+  if(startedAt==0L)startedAt=android.os.SystemClock.uptimeMillis()
+  val duration=gif.duration().takeIf{it>0}?:1000
+  gif.setTime(((android.os.SystemClock.uptimeMillis()-startedAt)%duration).toInt())
+  val sx=b.width().toFloat()/gif.width().coerceAtLeast(1)
+  val sy=b.height().toFloat()/gif.height().coerceAtLeast(1)
+  val scale=maxOf(sx,sy)
+  val save=canvas.save()
+  canvas.clipRect(b)
+  canvas.translate(b.left+(b.width()-gif.width()*scale)/2f,b.top+(b.height()-gif.height()*scale)/2f)
+  canvas.scale(scale,scale)
+  gif.draw(canvas,0f,0f,paint)
+  canvas.restoreToCount(save)
+  scheduleSelf(frame,android.os.SystemClock.uptimeMillis()+33L)
+ }
+ override fun setAlpha(alpha:Int){paint.alpha=alpha}
+ override fun setColorFilter(colorFilter:ColorFilter?){paint.colorFilter=colorFilter}
+ @Deprecated("Deprecated in Android")
+ override fun getOpacity()=PixelFormat.TRANSLUCENT
+ override fun getIntrinsicWidth()=movie?.width()?:-1
+ override fun getIntrinsicHeight()=movie?.height()?:-1
+ override fun setVisible(visible:Boolean,restart:Boolean):Boolean{
+  if(visible&&restart)startedAt=android.os.SystemClock.uptimeMillis()
+  if(!visible)unscheduleSelf(frame)
+  return super.setVisible(visible,restart)
+ }
+}
 
 /** إطار GIF الملكي لمقعد صاحب المستوى 100. */
 private class RoyalSeatGifView(context:android.content.Context):View(context){
