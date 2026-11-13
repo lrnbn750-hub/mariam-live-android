@@ -337,13 +337,13 @@ class RoomActivity : Activity() {
   scope.launch{
    try{
     val result=withContext(Dispatchers.IO){
-     AuthApi.post("/api/friends/requests",JSONObject().put("user_id",roomOwnerUserId),authToken)
+     AuthApi.post("/api/follows/$roomOwnerUserId",JSONObject(),authToken)
     }
     if(result.status in 200..299){
      followRequestSent=true
      button.text="✓"
      button.background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,139,101))}
-     Toast.makeText(this@RoomActivity,"تم إرسال طلب المتابعة",Toast.LENGTH_SHORT).show()
+     Toast.makeText(this@RoomActivity,"أصبحت تتابع صاحب الغرفة",Toast.LENGTH_SHORT).show()
     }else{
      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال الطلب"),Toast.LENGTH_SHORT).show()
      button.isEnabled=true
@@ -1129,9 +1129,9 @@ class RoomActivity : Activity() {
   button.isEnabled=false
   scope.launch{
    try{
-    val result=withContext(Dispatchers.IO){AuthApi.post("/api/friends/requests",JSONObject().put("user_id",userId),authToken)}
+    val result=withContext(Dispatchers.IO){AuthApi.post("/api/follows/$userId",JSONObject(),authToken)}
     if(result.status in 200..299){
-     button.text="✓ تم الإرسال"
+     button.text="✓ تتابعه"
      button.setBackgroundColor(Color.rgb(80,145,105))
     }else{
      button.isEnabled=true
