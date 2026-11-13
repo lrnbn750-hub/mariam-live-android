@@ -78,6 +78,8 @@ class RoomActivity : Activity() {
  private var previousMemberIds:MutableSet<String>?=null
  private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
  private val joinNotices=ArrayList<RoomJoinNotice>()
+ private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
+ private var joinToastShowing=false
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(91,72,145))}
@@ -681,66 +683,22 @@ class RoomActivity : Activity() {
      }
      chatMessages.addView(line,LinearLayout.LayoutParams(-1,-2))
     }
-    // Join events are rendered inside the same scrollable chat stream, not fixed on screen.
+    // Join notifications in chat stay ordinary text-only system comments.
     val now=System.currentTimeMillis()
     joinNotices.removeAll{now-it.createdAt>12000L}
     for(notice in joinNotices.takeLast(12)){
-     val isLevel100=notice.level>=100
-     val event=LinearLayout(this@RoomActivity).apply{
-      orientation=LinearLayout.HORIZONTAL
-      gravity=Gravity.CENTER_VERTICAL
-      layoutDirection=View.LAYOUT_DIRECTION_RTL
-      setPadding(dp(10),dp(if(isLevel100)9 else 7),dp(10),dp(if(isLevel100)9 else 7))
-      background=if(isLevel100) GradientDrawable(
-       GradientDrawable.Orientation.LEFT_RIGHT,
-       intArrayOf(Color.argb(238,52,31,66),Color.argb(242,31,23,38),Color.argb(238,79,48,18))
-      ).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(225,180,79))}
-      else GradientDrawable().apply{
-       setColor(Color.argb(165,22,20,31))
-       cornerRadius=dp(15).toFloat()
-       setStroke(dp(1),Color.argb(65,255,255,255))
-      }
-      elevation=dp(if(isLevel100)5 else 1).toFloat()
-     }
-     val avatar=ImageView(this@RoomActivity).apply{
-      scaleType=ImageView.ScaleType.CENTER_CROP
+     val event=TextView(this@RoomActivity).apply{
+      text="${notice.name} انضم إلى الغرفة"
+      textSize=11.5f
+      gravity=Gravity.CENTER
+      setTextColor(Color.rgb(225,219,232))
+      setPadding(dp(9),dp(5),dp(9),dp(5))
       background=GradientDrawable().apply{
-       shape=GradientDrawable.OVAL
-       setColor(Color.rgb(55,43,69))
-       setStroke(dp(if(isLevel100)2 else 1),if(isLevel100)Color.rgb(226,183,87) else Color.argb(110,255,255,255))
+       setColor(Color.argb(95,28,25,37))
+       cornerRadius=dp(12).toFloat()
       }
-      clipToOutline=true
-      val url=notice.avatarUrl
-      if(url.isNotBlank()){tag=url;loadAvatarInto(this,url)}
-      else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(20)))
      }
-     event.addView(avatar,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(8)})
-     if(isLevel100){
-      val lv=TextView(this@RoomActivity).apply{
-       text="LV 100";textSize=10f;gravity=Gravity.CENTER
-       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
-       setTextColor(Color.rgb(255,226,157))
-       setPadding(dp(8),dp(4),dp(8),dp(4))
-       background=GradientDrawable().apply{
-        setColor(Color.argb(95,211,160,53));cornerRadius=dp(10).toFloat()
-        setStroke(dp(1),Color.rgb(230,185,91))
-       }
-      }
-      event.addView(lv,LinearLayout.LayoutParams(-2,dp(25)).apply{marginEnd=dp(8)})
-     }
-     val title=TextView(this@RoomActivity).apply{
-      text=if(isLevel100)"${notice.name} دخل الغرفة" else "${notice.name} انضم إلى الغرفة"
-      textSize=if(isLevel100)13f else 11.5f;gravity=Gravity.CENTER_VERTICAL;maxLines=2
-      setTextColor(if(isLevel100)Color.rgb(255,224,158) else Color.rgb(239,237,245))
-      typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
-     }
-     event.addView(title,LinearLayout.LayoutParams(0,-2,1f))
-     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(2),dp(4),dp(2),dp(4))})
-     if(isLevel100 && now-notice.createdAt<1800L){
-      event.alpha=0f;event.translationY=dp(18).toFloat()
-      event.animate().alpha(1f).translationY(0f).setDuration(420)
-       .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
-     }
+     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(2),dp(2),dp(2),dp(2))})
     }
     chatScroll.post{
      if(wasAtBottom)chatScroll.fullScroll(View.FOCUS_DOWN)
@@ -1129,29 +1087,32 @@ class RoomActivity : Activity() {
  private var membershipWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
+  pendingJoinToasts.add(notice)
+  if(!joinToastShowing)showNextRoomJoinToast()
+ }
+
+ private fun showNextRoomJoinToast(){
+  if(joinToastShowing || pendingJoinToasts.isEmpty() || isFinishing || leaving)return
+  if(!::roomOverlayLayer.isInitialized || !::grid.isInitialized)return
+  joinToastShowing=true
+  val notice=pendingJoinToasts.removeAt(0)
   val isLevel100=notice.level>=100
   val card=LinearLayout(this).apply{
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
    layoutDirection=View.LAYOUT_DIRECTION_RTL
-   setPadding(dp(12),dp(10),dp(14),dp(10))
+   setPadding(dp(10),dp(8),dp(12),dp(8))
    background=if(isLevel100) GradientDrawable(
     GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.rgb(66,39,78),Color.rgb(31,25,39),Color.rgb(76,51,20))
-   ).apply{
-    cornerRadius=dp(20).toFloat()
-    setStroke(dp(1),Color.rgb(232,190,94))
-   } else GradientDrawable(
+    intArrayOf(Color.rgb(67,39,77),Color.rgb(31,25,40),Color.rgb(79,53,21))
+   ).apply{cornerRadius=dp(17).toFloat();setStroke(dp(1),Color.rgb(231,190,96))}
+   else GradientDrawable(
     GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.rgb(66,49,87),Color.rgb(28,25,39))
-   ).apply{
-    cornerRadius=dp(18).toFloat()
-    setStroke(dp(1),Color.argb(105,220,196,255))
-   }
-   elevation=dp(if(isLevel100)8 else 4).toFloat()
+    intArrayOf(Color.rgb(65,48,84),Color.rgb(27,24,38))
+   ).apply{cornerRadius=dp(16).toFloat();setStroke(dp(1),Color.argb(110,220,196,255))}
+   elevation=dp(if(isLevel100)7 else 3).toFloat()
    alpha=0f
-   translationX=dp(360).toFloat()
-   importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_YES
+   translationX=-(resources.displayMetrics.widthPixels.toFloat())
    contentDescription="${notice.name} انضم إلى الغرفة، المستوى ${notice.level}"
   }
   val avatar=ImageView(this).apply{
@@ -1162,57 +1123,64 @@ class RoomActivity : Activity() {
     setStroke(dp(if(isLevel100)2 else 1),if(isLevel100)Color.rgb(244,205,115) else Color.argb(120,255,255,255))
    }
    clipToOutline=true
-   val url=notice.avatarUrl
-   if(url.isNotBlank()){tag=url;loadAvatarInto(this,url)}
-   else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(22)))
+   if(notice.avatarUrl.isNotBlank()){tag=notice.avatarUrl;loadAvatarInto(this,notice.avatarUrl)}
+   else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(20)))
   }
-  card.addView(avatar,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(10)})
+  card.addView(avatar,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(8)})
   val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
-  val topLine=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-  topLine.addView(TextView(this).apply{
-   text=notice.name
-   textSize=13f
-   maxLines=1
+  val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+  line.addView(TextView(this).apply{
+   text=notice.name;textSize=12.5f;maxLines=1
    ellipsize=android.text.TextUtils.TruncateAt.END
    setTextColor(if(isLevel100)Color.rgb(255,224,160) else Color.WHITE)
    typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
-  },LinearLayout.LayoutParams(0,dp(22),1f))
-  topLine.addView(TextView(this).apply{
-   text="LV ${notice.level}"
-   textSize=10f
-   gravity=Gravity.CENTER
+  },LinearLayout.LayoutParams(0,dp(21),1f))
+  line.addView(TextView(this).apply{
+   text="LV ${notice.level}";textSize=9.5f;gravity=Gravity.CENTER
    setTextColor(if(isLevel100)Color.rgb(255,228,166) else Color.rgb(231,215,255))
    typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
-   setPadding(dp(8),dp(3),dp(8),dp(3))
+   setPadding(dp(7),dp(3),dp(7),dp(3))
    background=GradientDrawable().apply{
-    cornerRadius=dp(10).toFloat()
+    cornerRadius=dp(9).toFloat()
     setColor(if(isLevel100)Color.argb(105,214,164,57) else Color.argb(85,148,112,185))
     setStroke(dp(1),if(isLevel100)Color.rgb(230,187,93) else Color.argb(110,210,190,245))
    }
-  },LinearLayout.LayoutParams(-2,dp(23)))
-  info.addView(topLine,LinearLayout.LayoutParams(-1,-2))
+  },LinearLayout.LayoutParams(-2,dp(21)))
+  info.addView(line)
   info.addView(TextView(this).apply{
-   text=if(isLevel100)"وصل أحد كبار الداعمين إلى الغرفة" else "انضم إلى الغرفة"
-   textSize=10.5f
+   text=if(isLevel100)"انضم إلى الغرفة" else "دخل الغرفة"
+   textSize=10f
    setTextColor(if(isLevel100)Color.rgb(244,211,153) else Color.rgb(210,204,222))
-   setPadding(0,dp(3),0,0)
+   setPadding(0,dp(1),0,0)
   })
   card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-  val width=resources.displayMetrics.widthPixels-dp(28)
-  val params=FrameLayout.LayoutParams(width,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{
-   bottomMargin=dp(88)
-   marginStart=dp(14);marginEnd=dp(14)
+  val width=resources.displayMetrics.widthPixels-dp(42)
+  val params=FrameLayout.LayoutParams(width,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{
+   marginStart=dp(21);marginEnd=dp(21)
   }
   roomOverlayLayer.addView(card,params)
-  card.animate().alpha(1f).translationX(0f).setDuration(380)
-   .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
-   .withEndAction{
-    card.postDelayed({
-     if(isFinishing || card.parent==null)return@postDelayed
-     card.animate().alpha(0f).translationX(-dp(320).toFloat()).setDuration(300)
-      .withEndAction{roomOverlayLayer.removeView(card)}.start()
-    },2600)
-   }.start()
+  // Anchor the flying banner just below the seats, not over the chat messages.
+  roomOverlayLayer.post{
+   if(card.parent==null)return@post
+   val seatPos=IntArray(2);val overlayPos=IntArray(2)
+   grid.getLocationOnScreen(seatPos);roomOverlayLayer.getLocationOnScreen(overlayPos)
+   params.topMargin=(seatPos[1]-overlayPos[1]+grid.height+dp(7)).coerceAtLeast(dp(110))
+   card.layoutParams=params
+   card.animate().alpha(1f).translationX(0f).setDuration(430)
+    .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
+    .withEndAction{
+     card.postDelayed({
+      if(card.parent==null)return@postDelayed
+      card.animate().alpha(0f).translationX(-width.toFloat()).setDuration(430)
+       .setInterpolator(android.view.animation.AccelerateInterpolator())
+       .withEndAction{
+        roomOverlayLayer.removeView(card)
+        joinToastShowing=false
+        showNextRoomJoinToast()
+       }.start()
+     },650)
+    }.start()
+  }
  }
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
