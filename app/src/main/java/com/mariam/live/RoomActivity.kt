@@ -616,10 +616,10 @@ class RoomActivity : Activity() {
     val messages=result.body.optJSONArray("messages")?:JSONArray()
     // Refresh the equipped bubble skins for visible senders at most every 15 seconds.
     val nowForBubbleSync=System.currentTimeMillis()
-    if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
+    if(nowForBubbleSync-chatBubbleSelectionRefreshAt>3000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
      for(index in 0 until messages.length()){
-      val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } }.orEmpty()
+      val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { msg.optString("sender_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } } }.orEmpty()
       if(senderId.isNotBlank())senderIds.add(senderId)
      }
      if(senderIds.isNotEmpty()){
@@ -659,15 +659,13 @@ class RoomActivity : Activity() {
      val mine=item.optString("user_id")==currentUserId
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
-     val senderId=item.optString("user_id").ifBlank { senderUser?.optString("id").orEmpty() }
+     val senderId=item.optString("user_id").ifBlank { item.optString("sender_id").ifBlank { senderUser?.optString("id").orEmpty() } }
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
-     val bubbleWidth=(resources.displayMetrics.widthPixels*0.86f).toInt()
-     val estimatedLines=((body.length+27)/28).coerceIn(1,10)
-     val bubbleHeight=dp(48+estimatedLines*15)
+     val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
       background=ChatBubbleStyleDrawable(chatBubbleStylesByUser[senderId] ?: "chat-bubble-dragon")
@@ -705,11 +703,11 @@ class RoomActivity : Activity() {
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
-      maxWidth=(bubbleWidth*0.53f).toInt()
+      maxWidth=(maxBubbleWidth*0.72f).toInt()
       includeFontPadding=false
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-2,dp(22)))
-     content.addView(senderLine,LinearLayout.LayoutParams(-1,dp(21)))
+     content.addView(senderLine,LinearLayout.LayoutParams(-2,dp(21)))
      content.addView(TextView(this@RoomActivity).apply{
       text=body
       textSize=13f
@@ -718,15 +716,15 @@ class RoomActivity : Activity() {
       gravity=Gravity.CENTER
       textAlignment=View.TEXT_ALIGNMENT_CENTER
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
-      maxWidth=(bubbleWidth*0.65f).toInt()
+      maxWidth=(maxBubbleWidth*0.76f).toInt()
       maxLines=10
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
       setLineSpacing(dp(2).toFloat(),1f)
       setShadowLayer(2f,0f,1f,Color.BLACK)
-     },LinearLayout.LayoutParams(-1,0,1f))
+     },LinearLayout.LayoutParams(-2,-2))
      val contentParams=FrameLayout.LayoutParams(
-      (bubbleWidth*0.76f).toInt(),-1,Gravity.CENTER
+      -2,-2,Gravity.CENTER
      ).apply{
       leftMargin=dp(10);rightMargin=dp(10)
       topMargin=dp(6);bottomMargin=dp(6)
@@ -736,7 +734,7 @@ class RoomActivity : Activity() {
       orientation=LinearLayout.HORIZONTAL
       gravity=if(mine)Gravity.END else Gravity.START
       setPadding(0,dp(2),0,dp(2))
-      addView(bubble,LinearLayout.LayoutParams(bubbleWidth,bubbleHeight).apply{
+      addView(bubble,LinearLayout.LayoutParams(-2,-2).apply{
        marginStart=dp(2);marginEnd=dp(2)
       })
      }
