@@ -240,7 +240,7 @@ class ProfileActivity : Activity() {
         menuRow(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
         menuRow(R.drawable.ic_profile_events,"مركز الفعاليات"){showInfo("مركز الفعاليات")}
         sectionGap()
-        menuRow(R.drawable.ic_profile_wallet,"المحفظة"){showInfo("المحفظة")}
+        menuRow(R.drawable.ic_profile_wallet,"المحفظة"){startActivity(Intent(this,WalletActivity::class.java))}
         menuRow(R.drawable.ic_profile_bag,"الحقيبة","13"){startActivity(Intent(this,InventoryActivity::class.java))}
         menuRow(R.drawable.ic_profile_publish,"أنشر"){showInfo("أنشر")}
         sectionGap()
