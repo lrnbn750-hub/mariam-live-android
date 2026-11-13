@@ -28,6 +28,8 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
+import com.mariam.live.data.GiftRepository
+import com.mariam.live.model.Gift
 import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
@@ -81,6 +83,7 @@ class RoomActivity : Activity() {
  private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
+ private val giftRepository=GiftRepository()
  private var previousMemberIds:MutableSet<String>?=null
  private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
  private val joinNotices=ArrayList<RoomJoinNotice>()
@@ -577,9 +580,7 @@ class RoomActivity : Activity() {
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     contentDescription="فتح الهدايا"
-    setOnClickListener{
-     Toast.makeText(this@RoomActivity,"واجهة إرسال الهدايا غير مربوطة بالخادم بعد",Toast.LENGTH_SHORT).show()
-    }
+    setOnClickListener{showRoomGiftPicker()}
    }
    composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(7)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
@@ -1402,6 +1403,34 @@ class RoomActivity : Activity() {
      },1500)
     }.start()
   }
+ }
+ private fun showRoomGiftPicker(){
+  if(roomId.isBlank() || authToken.isBlank()){ Toast.makeText(this,"تعذر التحقق من الغرفة أو تسجيل الدخول",Toast.LENGTH_SHORT).show();return }
+  val recipients=(0 until roomMembers.length()).mapNotNull{roomMembers.optJSONObject(it)}
+   .filter{it.optString("user_id").isNotBlank() && it.optString("user_id")!="null" && it.optString("user_id")!=currentUserId}
+  if(recipients.isEmpty()){ loadRoomMembers(); Toast.makeText(this,"انتظر تحميل أعضاء الغرفة ثم افتح الهدايا مرة ثانية",Toast.LENGTH_SHORT).show();return }
+  val names=recipients.map{it.optString("display_name").ifBlank{it.optString("username","مستخدم")}}.toTypedArray()
+  AlertDialog.Builder(this).setTitle("اختر مستلم الهدية").setItems(names){_,which->loadGiftCatalogAndChoose(recipients[which].optString("user_id"),names[which])}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun loadGiftCatalogAndChoose(recipientId:String,recipientName:String){
+  scope.launch{ try {
+   val response=withContext(Dispatchers.IO){giftRepository.loadCatalog(authToken)}
+   if(response.status !in 200..299){Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر تحميل الهدايا"),Toast.LENGTH_LONG).show();return@launch}
+   val gifts=giftRepository.getGifts()
+   if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"لا توجد هدايا متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
+   val labels=gifts.map{it.name+" • "+it.price+" عملة"}.toTypedArray()
+   AlertDialog.Builder(this@RoomActivity).setTitle("الهدايا إلى "+recipientName).setItems(labels){_,which->confirmGiftSend(gifts[which],recipientId,recipientName)}.setNegativeButton("إلغاء",null).show()
+  }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()} }
+ }
+ private fun confirmGiftSend(gift:Gift,recipientId:String,recipientName:String){
+  AlertDialog.Builder(this).setTitle("إرسال "+gift.name).setMessage("سيتم خصم "+gift.price+" عملة وإرسالها إلى "+recipientName+". هل تريد المتابعة؟").setPositiveButton("إرسال"){_,_->sendRoomGift(gift,recipientId)}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun sendRoomGift(gift:Gift,recipientId:String){
+  scope.launch{ try {
+   val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,1,authToken)}
+   if(response.status in 200..299) Toast.makeText(this@RoomActivity,"تم إرسال "+gift.name+" بنجاح",Toast.LENGTH_LONG).show()
+   else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()
+  }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()} }
  }
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
