@@ -47,6 +47,7 @@ class RoomActivity : Activity() {
  private lateinit var ownerIdView:TextView
  private var ownerProfileRequested=false
  private var roomOwnerUserId=""
+ private var currentUserLevel=1
  private var followRequestSent=false
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
@@ -606,8 +607,10 @@ class RoomActivity : Activity() {
      val mine=item.optString("user_id")==currentUserId
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
-     val senderLevel=(if(item.has("level"))item.optInt("level",1) else
-      if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
+     val senderId=item.optString("user_id")
+     val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
+      else (if(item.has("level"))item.optInt("level",1) else
+       if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
      val bubble=LinearLayout(this@RoomActivity).apply{
       orientation=1
@@ -716,6 +719,13 @@ class RoomActivity : Activity() {
    try{
     val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)}
     currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")
+   }catch(_:Exception){}
+   // The room chat payload may omit level; load the signed-in user's authoritative level.
+   try{
+    val levelResponse=withContext(Dispatchers.IO){AuthApi.get("/api/levels/me",authToken)}
+    if(levelResponse.status in 200..299){
+     currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
+    }
    }catch(_:Exception){}
    loadSeats()
    loadRoomMembers()
