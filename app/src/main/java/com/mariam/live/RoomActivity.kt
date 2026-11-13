@@ -26,6 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
+import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
 
 class RoomActivity : Activity() {
@@ -48,6 +49,9 @@ class RoomActivity : Activity() {
  private var loadedBackgroundUrl=""
  private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
  private var seatRefreshJob:Job?=null
+ private var speakerEventsJob:Job?=null
+ private val activeSpeakerLevels=HashMap<String,Float>()
+ private val speakerWaveViews=HashMap<String,CircularAudioWaveView>()
  private val avatarBitmaps=HashMap<String,Bitmap>()
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
@@ -763,6 +767,7 @@ class RoomActivity : Activity() {
 
  private fun drawSeats(){
   grid.removeAllViews()
+  speakerWaveViews.clear()
   for(row in 0..1){
    val line=LinearLayout(this).apply{orientation=0}
    for(col in 0..3){
@@ -809,14 +814,26 @@ class RoomActivity : Activity() {
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false
      clipToPadding=false
-     background=GradientDrawable().apply{
-      shape=GradientDrawable.OVAL
-      setColor(Color.TRANSPARENT)
-      setStroke(dp(1),Color.rgb(190,194,188))
+     background=null
+     val wave=CircularAudioWaveView(this@RoomActivity)
+     if(uid!=null){
+      speakerWaveViews[uid]=wave
+      wave.setLevel(activeSpeakerLevels[uid]?:0f)
      }
-     addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
+     addView(wave,FrameLayout.LayoutParams(-1,-1))
+     val photoFrame=FrameLayout(this@RoomActivity).apply{
+      clipChildren=false
+      clipToPadding=false
+      background=GradientDrawable().apply{
+       shape=GradientDrawable.OVAL
+       setColor(Color.TRANSPARENT)
+       setStroke(dp(1),Color.rgb(190,194,188))
+      }
+      addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
+     }
+     addView(photoFrame,FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(54),dp(54)).apply{bottomMargin=dp(1)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(68),dp(68)).apply{bottomMargin=dp(1)})
     if(occupied){
      tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
       maxLines=1
@@ -828,7 +845,7 @@ class RoomActivity : Activity() {
      tile.addView(label((i+1).toString(),10f,Color.rgb(125,130,123),false))
     }
     tile.setOnClickListener{seatClick(seat,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(78),1f).apply{
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(90),1f).apply{
      setMargins(dp(1),dp(1),dp(1),dp(1))
     })
    }
@@ -924,6 +941,7 @@ class RoomActivity : Activity() {
      throw Exception(reason + if(detail.isNotBlank()) " ($detail/$code)" else " (HTTP ${r.status})")
     }
     room.connect(r.body.optString("serverUrl"),r.body.optString("participantToken"))
+    startSpeakerTracking()
     microphoneEnabled=r.body.optBoolean("canPublish",false)
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     connected=true
@@ -934,6 +952,30 @@ class RoomActivity : Activity() {
     status.text=e.message?:"تعذر الاتصال"
     stopService(service)
    }
+  }
+ }
+ private fun startSpeakerTracking(){
+  speakerEventsJob?.cancel()
+  speakerEventsJob=scope.launch{
+   try{
+    room.events.collect{event->
+     if(event is RoomEvent.ActiveSpeakersChanged){
+      val fresh=HashMap<String,Float>()
+      for(participant in event.speakers){
+       val identity=participant.identity?.value ?: continue
+       if(participant.isSpeaking){
+        fresh[identity]=participant.audioLevel.coerceIn(0f,1f).coerceAtLeast(0.18f)
+       }
+      }
+      activeSpeakerLevels.clear()
+      activeSpeakerLevels.putAll(fresh)
+      for((userId,wave) in speakerWaveViews){
+       wave.setLevel(activeSpeakerLevels[userId]?:0f)
+      }
+     }
+    }
+   }catch(_:CancellationException){}
+   catch(_:Exception){}
   }
  }
  private var membershipWatch:Job?=null
@@ -1541,9 +1583,55 @@ class RoomActivity : Activity() {
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){
   stopRoomMusic(restoreMic=false)
+  speakerEventsJob?.cancel()
+  activeSpeakerLevels.clear()
+  speakerWaveViews.clear()
   seatRefreshJob?.cancel()
   scope.cancel()
   super.onDestroy()
+ }
+}
+
+/** موجة صوتية دائرية بنفسجية حول صورة المتحدث، تتفاعل مع مستوى الصوت القادم من LiveKit. */
+private class CircularAudioWaveView(context:android.content.Context):View(context){
+ private val density=resources.displayMetrics.density
+ private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+  color=Color.rgb(190,126,255)
+  style=Paint.Style.STROKE
+  strokeCap=Paint.Cap.ROUND
+  strokeWidth=2.1f*density
+ }
+ private var level=0f
+ private var startedAt=android.os.SystemClock.uptimeMillis()
+ fun setLevel(value:Float){
+  val next=value.coerceIn(0f,1f)
+  if(kotlin.math.abs(level-next)<0.025f)return
+  level=next
+  if(level>0.02f)postInvalidateOnAnimation() else invalidate()
+ }
+ override fun onDraw(canvas:Canvas){
+  super.onDraw(canvas)
+  val strength=level
+  if(strength<=0.02f)return
+  val cx=width/2f
+  val cy=height/2f
+  val base=minOf(width,height)*0.405f
+  val phase=(android.os.SystemClock.uptimeMillis()-startedAt)/175.0
+  paint.alpha=(150+strength*105).toInt().coerceIn(0,255)
+  paint.strokeWidth=2.0f*density
+  for(i in 0 until 48){
+   val angle=(Math.PI*2.0*i/48.0)-Math.PI/2.0
+   val pulse=(kotlin.math.sin(phase+i*0.58)+1.0)/2.0
+   val length=(2.0+strength*5.0+pulse*strength*3.0)*density
+   val r1=base
+   val r2=base+length
+   val x1=cx+kotlin.math.cos(angle).toFloat()*r1
+   val y1=cy+kotlin.math.sin(angle).toFloat()*r1
+   val x2=cx+kotlin.math.cos(angle).toFloat()*r2
+   val y2=cy+kotlin.math.sin(angle).toFloat()*r2
+   canvas.drawLine(x1,y1,x2,y2,paint)
+  }
+  postInvalidateOnAnimation()
  }
 }
 
