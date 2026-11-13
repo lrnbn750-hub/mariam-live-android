@@ -118,7 +118,7 @@ class RoomActivity : Activity() {
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   val roomInfoGroup=LinearLayout(this).apply{
    orientation=1
-   translationY=dp(8).toFloat()
+   translationY=dp(24).toFloat()
   }
   roomInfoGroup.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
