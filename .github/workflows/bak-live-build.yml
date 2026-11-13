@@ -6,6 +6,7 @@ on:
     branches:
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
+      - feature/chat-bubble-wardrobe
 
 permissions:
   contents: read
