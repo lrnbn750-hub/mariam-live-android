@@ -557,11 +557,7 @@ class RoomActivity : Activity() {
    }
    composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginStart=dp(4)})
    addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
-   loadRoomMessages()
-   chatPoll?.cancel()
-   chatPoll=scope.launch{
-    while(isActive){delay(3000);loadRoomMessages()}
-   }
+
   }
 
  private fun expandRoomComposer(){
@@ -784,6 +780,13 @@ class RoomActivity : Activity() {
      currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
     }
    }catch(_:Exception){}
+   // Start chat only after identity and the authoritative level have loaded.
+   // This prevents the first frame from showing a temporary LV 1 badge.
+   chatPoll?.cancel()
+   loadRoomMessages()
+   chatPoll=launch{
+    while(isActive){delay(3000);loadRoomMessages()}
+   }
    loadSeats()
    loadRoomMembers()
    seatRefreshJob?.cancel()
