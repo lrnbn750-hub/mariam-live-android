@@ -121,6 +121,39 @@ module.exports = function registerWalletRoutes(app, db, authenticateToken) {
     }
   });
 
+  app.post("/api/admin/wallet/cashouts/:id/:decision", authenticateToken, async (req, res) => {
+    const admins = String(process.env.WALLET_ADMIN_USER_IDS || "").split(",").map(v => v.trim()).filter(Boolean);
+    if (!admins.includes(String(req.userId))) return res.status(403).json({ error: "غير مصرح" });
+    const decision = String(req.params.decision);
+    if (!["approve", "reject"].includes(decision)) return res.status(400).json({ error: "قرار غير صالح" });
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const q = await client.query("SELECT * FROM wallet_cashout_requests WHERE id=$1 FOR UPDATE", [req.params.id]);
+      if (!q.rows.length || q.rows[0].status !== "pending") {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "الطلب غير موجود أو تمت معالجته" });
+      }
+      const request = q.rows[0];
+      if (decision === "reject") {
+        await client.query("UPDATE wallet_accounts SET earnings_iqd=earnings_iqd+$2,updated_at=NOW() WHERE user_id=$1", [request.user_id,request.amount_iqd]);
+        await client.query("UPDATE wallet_cashout_requests SET status='rejected',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1", [request.id,req.userId]);
+        await client.query("UPDATE wallet_transactions SET status='rejected',description='تم رفض طلب السحب وإعادة الرصيد' WHERE reference_id=$1 AND transaction_type='cashout'", [String(request.id)]);
+      } else {
+        await client.query("UPDATE wallet_cashout_requests SET status='approved',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1", [request.id,req.userId]);
+        await client.query("UPDATE wallet_transactions SET status='completed' WHERE reference_id=$1 AND transaction_type='cashout'", [String(request.id)]);
+      }
+      await client.query("COMMIT");
+      res.json({ processed: true, status: decision === "approve" ? "approved" : "rejected" });
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      console.error("Review wallet cashout:", e.message);
+      res.status(500).json({ error: "تعذر معالجة طلب السحب" });
+    } finally {
+      client.release();
+    }
+  });
+
   // Admin-only approval: set WALLET_ADMIN_USER_IDS to comma-separated internal UUIDs.
   app.post("/api/admin/wallet/topups/:id/approve", authenticateToken, async (req, res) => {
     const admins = String(process.env.WALLET_ADMIN_USER_IDS || "").split(",").map(v => v.trim()).filter(Boolean);
