@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS voice_room_gift_events (
   total_coins bigint NOT NULL CHECK (total_coins > 0),
   diamonds_awarded bigint NOT NULL CHECK (diamonds_awarded > 0),
   creator_earnings_usd_cents bigint NOT NULL CHECK (creator_earnings_usd_cents >= 0),
+  platform_share_usd_cents bigint NOT NULL DEFAULT 0 CHECK (platform_share_usd_cents >= 0),
   event_key varchar(180) NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
