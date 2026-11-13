@@ -10,6 +10,8 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
 import android.widget.ImageView
+import com.airbnb.lottie.LottieAnimationView
+import com.airbnb.lottie.LottieDrawable
 import android.os.Build
 import android.os.Bundle
 import android.net.Uri
@@ -1436,19 +1438,29 @@ class RoomActivity : Activity() {
    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
    val icon=FrameLayout(this).apply{
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
-    addView(ImageView(this@RoomActivity).apply{
-     val giftImageRes=when(gift.id.lowercase()){
-      "rose"->R.drawable.gift_rose
-      "car"->R.drawable.gift_car
-      "lion"->R.drawable.gift_lion
-      "plane"->R.drawable.gift_plane
-      "castle"->R.drawable.gift_castle
-      else->0
-     }
-     if(giftImageRes!=0){setImageResource(giftImageRes)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
-     scaleType=ImageView.ScaleType.FIT_CENTER
-     contentDescription=gift.name
-    },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
+    if(gift.animationUrl.isNotBlank()){
+     addView(LottieAnimationView(this@RoomActivity).apply{
+      scaleType=ImageView.ScaleType.FIT_CENTER
+      contentDescription=gift.name
+      setAnimationFromUrl(AuthApi.absoluteUrl(gift.animationUrl))
+      repeatCount=LottieDrawable.INFINITE
+      playAnimation()
+     },FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+    }else{
+     addView(ImageView(this@RoomActivity).apply{
+      val giftImageRes=when(gift.id.lowercase()){
+       "rose"->R.drawable.gift_rose
+       "car"->R.drawable.gift_car
+       "lion"->R.drawable.gift_lion
+       "plane"->R.drawable.gift_plane
+       "castle"->R.drawable.gift_castle
+       else->0
+      }
+      if(giftImageRes!=0){setImageResource(giftImageRes)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
+      scaleType=ImageView.ScaleType.FIT_CENTER
+      contentDescription=gift.name
+     },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
+    }
    }
    card.addView(icon,LinearLayout.LayoutParams(dp(58),dp(58)))
    card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
@@ -1517,6 +1529,21 @@ class RoomActivity : Activity() {
    "castle"->R.drawable.gift_castle
    else->0
   }
+  val animationUrl=event.animationUrl.trim()
+  val animationView=if(animationUrl.isNotBlank()){
+   LottieAnimationView(this).apply{
+    scaleType=ImageView.ScaleType.FIT_CENTER
+    contentDescription="هدية ${event.name}"
+    repeatCount=0
+    setAnimationFromUrl(AuthApi.absoluteUrl(animationUrl))
+    playAnimation()
+    alpha=0f
+   }
+  }else null
+  if(animationView!=null){
+   roomOverlayLayer.addView(animationView,FrameLayout.LayoutParams(dp(280),dp(280),Gravity.CENTER))
+   animationView.animate().alpha(1f).setDuration(220).start()
+  }
   val card=LinearLayout(this).apply{
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
@@ -1541,7 +1568,9 @@ class RoomActivity : Activity() {
   details.addView(label("🎁 ${event.senderName} أرسل ${event.name}",15f,Color.WHITE,true))
   details.addView(label("إلى ${event.recipientName}  •  ×${event.quantity}",12f,Color.rgb(255,218,151),true))
   card.addView(details,LinearLayout.LayoutParams(0,-2,1f))
-  val params=FrameLayout.LayoutParams((resources.displayMetrics.widthPixels-dp(36)).coerceAtLeast(dp(240)),-2,Gravity.CENTER)
+  val params=FrameLayout.LayoutParams((resources.displayMetrics.widthPixels-dp(36)).coerceAtLeast(dp(240)),-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{
+   bottomMargin=dp(105)
+  }
   roomOverlayLayer.addView(card,params)
   card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(360)
    .setInterpolator(android.view.animation.OvershootInterpolator(0.8f))
@@ -1550,10 +1579,13 @@ class RoomActivity : Activity() {
      if(card.parent==null)return@postDelayed
      card.animate().alpha(0f).scaleX(0.82f).scaleY(0.82f).setDuration(260)
       .withEndAction{roomOverlayLayer.removeView(card)}.start()
-    },2200)
+     animationView?.animate()?.alpha(0f)?.setDuration(300)?.withEndAction{
+      if(animationView.parent===roomOverlayLayer)roomOverlayLayer.removeView(animationView)
+     }?.start()
+    },2600)
    }.start()
  }
-
+ 
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
