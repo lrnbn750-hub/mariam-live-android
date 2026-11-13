@@ -40,6 +40,7 @@ class RoomActivity : Activity() {
  private val bg=Color.rgb(241,243,238); private val purple=Color.rgb(83,126,94); private val gold=Color.rgb(83,126,94); private val mutedText=Color.rgb(103,111,101)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
+ private lateinit var roomBackgroundView:ImageView
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
  private lateinit var ownerIdView:TextView
