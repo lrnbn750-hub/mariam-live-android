@@ -1433,8 +1433,15 @@ class RoomActivity : Activity() {
    val icon=FrameLayout(this).apply{
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
     addView(ImageView(this@RoomActivity).apply{
-     val isRose=gift.name.contains("وردة",ignoreCase=true)||gift.name.contains("rose",ignoreCase=true)||gift.id.contains("rose",ignoreCase=true)
-     if(isRose){setImageResource(R.drawable.gift_rose)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
+     val giftImageRes=when(gift.id.lowercase()){
+      "rose"->R.drawable.gift_rose
+      "car"->R.drawable.gift_car
+      "lion"->R.drawable.gift_lion
+      "plane"->R.drawable.gift_plane
+      "castle"->R.drawable.gift_castle
+      else->0
+     }
+     if(giftImageRes!=0){setImageResource(giftImageRes)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
      scaleType=ImageView.ScaleType.FIT_CENTER
      contentDescription=gift.name
     },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
