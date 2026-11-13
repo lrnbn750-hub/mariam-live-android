@@ -115,7 +115,7 @@ class RoomActivity : Activity() {
   }
   top.addView(topRoomButton("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(9)})
   top.addView(topRoomButton("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)))
-  top.translationY=dp(12).toFloat()
+  top.translationY=dp(24).toFloat()
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   val roomInfoGroup=LinearLayout(this).apply{
    orientation=1
