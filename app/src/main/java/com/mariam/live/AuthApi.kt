@@ -8,6 +8,10 @@ object AuthApi {
     // HTTPS API endpoint protected by Caddy TLS.
     private const val BASE_URL = "https://nokiraq.duckdns.org"
 
+    fun absoluteUrl(path: String): String =
+        if (path.startsWith("https://") || path.startsWith("http://")) path
+        else BASE_URL + (if (path.startsWith("/")) path else "/$path")
+
     data class Result(val status: Int, val body: JSONObject)
 
     private fun parseBody(text: String): JSONObject {
