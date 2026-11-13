@@ -162,7 +162,7 @@ class HomeActivity : Activity() {
         val width=(resources.displayMetrics.widthPixels-dp(42))/2
         val imageHeight=(width*1.02f).toInt()
         val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
-        val visible=filtered.filter{it.count>0}.sortedByDescending{it.count}
+        val visible=filtered.sortedByDescending{it.count}
         if(visible.isEmpty()){
             roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
             return
