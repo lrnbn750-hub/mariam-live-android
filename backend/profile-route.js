@@ -5,6 +5,80 @@ const { randomUUID } = require("crypto");
 module.exports = function(app, db, authenticateToken) {
 
 
+
+  // Direct follow system: following is immediate and does not require approval.
+  app.post("/api/follows/:id", authenticateToken, async (req, res) => {
+    const targetId = String(req.params.id || "").trim();
+    if (!targetId || targetId === String(req.userId)) {
+      return res.status(400).json({ error: "لا يمكنك متابعة نفسك" });
+    }
+    try {
+      const target = await db.query("SELECT id FROM users WHERE id=$1 AND status='active'", [targetId]);
+      if (!target.rows.length) return res.status(404).json({ error: "المستخدم غير موجود" });
+      const result = await db.query(
+        `INSERT INTO user_follows (follower_id, followed_id)
+         VALUES ($1, $2)
+         ON CONFLICT (follower_id, followed_id) DO NOTHING
+         RETURNING follower_id`,
+        [req.userId, targetId]
+      );
+      return res.json({ following: true, created: result.rows.length > 0 });
+    } catch (error) {
+      console.error("Follow user:", error.message);
+      return res.status(500).json({ error: "تعذر إتمام المتابعة" });
+    }
+  });
+
+  app.delete("/api/follows/:id", authenticateToken, async (req, res) => {
+    const targetId = String(req.params.id || "").trim();
+    try {
+      await db.query("DELETE FROM user_follows WHERE follower_id=$1 AND followed_id=$2", [req.userId, targetId]);
+      return res.json({ following: false });
+    } catch (error) {
+      console.error("Unfollow user:", error.message);
+      return res.status(500).json({ error: "تعذر إلغاء المتابعة" });
+    }
+  });
+
+  // Lists and counts for the signed-in account. "followers" are people who follow me;
+  // "following" are accounts I follow.
+  app.get("/api/follows/me", authenticateToken, async (req, res) => {
+    try {
+      const [followers, following] = await Promise.all([
+        db.query(`SELECT u.id, u.public_id, u.username, p.display_name, p.avatar_url
+                  FROM user_follows f JOIN users u ON u.id=f.follower_id
+                  LEFT JOIN user_profiles p ON p.user_id=u.id
+                  WHERE f.followed_id=$1 ORDER BY f.created_at DESC LIMIT 500`, [req.userId]),
+        db.query(`SELECT u.id, u.public_id, u.username, p.display_name, p.avatar_url
+                  FROM user_follows f JOIN users u ON u.id=f.followed_id
+                  LEFT JOIN user_profiles p ON p.user_id=u.id
+                  WHERE f.follower_id=$1 ORDER BY f.created_at DESC LIMIT 500`, [req.userId])
+      ]);
+      return res.json({
+        followers: followers.rows,
+        following: following.rows,
+        followers_count: followers.rows.length,
+        following_count: following.rows.length
+      });
+    } catch (error) {
+      console.error("Load follow lists:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل قوائم المتابعة" });
+    }
+  });
+
+  app.get("/api/follows/status/:id", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        "SELECT 1 FROM user_follows WHERE follower_id=$1 AND followed_id=$2",
+        [req.userId, req.params.id]
+      );
+      return res.json({ following: result.rows.length > 0 });
+    } catch (error) {
+      console.error("Follow status:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل حالة المتابعة" });
+    }
+  });
+
   // Level progress is server-owned. Client devices can read progress but cannot
   // grant XP. Trusted backend event handlers can call app.locals.awardMariamXp.
   app.get("/api/levels/me", authenticateToken, async (req, res) => {
