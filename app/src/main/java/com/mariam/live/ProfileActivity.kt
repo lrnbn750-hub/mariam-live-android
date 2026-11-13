@@ -49,6 +49,8 @@ class ProfileActivity : Activity() {
     private lateinit var levelXp:TextView
     private lateinit var levelProgress:ProgressBar
     private val photoPickerCode=7421
+    private lateinit var followingCountView:TextView
+    private lateinit var followersCountView:TextView
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun field(hintText:String)=EditText(this).apply{
         hint=hintText;textSize=15f;setTextColor(Color.rgb(35,34,53))
@@ -159,14 +161,19 @@ class ProfileActivity : Activity() {
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         val stats=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(8),dp(14),dp(8),dp(14));background=rounded(Color.WHITE,18)}
-        fun stat(value:String,title:String)=LinearLayout(this).apply{
+        fun stat(value:String,title:String,click:()->Unit={})=LinearLayout(this).apply{
             orientation=1;gravity=Gravity.CENTER
-            addView(txt(value,23f,ink,true),LinearLayout.LayoutParams(-1,dp(34)))
+            val number=txt(value,23f,ink,true)
+            if(title=="المتابعون") followingCountView=number
+            if(title=="المُعجبين") followersCountView=number
+            addView(number,LinearLayout.LayoutParams(-1,dp(34)))
             addView(txt(title,13f,muted),LinearLayout.LayoutParams(-1,dp(28)))
+            isClickable=title!="الأصدقاء"
+            if(isClickable)setOnClickListener{click()}
         }
         stats.addView(stat("0","الأصدقاء"),LinearLayout.LayoutParams(0,dp(70),1f))
-        stats.addView(stat("0","المتابعون"),LinearLayout.LayoutParams(0,dp(70),1f))
-        stats.addView(stat("0","المُعجبين"),LinearLayout.LayoutParams(0,dp(70),1f))
+        stats.addView(stat("0","المتابعون"){openFollowList("following")},LinearLayout.LayoutParams(0,dp(70),1f))
+        stats.addView(stat("0","المُعجبين"){openFollowList("followers")},LinearLayout.LayoutParams(0,dp(70),1f))
         content.addView(stats)
 
         val shortcuts=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(dp(12),dp(10),dp(12),dp(18))}
@@ -260,7 +267,56 @@ class ProfileActivity : Activity() {
 
         loadProfile(TextView(this).also{it.tag="profile_id"; idViewRef=it})
         loadLevelProgress()
+        loadFollowStats()
         loadRoyalFrameState()
+    }
+
+
+    private fun loadFollowStats(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        executor.execute{
+            try{
+                val result=AuthApi.get("/api/follows/me",token)
+                if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحميل المتابعة"))
+                val following=result.body.optInt("following_count",result.body.optJSONArray("following")?.length()?:0)
+                val followers=result.body.optInt("followers_count",result.body.optJSONArray("followers")?.length()?:0)
+                runOnUiThread{
+                    if(!isFinishing && ::followingCountView.isInitialized){
+                        followingCountView.text=following.toString()
+                        followersCountView.text=followers.toString()
+                    }
+                }
+            }catch(e:Exception){android.util.Log.e("BAKFollow","Load follow counts failed",e)}
+        }
+    }
+
+    private fun openFollowList(type:String){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
+        val title=if(type=="followers")"المعجبون" else "أتابعهم"
+        val loading=android.app.AlertDialog.Builder(this).setTitle(title).setMessage("جارٍ تحميل القائمة...").setNegativeButton("إغلاق",null).create()
+        loading.show()
+        executor.execute{
+            try{
+                val result=AuthApi.get("/api/follows/me",token)
+                if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تحميل القائمة"))
+                val list=result.body.optJSONArray(type)?:org.json.JSONArray()
+                val names=ArrayList<String>()
+                for(i in 0 until list.length()){
+                    val item=list.optJSONObject(i)?:continue
+                    val name=item.optString("display_name").takeIf{it.isNotBlank() && it!="null"}
+                        ?:item.optString("username","مستخدم")
+                    names.add(name)
+                }
+                runOnUiThread{
+                    if(isFinishing){loading.dismiss();return@runOnUiThread}
+                    loading.dismiss()
+                    val message=if(names.isEmpty())"لا توجد حسابات في هذه القائمة بعد" else names.joinToString("\\n")
+                    android.app.AlertDialog.Builder(this).setTitle("$title (${names.size})").setMessage(message).setPositiveButton("حسناً",null).show()
+                }
+            }catch(e:Exception){
+                runOnUiThread{loading.dismiss();Toast.makeText(this,e.message?:"تعذر تحميل القائمة",Toast.LENGTH_SHORT).show()}
+            }
+        }
     }
 
     private fun showInfo(title:String){
@@ -349,6 +405,7 @@ class ProfileActivity : Activity() {
     override fun onResume(){
         super.onResume()
         if(::frameToggle.isInitialized) loadRoyalFrameState()
+        if(::followingCountView.isInitialized) loadFollowStats()
     }
 
     private fun loadRoyalFrameState(){
