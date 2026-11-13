@@ -84,6 +84,9 @@ class RoomActivity : Activity() {
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
  private val giftRepository=GiftRepository()
+ private var giftPoll:Job?=null
+ private var lastGiftEventId=0L
+ private var giftFeedInitialized=false
  private var previousMemberIds:MutableSet<String>?=null
  private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
  private val joinNotices=ArrayList<RoomJoinNotice>()
@@ -1276,6 +1279,7 @@ class RoomActivity : Activity() {
     status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
     startRoomMembershipWatch()
+    startRoomGiftWatch()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
     stopService(service)
@@ -1470,6 +1474,86 @@ class RoomActivity : Activity() {
  private fun sendRoomGift(gift:Gift,recipientId:String,quantity:Int){
   scope.launch{try{val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,quantity,authToken)};if(response.status in 200..299)Toast.makeText(this@RoomActivity,"تم إرسال ${gift.name} × $quantity بنجاح",Toast.LENGTH_LONG).show() else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()}}
  }
+ /** Poll the authenticated room gift feed and animate only newly committed events. */
+ private fun startRoomGiftWatch(){
+  giftPoll?.cancel()
+  giftFeedInitialized=false
+  lastGiftEventId=0L
+  giftPoll=scope.launch{
+   while(isActive && connected && !leaving){
+    try{
+     val (response,events)=withContext(Dispatchers.IO){
+      giftRepository.loadRoomEvents(roomId,lastGiftEventId,authToken)
+     }
+     if(response.status in 200..299){
+      if(!giftFeedInitialized){
+       // Establish a cursor without replaying gifts sent before this viewer joined.
+       lastGiftEventId=events.maxOfOrNull{it.id}?:lastGiftEventId
+       giftFeedInitialized=true
+      }else{
+       events.sortedBy{it.id}.forEach{event->
+        if(event.id>lastGiftEventId){
+         lastGiftEventId=event.id
+         showReceivedGiftAnimation(event)
+        }
+       }
+      }
+     }
+    }catch(_:CancellationException){break}
+     catch(_:Exception){/* Retry next interval; room audio remains independent. */}
+    delay(2200)
+   }
+  }
+ }
+
+ /** Native animated overlay using artwork already included in this app. */
+ private fun showReceivedGiftAnimation(event:GiftRepository.GiftEvent){
+  if(!::roomOverlayLayer.isInitialized || isFinishing || isDestroyed)return
+  val imageRes=when(event.giftId.lowercase()){
+   "rose"->R.drawable.gift_rose
+   "car"->R.drawable.gift_car
+   "lion"->R.drawable.gift_lion
+   "plane"->R.drawable.gift_plane
+   "castle"->R.drawable.gift_castle
+   else->0
+  }
+  val card=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(16),dp(12),dp(16),dp(12))
+   background=GradientDrawable().apply{
+    cornerRadius=dp(22).toFloat()
+    setColor(Color.argb(238,28,24,39))
+    setStroke(dp(1),Color.rgb(226,190,105))
+   }
+   alpha=0f
+   scaleX=0.72f
+   scaleY=0.72f
+   elevation=dp(12).toFloat()
+  }
+  val icon=ImageView(this).apply{
+   if(imageRes!=0)setImageResource(imageRes) else setImageDrawable(VectorIcon("gift",Color.WHITE,dp(34)))
+   scaleType=ImageView.ScaleType.FIT_CENTER
+  }
+  card.addView(icon,LinearLayout.LayoutParams(dp(64),dp(64)).apply{marginEnd=dp(12)})
+  val details=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
+  details.addView(label("🎁 ${event.senderName} أرسل ${event.name}",15f,Color.WHITE,true))
+  details.addView(label("إلى ${event.recipientName}  •  ×${event.quantity}",12f,Color.rgb(255,218,151),true))
+  card.addView(details,LinearLayout.LayoutParams(0,-2,1f))
+  val params=FrameLayout.LayoutParams((resources.displayMetrics.widthPixels-dp(36)).coerceAtLeast(dp(240)),-2,Gravity.CENTER)
+  roomOverlayLayer.addView(card,params)
+  card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(360)
+   .setInterpolator(android.view.animation.OvershootInterpolator(0.8f))
+   .withEndAction{
+    card.postDelayed({
+     if(card.parent==null)return@postDelayed
+     card.animate().alpha(0f).scaleX(0.82f).scaleY(0.82f).setDuration(260)
+      .withEndAction{roomOverlayLayer.removeView(card)}.start()
+    },2200)
+   }.start()
+ }
+
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
@@ -2100,6 +2184,7 @@ class RoomActivity : Activity() {
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
   seatRefreshJob?.cancel()
+  giftPoll?.cancel()
   scope.cancel()
   super.onDestroy()
  }
