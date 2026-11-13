@@ -59,6 +59,10 @@ class RoomActivity : Activity() {
  private val activeSpeakerLevels=HashMap<String,Float>()
  private val speakerWaveViews=HashMap<String,CircularAudioWaveView>()
  private val avatarBitmaps=HashMap<String,Bitmap>()
+ private val seatFrameBytes=HashMap<String,ByteArray>()
+ private val seatFrameLoading=HashSet<String>()
+ private val seatFrameViews=HashMap<String,MutableList<RoyalGifFrame>>()
+ private var currentUserEquippedFrameUrl=""
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
  private lateinit var micControl:ImageView
@@ -754,6 +758,20 @@ class RoomActivity : Activity() {
      currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
     }
    }catch(_:Exception){}
+   // Read the same equipped avatar frame selected in Profile > Inventory.
+   try{
+    val inventory=withContext(Dispatchers.IO){AuthApi.get("/api/inventory",authToken)}
+    if(inventory.status in 200..299){
+     val items=inventory.body.optJSONArray("items")?:JSONArray()
+     for(i in 0 until items.length()){
+      val item=items.optJSONObject(i)?:continue
+      if(item.optString("item_type")=="frame" && item.optBoolean("owned") && item.optBoolean("equipped")){
+       currentUserEquippedFrameUrl=item.optString("asset_url").takeIf{it.startsWith("https://")}.orEmpty()
+       break
+      }
+     }
+    }
+   }catch(_:Exception){}
    // Start chat only after identity and the authoritative level have loaded.
    // This prevents the first frame from showing a temporary LV 1 badge.
    chatPoll?.cancel()
@@ -929,6 +947,18 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+     val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+      .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+      ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
+     if(occupied && !frameUrl.isNullOrBlank()){
+      val frameView=RoyalGifFrame(this@RoomActivity).apply{
+       visibility=View.VISIBLE
+       tag=frameUrl
+      }
+      addView(frameView,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
+      seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
+      loadSeatFrame(frameView,frameUrl)
+     }
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(68),dp(68)).apply{bottomMargin=dp(1)})
     if(occupied){
@@ -956,6 +986,29 @@ class RoomActivity : Activity() {
     })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
+  }
+ }
+ private fun loadSeatFrame(view:RoyalGifFrame,url:String){
+  val cached=seatFrameBytes[url]
+  if(cached!=null){view.setGif(cached);view.startAnimation();return}
+  if(!seatFrameLoading.add(url))return
+  scope.launch{
+   try{
+    val bytes=withContext(Dispatchers.IO){
+     java.net.URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{it.readBytes()}
+    }
+    if(bytes.isNotEmpty()){
+     seatFrameBytes[url]=bytes
+     seatFrameViews[url]?.toList()?.forEach{frame->
+      if(frame.tag==url && frame.isAttachedToWindow){
+       frame.setGif(bytes)
+       frame.startAnimation()
+      }
+     }
+    }
+   }catch(e:Exception){
+    android.util.Log.e("RoomAvatarFrame","Failed to load equipped frame",e)
+   }finally{seatFrameLoading.remove(url)}
   }
  }
  private fun loadAvatarInto(view:ImageView,url:String){
