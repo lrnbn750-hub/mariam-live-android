@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS voice_room_gift_events (
   event_key varchar(180) NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE voice_room_gift_events
+  ADD COLUMN IF NOT EXISTS platform_share_usd_cents bigint NOT NULL DEFAULT 0
+  CHECK (platform_share_usd_cents >= 0);
+
 CREATE INDEX IF NOT EXISTS voice_room_gift_events_room_id_id_idx
   ON voice_room_gift_events(room_id, id);
 
