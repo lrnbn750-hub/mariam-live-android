@@ -41,6 +41,7 @@ class RoomActivity : Activity() {
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private lateinit var roomBackgroundView:ImageView
+ private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
  private lateinit var ownerIdView:TextView
@@ -130,8 +131,15 @@ class RoomActivity : Activity() {
    setBackgroundColor(Color.rgb(20,18,28))
    contentDescription="خلفية الغرفة"
   }
+  roomBackgroundFillView=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   alpha=0.72f
+   setBackgroundColor(Color.rgb(20,18,28))
+   contentDescription="امتداد خلفية الغرفة"
+  }
+  roomRoot.addView(roomBackgroundFillView,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomBackgroundView,FrameLayout.LayoutParams(-1,-1))
-  roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(42,0,0,0))},FrameLayout.LayoutParams(-1,-1))
+  roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(34,0,0,0))},FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Android 11+: move the composer by the exact keyboard inset instead of
@@ -765,6 +773,16 @@ class RoomActivity : Activity() {
      connection.getInputStream().use{android.graphics.BitmapFactory.decodeStream(it)}
     }
     if(bitmap!=null && loadedBackgroundUrl==url){
+     // Extend the same photo to fill the screen behind the clear original.
+     roomBackgroundFillView.scaleType=ImageView.ScaleType.CENTER_CROP
+     roomBackgroundFillView.setImageBitmap(bitmap)
+     roomBackgroundFillView.alpha=0.72f
+     if(Build.VERSION.SDK_INT>=31){
+      roomBackgroundFillView.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
+       dp(22).toFloat(),dp(22).toFloat(),android.graphics.Shader.TileMode.CLAMP
+      ))
+     }
+     // Keep the original photo fully visible and sharp above the fill layer.
      roomBackgroundView.scaleType=ImageView.ScaleType.FIT_CENTER
      roomBackgroundView.setImageBitmap(bitmap)
     }
