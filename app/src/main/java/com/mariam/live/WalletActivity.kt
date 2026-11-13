@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.view.Gravity
-import android.view.View
 import android.widget.*
 import org.json.JSONObject
 import org.json.JSONArray
@@ -20,143 +18,109 @@ class WalletActivity:Activity(){
  private val muted=Color.rgb(190,178,207)
  private var token=""
  private var packages=JSONArray()
- private var selectedPackage=0
- private var selectedMethod="zain_cash"
+ private var wallet=JSONObject()
+ private var history=JSONArray()
  private lateinit var content:LinearLayout
- private lateinit var balanceView:TextView
- private lateinit var earningsView:TextView
- private lateinit var status:TextView
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
+ private fun money(cents:Long)=String.format(java.util.Locale.US,"%,.2f",cents/100.0)
  private fun bg(colors:IntArray,stroke:Int=Color.TRANSPARENT)=GradientDrawable(GradientDrawable.Orientation.TL_BR,colors).apply{cornerRadius=dp(18).toFloat();if(stroke!=Color.TRANSPARENT)setStroke(dp(1),stroke)}
  private fun text(value:String,size:Float,color:Int,bold:Boolean=false)=TextView(this).apply{text=value;textSize=size;setTextColor(color);typeface=Typeface.create("sans-serif",if(bold)Typeface.BOLD else Typeface.NORMAL)}
- private fun button(label:String,click:()->Unit)=TextView(this).apply{
-  text=label;textSize=14f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);typeface=Typeface.DEFAULT_BOLD
-  setPadding(dp(14),dp(12),dp(14),dp(12));background=bg(intArrayOf(purple,Color.rgb(67,34,105)),gold)
-  setOnClickListener{click()}
- }
+ private fun button(label:String,click:()->Unit)=TextView(this).apply{text=label;textSize=14f;gravity=android.view.Gravity.CENTER;setTextColor(Color.WHITE);typeface=Typeface.DEFAULT_BOLD;setPadding(dp(14),dp(12),dp(14),dp(12));background=bg(intArrayOf(purple,Color.rgb(67,34,105)),gold);setOnClickListener{click()}}
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState)
   token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token","").orEmpty()
   window.statusBarColor=ink;window.navigationBarColor=ink
   val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(17,12,27))}
-  val header=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(12),dp(16),dp(12))}
-  val back=text("‹",34f,Color.WHITE,true).apply{setOnClickListener{finish()}}
-  header.addView(back,LinearLayout.LayoutParams(dp(42),dp(46)))
-  header.addView(text("المحفظة",22f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(46),1f).apply{gravity=Gravity.CENTER})
-  header.addView(text("؟",22f,gold,true).apply{setOnClickListener{AlertDialog.Builder(this@WalletActivity).setMessage("رصيد الماسات مخصص للهدايا داخل التطبيق، وأرباح المستخدمين رصيد منفصل قابل لطلب السحب بعد المراجعة.").setPositiveButton("حسناً",null).show()}},LinearLayout.LayoutParams(dp(32),dp(46)))
+  val header=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(12),dp(16),dp(12))}
+  header.addView(text("‹",34f,Color.WHITE,true).apply{setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(46)))
+  header.addView(text("المحفظة",22f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(46),1f).apply{gravity=android.view.Gravity.CENTER})
+  header.addView(text("؟",22f,gold,true).apply{setOnClickListener{AlertDialog.Builder(this@WalletActivity).setMessage("عملات الشحن تُستخدم داخل التطبيق. الألماس المكتسب من الهدايا منفصل عن رصيد الشحن، والأرباح القابلة للسحب تُعرض بالدولار. المبالغ المحجوزة لا يمكن سحبها مرة ثانية.").setPositiveButton("حسناً",null).show()}},LinearLayout.LayoutParams(dp(32),dp(46)))
   root.addView(header)
-  val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER}
+  val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=ScrollView.OVER_SCROLL_NEVER}
   content=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(28))}
   scroll.addView(content);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-  setContentView(root)
-  buildLoading()
-  loadWallet()
+  setContentView(root);loading();loadWallet()
  }
- private fun buildLoading(){
-  content.removeAllViews()
-  content.addView(text("جارٍ تحميل المحفظة...",15f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(100)).apply{gravity=Gravity.CENTER})
- }
+ private fun loading(){content.removeAllViews();content.addView(text("جارٍ تحميل المحفظة...",15f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(100)).apply{gravity=android.view.Gravity.CENTER})}
  private fun loadWallet(){
   if(token.isBlank()){showError("انتهت جلسة الدخول");return}
   thread{
    try{
     val w=AuthApi.get("/api/wallet",token)
+    val p=AuthApi.get("/api/wallet/packages",token)
     val h=AuthApi.get("/api/wallet/transactions",token)
     runOnUiThread{
      if(w.status !in 200..299){showError(w.body.optString("error","تعذر تحميل المحفظة"));return@runOnUiThread}
-     val wallet=w.body.optJSONObject("wallet")?:JSONObject()
-     packages=w.body.optJSONArray("packages")?:JSONArray()
-     val history=h.body.optJSONArray("transactions")?:JSONArray()
-     render(wallet,history,w.body.optInt("cashout_min_iqd",25000))
+     wallet=w.body.optJSONObject("wallet")?:w.body
+     packages=p.body.optJSONArray("packages")?:JSONArray()
+     history=h.body.optJSONArray("transactions")?:JSONArray()
+     render()
     }
    }catch(e:Exception){runOnUiThread{showError(e.message?:"تعذر الاتصال بالخادم")}}
   }
  }
- private fun showError(message:String){
-  content.removeAllViews();content.addView(text(message,14f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(90)))
-  content.addView(button("إعادة المحاولة"){loadWallet()})
- }
+ private fun showError(message:String){content.removeAllViews();content.addView(text(message,14f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(90)));content.addView(button("إعادة المحاولة"){loadWallet()})}
  private fun section(title:String){content.addView(text(title,17f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(15)})}
- private fun render(wallet:JSONObject,history:JSONArray,minCashout:Int){
+ private fun metric(parent:LinearLayout,label:String,value:String,color:Int){parent.addView(text(label,12f,muted,true));parent.addView(text(value,23f,color,true),LinearLayout.LayoutParams(-1,dp(38)))}
+ private fun render(){
   content.removeAllViews()
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(20),dp(18),dp(20),dp(18));background=bg(intArrayOf(Color.rgb(77,27,111),Color.rgb(30,20,48)),Color.rgb(179,101,224))}
-  hero.addView(text("رصيد الماسات 💎",14f,Color.rgb(239,220,255),true))
-  balanceView=text(String.format("%,d",wallet.optLong("diamonds_balance"))+" 💎",32f,Color.WHITE,true)
-  hero.addView(balanceView,LinearLayout.LayoutParams(-1,dp(54)))
-  hero.addView(text("رصيد الأرباح القابل للسحب",13f,muted,true))
-  earningsView=text(String.format("%,d",wallet.optLong("earnings_iqd"))+" د.ع",22f,gold,true)
-  hero.addView(earningsView,LinearLayout.LayoutParams(-1,dp(40)))
-  content.addView(hero,LinearLayout.LayoutParams(-1,-2))
-  val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0}
-  actions.addView(button("＋ شحن الرصيد"){showTopup()},LinearLayout.LayoutParams(0,dp(52),1f).apply{marginEnd=dp(6);topMargin=dp(12)})
-  actions.addView(button("سجل العمليات"){showHistory(history)},LinearLayout.LayoutParams(0,dp(52),1f).apply{marginStart=dp(6);topMargin=dp(12)})
+  metric(hero,"عملات الشحن",String.format("%,d",wallet.optLong("recharge_coins"))+" 🪙",Color.WHITE)
+  metric(hero,"الألماس المكتسب",String.format("%,d",wallet.optLong("earned_diamonds"))+" 💎",gold)
+  metric(hero,"الأرباح القابلة للسحب","$"+money(wallet.optLong("withdrawable_usd_cents")),Color.rgb(125,235,177))
+  content.addView(hero)
+  val info=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(12),dp(14),dp(12));background=bg(intArrayOf(Color.rgb(35,27,46),Color.rgb(27,21,36)))}
+  info.addView(text("المبلغ المحجوز للسحب: $"+money(wallet.optLong("reserved_usd_cents")),13f,muted))
+  info.addView(text("إجمالي الأرباح مدى الحياة: $"+money(wallet.optLong("lifetime_earned_usd_cents")),13f,muted),LinearLayout.LayoutParams(-1,dp(28)))
+  content.addView(info,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
+  val actions=LinearLayout(this).apply{orientation=0;gravity=android.view.Gravity.CENTER}
+  actions.addView(button("طلب سحب الأرباح"){showWithdrawal()},LinearLayout.LayoutParams(0,dp(50),1f).apply{topMargin=dp(12);marginEnd=dp(5)})
+  actions.addView(button("سجل العمليات"){showHistory()},LinearLayout.LayoutParams(0,dp(50),1f).apply{topMargin=dp(12);marginStart=dp(5)})
   content.addView(actions)
-  content.addView(button("طلب سحب الأرباح"){showCashout(minCashout,wallet.optLong("earnings_iqd"))},LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(8)})
-  section("باقات شحن الماسات")
-  val grid=LinearLayout(this).apply{orientation=1}
-  var row:LinearLayout?=null
-  for(i in 0 until packages.length()){
-   if(i%2==0){row=LinearLayout(this).apply{orientation=0};grid.addView(row,LinearLayout.LayoutParams(-1,-2))}
+  section("باقات شحن العملات")
+  if(packages.length()==0)content.addView(text("لا توجد باقات متاحة حالياً.",13f,muted))
+  else for(i in 0 until packages.length()){
    val p=packages.optJSONObject(i)?:continue
-   val card=LinearLayout(this).apply{
-    orientation=1;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(12))
-    background=bg(intArrayOf(Color.rgb(44,29,61),Color.rgb(26,20,37)),Color.rgb(115,74,145))
-    addView(text(String.format("%,d",p.optLong("diamonds"))+" 💎",20f,Color.WHITE,true))
-    if(p.optInt("bonus")>0)addView(text("هدية إضافية +"+p.optInt("bonus"),11f,gold,true))
-    addView(text(String.format("%,d",p.optLong("amount_iqd"))+" د.ع",13f,muted))
-    addView(button("اختيار الباقة"){selectedPackage=i;showTopup() },LinearLayout.LayoutParams(-1,dp(38)).apply{topMargin=dp(8)})
-   }
-   row?.addView(card,LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5);marginStart=dp(5);topMargin=dp(5);bottomMargin=dp(5)})
+   val card=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(12),dp(14),dp(12));background=bg(intArrayOf(Color.rgb(44,29,61),Color.rgb(26,20,37)),Color.rgb(115,74,145))}
+   val bonus=p.optLong("bonus_coins")
+   card.addView(text(String.format("%,d",p.optLong("coins")+bonus)+" 🪙",20f,Color.WHITE,true))
+   if(bonus>0)card.addView(text("مكافأة إضافية +"+String.format("%,d",bonus),12f,gold,true))
+   card.addView(text("$"+money(p.optLong("price_usd_cents")),14f,muted))
+   card.addView(text("الشحن غير متاح من التطبيق حالياً",11f,muted),LinearLayout.LayoutParams(-1,dp(26)))
+   content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
   }
-  content.addView(grid)
-  section("طرق الدفع")
-  val methods= listOf("زين كاش — تحويل يدوي","آسيا حوالة — تحويل يدوي","USDT — تحويل يدوي","بوابة دفع تلقائية — تتطلب ربط حساب التاجر")
-  methods.forEach{m->content.addView(text("•  $m",14f,Color.rgb(224,211,239)),LinearLayout.LayoutParams(-1,dp(30)))}
-  content.addView(text("طلبات الشحن اليدوية تبقى معلّقة حتى تتحقق الإدارة من التحويل. الدفع التلقائي لا يُفعّل قبل ربط بوابة دفع معتمدة.",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
+  content.addView(text("لن تتم إضافة عملات إلى رصيدك إلا بعد تأكيد الدفع من الخادم.",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
  }
- private fun showTopup(){
-  if(packages.length()==0)return
-  val p=packages.optJSONObject(selectedPackage.coerceIn(0,packages.length()-1))?:return
-  val box=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(10),dp(18),dp(4))}
-  box.addView(text("الباقة: "+String.format("%,d",p.optLong("diamonds"))+" ماسة",16f,ink,true))
-  box.addView(text("المبلغ: "+String.format("%,d",p.optLong("amount_iqd"))+" دينار عراقي",14f,ink))
-  val method=Spinner(this)
-  val labels=listOf("زين كاش","آسيا حوالة","USDT","بوابة دفع تلقائية")
-  method.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,labels)
-  method.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener{
-   override fun onNothingSelected(parent:android.widget.AdapterView<*>?){}
-   override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long){selectedMethod=listOf("zain_cash","asia_hawala","usdt","gateway")[position]}
-  }
-  box.addView(text("اختر طريقة الدفع",13f,ink,true));box.addView(method)
-  val ref=EditText(this).apply{hint="رقم الحوالة / مرجع التحويل";textSize=14f}
-  box.addView(ref)
-  AlertDialog.Builder(this).setTitle("طلب شحن").setView(box)
-   .setNegativeButton("إلغاء",null).setPositiveButton("إرسال الطلب"){_,_->
-    val payload=JSONObject().put("package_id",p.optString("id")).put("payment_method",selectedMethod).put("payment_reference",ref.text.toString().trim())
-    submit("/api/wallet/topups",payload,"تم إرسال طلب الشحن للمراجعة")
-   }.show()
- }
- private fun showCashout(min:Int,balance:Long){
+ private fun showWithdrawal(){
+  val available=wallet.optLong("withdrawable_usd_cents")
+  if(available<=0){AlertDialog.Builder(this).setMessage("لا يوجد رصيد قابل للسحب حالياً.").setPositiveButton("حسناً",null).show();return}
   val box=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),0)}
-  val amount=EditText(this).apply{hint="المبلغ بالدينار العراقي";inputType=android.text.InputType.TYPE_CLASS_NUMBER}
-  val account=EditText(this).apply{hint="رقم المحفظة أو الحساب"}
-  val method=Spinner(this).apply{adapter=ArrayAdapter(this@WalletActivity,android.R.layout.simple_spinner_dropdown_item,listOf("زين كاش","آسيا حوالة","حساب بنكي"))}
-  box.addView(text("المتاح: $balance د.ع — الحد الأدنى: $min د.ع",13f,ink))
-  box.addView(amount);box.addView(method);box.addView(account)
-  AlertDialog.Builder(this).setTitle("سحب الأرباح").setView(box).setNegativeButton("إلغاء",null).setPositiveButton("إرسال الطلب"){_,_->
-   val methods=listOf("zain_cash","asia_hawala","bank")
-   val payload=JSONObject().put("amount_iqd",amount.text.toString().toLongOrNull()?:0).put("payout_method",methods[method.selectedItemPosition]).put("payout_account",account.text.toString())
-   submit("/api/wallet/cashouts",payload,"تم إرسال طلب السحب للمراجعة")
+  box.addView(text("المتاح للسحب: $"+money(available),14f,ink,true))
+  val amount=EditText(this).apply{hint="المبلغ بالدولار (مثال 10.50)";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL}
+  val method=Spinner(this).apply{adapter=ArrayAdapter(this@WalletActivity,android.R.layout.simple_spinner_dropdown_item,listOf("زين كاش","آسيا حوالة","USDT"))}
+  val destination=EditText(this).apply{hint="رقم المحفظة أو عنوان الاستلام"}
+  box.addView(amount);box.addView(method);box.addView(destination)
+  AlertDialog.Builder(this).setTitle("طلب سحب").setView(box).setNegativeButton("إلغاء",null).setPositiveButton("إرسال الطلب"){_,_->
+   val dollars=amount.text.toString().trim().replace(",",".").toBigDecimalOrNull()
+   val cents=try{dollars?.movePointRight(2)?.longValueExact()}catch(_:Exception){null}
+   if(cents==null||cents<=0||cents>available)AlertDialog.Builder(this).setMessage("أدخل مبلغاً صحيحاً لا يتجاوز الرصيد المتاح.").setPositiveButton("حسناً",null).show()
+   else{
+    val methods=listOf("zain_cash","asia_hawala","usdt")
+    val payload=JSONObject().put("amount_usd_cents",cents).put("method",methods[method.selectedItemPosition]).put("destination",destination.text.toString().trim())
+    submit("/api/wallet/withdrawals",payload,"تم إرسال طلب السحب للمراجعة")
+   }
   }.show()
  }
- private fun showHistory(history:JSONArray){
+ private fun showHistory(){
   val lines=ArrayList<String>()
   for(i in 0 until history.length()){
    val t=history.optJSONObject(i)?:continue
-   val sign=if(t.optString("transaction_type")=="topup"||t.optString("transaction_type")=="gift_received")"+" else "−"
-   val unit=if(t.optString("currency")=="iqd")"د.ع" else "💎"
-   lines.add("$sign${String.format("%,d",t.optLong("amount"))} $unit  •  ${t.optString("description")}  •  ${t.optString("status")}")
+   val amount=t.optLong("amount")
+   val currency=t.optString("currency")
+   val value=if(currency.equals("usd_cents",true)||currency.equals("usd",true))"$"+money(amount) else String.format("%,d",amount)
+   lines.add("$value • "+t.optString("transaction_type")+" • "+t.optString("status"))
   }
+  if(lines.isEmpty())lines.add("لا توجد عمليات حتى الآن")
   AlertDialog.Builder(this).setTitle("سجل العمليات").setItems(lines.toTypedArray(),null).setPositiveButton("إغلاق",null).show()
  }
  private fun submit(path:String,payload:JSONObject,success:String){
