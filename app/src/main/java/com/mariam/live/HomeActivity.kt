@@ -70,23 +70,6 @@ class HomeActivity : Activity() {
         header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)))
         content.addView(header,LinearLayout.LayoutParams(-1,dp(58)))
 
-        val sectionHeader=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL
-            layoutDirection=View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(2),dp(10),dp(2),dp(5))
-        }
-        sectionHeader.addView(TextView(this).apply{
-            text="الغرف المباشرة"
-            textSize=17f
-            setTextColor(ink)
-            typeface=Typeface.DEFAULT_BOLD
-        })
-        sectionHeader.addView(TextView(this).apply{
-            text="اكتشف الأحاديث وانضم إلى أصدقائك"
-            textSize=11f
-            setTextColor(muted)
-        })
-        content.addView(sectionHeader,LinearLayout.LayoutParams(-1,-2))
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(-dp(5),dp(8),-dp(5),0)})
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
@@ -164,10 +147,11 @@ class HomeActivity : Activity() {
         val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
         val visible=filtered.sortedByDescending{it.count}
         if(visible.isEmpty()){
+            roomStatus.visibility=View.VISIBLE
             roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
             return
         }
-        roomStatus.text="الغرف الحقيقية: ${visible.size}"
+        roomStatus.visibility=View.GONE
         visible.forEach { room ->
             val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(5),dp(5),dp(5),dp(11));isClickable=true;background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(19).toFloat();setStroke(dp(1),Color.rgb(225,237,228))}}
             val frame=FrameLayout(this).apply{
@@ -176,11 +160,32 @@ class HomeActivity : Activity() {
             }
             val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP}
             frame.addView(cover,FrameLayout.LayoutParams(-1,imageHeight))
-            val overlay=TextView(this).apply{
-                text="🎙  ${room.count}/${room.max}";textSize=12f;setTextColor(Color.WHITE)
-                setPadding(dp(9),dp(6),dp(9),dp(6));background=shape(0x99000000.toInt(),16)
+            val presence=RoomPresenceView(this,room.count)
+            frame.addView(presence,FrameLayout.LayoutParams(dp(88),dp(36),Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
+            val topBadge=LinearLayout(this).apply{
+                orientation=LinearLayout.HORIZONTAL
+                gravity=Gravity.CENTER
+                layoutDirection=View.LAYOUT_DIRECTION_LTR
+                setPadding(dp(9),dp(5),dp(9),dp(5))
+                background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.rgb(255,91,45),Color.rgb(220,35,42))).apply{cornerRadius=dp(16).toFloat()}
+                elevation=dp(4).toFloat()
             }
-            frame.addView(overlay,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
+            topBadge.addView(TextView(this).apply{
+                text="TOP";textSize=11f;typeface=Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE);gravity=Gravity.CENTER
+            })
+            topBadge.addView(TextView(this).apply{
+                text="🔥";textSize=14f;gravity=Gravity.CENTER
+                setPadding(dp(3),0,0,0)
+            })
+            frame.addView(topBadge,FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.END).apply{setMargins(0,dp(8),dp(8),0)})
+            ObjectAnimator.ofFloat(topBadge,View.SCALE_X,1f,1.10f).apply{
+                duration=650;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()
+            }
+            ObjectAnimator.ofFloat(topBadge,View.SCALE_Y,1f,1.10f).apply{
+                duration=650;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()
+            }
             if(!room.imageUrl.isNullOrBlank()){
                 loadRoomCover(cover,room.imageUrl)
             }
@@ -326,6 +331,42 @@ class HomeActivity : Activity() {
             }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?:"تعذر تجهيز الصورة",Toast.LENGTH_LONG).show()}}
         }
     }
+
+/** Blue animated voice bars with the live room member count. */
+private class RoomPresenceView(context:android.content.Context,private val memberCount:Int):View(context){
+    private val density=resources.displayMetrics.density
+    private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+        color=Color.rgb(67,177,255)
+        strokeWidth=3.0f*density
+        strokeCap=Paint.Cap.ROUND
+    }
+    private val textPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+        color=Color.WHITE
+        textSize=13f*density
+        typeface=Typeface.create("sans-serif",Typeface.BOLD)
+    }
+    private val started=android.os.SystemClock.uptimeMillis()
+    private val bg=GradientDrawable().apply{
+        setColor(0xCC101923.toInt())
+        cornerRadius=22f*density
+        setStroke((1*density).toInt(),0x6655B9FF)
+    }
+    init{background=bg}
+    override fun onDraw(canvas:Canvas){
+        super.onDraw(canvas)
+        val phase=(android.os.SystemClock.uptimeMillis()-started)/170.0
+        val centerY=height/2f
+        val baseX=12f*density
+        for(i in 0 until 5){
+            val wave=(kotlin.math.sin(phase+i*0.82)+1.0)/2.0
+            val barHeight=(5.0+wave*12.0).toFloat()*density
+            val x=baseX+i*5.5f*density
+            canvas.drawLine(x,centerY-barHeight/2f,x,centerY+barHeight/2f,paint)
+        }
+        canvas.drawText(memberCount.toString(),47f*density,centerY-textPaint.ascent()/2f-textPaint.descent()/2f,textPaint)
+        postInvalidateOnAnimation()
+    }
+}
     private fun openLogin(){startActivity(Intent(this,LoginActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK});finish()}
     override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
 }
