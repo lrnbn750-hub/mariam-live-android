@@ -133,7 +133,7 @@ class WalletActivity:Activity(){
    if(p.optLong("bonus_coins")>0)info.addView(label("مكافأة +"+String.format("%,d",p.optLong("bonus_coins")),11f,gold,true))
    info.addView(label("$"+money(p.optLong("price_usd_cents")),13f,muted),LinearLayout.LayoutParams(-1,dp(24)))
    card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-   val soon=TextView(this).apply{text="قريباً";textSize=11f;setTextColor(gold);gravity=Gravity.CENTER;padding=dp(10);background=shape(intArrayOf(Color.rgb(74,51,89),Color.rgb(74,51,89)),Color.rgb(135,97,154),30)}
+   val soon=TextView(this).apply{text="قريباً";textSize=11f;setTextColor(gold);gravity=Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(8));background=shape(intArrayOf(Color.rgb(74,51,89),Color.rgb(74,51,89)),Color.rgb(135,97,154),30)}
    card.addView(soon)
    content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
   }
