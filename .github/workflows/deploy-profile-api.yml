@@ -55,12 +55,13 @@ jobs:
           DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
           DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
           test -n "$DB_NAME"; test -n "$DB_USER"
-          set -a
-          . ./.env
-          set +a
-          export PGPASSWORD="$DB_PASSWORD"
-          psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-levels-migration.sql
-          unset PGPASSWORD
+          DB_HOST="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_HOST || "").toString("base64"))' | base64 -d)"
+          DB_PORT="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_PORT || "5432")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_PASSWORD="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_PASSWORD || "").toString("base64"))' | base64 -d)"
+          test -n "$DB_HOST"; test -n "$DB_USER"; test -n "$DB_NAME"; test -n "$DB_PASSWORD"
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-levels-migration.sql
           rm -f /tmp/mariam-levels-migration.sql
           REMOTE
 
@@ -74,12 +75,13 @@ jobs:
           DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
           DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
           test -n "$DB_NAME"; test -n "$DB_USER"
-          set -a
-          . ./.env
-          set +a
-          export PGPASSWORD="$DB_PASSWORD"
-          psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-chat-bubbles-migration.sql
-          unset PGPASSWORD
+          DB_HOST="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_HOST || "").toString("base64"))' | base64 -d)"
+          DB_PORT="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_PORT || "5432")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_PASSWORD="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_PASSWORD || "").toString("base64"))' | base64 -d)"
+          test -n "$DB_HOST"; test -n "$DB_USER"; test -n "$DB_NAME"; test -n "$DB_PASSWORD"
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-chat-bubbles-migration.sql
           rm -f /tmp/mariam-chat-bubbles-migration.sql
           REMOTE
 
@@ -93,12 +95,13 @@ jobs:
           DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
           DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
           test -n "$DB_NAME"; test -n "$DB_USER"
-          set -a
-          . ./.env
-          set +a
-          export PGPASSWORD="$DB_PASSWORD"
-          psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-inventory-migration.sql
-          unset PGPASSWORD
+          DB_HOST="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_HOST || "").toString("base64"))' | base64 -d)"
+          DB_PORT="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_PORT || "5432")')"
+          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
+          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_PASSWORD="$(node -e 'require("dotenv").config(); process.stdout.write(Buffer.from(process.env.DB_PASSWORD || "").toString("base64"))' | base64 -d)"
+          test -n "$DB_HOST"; test -n "$DB_USER"; test -n "$DB_NAME"; test -n "$DB_PASSWORD"
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v app_role="$DB_USER" -v ON_ERROR_STOP=1 -f /tmp/mariam-inventory-migration.sql
           rm -f /tmp/mariam-inventory-migration.sql
           REMOTE
 
