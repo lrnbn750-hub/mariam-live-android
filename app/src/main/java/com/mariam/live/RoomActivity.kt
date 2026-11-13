@@ -79,7 +79,7 @@ class RoomActivity : Activity() {
   super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(30,22,48);window.navigationBarColor=Color.rgb(18,15,28);window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(12),dp(10),dp(7));setBackgroundColor(Color.rgb(25,20,38))}
+  roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(12),dp(10),dp(7));setBackgroundColor(Color.TRANSPARENT)}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
   top.addView(label("×",30f,Color.rgb(83,126,94),true).apply{
@@ -116,15 +116,22 @@ class RoomActivity : Activity() {
   }
   roomPage.addView(membersButton,LinearLayout.LayoutParams(-1,dp(28)).apply{gravity=Gravity.START;topMargin=dp(2);bottomMargin=dp(2)})
   grid=LinearLayout(this).apply{orientation=1}
-  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(27)})
+  roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
   mic=action("المايك","mic",Color.rgb(83,126,94),Color.rgb(145,174,139)){toggleMic()}
   mic.visibility=View.GONE
   musicButton=action("موسيقى","music",Color.rgb(91,130,94),Color.rgb(157,178,145)){showMusicOptions()}
   musicButton.visibility=View.GONE
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(4)})
-  val roomRoot=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(247,247,242))}
-  roomRoot.addView(roomPage,LinearLayout.LayoutParams(-1,-1))
+  val roomRoot=FrameLayout(this).apply{setBackgroundColor(Color.rgb(20,18,28))}
+  roomBackgroundView=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.FIT_CENTER
+   setBackgroundColor(Color.rgb(20,18,28))
+   contentDescription="خلفية الغرفة"
+  }
+  roomRoot.addView(roomBackgroundView,FrameLayout.LayoutParams(-1,-1))
+  roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(42,0,0,0))},FrameLayout.LayoutParams(-1,-1))
+  roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Android 11+: move the composer by the exact keyboard inset instead of
   // relying on resize while immersive navigation flags are active.
@@ -744,7 +751,8 @@ class RoomActivity : Activity() {
  private fun applyRoomBackground(url:String){
   loadedBackgroundUrl=url
   if(url.isBlank()){
-   roomPage.background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))
+   roomBackgroundView.setImageDrawable(null)
+   roomBackgroundView.setBackgroundColor(Color.rgb(20,18,28))
    return
   }
   scope.launch{
@@ -756,12 +764,14 @@ class RoomActivity : Activity() {
      connection.getInputStream().use{android.graphics.BitmapFactory.decodeStream(it)}
     }
     if(bitmap!=null && loadedBackgroundUrl==url){
-     val photo=android.graphics.drawable.BitmapDrawable(resources,bitmap)
-     photo.alpha=255
-     roomPage.background=android.graphics.drawable.LayerDrawable(arrayOf(photo,GradientDrawable().apply{setColor(Color.argb(82,5,7,20))}))
+     roomBackgroundView.scaleType=ImageView.ScaleType.FIT_CENTER
+     roomBackgroundView.setImageBitmap(bitmap)
     }
    }catch(_:Exception){
-    if(loadedBackgroundUrl==url) roomPage.background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,23,55),bg,Color.rgb(13,14,31)))
+    if(loadedBackgroundUrl==url){
+     roomBackgroundView.setImageDrawable(null)
+     roomBackgroundView.setBackgroundColor(Color.rgb(20,18,28))
+    }
    }
   }
  }
@@ -811,7 +821,7 @@ class RoomActivity : Activity() {
      avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
      loadAvatarInto(photo,avatarUrl)
     }
-    val avatarSize=if(occupied)dp(48) else dp(50)
+    val avatarSize=if(occupied)dp(58) else dp(60)
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false
      clipToPadding=false
@@ -828,13 +838,13 @@ class RoomActivity : Activity() {
       background=GradientDrawable().apply{
        shape=GradientDrawable.OVAL
        setColor(Color.TRANSPARENT)
-       setStroke(dp(1),Color.rgb(190,194,188))
+       setStroke(dp(1.5f.toInt()),Color.rgb(225,228,220))
       }
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
-     addView(photoFrame,FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
+     addView(photoFrame,FrameLayout.LayoutParams(dp(66),dp(66),Gravity.CENTER))
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(68),dp(68)).apply{bottomMargin=dp(1)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(78),dp(78)).apply{bottomMargin=dp(2)})
     if(occupied){
      tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
       maxLines=1
