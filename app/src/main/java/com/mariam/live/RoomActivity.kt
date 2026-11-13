@@ -94,17 +94,28 @@ class RoomActivity : Activity() {
   roomId=intent.getStringExtra("room_id").orEmpty()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
   roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(12),dp(10),dp(7));setBackgroundColor(Color.TRANSPARENT)}
-  val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
+  val top=LinearLayout(this).apply{
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+  }
   top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
-  top.addView(label("×",30f,Color.rgb(83,126,94),true).apply{
-   setOnClickListener{leaveRoom()}
+  fun topRoomButton(icon:String,description:String,onClick:()->Unit)=FrameLayout(this).apply{
+   isClickable=true;isFocusable=true;elevation=dp(4).toFloat()
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.rgb(247,247,242))
-    setStroke(dp(1),Color.rgb(215,220,209))
+    setColor(Color.argb(220,48,15,65))
+    setStroke(dp(2),Color.rgb(222,91,231))
    }
-   contentDescription="مغادرة البث"
-  },LinearLayout.LayoutParams(dp(36),dp(36)).apply{topMargin=dp(7)})
+   addView(ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon(icon,Color.WHITE,dp(23)))
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    contentDescription=description
+   },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+   contentDescription=description
+   setOnClickListener{onClick()}
+  }
+  top.addView(topRoomButton("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(9)})
+  top.addView(topRoomButton("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)))
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
@@ -545,7 +556,25 @@ class RoomActivity : Activity() {
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(5)})
+   val roomGiftButton=FrameLayout(this@RoomActivity).apply{
+    isClickable=true;isFocusable=true
+    background=GradientDrawable().apply{
+     shape=GradientDrawable.OVAL
+     setColor(Color.rgb(171,72,190))
+     setStroke(dp(2),Color.rgb(255,190,75))
+    }
+    addView(ImageView(this@RoomActivity).apply{
+     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(22)))
+     scaleType=ImageView.ScaleType.CENTER_INSIDE
+     contentDescription="الهدايا"
+    },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+    contentDescription="فتح الهدايا"
+    setOnClickListener{
+     Toast.makeText(this@RoomActivity,"واجهة إرسال الهدايا غير مربوطة بالخادم بعد",Toast.LENGTH_SHORT).show()
+    }
+   }
+   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(7)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -1913,6 +1942,16 @@ class RoomActivity : Activity() {
   }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
+ private fun shareRoom(){
+  if(roomId.isBlank())return
+  val roomName=intent.getStringExtra("room_name").orEmpty().ifBlank{"غرفة صوتية"}
+  val shareText="تعال انضم إلينا في $roomName على BAK LIVE\nمعرّف الغرفة: $roomId"
+  val send=Intent(Intent.ACTION_SEND).apply{
+   type="text/plain"
+   putExtra(Intent.EXTRA_TEXT,shareText)
+  }
+  startActivity(Intent.createChooser(send,"مشاركة البث"))
+ }
  private fun leaveRoom(){
   if(leaving)return
   if(isOwner){
