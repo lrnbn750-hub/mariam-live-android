@@ -98,7 +98,6 @@ class RoomActivity : Activity() {
    gravity=Gravity.CENTER_VERTICAL
    layoutDirection=View.LAYOUT_DIRECTION_LTR
   }
-  top.addView(View(this),LinearLayout.LayoutParams(0,dp(44),1f))
   fun topRoomButton(icon:String,description:String,onClick:()->Unit)=FrameLayout(this).apply{
    isClickable=true;isFocusable=true;elevation=dp(4).toFloat()
    background=GradientDrawable().apply{
@@ -524,7 +523,7 @@ class RoomActivity : Activity() {
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(105,140,91,190));setStroke(dp(1),Color.argb(75,255,255,255))}
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(28,255,255,255));setStroke(dp(1),Color.argb(170,255,255,255))}
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
@@ -552,7 +551,7 @@ class RoomActivity : Activity() {
    chatIcon=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(135,139,91,190))}
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(28,255,255,255));setStroke(dp(1),Color.argb(170,255,255,255))}
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
@@ -561,8 +560,8 @@ class RoomActivity : Activity() {
     isClickable=true;isFocusable=true
     background=GradientDrawable().apply{
      shape=GradientDrawable.OVAL
-     setColor(Color.rgb(171,72,190))
-     setStroke(dp(2),Color.rgb(255,190,75))
+     setColor(Color.argb(28,255,255,255))
+     setStroke(dp(1),Color.argb(190,255,255,255))
     }
     addView(ImageView(this@RoomActivity).apply{
      setImageDrawable(VectorIcon("gift",Color.WHITE,dp(22)))
