@@ -21,7 +21,10 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
     const afterId = Math.max(0, Number(req.query.after_id) || 0);
     if (!validId(roomId)) return res.status(400).json({ error: "معرّف الغرفة غير صالح" });
     try {
-      const member = await db.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2", [roomId, req.userId]);
+      const member = await db.query(
+        "SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2 UNION SELECT 1 FROM voice_room_seats WHERE room_id=$1 AND user_id=$2",
+        [roomId, req.userId]
+      );
       if (!member.rows.length) return res.status(403).json({ error: "يجب الانضمام إلى الغرفة أولاً" });
       const result = await db.query(`
         SELECT e.id, e.room_id, e.sender_id, e.recipient_id, e.gift_id, e.quantity,
@@ -66,7 +69,7 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       const room = await client.query("SELECT id FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
       if (!room.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "الغرفة غير نشطة" }); }
       const members = await client.query(
-        "SELECT user_id FROM room_members WHERE room_id=$1 AND user_id = ANY($2::uuid[])",
+        "SELECT user_id FROM room_members WHERE room_id=$1 AND user_id = ANY($2::uuid[]) UNION SELECT user_id FROM voice_room_seats WHERE room_id=$1 AND user_id = ANY($2::uuid[])",
         [roomId, [req.userId, recipientId]]
       );
       const memberIds = new Set(members.rows.map(row => String(row.user_id)));
@@ -98,7 +101,9 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       const totalCoins = BigInt(gift.price_coins) * BigInt(quantity);
       const units = BigInt(gift.gift_units) * BigInt(quantity);
       const diamonds = units * BigInt(unitsPerGift);
-      const creatorCents = units * BigInt(usdCentsPerUnit) * BigInt(creatorPercent) / 100n;
+      const totalEarningsCents = units * BigInt(usdCentsPerUnit);
+      const creatorCents = totalEarningsCents * BigInt(creatorPercent) / 100n;
+      const platformCents = totalEarningsCents - creatorCents;
       if (totalCoins > BigInt(Number.MAX_SAFE_INTEGER) || diamonds > BigInt(Number.MAX_SAFE_INTEGER) ||
           creatorCents > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Gift amount overflow");
 
@@ -129,10 +134,10 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       const eventKey = "gift:" + requestKey;
       const event = await client.query(
         `INSERT INTO voice_room_gift_events
-          (room_id,sender_id,recipient_id,gift_id,quantity,total_coins,diamonds_awarded,creator_earnings_usd_cents,event_key)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          (room_id,sender_id,recipient_id,gift_id,quantity,total_coins,diamonds_awarded,creator_earnings_usd_cents,platform_share_usd_cents,event_key)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          RETURNING id,room_id,sender_id,recipient_id,gift_id,quantity,total_coins,created_at`,
-        [roomId, req.userId, recipientId, giftId, quantity, totalCoins.toString(), diamonds.toString(), creatorCents.toString(), eventKey]
+        [roomId, req.userId, recipientId, giftId, quantity, totalCoins.toString(), diamonds.toString(), creatorCents.toString(), platformCents.toString(), eventKey]
       );
       await client.query(
         `INSERT INTO wallet_transactions(user_id,transaction_type,amount,currency,status,event_key,related_user_id,metadata)
@@ -142,12 +147,13 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       await client.query(
         `INSERT INTO wallet_transactions(user_id,transaction_type,amount,currency,status,event_key,related_user_id,metadata)
          VALUES($1,'gift_received',$2,'DIAMOND','completed',$3,$4,$5)`,
-        [recipientId,diamonds.toString(),eventKey+":recipient",req.userId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity,creator_earnings_usd_cents:creatorCents.toString()})]
+        [recipientId,diamonds.toString(),eventKey+":recipient",req.userId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity,creator_earnings_usd_cents:creatorCents.toString(),platform_share_usd_cents:platformCents.toString()})]
       );
       await client.query("COMMIT");
       return res.status(201).json({ message: "تم إرسال الهدية", event: event.rows[0], total_coins: totalCoins.toString(), diamonds_awarded: diamonds.toString() });
     } catch (error) {
       await client.query("ROLLBACK").catch(() => {});
+      if (error.code === "23505") return res.status(409).json({ error: "تمت معالجة هذا الطلب مسبقاً" });
       console.error("Send gift:", error.message);
       return res.status(500).json({ error: "تعذر إرسال الهدية" });
     } finally { client.release(); }
