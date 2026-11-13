@@ -44,6 +44,7 @@ class RoomActivity : Activity() {
  private var ownerProfileRequested=false
  private var roomOwnerUserId=""
  private var followRequestSent=false
+ private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
  private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
  private var seatRefreshJob:Job?=null
@@ -316,37 +317,60 @@ class RoomActivity : Activity() {
     text="+";textSize=23f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(170,142,92,210));setStroke(dp(1),Color.argb(100,255,255,255))}
-    contentDescription="متابعة صاحب البث"
-    setOnClickListener{sendOwnerFollowRequest(this)}
+    contentDescription="حالة متابعة صاحب البث"
+    setOnClickListener{toggleOwnerFollow(this)}
    }
+   ownerFollowButton=follow
    card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
    card.addView(avatarFrame,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
    card.addView(follow,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
    return card
   }
-  private fun sendOwnerFollowRequest(button:TextView){
-  if(roomOwnerUserId.isBlank() || roomOwnerUserId=="null" || roomOwnerUserId==currentUserId){
-   Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show()
-   return
+  private fun renderOwnerFollowState(button:TextView,following:Boolean){
+  followRequestSent=following
+  button.text=if(following)"✓" else "+"
+  button.contentDescription=if(following)"إلغاء متابعة صاحب البث" else "متابعة صاحب البث"
+  button.background=GradientDrawable().apply{
+   shape=GradientDrawable.OVAL
+   setColor(if(following)Color.rgb(91,139,101) else Color.argb(170,142,92,210))
+   setStroke(dp(1),Color.argb(100,255,255,255))
   }
-  if(followRequestSent){
-   Toast.makeText(this,"تم إرسال طلب المتابعة مسبقاً",Toast.LENGTH_SHORT).show()
-   return
+  button.isEnabled=true
+ }
+ private fun loadOwnerFollowState(){
+  val userId=roomOwnerUserId
+  val button=ownerFollowButton?:return
+  if(userId.isBlank() || userId=="null")return
+  if(userId==currentUserId){button.visibility=View.GONE;return}
+  button.visibility=View.VISIBLE
+  button.isEnabled=false
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){AuthApi.get("/api/follows/status/$userId",authToken)}
+    if(result.status in 200..299 && roomOwnerUserId==userId){
+     renderOwnerFollowState(button,result.body.optBoolean("following",false))
+    }else button.isEnabled=true
+   }catch(_:Exception){button.isEnabled=true}
+  }
+ }
+ private fun toggleOwnerFollow(button:TextView){
+  if(roomOwnerUserId.isBlank() || roomOwnerUserId=="null" || roomOwnerUserId==currentUserId){
+   Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return
   }
   button.isEnabled=false
   scope.launch{
    try{
+    val wasFollowing=followRequestSent
     val result=withContext(Dispatchers.IO){
-     AuthApi.post("/api/follows/$roomOwnerUserId",JSONObject(),authToken)
+     if(wasFollowing)AuthApi.delete("/api/follows/$roomOwnerUserId",authToken)
+     else AuthApi.post("/api/follows/$roomOwnerUserId",JSONObject(),authToken)
     }
     if(result.status in 200..299){
-     followRequestSent=true
-     button.text="✓"
-     button.background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(91,139,101))}
-     Toast.makeText(this@RoomActivity,"أصبحت تتابع صاحب الغرفة",Toast.LENGTH_SHORT).show()
+     renderOwnerFollowState(button,!wasFollowing)
+     Toast.makeText(this@RoomActivity,if(wasFollowing)"تم إلغاء المتابعة" else "أصبحت تتابع صاحب الغرفة",Toast.LENGTH_SHORT).show()
     }else{
-     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال الطلب"),Toast.LENGTH_SHORT).show()
      button.isEnabled=true
+     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تحديث المتابعة"),Toast.LENGTH_SHORT).show()
     }
    }catch(_:Exception){
     button.isEnabled=true
@@ -361,6 +385,7 @@ class RoomActivity : Activity() {
   val ownerUserId=owner.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
   if(ownerUserId==null)return
   roomOwnerUserId=ownerUserId
+  loadOwnerFollowState()
   val name=owner.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
    ?:owner.optString("username").takeIf{it.isNotBlank()&&it!="null"}
    ?: "صاحب الغرفة"
@@ -1109,8 +1134,10 @@ class RoomActivity : Activity() {
    setOnClickListener{Toast.makeText(this@RoomActivity,"إرسال الهدية يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()}
   }
   actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
-  val follow=actionButton("＋ متابعة",Color.rgb(22,194,190)){sendMemberFollow(uid,it)}
+  val follow=actionButton("جارٍ التحقق...",Color.rgb(22,194,190)){toggleMemberFollow(uid,it)}
+  follow.isEnabled=false
   actions.addView(follow,LinearLayout.LayoutParams(0,dp(48),1f))
+  loadMemberFollowState(uid,follow)
   root.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(12)})
   dialog.setContentView(root)
   dialog.window?.apply{
@@ -1124,22 +1151,45 @@ class RoomActivity : Activity() {
   dialog.window?.setLayout(-1,-2)
   dialog.window?.setGravity(Gravity.BOTTOM)
  }
- private fun sendMemberFollow(userId:String,button:TextView){
+ private fun renderMemberFollowState(button:TextView,following:Boolean){
+  button.text=if(following)"✓ تتابعه" else "＋ متابعة"
+  button.setBackgroundColor(if(following)Color.rgb(80,145,105) else Color.rgb(22,194,190))
+  button.isEnabled=true
+ }
+ private fun loadMemberFollowState(userId:String,button:TextView){
+  if(userId==currentUserId){button.text="حسابك";button.isEnabled=false;return}
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){AuthApi.get("/api/follows/status/$userId",authToken)}
+    if(result.status in 200..299)renderMemberFollowState(button,result.body.optBoolean("following",false))
+    else{button.text="＋ متابعة";button.isEnabled=true}
+   }catch(_:Exception){button.text="＋ متابعة";button.isEnabled=true}
+  }
+ }
+ private fun toggleMemberFollow(userId:String,button:TextView){
   if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
+  val wasFollowing=button.text.toString().contains("تتابعه")
   button.isEnabled=false
   scope.launch{
    try{
-    val result=withContext(Dispatchers.IO){AuthApi.post("/api/follows/$userId",JSONObject(),authToken)}
+    val result=withContext(Dispatchers.IO){
+     if(wasFollowing)AuthApi.delete("/api/follows/$userId",authToken)
+     else AuthApi.post("/api/follows/$userId",JSONObject(),authToken)
+    }
     if(result.status in 200..299){
-     button.text="✓ تتابعه"
-     button.setBackgroundColor(Color.rgb(80,145,105))
+     renderMemberFollowState(button,!wasFollowing)
+     Toast.makeText(this@RoomActivity,if(wasFollowing)"تم إلغاء المتابعة" else "تمت المتابعة بنجاح",Toast.LENGTH_SHORT).show()
     }else{
      button.isEnabled=true
-     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر إرسال طلب المتابعة"),Toast.LENGTH_SHORT).show()
+     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تحديث المتابعة"),Toast.LENGTH_SHORT).show()
     }
-   }catch(_:Exception){button.isEnabled=true;Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+   }catch(_:Exception){
+    button.isEnabled=true
+    Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
+   }
   }
  }
+
  private fun openMemberConversation(userId:String,name:String){
   if(userId==currentUserId){
    Toast.makeText(this,"هذا حسابك",Toast.LENGTH_SHORT).show()
