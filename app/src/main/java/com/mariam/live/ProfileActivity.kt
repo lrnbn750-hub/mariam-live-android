@@ -738,7 +738,7 @@ class ProfileActivity : Activity() {
     override fun onDestroy(){royalFrame.stopAnimation();executor.shutdownNow();super.onDestroy()}
 }
 
-private class RoyalGifFrame(context:android.content.Context):View(context){
+class RoyalGifFrame(context:android.content.Context):View(context){
     private var movie:android.graphics.Movie?=null
     private var startedAt=0L
     private var running=false
