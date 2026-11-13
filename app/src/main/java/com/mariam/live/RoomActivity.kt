@@ -75,7 +75,8 @@ class RoomActivity : Activity() {
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
  private var previousMemberIds:MutableSet<String>?=null
- private val joinNotices=ArrayList<String>()
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val createdAt:Long=System.currentTimeMillis())
+ private val joinNotices=ArrayList<RoomJoinNotice>()
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
  private fun panel(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat();setStroke(dp(1),Color.rgb(91,72,145))}
@@ -681,13 +682,53 @@ class RoomActivity : Activity() {
      }
      chatMessages.addView(line,LinearLayout.LayoutParams(-1,-2))
     }
+    // Join events are rendered inside the same scrollable chat stream, not fixed on screen.
+    val now=System.currentTimeMillis()
+    joinNotices.removeAll{now-it.createdAt>12000L}
     for(notice in joinNotices.takeLast(12)){
-     val event=TextView(this@RoomActivity).apply{
-      text=notice;textSize=12f;gravity=Gravity.CENTER
-      setTextColor(Color.rgb(77,91,76));setPadding(dp(8),dp(7),dp(8),dp(7))
-      background=GradientDrawable().apply{setColor(Color.rgb(235,237,229));cornerRadius=dp(12).toFloat()}
+     val isLevel100=notice.level>=100
+     val event=LinearLayout(this@RoomActivity).apply{
+      orientation=LinearLayout.HORIZONTAL
+      gravity=Gravity.CENTER_VERTICAL
+      layoutDirection=View.LAYOUT_DIRECTION_RTL
+      setPadding(dp(10),dp(if(isLevel100)9 else 7),dp(10),dp(if(isLevel100)9 else 7))
+      background=if(isLevel100) GradientDrawable(
+       GradientDrawable.Orientation.LEFT_RIGHT,
+       intArrayOf(Color.argb(238,52,31,66),Color.argb(242,31,23,38),Color.argb(238,79,48,18))
+      ).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(225,180,79))}
+      else GradientDrawable().apply{
+       setColor(Color.argb(165,22,20,31))
+       cornerRadius=dp(15).toFloat()
+       setStroke(dp(1),Color.argb(65,255,255,255))
+      }
+      elevation=dp(if(isLevel100)5 else 1).toFloat()
      }
-     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
+     if(isLevel100){
+      val lv=TextView(this@RoomActivity).apply{
+       text="LV 100";textSize=10f;gravity=Gravity.CENTER
+       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+       setTextColor(Color.rgb(255,226,157))
+       setPadding(dp(8),dp(4),dp(8),dp(4))
+       background=GradientDrawable().apply{
+        setColor(Color.argb(95,211,160,53));cornerRadius=dp(10).toFloat()
+        setStroke(dp(1),Color.rgb(230,185,91))
+       }
+      }
+      event.addView(lv,LinearLayout.LayoutParams(-2,dp(25)).apply{marginEnd=dp(8)})
+     }
+     val title=TextView(this@RoomActivity).apply{
+      text=if(isLevel100)"${notice.name} دخل الغرفة" else "${notice.name} انضم إلى الغرفة"
+      textSize=if(isLevel100)13f else 11.5f;gravity=Gravity.CENTER_VERTICAL;maxLines=2
+      setTextColor(if(isLevel100)Color.rgb(255,224,158) else Color.rgb(239,237,245))
+      typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+     }
+     event.addView(title,LinearLayout.LayoutParams(0,-2,1f))
+     chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(2),dp(4),dp(2),dp(4))})
+     if(isLevel100 && now-notice.createdAt<1800L){
+      event.alpha=0f;event.translationY=dp(18).toFloat()
+      event.animate().alpha(1f).translationY(0f).setDuration(420)
+       .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+     }
     }
     chatScroll.post{
      if(wasAtBottom)chatScroll.fullScroll(View.FOCUS_DOWN)
@@ -1085,7 +1126,8 @@ class RoomActivity : Activity() {
      val me=(0 until fresh.length()).mapNotNull{fresh.optJSONObject(it)}
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
-     joinNotices.add("$myName • لقد انضممت إلى الغرفة")
+     val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
+     joinNotices.add(RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId))
     }
     if(previous!=null){
      for(i in 0 until fresh.length()){
@@ -1093,7 +1135,10 @@ class RoomActivity : Activity() {
       val id=member.optString("user_id")
       if(id.isNotBlank() && id!="null" && !previous.contains(id)){
        val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
-       joinNotices.add("انضم إلى الغرفة  •  $name")
+       val nested=member.optJSONObject("user")?:member.optJSONObject("profile")
+       val level=(if(member.has("level"))member.optInt("level",1) else
+        if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
+       joinNotices.add(RoomJoinNotice(name,level,id))
       }
      }
      while(joinNotices.size>12)joinNotices.removeAt(0)
