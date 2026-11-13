@@ -52,6 +52,7 @@ class RoomActivity : Activity() {
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
  private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
+ private var roomSwipeGestureEligible=false
  private var seatRefreshJob:Job?=null
  private var speakerEventsJob:Job?=null
  private val activeSpeakerLevels=HashMap<String,Float>()
@@ -245,54 +246,60 @@ class RoomActivity : Activity() {
    MotionEvent.ACTION_DOWN->{
     swipeDownX=event.rawX
     swipeDownY=event.rawY
+    // Room switching is allowed only when the gesture starts above the chat panel.
+    // A touch that starts on a comment is always owned by the chat ScrollView.
     val chatTop=if(::chatPanel.isInitialized){
      val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()
     }else screenHeight
-    if(!switchingRoom && swipeDownY<chatTop){
+    roomSwipeGestureEligible=!switchingRoom && !composerExpanded && swipeDownY<chatTop
+    if(roomSwipeGestureEligible){
      roomPage.animate().cancel()
      roomPage.setLayerType(View.LAYER_TYPE_HARDWARE,null)
      roomPage.translationY=0f
     }
    }
    MotionEvent.ACTION_MOVE->{
-    val dx=event.rawX-swipeDownX
-    val dy=event.rawY-swipeDownY
-    if(!switchingRoom && swipeDownY<screenHeight-dp(170) &&
-      kotlin.math.abs(dy)>dp(8) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.2f){
-     // Translate only: avoid scaling/fading the full room hierarchy on every frame.
-     roomPage.translationY=dy*0.88f
-     return true
+    if(roomSwipeGestureEligible){
+     val dx=event.rawX-swipeDownX
+     val dy=event.rawY-swipeDownY
+     if(kotlin.math.abs(dy)>dp(12) && kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.35f){
+      roomPage.translationY=dy*0.72f
+      return true
+     }
     }
    }
    MotionEvent.ACTION_UP,MotionEvent.ACTION_CANCEL->{
-    val dx=event.rawX-swipeDownX
-    val dy=event.rawY-swipeDownY
-    val isVertical=kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.2f
-    if(isVertical && (roomPage.translationY!=0f || kotlin.math.abs(dy)>dp(12))){
-     val commit=event.actionMasked==MotionEvent.ACTION_UP && kotlin.math.abs(dy)>dp(125)
-     roomPage.animate().cancel()
-     if(commit && !switchingRoom){
-      val direction=if(dy<0)1 else -1
-      roomPage.animate()
-       .translationY(if(direction>0)-screenHeight else screenHeight)
-       .setDuration(150)
-       .setInterpolator(android.view.animation.LinearInterpolator())
-       .withEndAction{
-        roomPage.translationY=0f
-        roomPage.setLayerType(View.LAYER_TYPE_NONE,null)
-        switchLiveRoom(direction)
-       }.start()
-     }else{
-      roomPage.animate().translationY(0f)
-       .setDuration(170)
-       .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
-       .withEndAction{roomPage.setLayerType(View.LAYER_TYPE_NONE,null)}
-       .start()
+    if(roomSwipeGestureEligible){
+     val dx=event.rawX-swipeDownX
+     val dy=event.rawY-swipeDownY
+     val isVertical=kotlin.math.abs(dy)>kotlin.math.abs(dx)*1.35f
+     if(isVertical && (roomPage.translationY!=0f || kotlin.math.abs(dy)>dp(18))){
+      val commit=event.actionMasked==MotionEvent.ACTION_UP && kotlin.math.abs(dy)>dp(145)
+      roomPage.animate().cancel()
+      if(commit && !switchingRoom){
+       val direction=if(dy<0)1 else -1
+       roomPage.animate()
+        .translationY(if(direction>0)-screenHeight else screenHeight)
+        .setDuration(190)
+        .setInterpolator(android.view.animation.DecelerateInterpolator(1.2f))
+        .withEndAction{
+         roomPage.translationY=0f
+         roomPage.setLayerType(View.LAYER_TYPE_NONE,null)
+         switchLiveRoom(direction)
+        }.start()
+      }else{
+       roomPage.animate().translationY(0f)
+        .setDuration(190)
+        .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
+        .withEndAction{roomPage.setLayerType(View.LAYER_TYPE_NONE,null)}
+        .start()
+      }
+      roomSwipeGestureEligible=false
+      return true
      }
-     return true
-    }else{
      roomPage.setLayerType(View.LAYER_TYPE_NONE,null)
     }
+    roomSwipeGestureEligible=false
    }
   }
   return super.dispatchTouchEvent(event)
@@ -599,6 +606,12 @@ class RoomActivity : Activity() {
      return@launch
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
+    // Preserve the reader's position during polling; only follow new messages
+    // automatically when they were already at the bottom.
+    val previousScrollY=chatScroll.scrollY
+    val wasAtBottom=chatScroll.getChildAt(0)?.let{
+     chatScroll.scrollY+chatScroll.height>=it.height-dp(28)
+    }?:true
     chatMessages.removeAllViews()
     for(i in 0 until messages.length()){
      val item=messages.optJSONObject(i)?:continue
@@ -631,7 +644,7 @@ class RoomActivity : Activity() {
       layoutDirection=View.LAYOUT_DIRECTION_LTR
      }
      val levelBadge=TextView(this@RoomActivity).apply{
-      text=if(isMaxLevel)"♛ LV 100" else "LV $senderLevel"
+      text="LV $senderLevel"
       textSize=if(isMaxLevel)9.5f else 8.5f
       setTextColor(if(isMaxLevel)Color.rgb(255,224,145) else Color.rgb(220,210,245))
       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
@@ -676,7 +689,10 @@ class RoomActivity : Activity() {
      }
      chatMessages.addView(event,LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,dp(3),0,dp(3))})
     }
-    chatScroll.post{chatScroll.fullScroll(View.FOCUS_DOWN)}
+    chatScroll.post{
+     if(wasAtBottom)chatScroll.fullScroll(View.FOCUS_DOWN)
+     else chatScroll.scrollTo(0,previousScrollY.coerceAtMost(chatMessages.height-chatScroll.height).coerceAtLeast(0))
+    }
    }catch(_:Exception){
     if(chatMessages.childCount==0)chatMessages.addView(label("تعذر الاتصال بالدردشة",13f,Color.LTGRAY))
    }
