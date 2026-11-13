@@ -1201,7 +1201,11 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     joinNotices.add(RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty()))
+     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty())
+     joinNotices.add(myNotice)
+     // Show the entrance banner for the current user too; initial membership
+     // is the first observed state, so it must not be treated as a silent baseline.
+     showRoomJoinToast(myNotice)
     }
     if(previous!=null){
      for(i in 0 until fresh.length()){
