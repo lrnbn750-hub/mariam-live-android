@@ -10,4 +10,5 @@ CREATE INDEX IF NOT EXISTS user_follows_followed_created_idx
   ON public.user_follows (followed_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS user_follows_follower_created_idx
   ON public.user_follows (follower_id, created_at DESC);
+GRANT SELECT, INSERT, DELETE ON public.user_follows TO :"app_role";
 COMMIT;
