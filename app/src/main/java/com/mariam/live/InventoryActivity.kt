@@ -104,7 +104,9 @@ class InventoryActivity : Activity() {
             }
         }
         card.addView(preview,LinearLayout.LayoutParams(dp(76),dp(76)))
-        if(url.startsWith("https://")) executor.execute {
+        if(type=="chat_bubble") {
+            preview.setBubbleStyle(id)
+        } else if(url.startsWith("https://")) executor.execute {
             try {
                 val bytes=URL(url).openConnection().apply{connectTimeout=12000;readTimeout=15000}.getInputStream().use{it.readBytes()}
                 runOnUiThread{if(!isFinishing)preview.setGif(bytes)}
@@ -118,7 +120,12 @@ class InventoryActivity : Activity() {
             typeface=android.graphics.Typeface.DEFAULT_BOLD
         })
         details.addView(TextView(this).apply {
-            text=if(type=="frame")"إطار صورة" else "خلفية ملف شخصي"
+            text=when(type) {
+                "frame" -> "إطار صورة"
+                "background" -> "خلفية ملف شخصي"
+                "chat_bubble" -> "فقاعة دردشة للغرفة"
+                else -> "عنصر تجميلي"
+            }
             textSize=12f;setTextColor(Color.rgb(110,103,130));setPadding(0,dp(4),0,dp(5))
         })
         val action=TextView(this).apply {
@@ -165,10 +172,18 @@ class InventoryActivity : Activity() {
 /** Small animated GIF preview. BitmapFactory does not reliably decode animated GIFs. */
 private class AnimatedGifPreview(context: android.content.Context) : View(context) {
     private var movie: Movie? = null
+    private var bubbleStyle: ChatBubbleStyleDrawable? = null
     private var startedAt = 0L
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
+    fun setBubbleStyle(styleId: String) {
+        movie = null
+        bubbleStyle = ChatBubbleStyleDrawable(styleId).also { it.callback = this }
+        invalidate()
+    }
+
     fun setGif(bytes: ByteArray) {
+        bubbleStyle = null
         movie = Movie.decodeByteArray(bytes, 0, bytes.size)
         startedAt = SystemClock.uptimeMillis()
         invalidate()
@@ -176,6 +191,13 @@ private class AnimatedGifPreview(context: android.content.Context) : View(contex
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        val style = bubbleStyle
+        if (style != null) {
+            style.bounds = android.graphics.Rect(0, 0, width, height)
+            style.draw(canvas)
+            postInvalidateOnAnimation()
+            return
+        }
         val gif = movie ?: return
         val duration = gif.duration().takeIf { it > 0 } ?: 1000
         val elapsed = ((SystemClock.uptimeMillis() - startedAt) % duration).toInt()
