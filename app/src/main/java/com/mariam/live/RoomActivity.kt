@@ -127,7 +127,7 @@ class RoomActivity : Activity() {
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(4)})
   val roomRoot=FrameLayout(this).apply{setBackgroundColor(Color.rgb(20,18,28))}
   roomBackgroundView=ImageView(this).apply{
-   scaleType=ImageView.ScaleType.FIT_CENTER
+   scaleType=ImageView.ScaleType.CENTER_CROP
    setBackgroundColor(Color.TRANSPARENT)
    contentDescription="خلفية الغرفة"
   }
@@ -782,8 +782,8 @@ class RoomActivity : Activity() {
        dp(22).toFloat(),dp(22).toFloat(),android.graphics.Shader.TileMode.CLAMP
       ))
      }
-     // Keep the original photo fully visible and sharp above the fill layer.
-     roomBackgroundView.scaleType=ImageView.ScaleType.FIT_CENTER
+     // Crop the photo to cover every edge of the room screen; no letterbox margins.
+     roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
      roomBackgroundView.setImageBitmap(bitmap)
     }
    }catch(_:Exception){
