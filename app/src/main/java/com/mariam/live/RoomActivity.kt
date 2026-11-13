@@ -1430,7 +1430,15 @@ class RoomActivity : Activity() {
   val grid=android.widget.GridLayout(this).apply{columnCount=2;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_MARGINS}
   gifts.forEachIndexed{index,gift->
    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
-   val icon=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))};addView(ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)));scaleType=ImageView.ScaleType.CENTER_INSIDE;contentDescription=gift.name},FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))}
+   val icon=FrameLayout(this).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
+    addView(ImageView(this@RoomActivity).apply{
+     val isRose=gift.name.contains("وردة",ignoreCase=true)||gift.name.contains("rose",ignoreCase=true)||gift.id.contains("rose",ignoreCase=true)
+     if(isRose){setImageResource(R.drawable.gift_rose)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
+     scaleType=ImageView.ScaleType.FIT_CENTER
+     contentDescription=gift.name
+    },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
+   }
    card.addView(icon,LinearLayout.LayoutParams(dp(58),dp(58)))
    card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
    card.addView(label("${gift.price} عملة",12f,Color.rgb(255,213,145),true),LinearLayout.LayoutParams(-1,dp(25)))
