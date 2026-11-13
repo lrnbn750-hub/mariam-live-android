@@ -41,6 +41,7 @@ class RoomActivity : Activity() {
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
  private lateinit var roomBackgroundView:ImageView
+ private lateinit var roomOverlayLayer:FrameLayout
  private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
@@ -75,7 +76,7 @@ class RoomActivity : Activity() {
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
  private var previousMemberIds:MutableSet<String>?=null
- private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val createdAt:Long=System.currentTimeMillis())
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
  private val joinNotices=ArrayList<RoomJoinNotice>()
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{text=s;textSize=n;setTextColor(c);gravity=Gravity.CENTER;typeface=android.graphics.Typeface.create("sans-serif",if(b)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
@@ -129,6 +130,7 @@ class RoomActivity : Activity() {
   musicButton.visibility=View.GONE
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(4)})
   val roomRoot=FrameLayout(this).apply{setBackgroundColor(Color.rgb(20,18,28))}
+  roomOverlayLayer=FrameLayout(this).apply{isClickable=false;isFocusable=false}
   // Single sharp edge-to-edge image. CENTER_CROP preserves proportions on all screens.
   roomBackgroundView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
@@ -144,6 +146,7 @@ class RoomActivity : Activity() {
   roomRoot.addView(roomBackgroundView,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(42,0,0,0))},FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
+  roomRoot.addView(roomOverlayLayer,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Android 11+: move the composer by the exact keyboard inset instead of
   // relying on resize while immersive navigation flags are active.
@@ -699,6 +702,19 @@ class RoomActivity : Activity() {
       }
       elevation=dp(if(isLevel100)5 else 1).toFloat()
      }
+     val avatar=ImageView(this@RoomActivity).apply{
+      scaleType=ImageView.ScaleType.CENTER_CROP
+      background=GradientDrawable().apply{
+       shape=GradientDrawable.OVAL
+       setColor(Color.rgb(55,43,69))
+       setStroke(dp(if(isLevel100)2 else 1),if(isLevel100)Color.rgb(226,183,87) else Color.argb(110,255,255,255))
+      }
+      clipToOutline=true
+      val url=notice.avatarUrl
+      if(url.isNotBlank()){tag=url;loadAvatarInto(this,url)}
+      else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(20)))
+     }
+     event.addView(avatar,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(8)})
      if(isLevel100){
       val lv=TextView(this@RoomActivity).apply{
        text="LV 100";textSize=10f;gravity=Gravity.CENTER
@@ -1111,6 +1127,93 @@ class RoomActivity : Activity() {
   }
  }
  private var membershipWatch:Job?=null
+ private fun showRoomJoinToast(notice:RoomJoinNotice){
+  if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
+  val isLevel100=notice.level>=100
+  val card=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(12),dp(10),dp(14),dp(10))
+   background=if(isLevel100) GradientDrawable(
+    GradientDrawable.Orientation.LEFT_RIGHT,
+    intArrayOf(Color.rgb(66,39,78),Color.rgb(31,25,39),Color.rgb(76,51,20))
+   ).apply{
+    cornerRadius=dp(20).toFloat()
+    setStroke(dp(1),Color.rgb(232,190,94))
+   } else GradientDrawable(
+    GradientDrawable.Orientation.LEFT_RIGHT,
+    intArrayOf(Color.rgb(66,49,87),Color.rgb(28,25,39))
+   ).apply{
+    cornerRadius=dp(18).toFloat()
+    setStroke(dp(1),Color.argb(105,220,196,255))
+   }
+   elevation=dp(if(isLevel100)8 else 4).toFloat()
+   alpha=0f
+   translationX=dp(360).toFloat()
+   importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_YES
+   contentDescription="${notice.name} انضم إلى الغرفة، المستوى ${notice.level}"
+  }
+  val avatar=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=GradientDrawable().apply{
+    shape=GradientDrawable.OVAL
+    setColor(Color.rgb(52,43,65))
+    setStroke(dp(if(isLevel100)2 else 1),if(isLevel100)Color.rgb(244,205,115) else Color.argb(120,255,255,255))
+   }
+   clipToOutline=true
+   val url=notice.avatarUrl
+   if(url.isNotBlank()){tag=url;loadAvatarInto(this,url)}
+   else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(22)))
+  }
+  card.addView(avatar,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(10)})
+  val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
+  val topLine=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+  topLine.addView(TextView(this).apply{
+   text=notice.name
+   textSize=13f
+   maxLines=1
+   ellipsize=android.text.TextUtils.TruncateAt.END
+   setTextColor(if(isLevel100)Color.rgb(255,224,160) else Color.WHITE)
+   typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+  },LinearLayout.LayoutParams(0,dp(22),1f))
+  topLine.addView(TextView(this).apply{
+   text="LV ${notice.level}"
+   textSize=10f
+   gravity=Gravity.CENTER
+   setTextColor(if(isLevel100)Color.rgb(255,228,166) else Color.rgb(231,215,255))
+   typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+   setPadding(dp(8),dp(3),dp(8),dp(3))
+   background=GradientDrawable().apply{
+    cornerRadius=dp(10).toFloat()
+    setColor(if(isLevel100)Color.argb(105,214,164,57) else Color.argb(85,148,112,185))
+    setStroke(dp(1),if(isLevel100)Color.rgb(230,187,93) else Color.argb(110,210,190,245))
+   }
+  },LinearLayout.LayoutParams(-2,dp(23)))
+  info.addView(topLine,LinearLayout.LayoutParams(-1,-2))
+  info.addView(TextView(this).apply{
+   text=if(isLevel100)"وصل أحد كبار الداعمين إلى الغرفة" else "انضم إلى الغرفة"
+   textSize=10.5f
+   setTextColor(if(isLevel100)Color.rgb(244,211,153) else Color.rgb(210,204,222))
+   setPadding(0,dp(3),0,0)
+  })
+  card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+  val width=resources.displayMetrics.widthPixels-dp(28)
+  val params=FrameLayout.LayoutParams(width,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{
+   bottomMargin=dp(88)
+   marginStart=dp(14);marginEnd=dp(14)
+  }
+  roomOverlayLayer.addView(card,params)
+  card.animate().alpha(1f).translationX(0f).setDuration(380)
+   .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+   .withEndAction{
+    card.postDelayed({
+     if(isFinishing || card.parent==null)return@postDelayed
+     card.animate().alpha(0f).translationX(-dp(320).toFloat()).setDuration(300)
+      .withEndAction{roomOverlayLayer.removeView(card)}.start()
+    },2600)
+   }.start()
+ }
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
@@ -1130,7 +1233,7 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     joinNotices.add(RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId))
+     joinNotices.add(RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty()))
     }
     if(previous!=null){
      for(i in 0 until fresh.length()){
@@ -1141,7 +1244,11 @@ class RoomActivity : Activity() {
        val nested=member.optJSONObject("user")?:member.optJSONObject("profile")
        val level=(if(member.has("level"))member.optInt("level",1) else
         if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
-       joinNotices.add(RoomJoinNotice(name,level,id))
+       val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
+        ?:nested?.optString("avatar_url").orEmpty()
+       val notice=RoomJoinNotice(name,level,id,avatarUrl)
+       joinNotices.add(notice)
+       showRoomJoinToast(notice)
       }
      }
      while(joinNotices.size>12)joinNotices.removeAt(0)
