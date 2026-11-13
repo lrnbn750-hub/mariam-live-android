@@ -92,7 +92,7 @@ class RoomActivity : Activity() {
     setStroke(dp(1),Color.rgb(215,220,209))
    }
    contentDescription="مغادرة البث"
-  },LinearLayout.LayoutParams(dp(44),dp(44)).apply{topMargin=dp(7)})
+  },LinearLayout.LayoutParams(dp(36),dp(36)).apply{topMargin=dp(7)})
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   roomPage.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(-1,dp(40)).apply{
    topMargin=dp(1);bottomMargin=dp(1)
@@ -126,20 +126,20 @@ class RoomActivity : Activity() {
   musicButton.visibility=View.GONE
   roomPage.addView(buildInlineChat(),LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(4)})
   val roomRoot=FrameLayout(this).apply{setBackgroundColor(Color.rgb(20,18,28))}
+  // Single sharp edge-to-edge image. CENTER_CROP preserves proportions on all screens.
   roomBackgroundView=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
-   setBackgroundColor(Color.TRANSPARENT)
+   setBackgroundColor(Color.rgb(18,16,25))
    contentDescription="خلفية الغرفة"
+   adjustViewBounds=false
   }
   roomBackgroundFillView=ImageView(this).apply{
-   scaleType=ImageView.ScaleType.CENTER_CROP
-   alpha=0.72f
-   setBackgroundColor(Color.rgb(20,18,28))
-   contentDescription="امتداد خلفية الغرفة"
+   visibility=View.GONE
+   setImageDrawable(null)
+   setBackgroundColor(Color.TRANSPARENT)
   }
-  roomRoot.addView(roomBackgroundFillView,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomBackgroundView,FrameLayout.LayoutParams(-1,-1))
-  roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(34,0,0,0))},FrameLayout.LayoutParams(-1,-1))
+  roomRoot.addView(View(this).apply{setBackgroundColor(Color.argb(42,0,0,0))},FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Android 11+: move the composer by the exact keyboard inset instead of
@@ -465,13 +465,13 @@ class RoomActivity : Activity() {
     setStroke(dp(1),Color.argb(155,255,255,255))
   }
    val iv=ImageView(this@RoomActivity).apply{
-    setImageDrawable(VectorIcon(icon,Color.rgb(247,247,242),dp(25)))
+    setImageDrawable(VectorIcon(icon,Color.rgb(247,247,242),dp(20)))
     setColorFilter(Color.rgb(247,247,242),PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.FIT_CENTER
    }
-   addView(iv,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.CENTER))
+   addView(iv,FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER))
   }
-  addView(iconWrap,LinearLayout.LayoutParams(dp(47),dp(47)).apply{bottomMargin=dp(7)})
+  addView(iconWrap,LinearLayout.LayoutParams(dp(38),dp(38)).apply{bottomMargin=dp(4)})
   addView(label(title,11f,Color.rgb(247,247,242),true))
   setOnClickListener{click()}
  }
@@ -497,7 +497,7 @@ class RoomActivity : Activity() {
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
-   composer.addView(micControl,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -525,7 +525,7 @@ class RoomActivity : Activity() {
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -535,7 +535,7 @@ class RoomActivity : Activity() {
     visibility=View.GONE
     setOnClickListener{sendRoomMessage()}
    }
-   composer.addView(sendButton,LinearLayout.LayoutParams(dp(40),dp(40)))
+   composer.addView(sendButton,LinearLayout.LayoutParams(dp(32),dp(32)))
    val toolsButton=TextView(this@RoomActivity).apply{
     text="⋯";textSize=21f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE)
@@ -546,8 +546,8 @@ class RoomActivity : Activity() {
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(36),dp(36)).apply{marginStart=dp(5)})
-   addView(composer,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(5);bottomMargin=dp(3)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginStart=dp(4)})
+   addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
    loadRoomMessages()
    chatPoll?.cancel()
    chatPoll=scope.launch{
@@ -773,25 +773,14 @@ class RoomActivity : Activity() {
      connection.getInputStream().use{android.graphics.BitmapFactory.decodeStream(it)}
     }
     if(bitmap!=null && loadedBackgroundUrl==url){
-     // Extend the same photo to fill the screen behind the clear original.
-     roomBackgroundFillView.scaleType=ImageView.ScaleType.CENTER_CROP
-     roomBackgroundFillView.setImageBitmap(bitmap)
-     roomBackgroundFillView.alpha=0.72f
-     if(Build.VERSION.SDK_INT>=31){
-      roomBackgroundFillView.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
-       dp(22).toFloat(),dp(22).toFloat(),android.graphics.Shader.TileMode.CLAMP
-      ))
-     }
-     // Crop the photo to cover every edge of the room screen; no letterbox margins.
+     // Keep the uploaded original crisp and proportionally cropped edge-to-edge.
      roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
      roomBackgroundView.setImageBitmap(bitmap)
     }
    }catch(_:Exception){
     if(loadedBackgroundUrl==url){
      roomBackgroundView.setImageDrawable(null)
-     roomBackgroundView.setBackgroundColor(Color.TRANSPARENT)
-     roomBackgroundFillView.setImageDrawable(null)
-     roomBackgroundFillView.setBackgroundColor(Color.rgb(20,18,28))
+     roomBackgroundView.setBackgroundColor(Color.rgb(18,16,25))
     }
    }
   }
@@ -842,7 +831,7 @@ class RoomActivity : Activity() {
      avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
      loadAvatarInto(photo,avatarUrl)
     }
-    val avatarSize=if(occupied)dp(58) else dp(60)
+    val avatarSize=if(occupied)dp(52) else dp(54)
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false
      clipToPadding=false
@@ -863,9 +852,9 @@ class RoomActivity : Activity() {
       }
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
-     addView(photoFrame,FrameLayout.LayoutParams(dp(66),dp(66),Gravity.CENTER))
+     addView(photoFrame,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(78),dp(78)).apply{bottomMargin=dp(2)})
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(68),dp(68)).apply{bottomMargin=dp(1)})
     if(occupied){
      tile.addView(label(name,11f,Color.rgb(65,72,66),true).apply{
       maxLines=1
@@ -877,7 +866,7 @@ class RoomActivity : Activity() {
      tile.addView(label((i+1).toString(),10f,Color.rgb(125,130,123),false))
     }
     tile.setOnClickListener{seatClick(seat,i+1,uid,name)}
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(90),1f).apply{
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(78),1f).apply{
      setMargins(dp(1),dp(1),dp(1),dp(1))
     })
    }
