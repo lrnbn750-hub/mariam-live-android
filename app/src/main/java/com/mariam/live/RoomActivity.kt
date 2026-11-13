@@ -63,6 +63,8 @@ class RoomActivity : Activity() {
  private val seatFrameLoading=HashSet<String>()
  private val seatFrameViews=HashMap<String,MutableList<RoyalGifFrame>>()
  private var currentUserEquippedFrameUrl=""
+ private val chatBubbleStylesByUser=HashMap<String,String>()
+ private var chatBubbleSelectionRefreshAt=0L
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
  private lateinit var micControl:ImageView
@@ -612,6 +614,32 @@ class RoomActivity : Activity() {
      return@launch
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
+    // Refresh the equipped bubble skins for visible senders at most every 15 seconds.
+    val nowForBubbleSync=System.currentTimeMillis()
+    if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
+     val senderIds=LinkedHashSet<String>()
+     for(index in 0 until messages.length()){
+      val senderId=messages.optJSONObject(index)?.optString("user_id").orEmpty()
+      if(senderId.isNotBlank())senderIds.add(senderId)
+     }
+     if(senderIds.isNotEmpty()){
+      try{
+       val selectionResult=withContext(Dispatchers.IO){
+        AuthApi.get("/api/chat-bubbles/selected?user_ids="+senderIds.joinToString(","),authToken)
+       }
+       if(selectionResult.status in 200..299){
+        val selections=selectionResult.body.optJSONArray("selections")?:JSONArray()
+        for(index in 0 until selections.length()){
+         val selected=selections.optJSONObject(index)?:continue
+         val userId=selected.optString("user_id")
+         val itemId=selected.optString("item_id")
+         if(userId.isNotBlank() && itemId.startsWith("chat-bubble-"))chatBubbleStylesByUser[userId]=itemId
+        }
+        chatBubbleSelectionRefreshAt=nowForBubbleSync
+       }
+      }catch(_:Exception){ /* Keep the last known skin if the optional lookup is unavailable. */ }
+     }
+    }
     // Preserve the reader's position during polling; only follow new messages
     // automatically when they were already at the bottom.
     val previousScrollY=chatScroll.scrollY
@@ -633,11 +661,11 @@ class RoomActivity : Activity() {
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val bubbleWidth=(resources.displayMetrics.widthPixels*0.94f).toInt()
-     val estimatedLines=((body.length+39)/40).coerceIn(1,4)
-     val bubbleHeight=dp(104+(estimatedLines-1)*15)
+     val estimatedLines=((body.length+27)/28).coerceIn(1,10)
+     val bubbleHeight=dp(74+estimatedLines*17)
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
-      background=ChatBubbleGifDrawable(this@RoomActivity,R.drawable.file_000000006564820aa7558363346feb4c)
+      background=ChatBubbleStyleDrawable(chatBubbleStylesByUser[senderId] ?: "chat-bubble-dragon")
       elevation=dp(2).toFloat()
      }
      val content=LinearLayout(this@RoomActivity).apply{
@@ -686,14 +714,14 @@ class RoomActivity : Activity() {
       textAlignment=View.TEXT_ALIGNMENT_CENTER
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
       maxWidth=(bubbleWidth*0.65f).toInt()
-      maxLines=4
+      maxLines=10
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
       setLineSpacing(dp(2).toFloat(),1f)
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-1,0,1f))
      val contentParams=FrameLayout.LayoutParams(
-      (bubbleWidth*0.68f).toInt(),-1,Gravity.CENTER
+      (bubbleWidth*0.70f).toInt(),-1,Gravity.CENTER
      ).apply{
       leftMargin=dp(12);rightMargin=dp(12)
       topMargin=dp(13);bottomMargin=dp(12)
