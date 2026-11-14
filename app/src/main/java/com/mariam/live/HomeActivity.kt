@@ -151,7 +151,7 @@ class HomeActivity : Activity() {
                     setColor(0x33F2B5FF)
                 }
             }
-            addView(halo,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
+            addView(halo,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
             val create=TextView(this@HomeActivity).apply{
                 text="🎂";textSize=31f;gravity=Gravity.CENTER
                 background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -164,7 +164,7 @@ class HomeActivity : Activity() {
                 contentDescription="إنشاء غرفة"
                 setOnClickListener{showCreateRoomDialog()}
             }
-            addView(create,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+            addView(create,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
             ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
             ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         }
