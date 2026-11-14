@@ -1,4 +1,3 @@
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -42,6 +41,7 @@ dependencies {
 
     implementation("com.airbnb.android:lottie-compose:6.6.2")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.github.yyued:SVGAPlayer-Android:2.6.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
