@@ -335,35 +335,30 @@ class HomeActivity : Activity() {
 /** Blue animated voice bars with the live room member count. */
 private class RoomPresenceView(context:android.content.Context,private val memberCount:Int):View(context){
     private val density=resources.displayMetrics.density
-    private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-        color=Color.rgb(67,177,255)
-        strokeWidth=3.0f*density
+    private val barPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+        color=Color.rgb(35,205,226)
+        strokeWidth=2.8f*density
         strokeCap=Paint.Cap.ROUND
     }
-    private val textPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+    private val countPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply{
         color=Color.WHITE
         textSize=13f*density
         typeface=Typeface.create("sans-serif",Typeface.BOLD)
     }
     private val started=android.os.SystemClock.uptimeMillis()
-    private val bg=GradientDrawable().apply{
-        setColor(0xCC101923.toInt())
-        cornerRadius=22f*density
-        setStroke((1*density).toInt(),0x6655B9FF)
-    }
-    init{background=bg}
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas)
-        val phase=(android.os.SystemClock.uptimeMillis()-started)/170.0
+        val phase=(android.os.SystemClock.uptimeMillis()-started)/145.0
         val centerY=height/2f
-        val baseX=12f*density
-        for(i in 0 until 5){
-            val wave=(kotlin.math.sin(phase+i*0.82)+1.0)/2.0
-            val barHeight=(5.0+wave*12.0).toFloat()*density
-            val x=baseX+i*5.5f*density
-            canvas.drawLine(x,centerY-barHeight/2f,x,centerY+barHeight/2f,paint)
+        val xs=floatArrayOf(4f,10f,16f)
+        for(i in xs.indices){
+            val wave=(kotlin.math.sin(phase+i*1.15)+1.0)/2.0
+            val h=(5.0+wave*13.0).toFloat()*density
+            val x=xs[i]*density
+            canvas.drawLine(x,centerY-h/2f,x,centerY+h/2f,barPaint)
         }
-        canvas.drawText(memberCount.toString(),47f*density,centerY-textPaint.ascent()/2f-textPaint.descent()/2f,textPaint)
+        canvas.drawText(memberCount.toString(),24f*density,
+            centerY-countPaint.ascent()/2f-countPaint.descent()/2f,countPaint)
         postInvalidateOnAnimation()
     }
 }
