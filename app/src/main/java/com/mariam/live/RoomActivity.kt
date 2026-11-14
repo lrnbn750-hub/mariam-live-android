@@ -544,7 +544,7 @@ class RoomActivity : Activity() {
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
-   composer.addView(micControl,LinearLayout.LayoutParams(dp(35),dp(35)).apply{marginEnd=dp(5)})
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -573,7 +573,7 @@ class RoomActivity : Activity() {
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(5)})
+
    val roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
     background=null
@@ -639,7 +639,7 @@ class RoomActivity : Activity() {
     }
     startAnimation(pulse)
    }
-   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(51),dp(51)).apply{marginEnd=dp(7)})
+   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(51),dp(51)).apply{marginEnd=dp(5)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -657,7 +657,8 @@ class RoomActivity : Activity() {
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(4)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(4);marginEnd=dp(3)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(3)})
    addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
 
   }
@@ -743,7 +744,9 @@ class RoomActivity : Activity() {
      chatScroll.scrollY+chatScroll.height>=it.height-dp(28)
     }?:true
     chatMessages.removeAllViews()
-    for(i in 0 until messages.length()){
+    // Keep the live overlay compact so chat never climbs into the eighth seat.
+    val firstVisibleMessage=(messages.length()-4).coerceAtLeast(0)
+    for(i in firstVisibleMessage until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
      val body=item.optString("message")
@@ -834,7 +837,7 @@ class RoomActivity : Activity() {
     // Join notifications in chat stay ordinary text-only system comments.
     val now=System.currentTimeMillis()
     joinNotices.removeAll{now-it.createdAt>12000L}
-    for(notice in joinNotices.takeLast(12)){
+    for(notice in joinNotices.takeLast(2)){
      val event=TextView(this@RoomActivity).apply{
       text="${notice.name} انضم إلى الغرفة"
       textSize=11.5f
