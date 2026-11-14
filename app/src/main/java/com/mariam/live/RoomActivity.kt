@@ -569,7 +569,7 @@ class RoomActivity : Activity() {
     setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
     setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
+    background=null
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
