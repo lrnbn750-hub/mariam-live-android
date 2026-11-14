@@ -25,6 +25,7 @@
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
         <activity android:name=".AccountSecurityActivity" android:exported="false" />
+        <activity android:name=".PhoneSecurityActivity" android:exported="false" />
         <activity android:name=".LevelActivity" android:exported="false" />
         <activity android:name=".MessagesActivity" android:exported="false" />
         <activity android:name=".DirectChatActivity" android:exported="false" />
