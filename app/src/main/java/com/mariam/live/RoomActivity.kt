@@ -1707,38 +1707,61 @@ class RoomActivity : Activity() {
   }
  }
  private fun showRoomTools(){
-  val items=LinearLayout(this).apply{
+  val dialog=android.app.Dialog(this)
+  val ink=Color.rgb(28,35,32)
+  val secondary=Color.rgb(116,126,120)
+  val root=LinearLayout(this).apply{
    orientation=1
-   setPadding(dp(10),dp(5),dp(10),dp(5))
-  }
-  fun addTool(title:String,icon:String,action:()->Unit){
-   val row=LinearLayout(this).apply{
-    orientation=0;gravity=Gravity.CENTER_VERTICAL
-    setPadding(dp(9),dp(7),dp(9),dp(7))
-    background=GradientDrawable().apply{
-     setColor(Color.rgb(246,248,243));cornerRadius=dp(10).toFloat()
-    }
-    val image=ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon(icon,Color.rgb(83,126,94),dp(18)))
-     scaleType=ImageView.ScaleType.FIT_CENTER
-    }
-    addView(image,LinearLayout.LayoutParams(dp(22),dp(22)).apply{marginEnd=dp(9)})
-    addView(label(title,12f,Color.rgb(65,91,69),true),LinearLayout.LayoutParams(0,dp(26),1f).apply{gravity=Gravity.CENTER_VERTICAL})
-    setOnClickListener{action()}
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(20),dp(13),dp(20),dp(20))
+   background=GradientDrawable().apply{
+    setColor(Color.WHITE)
+    cornerRadii=floatArrayOf(dp(28).toFloat(),dp(28).toFloat(),dp(28).toFloat(),dp(28).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat())
+    setStroke(dp(1),Color.rgb(232,238,234))
    }
-   items.addView(row,LinearLayout.LayoutParams(-1,dp(40)).apply{bottomMargin=dp(5)})
   }
-  if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك","mic"){toggleMic()}
-  if(isOwner)addTool("الموسيقى","music"){showMusicOptions()}
-  if(isOwner)addTool("خلفية الغرفة","image"){chooseRoomBackground()}
-  if(items.childCount==0){
-   addTool("لا توجد أدوات متاحة","settings"){}
+  val handle=View(this).apply{background=GradientDrawable().apply{cornerRadius=dp(5).toFloat();setColor(Color.rgb(205,214,208))}}
+  root.addView(handle,LinearLayout.LayoutParams(dp(42),dp(4)).apply{gravity=Gravity.CENTER;bottomMargin=dp(15)})
+  root.addView(label("أدوات الغرفة",20f,ink,true),LinearLayout.LayoutParams(-1,dp(31)))
+  root.addView(label("إدارة الصوت والموسيقى ومظهر الغرفة",11.5f,secondary),LinearLayout.LayoutParams(-1,dp(24)))
+  root.addView(View(this).apply{setBackgroundColor(Color.rgb(235,239,236))},LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(10);bottomMargin=dp(14)})
+  fun addTool(title:String,subtitle:String,icon:String,accent:Int,action:()->Unit){
+   val row=LinearLayout(this).apply{
+    orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
+    setPadding(dp(13),dp(10),dp(13),dp(10))
+    background=GradientDrawable().apply{cornerRadius=dp(18).toFloat();setColor(Color.rgb(248,250,249));setStroke(dp(1),Color.rgb(232,238,234))}
+    isClickable=true;isFocusable=true;elevation=dp(1).toFloat()
+   }
+   val iconBox=FrameLayout(this).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(22,Color.red(accent),Color.green(accent),Color.blue(accent)));setStroke(dp(1),Color.argb(75,Color.red(accent),Color.green(accent),Color.blue(accent)))}
+    addView(ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,accent,dp(22)));scaleType=ImageView.ScaleType.CENTER_INSIDE;contentDescription=title},FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+   }
+   row.addView(iconBox,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(12)})
+   val text=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+   text.addView(label(title,14f,ink,true),LinearLayout.LayoutParams(-1,dp(23)))
+   text.addView(label(subtitle,10.5f,secondary),LinearLayout.LayoutParams(-1,dp(18)))
+   row.addView(text,LinearLayout.LayoutParams(0,-2,1f))
+   row.addView(ImageView(this).apply{setImageDrawable(VectorIcon("chevron-left",Color.rgb(145,155,149),dp(18)));contentDescription="فتح $title"},LinearLayout.LayoutParams(dp(22),dp(28)))
+   row.setOnClickListener{dialog.dismiss();action()}
+   root.addView(row,LinearLayout.LayoutParams(-1,dp(68)).apply{bottomMargin=dp(9)})
   }
-  AlertDialog.Builder(this)
-   .setTitle("أدوات الغرفة")
-   .setView(items)
-   .setNegativeButton("إغلاق",null)
-   .show()
+  if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك",if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك","mic",Color.rgb(35,137,103)){toggleMic()}
+  if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل الموسيقى لأعضاء الغرفة","music",Color.rgb(190,145,48)){showMusicOptions()}
+  if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(54,139,190)){chooseRoomBackground()}
+  addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(117,102,190)){loadRoomMembers();showRoomMembers()}
+  val close=TextView(this).apply{
+   text="إغلاق";textSize=14f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+   typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+   background=GradientDrawable().apply{cornerRadius=dp(16).toFloat();setColor(Color.rgb(36,48,42))}
+   setPadding(0,dp(12),0,dp(12));setOnClickListener{dialog.dismiss()}
+  }
+  root.addView(close,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(3)})
+  dialog.setContentView(root)
+  dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+  dialog.window?.setDimAmount(0.42f)
+  dialog.show()
+  dialog.window?.setLayout(-1,-2)
+  dialog.window?.setGravity(Gravity.BOTTOM)
  }
 
  private fun chooseRoomBackground(){
@@ -2097,6 +2120,7 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  "gift"->{c.drawRect(4f,13f,28f,28f,p);c.drawRect(2f,10f,30f,15f,p);c.drawLine(16f,10f,16f,28f,p);c.drawOval(RectF(6f,3f,16f,12f),p);c.drawOval(RectF(16f,3f,26f,12f),p)}
  "music"->{c.drawLine(12f,7f,12f,23f,p);c.drawLine(12f,7f,25f,4f,p);c.drawLine(25f,4f,25f,20f,p);c.drawOval(RectF(5f,21f,13f,28f),p);c.drawOval(RectF(18f,18f,26f,25f),p)}
  "leave"->{val q=Path().apply{moveTo(8f,5f);lineTo(4f,5f);lineTo(4f,27f);lineTo(8f,27f);moveTo(16f,10f);lineTo(27f,16f);lineTo(16f,22f);moveTo(27f,16f);lineTo(10f,16f)};c.drawPath(q,p)}
+ "chevron-left"->{val q=Path().apply{moveTo(19f,5f);lineTo(8f,16f);lineTo(19f,27f)};c.drawPath(q,p)}
  else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
  };c.restoreToCount(save)}
  override fun setAlpha(a:Int){p.alpha=a};override fun setColorFilter(f:ColorFilter?){p.colorFilter=f};override fun getOpacity()=PixelFormat.TRANSLUCENT;override fun getIntrinsicWidth()=size;override fun getIntrinsicHeight()=size
