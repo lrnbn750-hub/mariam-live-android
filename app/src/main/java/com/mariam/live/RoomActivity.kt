@@ -538,6 +538,7 @@ class RoomActivity : Activity() {
    roomComposer=composer
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
+    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
     contentDescription="تشغيل أو إيقاف المايك"
@@ -566,6 +567,7 @@ class RoomActivity : Activity() {
    chatInput.visibility=View.GONE
    chatIcon=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
+    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
     contentDescription="فتح كتابة تعليق"
@@ -581,6 +583,7 @@ class RoomActivity : Activity() {
     }
     addView(ImageView(this@RoomActivity).apply{
      setImageDrawable(VectorIcon("gift",Color.WHITE,dp(25)))
+     setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
      scaleType=ImageView.ScaleType.CENTER_INSIDE
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
@@ -2130,6 +2133,7 @@ class RoomActivity : Activity() {
  private fun refreshMicControl(){
   if(!::micControl.isInitialized)return
   micControl.setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
+  micControl.setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
   micControl.background=GradientDrawable().apply{
    shape=GradientDrawable.OVAL
    setColor(Color.argb(90,255,255,255))
