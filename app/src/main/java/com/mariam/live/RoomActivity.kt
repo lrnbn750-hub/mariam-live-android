@@ -1608,11 +1608,23 @@ class RoomActivity : Activity() {
   var selected=gifts.first()
   var quantity=1
   val cards=ArrayList<LinearLayout>()
+  val giftImages=ArrayList<ImageView>()
   val updateSelection:(Gift)->Unit={chosen->
    selected=chosen
    cards.forEachIndexed{index,card->
     val active=gifts[index].id==chosen.id
     card.background=GradientDrawable().apply{setColor(if(active)Color.rgb(25,13,42) else ink);cornerRadius=dp(9).toFloat();if(active)setStroke(dp(2),purple) else setStroke(dp(1),Color.rgb(35,31,42))}
+    val art=giftImages.getOrNull(index)
+    art?.animate()?.cancel()
+    if(active && art!=null){
+     art.animate().scaleX(1.12f).scaleY(1.12f).rotation(-4f).setDuration(150)
+      .withEndAction{art.animate().scaleX(1f).scaleY(1f).rotation(0f).setDuration(180).start()}.start()
+     card.animate().scaleX(1.025f).scaleY(1.025f).setDuration(150)
+      .withEndAction{card.animate().scaleX(1f).scaleY(1f).setDuration(180).start()}.start()
+    }else{
+     art?.animate()?.scaleX(1f)?.scaleY(1f)?.rotation(0f)?.setDuration(120)?.start()
+     card.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+    }
    }
   }
   gifts.forEachIndexed{index,gift->
@@ -1626,6 +1638,7 @@ class RoomActivity : Activity() {
     if(art!=0)setImageResource(art) else setImageDrawable(VectorIcon("gift",Color.rgb(244,205,255),dp(42)))
     scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name
    }
+   giftImages.add(image)
    card.addView(image,LinearLayout.LayoutParams(-1,dp(76)))
    card.addView(label(gift.name,11f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(24)))
    val price=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
@@ -1769,6 +1782,18 @@ class RoomActivity : Activity() {
    bottomMargin=dp(105)
   }
   roomOverlayLayer.addView(card,params)
+  // Native fallback motion when no licensed SVGA/Lottie animation is configured.
+  // This animates the selected gift artwork itself without downloading third-party assets.
+  icon.alpha=0f
+  icon.scaleX=0.35f
+  icon.scaleY=0.35f
+  icon.rotation=-18f
+  icon.translationY=dp(18).toFloat()
+  icon.animate().alpha(1f).scaleX(1.16f).scaleY(1.16f).rotation(8f)
+   .translationY(0f).setDuration(420)
+   .setInterpolator(android.view.animation.OvershootInterpolator(1.1f))
+   .withEndAction{icon.animate().scaleX(1f).scaleY(1f).rotation(0f).setDuration(220).start()}
+   .start()
   card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(360)
    .setInterpolator(android.view.animation.OvershootInterpolator(0.8f))
    .withEndAction{
