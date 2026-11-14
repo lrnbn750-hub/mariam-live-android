@@ -70,6 +70,11 @@ class HomeActivity : Activity() {
         header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)))
         content.addView(header,LinearLayout.LayoutParams(-1,dp(58)))
 
+        val palestineBanner=PalestineBannerView(this)
+        content.addView(palestineBanner,LinearLayout.LayoutParams(-1,dp(112)).apply{
+            setMargins(dp(1),dp(12),dp(1),dp(9))
+        })
+
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{setMargins(-dp(5),dp(8),-dp(5),0)})
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
@@ -143,7 +148,7 @@ class HomeActivity : Activity() {
     private fun buildCards(){
         grid.removeAllViews()
         val width=(resources.displayMetrics.widthPixels-dp(42))/2
-        val imageHeight=(width*1.02f).toInt()
+        val imageHeight=(width*1.00f).toInt()
         val filtered=liveRooms.filter{it.name.contains(searchQuery,true)}
         val visible=filtered.sortedByDescending{it.count}
         if(visible.isEmpty()){
@@ -161,7 +166,7 @@ class HomeActivity : Activity() {
             val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP}
             frame.addView(cover,FrameLayout.LayoutParams(-1,imageHeight))
             val presence=RoomPresenceView(this,room.count)
-            frame.addView(presence,FrameLayout.LayoutParams(dp(88),dp(36),Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
+            frame.addView(presence,FrameLayout.LayoutParams(dp(40),dp(24),Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
             val topBadge=LinearLayout(this).apply{
                 orientation=LinearLayout.HORIZONTAL
                 gravity=Gravity.CENTER
@@ -360,6 +365,44 @@ private class RoomPresenceView(context:android.content.Context,private val membe
         canvas.drawText(memberCount.toString(),24f*density,
             centerY-countPaint.ascent()/2f-countPaint.descent()/2f,countPaint)
         postInvalidateOnAnimation()
+    }
+}
+
+/** Festive Palestine banner drawn natively, with no external image dependency. */
+private class PalestineBannerView(context:android.content.Context):View(context){
+    private val d=resources.displayMetrics.density
+    private val p=Paint(Paint.ANTI_ALIAS_FLAG)
+    private val gold=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(255,211,92);style=Paint.Style.STROKE;strokeWidth=1.5f*d}
+    private val title=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(255,224,125);textSize=20f*d;typeface=Typeface.create("sans-serif",Typeface.BOLD);textAlign=Paint.Align.CENTER;setShadowLayer(3f*d,0f,2f*d,Color.BLACK)}
+    private val subtitle=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE;textSize=18f*d;typeface=Typeface.DEFAULT_BOLD;textAlign=Paint.Align.CENTER;setShadowLayer(2f*d,0f,1f*d,Color.BLACK)}
+    override fun onDraw(canvas:Canvas){
+        super.onDraw(canvas)
+        val w=width.toFloat();val h=height.toFloat()
+        val rect=RectF(0f,0f,w,h)
+        val clip=Path().apply{addRoundRect(rect,14f*d,14f*d,Path.Direction.CW)}
+        val save=canvas.save();canvas.clipPath(clip)
+        p.shader=android.graphics.LinearGradient(0f,0f,w,h,intArrayOf(Color.rgb(7,24,63),Color.rgb(10,73,78),Color.rgb(5,35,63)),null,android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawRect(rect,p);p.shader=null
+        // Firework rays and gold border.
+        val cx=w*.80f;val cy=h*.22f
+        p.color=0x55FFD66B;canvas.drawCircle(cx,cy,24f*d,p)
+        for(i in 0 until 16){
+            val a=i*Math.PI/8.0
+            canvas.drawLine(cx+(7*d*kotlin.math.cos(a)).toFloat(),cy+(7*d*kotlin.math.sin(a)).toFloat(),cx+(23*d*kotlin.math.cos(a)).toFloat(),cy+(23*d*kotlin.math.sin(a)).toFloat(),gold)
+        }
+        canvas.drawRoundRect(rect,14f*d,14f*d,gold)
+        // Palestinian flag.
+        val fx=16f*d;val fy=24f*d;val fw=58f*d;val fh=36f*d
+        p.color=Color.WHITE;canvas.drawRect(fx,fy,fx+fw,fy+fh,p)
+        p.color=Color.BLACK;canvas.drawRect(fx,fy,fx+fw,fy+fh/3f,p)
+        p.color=Color.rgb(0,145,75);canvas.drawRect(fx,fy+fh*2f/3f,fx+fw,fy+fh,p)
+        p.color=Color.rgb(210,30,45)
+        val flag=Path().apply{moveTo(fx,fy);lineTo(fx+fw*.43f,fy+fh/2f);lineTo(fx,fy+fh);close()}
+        canvas.drawPath(flag,p)
+        canvas.drawText("عيد وطني سعيد",w*.60f,h*.48f,title)
+        canvas.drawText("فلسطين",w*.60f,h*.77f,subtitle)
+        for(i in 0..8)canvas.drawCircle(w*(.10f+.10f*i),h*.91f,1.5f*d,gold)
+        canvas.restoreToCount(save)
     }
 }
     private fun openLogin(){startActivity(Intent(this,LoginActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK});finish()}
