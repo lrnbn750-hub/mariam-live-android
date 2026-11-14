@@ -110,12 +110,12 @@ class HomeActivity : Activity() {
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(65,20,103),Color.rgb(30,8,54))).apply{
+                intArrayOf(Color.rgb(53,16,91),Color.rgb(24,7,45))).apply{
                 setCornerRadii(floatArrayOf(dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),0f,0f,0f,0f))
-                setStroke(dp(1),Color.rgb(205,151,75))
+                setStroke(dp(1),0x99D9AD63.toInt())
             }
-            setPadding(dp(7),dp(7),dp(7),dp(7))
-            elevation=dp(18).toFloat()
+            setPadding(dp(5),dp(4),dp(5),dp(4))
+            elevation=dp(14).toFloat()
         }
         fun navItem(kind:String,title:String,selected:Boolean=false,onTap:()->Unit)=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
@@ -124,23 +124,23 @@ class HomeActivity : Activity() {
             isFocusable=true
             background=if(selected) GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(0x553D1B5C,0x00200A38)).apply{
-                cornerRadius=dp(18).toFloat()
-                setStroke(dp(1),0x66E9BE73)
+                cornerRadius=dp(14).toFloat()
+                setStroke(dp(1),0x44E9BE73)
             } else ColorDrawable(Color.TRANSPARENT)
-            addView(PremiumNavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(39),dp(39)))
+            addView(PremiumNavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(32),dp(32)))
             addView(TextView(this@HomeActivity).apply{
                 text=title;textSize=10.5f;gravity=Gravity.CENTER
                 setTextColor(if(selected)Color.rgb(255,218,139) else Color.rgb(239,224,255))
                 typeface=if(selected)Typeface.create("sans-serif",Typeface.BOLD) else Typeface.create("sans-serif-medium",Typeface.NORMAL)
                 setShadowLayer(if(selected)dp(3).toFloat() else 0f,0f,dp(1).toFloat(),0xAA000000.toInt())
                 setSingleLine(true)
-            },LinearLayout.LayoutParams(-1,dp(19)))
+            },LinearLayout.LayoutParams(-1,dp(16)))
             setOnClickListener{onTap()}
             contentDescription=title
         }
         nav.addView(navItem("profile","حسابي"){
             startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))
-        },LinearLayout.LayoutParams(0,dp(65),1f))
+        },LinearLayout.LayoutParams(0,dp(54),1f))
         nav.addView(navItem("messages","رسائلي"){
             startActivity(Intent(this@HomeActivity,MessagesActivity::class.java))
         },LinearLayout.LayoutParams(0,dp(65),1f))
@@ -151,7 +151,7 @@ class HomeActivity : Activity() {
                     setColor(0x33F2B5FF)
                 }
             }
-            addView(halo,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
+            addView(halo,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
             val create=TextView(this@HomeActivity).apply{
                 text="🎂";textSize=31f;gravity=Gravity.CENTER
                 background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -168,7 +168,7 @@ class HomeActivity : Activity() {
             ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
             ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         }
-        nav.addView(createSlot,LinearLayout.LayoutParams(0,dp(65),1.18f))
+        nav.addView(createSlot,LinearLayout.LayoutParams(0,dp(54),1.12f))
         nav.addView(navItem("discover","اكتشف"){
             searchQuery=""
             loadRooms()
@@ -178,13 +178,13 @@ class HomeActivity : Activity() {
             searchQuery=""
             loadRooms()
         },LinearLayout.LayoutParams(0,dp(65),1f))
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(68)))
         ViewCompat.setOnApplyWindowInsetsListener(nav){ view,insets->
             val bottomInset=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val lp=view.layoutParams
-            val targetHeight=dp(82)+bottomInset
+            val targetHeight=dp(68)+bottomInset
             if(lp.height!=targetHeight){lp.height=targetHeight;view.layoutParams=lp}
-            view.setPadding(dp(5),dp(6),dp(5),dp(6)+bottomInset)
+            view.setPadding(dp(5),dp(4),dp(5),bottomInset)
             insets
         }
         setContentView(root)
