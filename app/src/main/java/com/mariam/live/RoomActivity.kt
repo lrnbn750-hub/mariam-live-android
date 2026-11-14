@@ -1967,41 +1967,74 @@ class RoomActivity : Activity() {
   }
  }
  private fun showRoomTools(){
-  val items=LinearLayout(this).apply{
+  val dialog=android.app.Dialog(this)
+  val root=LinearLayout(this).apply{
    orientation=1
-   setPadding(dp(10),dp(5),dp(10),dp(5))
-  }
-  fun addTool(title:String,icon:String,action:()->Unit){
-   val row=LinearLayout(this).apply{
-    orientation=0;gravity=Gravity.CENTER_VERTICAL
-    setPadding(dp(9),dp(7),dp(9),dp(7))
-    background=GradientDrawable().apply{
-     setColor(Color.rgb(246,248,243));cornerRadius=dp(10).toFloat()
-    }
-    val image=ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon(icon,Color.rgb(83,126,94),dp(18)))
-     scaleType=ImageView.ScaleType.FIT_CENTER
-    }
-    addView(image,LinearLayout.LayoutParams(dp(22),dp(22)).apply{marginEnd=dp(9)})
-    addView(label(title,12f,Color.rgb(65,91,69),true),LinearLayout.LayoutParams(0,dp(26),1f).apply{gravity=Gravity.CENTER_VERTICAL})
-    setOnClickListener{action()}
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(18),dp(12),dp(18),dp(18))
+   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+    intArrayOf(Color.rgb(35,43,39),Color.rgb(19,27,25))).apply{
+    cornerRadii=floatArrayOf(dp(26).toFloat(),dp(26).toFloat(),dp(26).toFloat(),dp(26).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat())
+    setStroke(dp(1),Color.argb(110,150,198,164))
    }
-   items.addView(row,LinearLayout.LayoutParams(-1,dp(40)).apply{bottomMargin=dp(5)})
   }
-  if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك","mic"){toggleMic()}
-  if(isOwner)addTool("الموسيقى","music"){showMusicOptions()}
-  if(isOwner)addTool("استوديو خلفية الغرفة","image"){openRoomBackgroundEditor()}
-  if(items.childCount==0){
-   addTool("لا توجد أدوات متاحة","settings"){}
+  val handle=View(this).apply{
+   background=GradientDrawable().apply{cornerRadius=dp(5).toFloat();setColor(Color.argb(150,220,235,224))}
   }
-  AlertDialog.Builder(this)
-   .setTitle("أدوات الغرفة")
-   .setView(items)
-   .setNegativeButton("إغلاق",null)
-   .show()
+  root.addView(handle,LinearLayout.LayoutParams(dp(42),dp(4)).apply{gravity=Gravity.CENTER;bottomMargin=dp(13)})
+  root.addView(label("مركز أدوات الغرفة",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
+  root.addView(label("تحكم سريع بالصوت والموسيقى ومظهر الغرفة",11f,Color.rgb(183,205,190)),LinearLayout.LayoutParams(-1,dp(23)))
+  val divider=View(this).apply{setBackgroundColor(Color.argb(55,220,240,225))}
+  root.addView(divider,LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(9);bottomMargin=dp(12)})
+  fun addTool(title:String,subtitle:String,icon:String,accent:Int,action:()->Unit){
+   val row=LinearLayout(this).apply{
+    orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
+    setPadding(dp(12),dp(10),dp(12),dp(10))
+    background=GradientDrawable().apply{
+     cornerRadius=dp(17).toFloat()
+     setColor(Color.argb(205,42,54,47))
+     setStroke(dp(1),Color.argb(95,accent))
+    }
+    isClickable=true;isFocusable=true
+   }
+   val iconBox=FrameLayout(this).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(32,accent));setStroke(dp(1),Color.argb(160,accent))}
+    addView(ImageView(this@RoomActivity).apply{
+     setImageDrawable(VectorIcon(icon,accent,dp(21)))
+     scaleType=ImageView.ScaleType.CENTER
+    },FrameLayout.LayoutParams(-1,-1))
+   }
+   row.addView(iconBox,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(11)})
+   val text=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+   text.addView(label(title,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(22)))
+   text.addView(label(subtitle,10.5f,Color.rgb(180,199,185)),LinearLayout.LayoutParams(-1,dp(18)))
+   row.addView(text,LinearLayout.LayoutParams(0,-2,1f))
+   row.addView(label("‹",25f,Color.rgb(180,205,185),true),LinearLayout.LayoutParams(dp(22),dp(30)))
+   row.setOnClickListener{dialog.dismiss();action()}
+   root.addView(row,LinearLayout.LayoutParams(-1,dp(64)).apply{bottomMargin=dp(8)})
+  }
+  if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك",
+   if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك",
+   "mic",Color.rgb(91,218,177)){toggleMic()}
+  if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
+  if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
+  addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(176,160,232)){loadRoomMembers();showRoomMembers()}
+  val close=TextView(this).apply{
+   text="إغلاق";textSize=13f;gravity=Gravity.CENTER
+   setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
+   setPadding(0,dp(11),0,dp(11));setOnClickListener{dialog.dismiss()}
+  }
+  root.addView(close,LinearLayout.LayoutParams(-1,dp(43)).apply{topMargin=dp(3)})
+  dialog.setContentView(root)
+  dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+  dialog.window?.setDimAmount(0.62f)
+  dialog.show()
+  dialog.window?.setLayout(-1,-2)
+  dialog.window?.setGravity(Gravity.BOTTOM)
  }
 
- private fun openRoomBackgroundEditor(){
+  private fun openRoomBackgroundEditor(){
   if(!isOwner){Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show();return}
   startActivityForResult(Intent(this,RoomBackgroundEditorActivity::class.java).putExtra("room_id",roomId),4302)
  }
@@ -2099,34 +2132,78 @@ class RoomActivity : Activity() {
    Toast.makeText(this,"الموسيقى متاحة لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
    return
   }
+  val dialog=android.app.Dialog(this)
+  val root=LinearLayout(this).apply{
+   orientation=1;layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(18),dp(12),dp(18),dp(18))
+   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+    intArrayOf(Color.rgb(39,48,42),Color.rgb(20,28,24))).apply{
+    cornerRadii=floatArrayOf(dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat(),dp(8).toFloat())
+    setStroke(dp(1),Color.argb(130,221,190,112))
+   }
+  }
+  root.addView(View(this).apply{
+   background=GradientDrawable().apply{cornerRadius=dp(5).toFloat();setColor(Color.argb(150,235,225,195))}
+  },LinearLayout.LayoutParams(dp(42),dp(4)).apply{gravity=Gravity.CENTER;bottomMargin=dp(14)})
+  root.addView(label("استوديو موسيقى الغرفة",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
+  root.addView(label("الموسيقى تُرسل داخل الغرفة عبر اتصال الصوت الحالي",11f,Color.rgb(203,195,171)),LinearLayout.LayoutParams(-1,dp(24)))
   val mixer=musicMixer
-  val options=if(mixer==null) arrayOf("اختيار أغنية من الهاتف")
-   else arrayOf(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت","إيقاف الموسيقى","اختيار أغنية أخرى","مستوى صوت الموسيقى","فحص حالة الموسيقى")
-  AlertDialog.Builder(this)
-   .setTitle("موسيقى الغرفة")
-   .setItems(options){_,which->
-    if(mixer==null || which==2){
-     chooseRoomMusic()
-    }else if(which==0){
+  val playing=mixer!=null
+  val statusCard=LinearLayout(this).apply{
+   orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(10),dp(12),dp(10))
+   background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(65,255,255,255));setStroke(dp(1),Color.argb(90,221,190,112))}
+  }
+  statusCard.addView(label(if(playing)"● الموسيقى تعمل" else "○ لا توجد موسيقى تعمل",13f,
+   if(playing)Color.rgb(132,231,174) else Color.rgb(221,213,191),true),LinearLayout.LayoutParams(0,dp(28),1f))
+  statusCard.addView(label(if(playing)"متصلة بالغرفة" else "اختر ملفاً من جهازك",10f,Color.rgb(190,195,184)))
+  root.addView(statusCard,LinearLayout.LayoutParams(-1,dp(49)).apply{topMargin=dp(12);bottomMargin=dp(10)})
+  fun option(title:String,detail:String,icon:String,accent:Int,action:()->Unit){
+   val row=LinearLayout(this).apply{
+    orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
+    setPadding(dp(12),dp(9),dp(12),dp(9))
+    background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(190,48,58,49));setStroke(dp(1),Color.argb(95,accent))}
+    isClickable=true;isFocusable=true
+   }
+   val iconBox=FrameLayout(this).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(35,accent))}
+    addView(ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon(icon,accent,dp(21)));scaleType=ImageView.ScaleType.CENTER},FrameLayout.LayoutParams(-1,-1))
+   }
+   row.addView(iconBox,LinearLayout.LayoutParams(dp(40),dp(40)).apply{marginEnd=dp(10)})
+   val labels=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+   labels.addView(label(title,13.5f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(21)))
+   labels.addView(label(detail,10f,Color.rgb(190,202,188)),LinearLayout.LayoutParams(-1,dp(17)))
+   row.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
+   row.setOnClickListener{dialog.dismiss();action()}
+   root.addView(row,LinearLayout.LayoutParams(-1,dp(60)).apply{bottomMargin=dp(7)})
+  }
+  if(mixer==null){
+   option("اختيار أغنية","اختر ملفاً صوتياً من الهاتف","music",Color.rgb(242,205,117)){chooseRoomMusic()}
+  }else{
+   option(if(mixer.paused)"استئناف الموسيقى" else "إيقاف مؤقت",
+    if(mixer.paused)"متابعة تشغيل المقطع الحالي" else "إيقاف مؤقت دون إنهاء المقطع",
+    if(mixer.paused)"play" else "pause",Color.rgb(132,224,171)){
      mixer.paused=!mixer.paused
      Toast.makeText(this,if(mixer.paused)"تم إيقاف الموسيقى مؤقتاً" else "استؤنفت الموسيقى",Toast.LENGTH_SHORT).show()
-    }else if(which==3){
-     showMusicVolume(mixer)
-    }else if(which==4){
-     AlertDialog.Builder(this)
-      .setTitle("تشخيص بث الموسيقى")
-      .setMessage(mixer.diagnostics())
-      .setPositiveButton("حسناً",null)
-      .show()
-    }else{
-     stopRoomMusic()
     }
-   }
-   .setNegativeButton("إغلاق",null)
-   .show()
+   option("مستوى الصوت","تعديل مستوى الموسيقى المرسلة للغرفة","volume-2",Color.rgb(111,198,232)){showMusicVolume(mixer)}
+   option("اختيار أغنية أخرى","استبدال المقطع الحالي بملف جديد","music",Color.rgb(242,205,117)){chooseRoomMusic()}
+   option("إيقاف الموسيقى","إنهاء مشاركة الموسيقى في الغرفة","square",Color.rgb(239,132,132)){stopRoomMusic()}
+  }
+  val close=TextView(this).apply{
+   text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+   background=GradientDrawable().apply{cornerRadius=dp(14).toFloat();setColor(Color.argb(45,255,255,255))}
+   setPadding(0,dp(10),0,dp(10));setOnClickListener{dialog.dismiss()}
+  }
+  root.addView(close,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(4)})
+  dialog.setContentView(root)
+  dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+  dialog.window?.setDimAmount(0.62f)
+  dialog.show()
+  dialog.window?.setLayout(-1,-2)
+  dialog.window?.setGravity(Gravity.BOTTOM)
  }
 
- private fun showMusicVolume(mixer:RoomMusicMixer){
+  private fun showMusicVolume(mixer:RoomMusicMixer){
   val seek=SeekBar(this).apply{
    max=100
    progress=(mixer.volume*100f).toInt().coerceIn(0,100)
