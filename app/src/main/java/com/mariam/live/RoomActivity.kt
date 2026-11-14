@@ -581,11 +581,53 @@ class RoomActivity : Activity() {
      setColor(Color.argb(45,255,255,255))
      setStroke(dp(1),Color.argb(75,255,255,255))
     }
-    addView(ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(25)))
-     setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
-     scaleType=ImageView.ScaleType.CENTER_INSIDE
-     contentDescription="الهدايا"
+    addView(object:View(this@RoomActivity){
+     private var phase=0f
+     private val motion=android.animation.ValueAnimator.ofFloat(0f,1f).apply{
+      duration=1800L
+      repeatCount=android.animation.ValueAnimator.INFINITE
+      interpolator=android.view.animation.LinearInterpolator()
+      addUpdateListener{phase=it.animatedValue as Float;invalidate()}
+     }
+     private fun paint(color:Int,style:android.graphics.Paint.Style=android.graphics.Paint.Style.FILL)=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{this.color=color;this.style=style;strokeWidth=1.8f;strokeCap=android.graphics.Paint.Cap.ROUND;strokeJoin=android.graphics.Paint.Join.ROUND}
+     override fun onAttachedToWindow(){super.onAttachedToWindow();if(!motion.isStarted)motion.start()}
+     override fun onDetachedFromWindow(){motion.cancel();super.onDetachedFromWindow()}
+     override fun onDraw(canvas:android.graphics.Canvas){
+      super.onDraw(canvas)
+      val d=resources.displayMetrics.density
+      canvas.save();canvas.scale(d,d)
+      val w=width/d;val h=height/d;val cx=w/2f;val cy=h/2f
+      val bob=kotlin.math.sin(phase*6.2831853f).toFloat()*1.1f
+      canvas.save();canvas.translate(cx,cy+bob)
+      val glow=paint(android.graphics.Color.argb((35+20*kotlin.math.sin(phase*6.2831853f)).toInt(),255,93,174))
+      glow.setShadowLayer(8f,0f,2f,android.graphics.Color.argb(100,255,80,170))
+      canvas.drawCircle(0f,0f,19f,glow)
+      val box=android.graphics.RectF(-13f,-5f,13f,14f)
+      val body=paint(android.graphics.Color.WHITE)
+      body.shader=android.graphics.LinearGradient(-13f,-5f,13f,14f,intArrayOf(android.graphics.Color.rgb(255,91,164),android.graphics.Color.rgb(155,74,230),android.graphics.Color.rgb(91,132,255)),null,android.graphics.Shader.TileMode.CLAMP)
+      canvas.drawRoundRect(box,4f,4f,body)
+      val lid=android.graphics.RectF(-15f,-11f,15f,-4f)
+      canvas.drawRoundRect(lid,3.5f,3.5f,body)
+      val ribbon=paint(android.graphics.Color.rgb(255,224,137))
+      canvas.drawRoundRect(android.graphics.RectF(-2.3f,-10f,2.3f,13f),2f,2f,ribbon)
+      canvas.drawRoundRect(android.graphics.RectF(-14f,-8.2f,14f,-5.7f),1.2f,1.2f,ribbon)
+      val bow=paint(android.graphics.Color.rgb(255,232,165),android.graphics.Paint.Style.STROKE)
+      bow.strokeWidth=2.5f
+      val left=android.graphics.Path().apply{moveTo(0f,-10f);cubicTo(-15f,-23f,-18f,-7f,-3f,-7f)}
+      val right=android.graphics.Path().apply{moveTo(0f,-10f);cubicTo(15f,-23f,18f,-7f,3f,-7f)}
+      canvas.drawPath(left,bow);canvas.drawPath(right,bow)
+      canvas.drawCircle(0f,-9f,2.1f,ribbon)
+      val sparkle=paint(android.graphics.Color.WHITE)
+      sparkle.alpha=(125+110*(0.5f+0.5f*kotlin.math.sin(phase*6.2831853f))).toInt()
+      val angle=phase*6.2831853f
+      for(i in 0..2){
+       val a=angle+i*2.094f
+       val x=kotlin.math.cos(a)*21f;val y=kotlin.math.sin(a)*17f-2f
+       canvas.drawCircle(x,y,if(i==0)1.7f else 1.1f,sparkle)
+       if(i==0){canvas.drawLine(x-3f,y,x+3f,y,sparkle);canvas.drawLine(x,y-3f,x,y+3f,sparkle)}
+      }
+      canvas.restore();canvas.restore()
+     }
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     contentDescription="فتح الهدايا"
     setOnClickListener{showRoomGiftPicker()}
