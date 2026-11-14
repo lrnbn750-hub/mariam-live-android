@@ -24,6 +24,7 @@ class PhoneSecurityActivity : Activity() {
     private val page = Color.rgb(246, 248, 246)
     private lateinit var phoneValue: TextView
     private lateinit var status: TextView
+    private lateinit var actionsPanel: LinearLayout
     private var selectedCountry = Country("IQ", "العراق", "+964", "🇮🇶")
     private var countryDialog: AlertDialog? = null
     private data class Country(val iso: String, val name: String, val dial: String, val flag: String)
@@ -89,11 +90,8 @@ class PhoneSecurityActivity : Activity() {
         hero.addView(phoneValue)
         body.addView(hero)
 
-        val actions = LinearLayout(this).apply { orientation = 1; setBackgroundColor(Color.WHITE) }
-        actions.addView(actionRow("تغيير رقم الهاتف", "▯") { showPhoneDialog() })
-        actions.addView(separator())
-        actions.addView(actionRow("تغيير كلمة المرور", "♙") { showPasswordDialog() })
-        body.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(1) })
+        actionsPanel = LinearLayout(this).apply { orientation = 1; setBackgroundColor(Color.WHITE) }
+        body.addView(actionsPanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(1) })
 
         status = TextView(this).apply {
             textSize = 13f; setTextColor(green); gravity = Gravity.CENTER
@@ -170,6 +168,17 @@ class PhoneSecurityActivity : Activity() {
     }
     private fun token() = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
 
+    private fun renderPhoneActions(linked: Boolean) {
+        actionsPanel.removeAllViews()
+        if (linked) {
+            actionsPanel.addView(actionRow("تغيير رقم الهاتف", "▯") { showPhoneDialog() })
+            actionsPanel.addView(separator())
+            actionsPanel.addView(actionRow("تغيير كلمة المرور", "♙") { showPasswordDialog() })
+        } else {
+            actionsPanel.addView(actionRow("ربط رقم الهاتف", "▯") { showPhoneDialog() })
+        }
+    }
+
     private fun maskPhone(value: String): String {
         val digits = value.filter { it.isDigit() }
         if (digits.length < 7) return value
@@ -185,7 +194,9 @@ class PhoneSecurityActivity : Activity() {
                 val phone = r.body.optJSONObject("user")?.optString("phone")?.takeUnless { it.isNullOrBlank() || it == "null" }
                 runOnUiThread {
                     if (!isFinishing) {
-                        phoneValue.text = if (!phone.isNullOrBlank()) maskPhone(phone) else "غير مرتبط"
+                        val linked = !phone.isNullOrBlank()
+                        phoneValue.text = if (linked) maskPhone(phone!!) else "غير مرتبط"
+                        renderPhoneActions(linked)
                     }
                 }
             } catch (_: Exception) { runOnUiThread { if (!isFinishing) phoneValue.text = "تعذر تحميل رقم الهاتف" } }
