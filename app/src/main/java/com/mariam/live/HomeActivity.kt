@@ -78,14 +78,14 @@ class HomeActivity : Activity() {
             leftMargin=dp(8);topMargin=dp(26)
         })
         val returnRoomButton=headerAction("♫","العودة إلى غرفتك").apply{
+            tag="return_room_button"
             val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
             val activeId=prefs.getString("active_room_id",null)
             visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
             setOnClickListener{
                 val id=prefs.getString("active_room_id",null).orEmpty()
-                if(id.isNotBlank()){
-                    startActivity(Intent(this@HomeActivity,RoomActivity::class.java).putExtra("room_id",id))
-                }else visibility=View.GONE
+                if(id.isNotBlank())startActivity(Intent(this@HomeActivity,RoomActivity::class.java).putExtra("room_id",id))
+                else visibility=View.GONE
             }
         }
         header.addView(returnRoomButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.TOP or Gravity.LEFT).apply{
@@ -144,9 +144,7 @@ class HomeActivity : Activity() {
             addView(cake,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER))
         }
         nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(partyNavItem("compass","اكتشف").apply{
-            setOnClickListener{startActivity(Intent(this@HomeActivity,DiscoverActivity::class.java))}
-        },LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(partyNavItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
         nav.addView(partyNavItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
         ViewCompat.setOnApplyWindowInsetsListener(nav){ view,insets->
@@ -164,9 +162,9 @@ class HomeActivity : Activity() {
 
     override fun onResume(){
         super.onResume()
-        if(::grid.isInitialized && ::roomStatus.isInitialized){
-            loadRooms()
-        }
+        val activeId=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("active_room_id",null)
+        findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
+        if(::grid.isInitialized && ::roomStatus.isInitialized)loadRooms()
     }
     private fun iconView(kind:String,tint:Int):View = object:View(this){
         private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{
