@@ -1,306 +1,221 @@
 package com.mariam.live
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.content.Intent
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.*
-import org.json.JSONObject
-import java.util.Locale
 import java.util.concurrent.Executors
 
 class AccountSecurityActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
-    private val green = Color.rgb(10, 126, 88)
-    private val ink = Color.rgb(24, 43, 37)
-    private val muted = Color.rgb(111, 128, 120)
-    private val page = Color.rgb(246, 248, 246)
-    private lateinit var phoneValue: TextView
-    private lateinit var status: TextView
-    private var selectedCountry = Country("IQ", "العراق", "+964", "🇮🇶")
-    private var countryDialog: AlertDialog? = null
-    private data class Country(val iso: String, val name: String, val dial: String, val flag: String)
-    private val codes = """AF:93 AL:355 DZ:213 AS:1684 AD:376 AO:244 AI:1264 AG:1268 AR:54 AM:374 AW:297 AU:61 AT:43 AZ:994 BS:1242 BH:973 BD:880 BB:1246 BY:375 BE:32 BZ:501 BJ:229 BM:1441 BT:975 BO:591 BA:387 BW:267 BR:55 BN:673 BG:359 BF:226 BI:257 KH:855 CM:237 CA:1 CV:238 KY:1345 CF:236 TD:235 CL:56 CN:86 CO:57 KM:269 CG:242 CD:243 CR:506 CI:225 HR:385 CU:53 CY:357 CZ:420 DK:45 DJ:253 DM:1767 DO:1809 EC:593 EG:20 SV:503 GQ:240 ER:291 EE:372 SZ:268 ET:251 FJ:679 FI:358 FR:33 GA:241 GM:220 GE:995 DE:49 GH:233 GR:30 GD:1473 GU:1671 GT:502 GN:224 GW:245 GY:592 HT:509 HN:504 HK:852 HU:36 IS:354 IN:91 ID:62 IR:98 IQ:964 IE:353 IL:972 IT:39 JM:1876 JP:81 JO:962 KZ:7 KE:254 KI:686 KP:850 KR:82 KW:965 KG:996 LA:856 LV:371 LB:961 LS:266 LR:231 LY:218 LI:423 LT:370 LU:352 MO:853 MG:261 MW:265 MY:60 MV:960 ML:223 MT:356 MH:692 MR:222 MU:230 MX:52 FM:691 MD:373 MC:377 MN:976 ME:382 MA:212 MZ:258 MM:95 NA:264 NR:674 NP:977 NL:31 NZ:64 NI:505 NE:227 NG:234 MK:389 NO:47 OM:968 PK:92 PW:680 PS:970 PA:507 PG:675 PY:595 PE:51 PH:63 PL:48 PT:351 PR:1787 QA:974 RO:40 RU:7 RW:250 KN:1869 LC:1758 VC:1784 WS:685 SM:378 ST:239 SA:966 SN:221 RS:381 SC:248 SL:232 SG:65 SK:421 SI:386 SB:677 SO:252 ZA:27 SS:211 ES:34 LK:94 SD:249 SR:597 SE:46 CH:41 SY:963 TW:886 TJ:992 TZ:255 TH:66 TL:670 TG:228 TO:676 TT:1868 TN:216 TR:90 TM:993 TV:688 UG:256 UA:380 AE:971 GB:44 US:1 UY:598 UZ:998 VU:678 VA:39 VE:58 VN:84 YE:967 ZM:260 ZW:263 XK:383 CW:599 SX:1721 BQ:599 GG:441481 IM:441624 JE:441534 FO:298 GL:299 GI:350 GP:590 MQ:596 RE:262 YT:262 GF:594 PF:689 NC:687 PM:508 WF:681""".split(" ").mapNotNull {
-        val p = it.split(":"); if (p.size == 2) p[0] to p[1] else null
-    }.toMap()
+    private val ink = Color.rgb(42, 45, 51)
+    private val muted = Color.rgb(145, 149, 156)
+    private val teal = Color.rgb(43, 202, 190)
+    private val divider = Color.rgb(231, 232, 235)
+    private lateinit var phoneStatus: TextView
+    private lateinit var emailStatus: TextView
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-    private fun flag(iso: String): String {
-        val s = iso.uppercase(Locale.US)
-        return if (s.length == 2) String(Character.toChars(0x1F1E6 + (s[0].code - 'A'.code))) +
-            String(Character.toChars(0x1F1E6 + (s[1].code - 'A'.code))) else "🌐"
-    }
-    private fun countries(): List<Country> = Locale.getISOCountries().mapNotNull { iso ->
-        val dial = codes[iso] ?: return@mapNotNull null
-        Country(iso, Locale("", iso).getDisplayCountry(Locale("ar")), "+$dial", flag(iso))
-    }.sortedBy { it.name }
+    private fun token() = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val forest = Color.rgb(12, 48, 40)
-        val forestLight = Color.rgb(18, 83, 66)
-        val champagne = Color.rgb(221, 190, 126)
-        window.statusBarColor = forest
-        window.navigationBarColor = page
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        val root = LinearLayout(this).apply { orientation = 1; setBackgroundColor(page) }
+        window.statusBarColor = Color.WHITE
+        window.navigationBarColor = Color.BLACK
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+
+        val root = LinearLayout(this).apply {
+            orientation = 1
+            setBackgroundColor(Color.WHITE)
+        }
         val header = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(forest, forestLight))
+            setPadding(dp(18), dp(7), dp(18), dp(7))
+            setBackgroundColor(Color.WHITE)
         }
         header.addView(TextView(this).apply {
-            text = "‹"; textSize = 35f; setTextColor(champagne); gravity = Gravity.CENTER
-            contentDescription = "رجوع"; setOnClickListener { finish() }
+            text = "‹"; textSize = 34f; setTextColor(ink); gravity = Gravity.CENTER
+            setOnClickListener { finish() }
         }, LinearLayout.LayoutParams(dp(46), dp(52)))
         header.addView(TextView(this).apply {
-            text = "الأمان والخصوصية"; textSize = 18f; setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.CENTER
+            text = "إدارة الحساب"; textSize = 20f; setTextColor(ink)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, dp(52), 1f))
-        header.addView(TextView(this).apply {
-            text = "✦"; textSize = 19f; setTextColor(champagne); gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(dp(38), dp(52)))
+        header.addView(View(this), LinearLayout.LayoutParams(dp(46), dp(52)))
         root.addView(header)
 
         val scroll = ScrollView(this)
-        val body = LinearLayout(this).apply { orientation = 1; setPadding(dp(20), dp(25), dp(20), dp(30)) }
+        val body = LinearLayout(this).apply { orientation = 1; setBackgroundColor(Color.WHITE) }
         scroll.addView(body)
-        body.addView(TextView(this).apply {
-            text = "حماية حسابك"; textSize = 27f; setTextColor(ink)
-            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.END
-        })
-        body.addView(TextView(this).apply {
-            text = "تحكّم بطرق تسجيل الدخول وحافظ على أمان BAK LIVE."
-            textSize = 14f; setTextColor(muted); gravity = Gravity.END
-            setPadding(0, dp(8), 0, dp(20))
-        })
-        val trust = LinearLayout(this).apply {
-            orientation = 0; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(17), dp(15), dp(17), dp(15))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(forest, forestLight)).apply { cornerRadius = dp(21).toFloat() }
-            elevation = dp(3).toFloat()
+
+        val section = TextView(this).apply {
+            text = "ربط الحساب"; textSize = 16f; setTextColor(ink)
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            setPadding(dp(20), 0, dp(24), 0)
+            setBackgroundColor(Color.rgb(245, 246, 250))
         }
-        trust.addView(TextView(this).apply {
-            text = "✓"; textSize = 25f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(champagne); gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL; setColor(Color.argb(35, 255, 255, 255))
-                setStroke(dp(1), Color.argb(90, 221, 190, 126))
-            }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        val trustText = LinearLayout(this).apply { orientation = 1; gravity = Gravity.END; setPadding(dp(13), 0, 0, 0) }
-        trustText.addView(TextView(this).apply {
-            text = "أمانك أولويتنا"; textSize = 16f; setTextColor(Color.WHITE)
+        body.addView(section, LinearLayout.LayoutParams(-1, dp(72)))
+
+        phoneStatus = TextView(this).apply {
+            text = "جارٍ التحقق..."; textSize = 13f; setTextColor(muted)
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+        }
+        body.addView(accountRow("الهاتف", "▯", phoneStatus) {
+            startActivity(Intent(this, PhoneSecurityActivity::class.java))
+        })
+        body.addView(noteBanner("✓", "لقد قمت بربط حسابك برقم الهاتف، وأصبح عامل أمان الحساب أفضل.", Color.rgb(226, 250, 248), teal))
+        body.addView(separator())
+
+        emailStatus = TextView(this).apply {
+            text = "في انتظار الربط"; textSize = 13f; setTextColor(Color.rgb(220, 103, 126))
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+        }
+        body.addView(accountRow("البريد الإلكتروني", "✉", emailStatus) {
+            Toast.makeText(this, "ربط البريد الإلكتروني سيكون متاحاً قريباً", Toast.LENGTH_SHORT).show()
+        })
+        body.addView(noteBanner("i", "قم بربط بريدك الإلكتروني لتلقي أخبار BAK LIVE وتحديثات الخصوصية والمكافآت.", Color.rgb(255, 250, 239), Color.rgb(239, 177, 52)))
+        body.addView(separator())
+
+        body.addView(accountRow("Facebook", "f", null) { comingSoon("Facebook") })
+        body.addView(separator())
+        body.addView(accountRow("Google", "G", null) { comingSoon("Google") })
+        body.addView(separator())
+        body.addView(accountRow("X", "𝕏", null) { comingSoon("X") })
+        body.addView(separator())
+        body.addView(accountRow("Snapchat", "♧", null) { comingSoon("Snapchat") })
+        body.addView(separator())
+        body.addView(accountRow("VK", "ᴠκ", null) { comingSoon("VK") })
+        body.addView(separator())
+        body.addView(accountRow("أبل", "●", null) { comingSoon("Apple") })
+        body.addView(separator())
+
+        val tipsTitle = TextView(this).apply {
+            text = "نصائح للأمان"; textSize = 18f; setTextColor(ink)
             typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END
-        })
-        trustText.addView(TextView(this).apply {
-            text = "حافظ على بيانات الدخول محدثة وسرية"
-            textSize = 12f; setTextColor(Color.rgb(207, 222, 215)); gravity = Gravity.END
-            setPadding(0, dp(4), 0, 0)
-        })
-        trust.addView(trustText, LinearLayout.LayoutParams(0, -2, 1f))
-        body.addView(trust, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(22) })
-
-        val phoneCard = card()
-        heading(phoneCard, "رقم الهاتف", "📱", "استقبل رموز التحقق على واتساب")
-        phoneValue = TextView(this).apply { text = "جارٍ تحميل الرقم..."; textSize = 14f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(14), 0, dp(16)) }
-        phoneCard.addView(phoneValue)
-        phoneCard.addView(actionButton("ربط أو تغيير رقم الهاتف") { showPhoneDialog() })
-        body.addView(phoneCard)
-
-        val passCard = card()
-        heading(passCard, "كلمة المرور", "🔐", "حدّث كلمة المرور بشكل دوري")
-        passCard.addView(TextView(this).apply { text = "اختر كلمة مرور قوية لا تستخدمها في حسابات أخرى."; textSize = 13f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(14), 0, dp(16)) })
-        passCard.addView(actionButton("تغيير كلمة المرور") { showPasswordDialog() })
-        body.addView(passCard)
-        status = TextView(this).apply {
-            textSize = 13f; setTextColor(green); gravity = Gravity.CENTER
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = shape(Color.rgb(235, 246, 240), 14, Color.rgb(220, 235, 226))
+            setPadding(dp(20), dp(28), dp(24), dp(12))
         }
-        body.addView(status)
+        body.addView(tipsTitle)
+        body.addView(TextView(this).apply {
+            text = "1. لماذا يجب أن أقوم بربط هاتفي المحمول؟\nعندما تقوم بربط رقم هاتفك المحمول، يمكنك تلقي رمز التحقق عند تغيير إعدادات الحساب، كما يساعدك ذلك على استعادة حسابك عند الحاجة.\n\n2. حافظ على سرية كلمة المرور ورمز التحقق، ولا تشاركهما مع أي شخص."
+            textSize = 15f; setTextColor(ink); gravity = Gravity.END
+            setLineSpacing(dp(5).toFloat(), 1f)
+            setPadding(dp(24), 0, dp(24), dp(30))
+        })
+
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
-        loadSecurityInfo()
+        loadAccountLinks()
     }
 
-    private fun shape(color: Int, radius: Int, stroke: Int = color) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat(); setStroke(dp(1), stroke) }
-    private fun card() = LinearLayout(this).apply {
-        orientation = 1; setPadding(dp(19), dp(19), dp(19), dp(19))
-        background = shape(Color.WHITE, 24, Color.rgb(231, 237, 233))
-        elevation = dp(2).toFloat()
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) }
+    private fun separator() = View(this).apply {
+        setBackgroundColor(divider)
+        layoutParams = LinearLayout.LayoutParams(-1, dp(1))
     }
-    private fun heading(parent: LinearLayout, title: String, symbol: String, subtitle: String) {
-        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        row.addView(TextView(this).apply {
-            text = if (symbol == "📱") "▣" else "◆"
-            textSize = 22f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(green); gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(233, 245, 239)); cornerRadius = dp(15).toFloat()
-                setStroke(dp(1), Color.rgb(218, 235, 225))
-            }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        val texts = LinearLayout(this).apply { orientation = 1; gravity = Gravity.END; setPadding(dp(12), 0, 0, 0) }
-        texts.addView(TextView(this).apply {
-            text = title; textSize = 18f; setTextColor(ink)
-            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.END
-        })
-        texts.addView(TextView(this).apply {
-            text = subtitle; textSize = 12f; setTextColor(muted); gravity = Gravity.END
-            setPadding(0, dp(5), 0, 0)
-        })
-        row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f)); parent.addView(row)
-    }
-    private fun actionButton(label: String, click: () -> Unit) = TextView(this).apply {
-        text = label; textSize = 15f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE); gravity = Gravity.CENTER
-        setPadding(dp(16), dp(16), dp(16), dp(16))
-        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(Color.rgb(10, 126, 88), Color.rgb(17, 151, 103))).apply {
-            cornerRadius = dp(17).toFloat()
+
+    private fun accountRow(title: String, symbol: String, state: TextView?, click: () -> Unit) =
+        LinearLayout(this).apply {
+            orientation = 0
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), 0, dp(18), 0)
+            minimumHeight = dp(72)
+            setBackgroundColor(Color.WHITE)
+
+            addView(TextView(this@AccountSecurityActivity).apply {
+                text = "‹"; textSize = 28f; setTextColor(Color.rgb(155, 158, 163))
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(30), dp(64)))
+
+            if (state != null) addView(state, LinearLayout.LayoutParams(0, dp(64), 1f))
+            else addView(View(this@AccountSecurityActivity), LinearLayout.LayoutParams(0, dp(64), 1f))
+
+            addView(TextView(this@AccountSecurityActivity).apply {
+                text = title; textSize = 17f; setTextColor(ink)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
+            }, LinearLayout.LayoutParams(-2, dp(64)))
+
+            addView(TextView(this@AccountSecurityActivity).apply {
+                text = symbol; textSize = 23f; setTextColor(if (title == "الهاتف") teal else muted)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(38), dp(64)))
+
+            isClickable = true
+            setOnClickListener { click() }
         }
-        elevation = dp(2).toFloat()
-        isClickable = true
-        setOnClickListener { click() }
-    }
-    private fun token() = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
 
-    private fun loadSecurityInfo() {
-        val auth = token() ?: run { phoneValue.text = "يرجى تسجيل الدخول مجدداً"; return }
+    private fun noteBanner(icon: String, message: String, backgroundColor: Int, iconColor: Int) =
+        LinearLayout(this).apply {
+            orientation = 0
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = GradientDrawable().apply {
+                setColor(backgroundColor); cornerRadius = dp(7).toFloat()
+            }
+            val text = TextView(this@AccountSecurityActivity).apply {
+                this.text = message; textSize = 13f; setTextColor(Color.rgb(133, 137, 144))
+                gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            }
+            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(TextView(this@AccountSecurityActivity).apply {
+                this.text = icon; textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE); gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL; setColor(iconColor)
+                }
+            }, LinearLayout.LayoutParams(dp(26), dp(26)).apply { leftMargin = dp(6) })
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                setMargins(dp(18), dp(8), dp(18), dp(18))
+            }
+        }
+
+    private fun comingSoon(provider: String) {
+        Toast.makeText(this, "ربط $provider سيكون متاحاً قريباً", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadAccountLinks() {
+        val auth = token() ?: run {
+            phoneStatus.text = "سجّل الدخول"
+            emailStatus.text = "غير مربوط"
+            return
+        }
         executor.execute {
             try {
-                val r = AuthApi.get("/api/auth/me", auth)
-                if (r.status !in 200..299) throw Exception("load failed")
-                val phone = r.body.optJSONObject("user")?.optString("phone")?.takeUnless { it.isNullOrBlank() || it == "null" }
-                runOnUiThread { if (!isFinishing) phoneValue.text = phone ?: "لا يوجد رقم هاتف مرتبط" }
-            } catch (_: Exception) { runOnUiThread { if (!isFinishing) phoneValue.text = "تعذر تحميل رقم الهاتف" } }
-        }
-    }
-
-    private fun showPhoneDialog() {
-        val panel = LinearLayout(this).apply { orientation = 1; setPadding(dp(22), dp(8), dp(22), dp(4)) }
-        panel.addView(TextView(this).apply { text = "اختر الدولة ثم أدخل رقم الهاتف"; textSize = 14f; setTextColor(muted); gravity = Gravity.END; setPadding(0, 0, 0, dp(12)) })
-        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; background = shape(Color.rgb(247, 250, 248), 13, Color.rgb(225, 233, 227)); setPadding(dp(8), dp(4), dp(8), dp(4)) }
-        val countryButton = TextView(this).apply {
-            text = selectedCountry.flag + "  " + selectedCountry.dial + "  ▾"; textSize = 15f; setTextColor(ink); gravity = Gravity.CENTER; setPadding(dp(8), dp(12), dp(8), dp(12))
-        }
-        val input = EditText(this).apply {
-            hint = "رقم الهاتف"; textSize = 16f; inputType = android.text.InputType.TYPE_CLASS_PHONE; setTextColor(ink); setHintTextColor(muted)
-            background = null; gravity = Gravity.CENTER_VERTICAL or Gravity.END; layoutDirection = View.LAYOUT_DIRECTION_LTR; setPadding(dp(8), dp(8), dp(8), dp(8))
-        }
-        countryButton.setOnClickListener { showCountryPicker { c -> selectedCountry = c; countryButton.text = c.flag + "  " + c.dial + "  ▾" } }
-        row.addView(countryButton, LinearLayout.LayoutParams(-2, dp(52)))
-        row.addView(input, LinearLayout.LayoutParams(0, dp(52), 1f))
-        panel.addView(row)
-        panel.addView(TextView(this).apply { text = "سيتم إرسال رمز تحقق إلى الرقم عبر واتساب."; textSize = 12f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(12), 0, 0) })
-        val dialog = AlertDialog.Builder(this).setTitle("ربط رقم الهاتف").setView(panel).setNegativeButton("إلغاء", null).setPositiveButton("إرسال رمز التحقق", null).create()
-        dialog.setOnShowListener {
-            dialog.getButton(-1).setTextColor(green); dialog.getButton(-2).setTextColor(muted)
-            dialog.getButton(-1).setOnClickListener {
-                val digits = input.text.toString().filter { it.isDigit() }.trimStart('0')
-                if (digits.length < 6) { input.error = "أدخل رقم هاتف صحيح"; return@setOnClickListener }
-                val full = selectedCountry.dial + digits
-                dialog.dismiss(); requestPhoneCode(full)
-            }
-        }
-        dialog.show()
-    }
-
-    private fun showCountryPicker(onSelected: (Country) -> Unit) {
-        val all = countries()
-        var filtered = all
-        val box = LinearLayout(this).apply { orientation = 1; setPadding(dp(16), dp(8), dp(16), dp(8)) }
-        val search = EditText(this).apply { hint = "ابحث عن الدولة أو رمز الاتصال"; textSize = 14f; setSingleLine(); setTextColor(ink); background = shape(Color.rgb(246, 249, 247), 12, Color.rgb(225, 233, 227)); setPadding(dp(14), dp(10), dp(14), dp(10)) }
-        val list = ListView(this).apply { divider = android.graphics.drawable.ColorDrawable(Color.rgb(237, 241, 238)); dividerHeight = dp(1); isFastScrollEnabled = true }
-        box.addView(search, LinearLayout.LayoutParams(-1, dp(48))); box.addView(list, LinearLayout.LayoutParams(-1, dp(420)))
-        val adapter = object : android.widget.BaseAdapter() {
-            override fun getCount() = filtered.size
-            override fun getItem(position: Int) = filtered[position]
-            override fun getItemId(position: Int) = position.toLong()
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-                val c = getItem(position)
-                return (convertView as? TextView ?: TextView(this@AccountSecurityActivity).apply { textSize = 15f; setTextColor(ink); gravity = Gravity.CENTER_VERTICAL or Gravity.END; setPadding(dp(12), 0, dp(12), 0) }).apply {
-                    text = c.flag + "     " + c.name + "       " + c.dial; height = dp(52)
+                val response = AuthApi.get("/api/auth/me", auth)
+                if (response.status !in 200..299) throw Exception("تعذر تحميل بيانات الحساب")
+                val user = response.body.optJSONObject("user")
+                val phone = user?.optString("phone")?.takeUnless { it.isNullOrBlank() || it == "null" }
+                val email = user?.optString("email")?.takeUnless { it.isNullOrBlank() || it == "null" }
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    if (!phone.isNullOrBlank()) {
+                        val digits = phone.filter { it.isDigit() }
+                        val masked = if (digits.length >= 7) digits.take(2) + "******" + digits.takeLast(4) else phone
+                        phoneStatus.text = masked
+                        phoneStatus.setTextColor(Color.rgb(125, 132, 137))
+                    } else {
+                        phoneStatus.text = "غير مربوط • ربط الآن"
+                        phoneStatus.setTextColor(Color.rgb(220, 103, 126))
+                    }
+                    emailStatus.text = if (!email.isNullOrBlank()) "مرتبط" else "في انتظار الربط"
+                }
+            } catch (_: Exception) {
+                runOnUiThread {
+                    if (!isFinishing) {
+                        phoneStatus.text = "اضغط لإدارة رقم الهاتف"
+                        emailStatus.text = "تعذر التحقق"
+                    }
                 }
             }
         }
-        list.adapter = adapter
-        search.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val q = s.toString().trim().lowercase(Locale("ar"))
-                filtered = all.filter { it.name.lowercase(Locale("ar")).contains(q) || it.dial.contains(q) || it.iso.lowercase().contains(q) }
-                adapter.notifyDataSetChanged()
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
-        countryDialog = AlertDialog.Builder(this).setTitle("اختر الدولة").setView(box).setNegativeButton("إغلاق", null).create()
-        list.setOnItemClickListener { _, _, position, _ -> onSelected(filtered[position]); countryDialog?.dismiss() }
-        countryDialog?.show()
     }
 
-    private fun requestPhoneCode(phone: String) {
-        val auth = token() ?: return
-        status.text = "جارٍ إرسال رمز التحقق..."
-        executor.execute {
-            try {
-                val r = AuthApi.post("/api/account/phone/request", JSONObject().put("phone", phone), auth)
-                if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر إرسال الرمز"))
-                runOnUiThread { if (!isFinishing) showPhoneCodeDialog(phone) }
-            } catch (e: Exception) { runOnUiThread { if (!isFinishing) status.text = e.message ?: "تعذر إرسال الرمز" } }
-        }
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
     }
-    private fun showPhoneCodeDialog(phone: String) {
-        val input = EditText(this).apply { hint = "رمز التحقق المكوّن من 6 أرقام"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; setTextColor(ink) }
-        AlertDialog.Builder(this).setTitle("تأكيد رقم الهاتف").setMessage("أدخل الرمز الذي وصلك عبر واتساب.").setView(input)
-            .setNegativeButton("إلغاء", null).setPositiveButton("تأكيد") { _, _ -> verifyPhone(phone, input.text.toString().trim()) }.show()
-    }
-    private fun verifyPhone(phone: String, code: String) {
-        val auth = token() ?: return
-        status.text = "جارٍ تأكيد الرقم..."
-        executor.execute {
-            try {
-                val r = AuthApi.post("/api/account/phone/verify", JSONObject().put("phone", phone).put("verificationCode", code), auth)
-                if (r.status !in 200..299) throw Exception(r.body.optString("error", "فشل تأكيد الرقم"))
-                runOnUiThread { if (!isFinishing) { status.text = "تم تحديث رقم الهاتف بنجاح"; loadSecurityInfo() } }
-            } catch (e: Exception) { runOnUiThread { if (!isFinishing) status.text = e.message ?: "فشل تأكيد الرقم" } }
-        }
-    }
-    private fun showPasswordDialog() {
-        val panel = LinearLayout(this).apply { orientation = 1; setPadding(dp(22), dp(8), dp(22), 0) }
-        fun field(h: String) = EditText(this).apply { hint = h; textSize = 15f; inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD; setTextColor(ink); setPadding(dp(4), dp(12), dp(4), dp(12)) }
-        val current = field("كلمة المرور الحالية"); val next = field("كلمة المرور الجديدة (8 أحرف على الأقل)"); val confirm = field("تأكيد كلمة المرور الجديدة")
-        panel.addView(current); panel.addView(next); panel.addView(confirm)
-        val d = AlertDialog.Builder(this).setTitle("تغيير كلمة المرور").setView(panel).setNegativeButton("إلغاء", null).setPositiveButton("حفظ", null).create()
-        d.setOnShowListener {
-            d.getButton(-1).setTextColor(green); d.getButton(-2).setTextColor(muted)
-            d.getButton(-1).setOnClickListener {
-                val n = next.text.toString()
-                if (current.text.isBlank() || n.length < 8 || n != confirm.text.toString()) { Toast.makeText(this, "تحقق من كلمة المرور الحالية والجديدة والتأكيد", Toast.LENGTH_LONG).show(); return@setOnClickListener }
-                d.dismiss(); changePassword(current.text.toString(), n)
-            }
-        }
-        d.show()
-    }
-    private fun changePassword(current: String, next: String) {
-        val auth = token() ?: return
-        status.text = "جارٍ تحديث كلمة المرور..."
-        executor.execute {
-            try {
-                val r = AuthApi.post("/api/account/password/change", JSONObject().put("currentPassword", current).put("newPassword", next), auth)
-                if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر تغيير كلمة المرور"))
-                runOnUiThread { if (!isFinishing) status.text = "تم تغيير كلمة المرور بنجاح" }
-            } catch (e: Exception) { runOnUiThread { if (!isFinishing) status.text = e.message ?: "تعذر تغيير كلمة المرور" } }
-        }
-    }
-    override fun onDestroy() { countryDialog?.dismiss(); executor.shutdownNow(); super.onDestroy() }
 }
