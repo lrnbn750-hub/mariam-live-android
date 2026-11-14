@@ -1607,6 +1607,7 @@ class RoomActivity : Activity() {
   val grid=android.widget.GridLayout(this).apply{columnCount=4;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_BOUNDS}
   var selected=gifts.first()
   var quantity=1
+  val total=label(String.format(java.util.Locale.US,"%,d",selected.price)+ " 🪙",12f,gold,true).apply{gravity=Gravity.END or Gravity.CENTER_VERTICAL}
   val cards=ArrayList<LinearLayout>()
   val giftImages=ArrayList<ImageView>()
   val updateSelection:(Gift)->Unit={chosen->
@@ -1626,6 +1627,7 @@ class RoomActivity : Activity() {
      card.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
     }
    }
+   total.text=String.format(java.util.Locale.US,"%,d",selected.price*quantity)+" 🪙"
   }
   gifts.forEachIndexed{index,gift->
    val card=LinearLayout(this).apply{
@@ -1662,7 +1664,6 @@ class RoomActivity : Activity() {
   val plus=TextView(this).apply{text="+";textSize=20f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
   qtyBox.addView(minus,LinearLayout.LayoutParams(dp(34),dp(42)));qtyBox.addView(qtyText,LinearLayout.LayoutParams(dp(28),dp(42)));qtyBox.addView(plus,LinearLayout.LayoutParams(dp(34),dp(42)))
   footer.addView(qtyBox,LinearLayout.LayoutParams(-2,dp(44)))
-  val total=label(selected.price.toString()+" 🪙",12f,gold,true).apply{gravity=Gravity.END or Gravity.CENTER_VERTICAL}
   footer.addView(total,LinearLayout.LayoutParams(0,dp(44),1f).apply{marginStart=dp(8)})
   fun refreshTotal(){total.text=String.format(java.util.Locale.US,"%,d",selected.price*quantity)+" 🪙";qtyText.text=quantity.toString()}
   minus.setOnClickListener{if(quantity>1){quantity--;refreshTotal()}}
