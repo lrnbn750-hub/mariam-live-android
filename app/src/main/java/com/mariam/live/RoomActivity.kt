@@ -1575,11 +1575,14 @@ class RoomActivity : Activity() {
  }
  private fun giftArtwork(gift:Gift):Int=when(gift.id.lowercase()){
   "rose","golden_rose"->R.drawable.gift_rose
-  "car","luxury_car"->R.drawable.gift_car
-  "lion"->R.drawable.gift_lion
-  "plane"->R.drawable.gift_plane
-  "castle"->R.drawable.gift_castle
   "aladdin"->R.drawable.gift_aladdin
+  "lollipop"->R.drawable.gift_lollipop
+  "donut"->R.drawable.gift_donut
+  "magic_star"->R.drawable.gift_magic_star
+  "pink_kiss"->R.drawable.gift_pink_kiss
+  "royal_bell"->R.drawable.gift_royal_bell
+  "ruby_ring"->R.drawable.gift_ruby_ring
+  "royal_crown"->R.drawable.gift_royal_crown
   else->0
  }
  private fun showGiftCatalogDialog(gifts:List<Gift>,recipientId:String,recipientName:String,coins:Long?){
@@ -1713,10 +1716,14 @@ class RoomActivity : Activity() {
   playGiftSound()
   val imageRes=when(event.giftId.lowercase()){
    "rose"->R.drawable.gift_rose
-   "car"->R.drawable.gift_car
-   "lion"->R.drawable.gift_lion
-   "plane"->R.drawable.gift_plane
-   "castle"->R.drawable.gift_castle
+   "aladdin"->R.drawable.gift_aladdin
+   "lollipop"->R.drawable.gift_lollipop
+   "donut"->R.drawable.gift_donut
+   "magic_star"->R.drawable.gift_magic_star
+   "pink_kiss"->R.drawable.gift_pink_kiss
+   "royal_bell"->R.drawable.gift_royal_bell
+   "ruby_ring"->R.drawable.gift_ruby_ring
+   "royal_crown"->R.drawable.gift_royal_crown
    else->0
   }
   val animationUrl=event.animationUrl.trim()
