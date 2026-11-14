@@ -80,6 +80,7 @@ class RoomActivity : Activity() {
  private lateinit var sendButton:TextView
  private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
+ private lateinit var roomViewerCount:TextView
  private var roomMembers=JSONArray()
  private var previousMemberIds:MutableSet<String>?=null
  private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
@@ -102,8 +103,8 @@ class RoomActivity : Activity() {
    isClickable=true;isFocusable=true;elevation=dp(4).toFloat()
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.argb(220,48,15,65))
-    setStroke(dp(2),Color.rgb(222,91,231))
+    setColor(Color.argb(165,35,43,46))
+    setStroke(dp(1),Color.argb(145,225,235,235))
    }
    addView(ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon(icon,Color.WHITE,dp(23)))
@@ -113,8 +114,18 @@ class RoomActivity : Activity() {
    contentDescription=description
    setOnClickListener{onClick()}
   }
-  top.addView(topRoomButton("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(9)})
-  top.addView(topRoomButton("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)))
+  top.addView(topRoomButton("power","خروج من البث"){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(9)})
+  val viewersPill=LinearLayout(this).apply{
+   orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(12),dp(5),dp(12),dp(5))
+   background=GradientDrawable().apply{cornerRadius=dp(22).toFloat();setColor(Color.argb(165,48,57,61));setStroke(dp(1),Color.argb(95,225,235,235))}
+   roomViewerCount=label("0",13f,Color.WHITE,true).apply{includeFontPadding=false}
+   addView(roomViewerCount,LinearLayout.LayoutParams(-2,dp(22)).apply{marginEnd=dp(5)})
+   addView(ImageView(this@RoomActivity).apply{setImageDrawable(VectorIcon("users",Color.WHITE,dp(17)));contentDescription="المشاهدون";scaleType=ImageView.ScaleType.CENTER},LinearLayout.LayoutParams(dp(20),dp(22)))
+   setOnClickListener{showRoomMembers()}
+  }
+  top.addView(viewersPill,LinearLayout.LayoutParams(-2,dp(40)).apply{marginEnd=dp(9)})
+  top.addView(topRoomButton("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(40),dp(40)))
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
   val roomInfoGroup=LinearLayout(this).apply{
    orientation=1
@@ -145,6 +156,7 @@ class RoomActivity : Activity() {
   roomInfoGroup.addView(membersButton,LinearLayout.LayoutParams(-1,dp(28)).apply{
    gravity=Gravity.START;topMargin=dp(2);bottomMargin=dp(2)
   })
+  membersButton.visibility=View.GONE
   grid=LinearLayout(this).apply{orientation=1}
   roomInfoGroup.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   roomPage.addView(roomInfoGroup,LinearLayout.LayoutParams(-1,-2))
@@ -565,22 +577,27 @@ class RoomActivity : Activity() {
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(5)})
    val roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
-    background=GradientDrawable().apply{
+    background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(255,68,158),Color.rgb(139,70,239),Color.rgb(63,119,255))).apply{
      shape=GradientDrawable.OVAL
-     setColor(Color.argb(28,255,255,255))
-     setStroke(dp(1),Color.argb(190,255,255,255))
+     setStroke(dp(1),Color.argb(210,255,225,249))
     }
+    elevation=dp(7).toFloat()
     addView(ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(22)))
+     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(25)))
      scaleType=ImageView.ScaleType.CENTER_INSIDE
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     contentDescription="فتح الهدايا"
+    animate().cancel()
+    scaleX=1f;scaleY=1f
+    animate().scaleX(1.08f).scaleY(1.08f).setDuration(720).withEndAction{
+     animate().scaleX(1f).scaleY(1f).setDuration(720).withEndAction{animate().scaleX(1.08f).scaleY(1.08f).setDuration(720).start()}.start()
+    }.start()
     setOnClickListener{
-     Toast.makeText(this@RoomActivity,"واجهة إرسال الهدايا غير مربوطة بالخادم بعد",Toast.LENGTH_SHORT).show()
+     Toast.makeText(this@RoomActivity,"إرسال الهدايا يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()
     }
    }
-   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(7)})
+   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginEnd=dp(7)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -1450,6 +1467,7 @@ class RoomActivity : Activity() {
     if(::membersButton.isInitialized){
      val count=fresh.length()
      (membersButton.getChildAt(0) as? TextView)?.text=count.toString()
+     if(::roomViewerCount.isInitialized)roomViewerCount.text=count.toString()
     }
    }catch(_:Exception){}
   }
@@ -2096,6 +2114,7 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  "share"->{c.drawLine(7f,16f,25f,7f,p);c.drawLine(7f,16f,25f,25f,p);c.drawCircle(6f,16f,3f,p);c.drawCircle(26f,6f,3f,p);c.drawCircle(26f,26f,3f,p)}
  "gift"->{c.drawRect(4f,13f,28f,28f,p);c.drawRect(2f,10f,30f,15f,p);c.drawLine(16f,10f,16f,28f,p);c.drawOval(RectF(6f,3f,16f,12f),p);c.drawOval(RectF(16f,3f,26f,12f),p)}
  "music"->{c.drawLine(12f,7f,12f,23f,p);c.drawLine(12f,7f,25f,4f,p);c.drawLine(25f,4f,25f,20f,p);c.drawOval(RectF(5f,21f,13f,28f),p);c.drawOval(RectF(18f,18f,26f,25f),p)}
+ "power"->{c.drawArc(6f,6f,26f,26f,45f,270f,false,p);c.drawLine(16f,3f,16f,16f,p)}
  "leave"->{val q=Path().apply{moveTo(8f,5f);lineTo(4f,5f);lineTo(4f,27f);lineTo(8f,27f);moveTo(16f,10f);lineTo(27f,16f);lineTo(16f,22f);moveTo(27f,16f);lineTo(10f,16f)};c.drawPath(q,p)}
  else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
  };c.restoreToCount(save)}
