@@ -87,3 +87,28 @@ ON CONFLICT (gift_id) DO UPDATE SET
  gift_units=EXCLUDED.gift_units,
  active=TRUE,
  sort_order=EXCLUDED.sort_order;
+
+
+-- Final visual catalog: butterfly, rose bouquet, donut, magic star,
+-- pink kiss, magic lantern, ruby ring and royal crown.
+-- Old placeholder gifts are deactivated; wallet balances are untouched.
+UPDATE room_gifts
+SET active=FALSE
+WHERE gift_id IN ('car','lion','plane','castle','aladdin','lollipop','royal_bell');
+
+INSERT INTO room_gifts(gift_id,name,animation_url,price_coins,gift_units,active,sort_order)
+VALUES
+ ('butterfly','فراشة كريستال','',5,1,TRUE,10),
+ ('magic_lantern','فانوس سحري','',40,1,TRUE,60)
+ON CONFLICT (gift_id) DO UPDATE SET
+ name=EXCLUDED.name,
+ price_coins=EXCLUDED.price_coins,
+ active=TRUE,
+ sort_order=EXCLUDED.sort_order;
+
+UPDATE room_gifts SET name='باقة ورد',price_coins=10,active=TRUE,sort_order=20 WHERE gift_id='rose';
+UPDATE room_gifts SET name='دونات',price_coins=15,active=TRUE,sort_order=30 WHERE gift_id='donut';
+UPDATE room_gifts SET name='نجمة سحرية',price_coins=20,active=TRUE,sort_order=40 WHERE gift_id='magic_star';
+UPDATE room_gifts SET name='قبلة حب',price_coins=30,active=TRUE,sort_order=50 WHERE gift_id='pink_kiss';
+UPDATE room_gifts SET name='خاتم ياقوت',price_coins=60,active=TRUE,sort_order=70 WHERE gift_id='ruby_ring';
+UPDATE room_gifts SET name='تاج ملكي',price_coins=100,active=TRUE,sort_order=80 WHERE gift_id='royal_crown';
