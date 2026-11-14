@@ -1520,7 +1520,7 @@ class RoomActivity : Activity() {
     contentDescription="هدية"
    }
    addView(giftIcon,FrameLayout.LayoutParams(-1,-1))
-   setOnClickListener{Toast.makeText(this@RoomActivity,"إرسال الهدية يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()}
+   setOnClickListener{showAladdinGiftPicker()}
   }
   actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
   val follow=actionButton("جارٍ التحقق...",Color.rgb(22,194,190)){toggleMemberFollow(uid,it)}
@@ -1540,6 +1540,67 @@ class RoomActivity : Activity() {
   dialog.window?.setLayout(-1,-2)
   dialog.window?.setGravity(Gravity.BOTTOM)
  }
+ private fun showAladdinGiftPicker(){
+  val panel=LinearLayout(this).apply{
+   orientation=1
+   setPadding(dp(18),dp(14),dp(18),dp(14))
+   setBackgroundColor(Color.rgb(250,250,247))
+  }
+  panel.addView(label("الهدايا",20f,Color.rgb(37,64,45),true),LinearLayout.LayoutParams(-1,dp(42)))
+  val item=LinearLayout(this).apply{
+   orientation=1
+   gravity=Gravity.CENTER
+   setPadding(dp(12),dp(12),dp(12),dp(12))
+   background=GradientDrawable().apply{
+    setColor(Color.WHITE)
+    cornerRadius=dp(16).toFloat()
+    setStroke(dp(1),Color.rgb(216,226,215))
+   }
+  }
+  item.addView(TextView(this).apply{text="🧞";textSize=48f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(82)))
+  item.addView(label("علاء الدين",16f,Color.rgb(48,75,52),true),LinearLayout.LayoutParams(-1,dp(30)))
+  item.addView(label("هدية متحركة • معاينة",11f,Color.rgb(105,118,105)),LinearLayout.LayoutParams(-1,dp(24)))
+  panel.addView(item,LinearLayout.LayoutParams(-1,-2))
+  val dialog=AlertDialog.Builder(this).setView(panel).setNegativeButton("إغلاق",null).create()
+  item.setOnClickListener{dialog.dismiss();playAladdinGiftPreview()}
+  dialog.show()
+ }
+
+ private fun playAladdinGiftPreview(){
+  if(!::roomOverlayLayer.isInitialized)return
+  val overlay=FrameLayout(this).apply{setBackgroundColor(Color.argb(105,0,0,0));isClickable=true;isFocusable=true}
+  val player=com.opensource.svgaplayer.SVGAImageView(this).apply{setBackgroundColor(Color.TRANSPARENT);loops=1;clearsAfterDetached=true}
+  overlay.addView(player,FrameLayout.LayoutParams(dp(300),dp(300),Gravity.CENTER))
+  overlay.setOnClickListener{player.stopAnimation(true);roomOverlayLayer.removeView(overlay)}
+  roomOverlayLayer.addView(overlay,FrameLayout.LayoutParams(-1,-1))
+  try{
+   val stream=resources.openRawResource(R.raw.aladdin)
+   val parser=com.opensource.svgaplayer.SVGAParser(this)
+   parser.decodeFromInputStream(
+    stream,
+    "android.resource://$packageName/${R.raw.aladdin}",
+    object:com.opensource.svgaplayer.SVGAParser.ParseCompletion{
+     override fun onComplete(videoItem:com.opensource.svgaplayer.SVGAVideoEntity){
+      player.post{if(overlay.parent!=null){player.setVideoItem(videoItem);player.startAnimation()}}
+     }
+     override fun onError(){
+      runOnUiThread{roomOverlayLayer.removeView(overlay);Toast.makeText(this@RoomActivity,"تعذر تحميل حركة هدية علاء الدين",Toast.LENGTH_LONG).show()}
+     }
+    },
+    true
+   )
+   player.callback=object:com.opensource.svgaplayer.SVGACallback{
+    override fun onFinished(){runOnUiThread{roomOverlayLayer.removeView(overlay)}}
+    override fun onPause()=Unit
+    override fun onRepeat()=Unit
+    override fun onStep(frame:Int,percentage:Double)=Unit
+   }
+  }catch(e:Exception){
+   roomOverlayLayer.removeView(overlay)
+   Toast.makeText(this,"تعذر تشغيل الهدية: ${e.message.orEmpty()}",Toast.LENGTH_LONG).show()
+  }
+ }
+
  private fun renderMemberFollowState(button:TextView,following:Boolean){
   button.text=if(following)"✓ تتابعه" else "＋ متابعة"
   button.setBackgroundColor(if(following)Color.rgb(80,145,105) else Color.rgb(22,194,190))
