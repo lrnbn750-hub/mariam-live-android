@@ -16,6 +16,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Color
+import android.graphics.Shader
+import android.graphics.RadialGradient
+import android.graphics.LinearGradient
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.ColorDrawable
@@ -107,45 +110,74 @@ class HomeActivity : Activity() {
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(74,24,112),Color.rgb(32,8,65))).apply{
-                setCornerRadii(floatArrayOf(dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),0f,0f,0f,0f))
-                setStroke(dp(1),Color.rgb(244,190,86))
+                intArrayOf(Color.rgb(65,20,103),Color.rgb(30,8,54))).apply{
+                setCornerRadii(floatArrayOf(dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),dp(25).toFloat(),0f,0f,0f,0f))
+                setStroke(dp(1),Color.rgb(205,151,75))
             }
-            setPadding(dp(5),dp(7),dp(5),dp(6))
-            elevation=dp(16).toFloat()
+            setPadding(dp(7),dp(7),dp(7),dp(7))
+            elevation=dp(18).toFloat()
         }
-        fun partyNavItem(symbol:String,title:String,selected:Boolean=false)=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-            addView(BirthdayNavIcon(this@HomeActivity,symbol,selected),LinearLayout.LayoutParams(dp(31),dp(34)))
+        fun navItem(kind:String,title:String,selected:Boolean=false,onTap:()->Unit)=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER
+            isClickable=true
+            isFocusable=true
+            background=if(selected) GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(0x553D1B5C,0x00200A38)).apply{
+                cornerRadius=dp(18).toFloat()
+                setStroke(dp(1),0x66E9BE73)
+            } else ColorDrawable(Color.TRANSPARENT)
+            addView(PremiumNavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(39),dp(39)))
             addView(TextView(this@HomeActivity).apply{
-                text=title;textSize=11f;gravity=Gravity.CENTER
-                setTextColor(if(selected)Color.rgb(255,218,111) else Color.WHITE)
-                typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                text=title;textSize=10.5f;gravity=Gravity.CENTER
+                setTextColor(if(selected)Color.rgb(255,218,139) else Color.rgb(239,224,255))
+                typeface=if(selected)Typeface.create("sans-serif",Typeface.BOLD) else Typeface.create("sans-serif-medium",Typeface.NORMAL)
+                setShadowLayer(if(selected)dp(3).toFloat() else 0f,0f,dp(1).toFloat(),0xAA000000.toInt())
                 setSingleLine(true)
-            },LinearLayout.LayoutParams(-1,dp(20)))
+            },LinearLayout.LayoutParams(-1,dp(19)))
+            setOnClickListener{onTap()}
+            contentDescription=title
         }
-        nav.addView(partyNavItem("profile","حسابي").apply{
-            setOnClickListener{startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))}
-        },LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(partyNavItem("message","رسائل").apply{
-            setOnClickListener{startActivity(Intent(this@HomeActivity,MessagesActivity::class.java))}
-        },LinearLayout.LayoutParams(0,dp(68),1f))
-        val addRoom=FrameLayout(this).apply{
-            val cake=TextView(this@HomeActivity).apply{
-                text="🎂";textSize=34f;gravity=Gravity.CENTER
+        nav.addView(navItem("profile","حسابي"){
+            startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))
+        },LinearLayout.LayoutParams(0,dp(65),1f))
+        nav.addView(navItem("messages","رسائلي"){
+            startActivity(Intent(this@HomeActivity,MessagesActivity::class.java))
+        },LinearLayout.LayoutParams(0,dp(65),1f))
+        val createSlot=FrameLayout(this).apply{
+            val halo=View(this@HomeActivity).apply{
                 background=GradientDrawable().apply{
                     shape=GradientDrawable.OVAL
-                    setColor(Color.rgb(132,28,123))
-                    setStroke(dp(2),Color.rgb(255,205,89))
+                    setColor(0x33F2B5FF)
                 }
-                elevation=dp(8).toFloat()
+            }
+            addView(halo,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
+            val create=TextView(this@HomeActivity).apply{
+                text="🎂";textSize=31f;gravity=Gravity.CENTER
+                background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(255,105,174),Color.rgb(128,49,178),Color.rgb(61,31,123))).apply{
+                    shape=GradientDrawable.OVAL
+                    setStroke(dp(2),Color.rgb(255,218,132))
+                }
+                elevation=dp(9).toFloat()
+                setShadowLayer(dp(8).toFloat(),0f,dp(3).toFloat(),0xAAE65ACB.toInt())
+                contentDescription="إنشاء غرفة"
                 setOnClickListener{showCreateRoomDialog()}
             }
-            addView(cake,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER))
+            addView(create,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+            ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+            ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         }
-        nav.addView(addRoom,LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(partyNavItem("compass","اكتشف"),LinearLayout.LayoutParams(0,dp(68),1f))
-        nav.addView(partyNavItem("home","الرئيسية",true),LinearLayout.LayoutParams(0,dp(68),1f))
+        nav.addView(createSlot,LinearLayout.LayoutParams(0,dp(65),1.18f))
+        nav.addView(navItem("discover","اكتشف"){
+            searchQuery=""
+            loadRooms()
+            Toast.makeText(this@HomeActivity,"تحديث الغرف المباشرة",Toast.LENGTH_SHORT).show()
+        },LinearLayout.LayoutParams(0,dp(65),1f))
+        nav.addView(navItem("home","الرئيسية",true){
+            searchQuery=""
+            loadRooms()
+        },LinearLayout.LayoutParams(0,dp(65),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(82)))
         ViewCompat.setOnApplyWindowInsetsListener(nav){ view,insets->
             val bottomInset=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
@@ -205,21 +237,64 @@ class HomeActivity : Activity() {
         }
     }
 
-private class BirthdayNavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
+private class PremiumNavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
     private val d=resources.displayMetrics.density
-    private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}
+    private val p=Paint(Paint.ANTI_ALIAS_FLAG)
+    private fun fill(color:Int)=Paint(Paint.ANTI_ALIAS_FLAG).apply{shader=LinearGradient(0f,0f,0f,dp(34).toFloat(),intArrayOf(color,Color.WHITE,color),floatArrayOf(0f,.42f,1f),Shader.TileMode.CLAMP)}
+    private fun dp(v:Int)=(v*resources.displayMetrics.density)
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas)
-        val w=width.toFloat();val h=height.toFloat()
-        val cx=w/2f;val cy=h/2f
-        fun circle(x:Float,y:Float,r:Float,color:Int){p.color=color;canvas.drawCircle(x,y,r,p)}
+        val cx=width/2f;val cy=height/2f
+        val scale=d
+        // Soft jewel-like aura behind each icon.
+        p.shader=RadialGradient(cx,cy,dp(20),intArrayOf(if(selected)0x66FFD77D else 0x335F9EFF,0x00321B57),null,Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx,cy,dp(19),p);p.shader=null
+        val gold=Color.rgb(255,211,123)
+        val pink=Color.rgb(255,111,190)
+        val blue=Color.rgb(105,218,255)
+        val purple=Color.rgb(167,105,255)
+        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=dp(2.2f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
+        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=dp(1.7f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
+        val jewel=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,cy-dp(14),0f,cy+dp(14),intArrayOf(Color.WHITE,pink,purple),null,Shader.TileMode.CLAMP)}
+        canvas.save();canvas.translate(cx,cy);canvas.scale(scale,scale)
         when(kind){
-            "profile"->{circle(cx,cy-6*d,6*d,Color.rgb(255,205,88));p.color=Color.rgb(245,92,164);canvas.drawRoundRect(RectF(cx-11*d,cy+1*d,cx+11*d,cy+15*d),9*d,9*d,p)}
-            "message"->{p.color=Color.rgb(83,210,238);canvas.drawRoundRect(RectF(cx-13*d,cy-10*d,cx+13*d,cy+9*d),7*d,7*d,p);circle(cx-5*d,cy,1.7f*d,Color.WHITE);circle(cx,cy,1.7f*d,Color.WHITE);circle(cx+5*d,cy,1.7f*d,Color.WHITE);p.color=Color.rgb(255,205,88);val t=Path().apply{moveTo(cx-6*d,cy+8*d);lineTo(cx-10*d,cy+15*d);lineTo(cx+1*d,cy+8*d);close()};canvas.drawPath(t,p)}
-            "compass"->{circle(cx,cy,12*d,Color.rgb(90,205,236));circle(cx,cy,8*d,Color.rgb(62,34,104));p.color=Color.rgb(255,205,88);val star=Path().apply{moveTo(cx,cy-8*d);lineTo(cx+3*d,cy);lineTo(cx,cy+8*d);lineTo(cx-3*d,cy);close()};canvas.drawPath(star,p)}
-            "home"->{p.color=Color.rgb(255,205,88);val roof=Path().apply{moveTo(cx-14*d,cy-1*d);lineTo(cx,cy-14*d);lineTo(cx+14*d,cy-1*d);close()};canvas.drawPath(roof,p);canvas.drawRoundRect(RectF(cx-10*d,cy-2*d,cx+10*d,cy+14*d),3*d,3*d,p);p.color=Color.rgb(93,39,124);canvas.drawRect(cx-2*d,cy+5*d,cx+2*d,cy+14*d,p)}
+            "profile"->{
+                canvas.drawCircle(0f,-dp(7),dp(5.5f),shadow);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,shadow)
+                canvas.drawCircle(0f,-dp(7),dp(5.5f),jewel);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,jewel)
+                canvas.drawCircle(0f,-dp(7),dp(5.5f),hi);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,hi)
+                canvas.drawCircle(0f,-dp(7),dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+            }
+            "messages"->{
+                val r=RectF(-dp(14),-dp(11),dp(14),dp(9))
+                p.shader=LinearGradient(0f,r.top,0f,r.bottom,intArrayOf(blue,Color.rgb(54,139,235)),null,Shader.TileMode.CLAMP)
+                canvas.drawRoundRect(r,dp(7),dp(7),p);p.shader=null
+                canvas.drawRoundRect(r,dp(7),dp(7),hi)
+                val tail=Path().apply{moveTo(-dp(6),dp(8));lineTo(-dp(10),dp(15));lineTo(dp(1),dp(8));close()}
+                p.color=Color.rgb(255,211,123);canvas.drawPath(tail,p)
+                for(x in floatArrayOf(-dp(6),0f,dp(6)))canvas.drawCircle(x,-dp(1),dp(1.8f),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+            }
+            "discover"->{
+                p.shader=LinearGradient(-dp(13),-dp(13),dp(13),dp(13),intArrayOf(blue,purple,pink),null,Shader.TileMode.CLAMP)
+                canvas.drawCircle(0f,0f,dp(12),p);p.shader=null
+                canvas.drawCircle(0f,0f,dp(12),hi)
+                val needle=Path().apply{moveTo(dp(6),-dp(8));lineTo(dp(2),dp(2));lineTo(-dp(7),dp(8));lineTo(-dp(2),-dp(2));close()}
+                p.shader=LinearGradient(0f,-dp(8),0f,dp(8),intArrayOf(Color.WHITE,gold),null,Shader.TileMode.CLAMP);canvas.drawPath(needle,p);p.shader=null
+                canvas.drawCircle(0f,0f,dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+            }
+            "home"->{
+                val roof=Path().apply{moveTo(-dp(15),-dp(1));lineTo(0f,-dp(15));lineTo(dp(15),-dp(1));close()}
+                p.shader=LinearGradient(0f,-dp(15),0f,dp(15),intArrayOf(Color.WHITE,gold,Color.rgb(207,125,31)),null,Shader.TileMode.CLAMP)
+                canvas.drawPath(roof,p);canvas.drawRoundRect(RectF(-dp(11),-dp(2),dp(11),dp(14)),dp(3),dp(3),p);p.shader=null
+                canvas.drawPath(roof,hi);canvas.drawRoundRect(RectF(-dp(11),-dp(2),dp(11),dp(14)),dp(3),dp(3),hi)
+                p.color=Color.rgb(67,28,100);canvas.drawRoundRect(RectF(-dp(2),dp(5),dp(2),dp(14)),dp(1),dp(1),p)
+                canvas.drawCircle(dp(7),-dp(7),dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+            }
         }
-        if(selected)circle(cx,h-2*d,2*d,Color.rgb(255,205,88))
+        canvas.restore()
+        if(selected){
+            p.color=gold;p.style=Paint.Style.FILL
+            canvas.drawCircle(cx,height-dp(2),dp(2),p)
+        }
     }
 }
     private fun buildCards(){
