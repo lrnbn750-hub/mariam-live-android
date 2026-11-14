@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - branding/bak-live-package
+      - feature/svga-gift-player-bak
 
 permissions:
   contents: read
