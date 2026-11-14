@@ -11,6 +11,7 @@ on:
       - feature/bak-live-gift-system
       - feature/bak-live-room-ui-inspired
       - feature/bak-live-room-controls-reference
+      - feature/bak-live-svga-gifts-from-working-43581935436
 
 permissions:
   contents: read
