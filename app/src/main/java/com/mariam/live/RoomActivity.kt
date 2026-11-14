@@ -567,7 +567,7 @@ class RoomActivity : Activity() {
    chatIcon=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("chat",Color.WHITE,dp(19)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(28,255,255,255));setStroke(dp(1),Color.argb(170,255,255,255))}
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
@@ -613,13 +613,14 @@ class RoomActivity : Activity() {
     text="⋯";textSize=21f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE)
     background=GradientDrawable().apply{
-     setColor(Color.argb(45,255,255,255));cornerRadius=dp(13).toFloat()
-     setStroke(dp(1),Color.argb(65,255,255,255))
+     shape=GradientDrawable.OVAL
+     setColor(Color.argb(45,255,255,255))
+     setStroke(dp(1),Color.argb(75,255,255,255))
     }
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(33),dp(33)).apply{marginStart=dp(4)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginStart=dp(4)})
    addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
 
   }
