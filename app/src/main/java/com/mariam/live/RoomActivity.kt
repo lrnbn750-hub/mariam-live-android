@@ -1574,13 +1574,12 @@ class RoomActivity : Activity() {
   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()}}
  }
  private fun giftArtwork(gift:Gift):Int=when(gift.id.lowercase()){
-  "rose","golden_rose"->R.drawable.gift_rose
-  "aladdin"->R.drawable.gift_aladdin
-  "lollipop"->R.drawable.gift_lollipop
+  "butterfly","crystal_butterfly"->R.drawable.gift_crystal_butterfly
+  "rose","golden_rose","rose_bouquet"->R.drawable.gift_rose_bouquet
   "donut"->R.drawable.gift_donut
   "magic_star"->R.drawable.gift_magic_star
   "pink_kiss"->R.drawable.gift_pink_kiss
-  "royal_bell"->R.drawable.gift_royal_bell
+  "magic_lantern"->R.drawable.gift_magic_lantern
   "ruby_ring"->R.drawable.gift_ruby_ring
   "royal_crown"->R.drawable.gift_royal_crown
   else->0
@@ -1715,13 +1714,12 @@ class RoomActivity : Activity() {
   if(!::roomOverlayLayer.isInitialized || isFinishing || isDestroyed)return
   playGiftSound()
   val imageRes=when(event.giftId.lowercase()){
-   "rose"->R.drawable.gift_rose
-   "aladdin"->R.drawable.gift_aladdin
-   "lollipop"->R.drawable.gift_lollipop
+   "butterfly","crystal_butterfly"->R.drawable.gift_crystal_butterfly
+   "rose","rose_bouquet"->R.drawable.gift_rose_bouquet
    "donut"->R.drawable.gift_donut
    "magic_star"->R.drawable.gift_magic_star
    "pink_kiss"->R.drawable.gift_pink_kiss
-   "royal_bell"->R.drawable.gift_royal_bell
+   "magic_lantern"->R.drawable.gift_magic_lantern
    "ruby_ring"->R.drawable.gift_ruby_ring
    "royal_crown"->R.drawable.gift_royal_crown
    else->0
