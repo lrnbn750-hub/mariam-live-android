@@ -34,8 +34,8 @@ class AccountSecurityActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun flag(iso: String): String {
         val s = iso.uppercase(Locale.US)
-        return if (s.length == 2) String(Character.toChars(0x1F1E6 + s[0] - 'A')) +
-            String(Character.toChars(0x1F1E6 + s[1] - 'A')) else "🌐"
+        return if (s.length == 2) String(Character.toChars(0x1F1E6 + (s[0].code - 'A'.code))) +
+            String(Character.toChars(0x1F1E6 + (s[1].code - 'A'.code))) else "🌐"
     }
     private fun countries(): List<Country> = Locale.getISOCountries().mapNotNull { iso ->
         val dial = codes[iso] ?: return@mapNotNull null
