@@ -1,6 +1,7 @@
 package com.mariam.live
 
 import android.view.ViewGroup
+import androidx.annotation.RawRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -14,14 +15,14 @@ import com.opensource.svgaplayer.SVGAParser
 import com.opensource.svgaplayer.SVGAVideoEntity
 
 /**
- * Plays an SVGA gift animation bundled in app/src/main/assets.
+ * Plays an SVGA gift animation bundled in app/src/main/res/raw.
  *
- * Example: app/src/main/assets/gifts/sample_gift.svga
+ * Example: app/src/main/res/raw/aladdin.svga
  * Only bundle animation files that BAK LIVE is licensed to distribute.
  */
 @Composable
 fun SvgaGiftPlayer(
-    assetPath: String,
+    @RawRes resourceId: Int,
     modifier: Modifier = Modifier,
     loops: Int = 1,
     onFinished: (() -> Unit)? = null,
@@ -32,23 +33,37 @@ fun SvgaGiftPlayer(
     val currentOnFinished = rememberUpdatedState(onFinished)
     val currentOnError = rememberUpdatedState(onError)
 
-    DisposableEffect(player, assetPath, loops) {
+    DisposableEffect(player, resourceId, loops) {
         player.loops = loops.coerceAtLeast(1)
         player.clearsAfterDetached = true
 
         val parser = SVGAParser(context)
-        parser.decodeFromAssets(assetPath, object : SVGAParser.ParseCompletion {
-            override fun onComplete(videoItem: SVGAVideoEntity) {
-                player.post {
-                    player.setVideoItem(videoItem)
-                    player.startAnimation()
-                }
-            }
+        val inputStream = try {
+            context.resources.openRawResource(resourceId)
+        } catch (_: Exception) {
+            currentOnError.value?.invoke()
+            null
+        }
 
-            override fun onError() {
-                currentOnError.value?.invoke()
-            }
-        })
+        if (inputStream != null) {
+            parser.decodeFromInputStream(
+                inputStream,
+                "android.resource://${context.packageName}/$resourceId",
+                object : SVGAParser.ParseCompletion {
+                    override fun onComplete(videoItem: SVGAVideoEntity) {
+                        player.post {
+                            player.setVideoItem(videoItem)
+                            player.startAnimation()
+                        }
+                    }
+
+                    override fun onError() {
+                        currentOnError.value?.invoke()
+                    }
+                },
+                true
+            )
+        }
 
         player.callback = object : SVGACallback {
             override fun onFinished() {
