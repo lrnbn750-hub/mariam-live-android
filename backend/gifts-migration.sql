@@ -61,3 +61,27 @@ ON CONFLICT (gift_id) DO UPDATE SET
   gift_units=EXCLUDED.gift_units,
   active=EXCLUDED.active,
   sort_order=EXCLUDED.sort_order;
+
+
+-- BAK LIVE room gift catalog refresh.
+-- Remove the four unwanted starter gifts while preserving existing wallet data.
+UPDATE room_gifts
+SET active=FALSE
+WHERE gift_id IN ('car','lion','plane','castle');
+
+-- Keep Rose and Aladdin, and add the seven requested catalog gifts.
+INSERT INTO room_gifts(gift_id,name,animation_url,price_coins,gift_units,active,sort_order)
+VALUES
+ ('lollipop','مصاصة','',10,1,TRUE,20),
+ ('donut','دونات','',15,1,TRUE,30),
+ ('magic_star','نجمة سحرية','',20,1,TRUE,40),
+ ('pink_kiss','قبلة وردية','',30,1,TRUE,50),
+ ('royal_bell','جرس ذهبي','',40,1,TRUE,60),
+ ('ruby_ring','خاتم ياقوت','',60,1,TRUE,70),
+ ('royal_crown','تاج ملكي','',100,1,TRUE,80)
+ON CONFLICT (gift_id) DO UPDATE SET
+ name=EXCLUDED.name,
+ price_coins=EXCLUDED.price_coins,
+ gift_units=EXCLUDED.gift_units,
+ active=TRUE,
+ sort_order=EXCLUDED.sort_order;
