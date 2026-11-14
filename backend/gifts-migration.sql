@@ -69,6 +69,8 @@ UPDATE room_gifts
 SET active=FALSE
 WHERE gift_id IN ('car','lion','plane','castle');
 
+UPDATE room_gifts SET price_coins=5, active=TRUE, sort_order=10 WHERE gift_id='rose';
+
 -- Keep Rose and Aladdin, and add the seven requested catalog gifts.
 INSERT INTO room_gifts(gift_id,name,animation_url,price_coins,gift_units,active,sort_order)
 VALUES
