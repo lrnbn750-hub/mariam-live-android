@@ -46,6 +46,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("io.livekit:livekit-android:2.30.0")
+    // SVGA renderer for server-hosted animated gifts.
+    implementation("com.github.yyued:SVGAPlayer-Android:2.6.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
