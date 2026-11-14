@@ -1635,7 +1635,7 @@ class RoomActivity : Activity() {
    val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(132);columnSpec=android.widget.GridLayout.spec(index%4,1f);rowSpec=android.widget.GridLayout.spec(index/4);setMargins(dp(2),dp(3),dp(2),dp(3))}
    grid.addView(card,params)
   }
-  val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid,ScrollView.LayoutParams(-1,-2))}
+  val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid,android.view.ViewGroup.LayoutParams(-1,-2))}
   root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
   root.addView(View(this).apply{setBackgroundColor(Color.rgb(43,35,51))},LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(8);bottomMargin=dp(8)})
   val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
