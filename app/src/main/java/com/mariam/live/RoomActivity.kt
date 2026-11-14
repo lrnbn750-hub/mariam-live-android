@@ -109,16 +109,10 @@ class RoomActivity : Activity() {
   }
   fun topRoomButton(iconRes:Int,description:String,accent:Int,onClick:()->Unit)=FrameLayout(this).apply{
    isClickable=true;isFocusable=true;elevation=dp(5).toFloat()
-   background=if(iconRes==R.drawable.ic_room_exit) GradientDrawable(
-    GradientDrawable.Orientation.TL_BR,
-    intArrayOf(Color.rgb(255,76,128),Color.rgb(153,65,211),Color.rgb(65,126,239))
-   ).apply{
+   background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setStroke(dp(1),Color.argb(210,255,255,255))
-   } else GradientDrawable().apply{
-    shape=GradientDrawable.OVAL
-    setColor(Color.argb(218,24,18,42))
-    setStroke(dp(1.5f.toInt()),accent)
+    setColor(Color.argb(45,255,255,255))
+    setStroke(dp(1),Color.argb(75,255,255,255))
    }
    addView(ImageView(this@RoomActivity).apply{
     setImageResource(iconRes)
@@ -129,10 +123,10 @@ class RoomActivity : Activity() {
    contentDescription=description
    setOnClickListener{onClick()}
   }
-  top.addView(topRoomButton(R.drawable.ic_room_share,"مشاركة البث",Color.rgb(73,218,239)){shareRoom()},LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(9)})
-  top.addView(topRoomButton(R.drawable.ic_room_exit,"خروج من الغرفة",Color.rgb(255,119,153)){leaveRoom()},LinearLayout.LayoutParams(dp(46),dp(46)))
+  top.addView(topRoomButton(R.drawable.ic_room_share,"مشاركة البث",Color.rgb(73,218,239)){shareRoom()},LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(8)})
+  top.addView(topRoomButton(R.drawable.ic_room_exit,"خروج من الغرفة",Color.rgb(255,119,153)){leaveRoom()},LinearLayout.LayoutParams(dp(44),dp(44)))
   top.translationY=dp(24).toFloat()
-  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(5)})
+  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(5)})
   val roomInfoGroup=LinearLayout(this).apply{
    orientation=1
    translationY=dp(24).toFloat()
@@ -144,9 +138,9 @@ class RoomActivity : Activity() {
    orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR
    setPadding(dp(10),dp(4),dp(10),dp(4))
    background=GradientDrawable().apply{
-    setColor(Color.argb(155,48,58,67))
+    setColor(Color.argb(45,255,255,255))
     cornerRadius=dp(20).toFloat()
-    setStroke(dp(1),Color.argb(125,220,232,242))
+    setStroke(dp(1),Color.argb(75,255,255,255))
    }
    addView(label("0",13f,Color.WHITE,true).apply{
     gravity=Gravity.CENTER
@@ -159,7 +153,7 @@ class RoomActivity : Activity() {
    },LinearLayout.LayoutParams(dp(20),dp(22)))
    setOnClickListener{showRoomMembers()}
   }
-  top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(38)).apply{marginStart=dp(9)})
+  top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)).apply{marginStart=dp(8)})
   grid=LinearLayout(this).apply{orientation=1}
   roomInfoGroup.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   roomPage.addView(roomInfoGroup,LinearLayout.LayoutParams(-1,-2))
@@ -545,11 +539,11 @@ class RoomActivity : Activity() {
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(28,255,255,255));setStroke(dp(1),Color.argb(170,255,255,255))}
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
-   composer.addView(micControl,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(5)})
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(35),dp(35)).apply{marginEnd=dp(5)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -577,18 +571,16 @@ class RoomActivity : Activity() {
     contentDescription="فتح كتابة تعليق"
     setOnClickListener{expandRoomComposer()}
    }
-   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(5)})
+   composer.addView(chatIcon,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(5)})
    val roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
-    background=GradientDrawable(
-     GradientDrawable.Orientation.TL_BR,
-     intArrayOf(Color.rgb(255,72,151),Color.rgb(166,73,231),Color.rgb(65,151,244))
-    ).apply{
+    background=GradientDrawable().apply{
      shape=GradientDrawable.OVAL
-     setStroke(dp(1),Color.argb(220,255,255,255))
+     setColor(Color.argb(45,255,255,255))
+     setStroke(dp(1),Color.argb(75,255,255,255))
     }
     addView(ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(23)))
+     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(25)))
      scaleType=ImageView.ScaleType.CENTER_INSIDE
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
@@ -606,7 +598,7 @@ class RoomActivity : Activity() {
     }
     startAnimation(pulse)
    }
-   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(7)})
+   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(51),dp(51)).apply{marginEnd=dp(7)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
@@ -627,7 +619,7 @@ class RoomActivity : Activity() {
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginStart=dp(4)})
+   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(33),dp(33)).apply{marginStart=dp(4)})
    addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
 
   }
