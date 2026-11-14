@@ -1599,7 +1599,7 @@ class RoomActivity : Activity() {
       contentDescription=gift.name
      },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
      if(gift.id.equals("aladdin",true)){
-      icon.addView(TextView(this@RoomActivity).apply{
+      addView(TextView(this@RoomActivity).apply{
        text="🧞‍♂️";textSize=34f;gravity=Gravity.CENTER
        contentDescription="علاء الدين"
       },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
