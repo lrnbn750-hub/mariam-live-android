@@ -40,3 +40,24 @@ VALUES
  ('plane','طائرة','',20000,40,40),
  ('castle','قصر','',50000,100,50)
 ON CONFLICT (gift_id) DO NOTHING;
+
+
+-- Aladdin animated gift. The animation is served from this repository's raw asset URL.
+-- Re-running the migration updates the catalog row without changing wallet balances.
+INSERT INTO room_gifts(gift_id,name,animation_url,price_coins,gift_units,active,sort_order)
+VALUES (
+  'aladdin',
+  '🧞‍♂️ علاء الدين',
+  'https://raw.githubusercontent.com/lrnbn750-hub/mariam-live-android/feature/bak-live-svga-gifts-from-working-43581935436/app/src/main/res/raw/aladdin.svga',
+  1000,
+  1,
+  TRUE,
+  25
+)
+ON CONFLICT (gift_id) DO UPDATE SET
+  name=EXCLUDED.name,
+  animation_url=EXCLUDED.animation_url,
+  price_coins=EXCLUDED.price_coins,
+  gift_units=EXCLUDED.gift_units,
+  active=EXCLUDED.active,
+  sort_order=EXCLUDED.sort_order;

@@ -1598,6 +1598,12 @@ class RoomActivity : Activity() {
       scaleType=ImageView.ScaleType.FIT_CENTER
       contentDescription=gift.name
      },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
+     if(gift.id.equals("aladdin",true)){
+      icon.addView(TextView(this@RoomActivity).apply{
+       text="🧞‍♂️";textSize=34f;gravity=Gravity.CENTER
+       contentDescription="علاء الدين"
+      },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+     }
     }
    }
    card.addView(icon,LinearLayout.LayoutParams(dp(58),dp(58)))
