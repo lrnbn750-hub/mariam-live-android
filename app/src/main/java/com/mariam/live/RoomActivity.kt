@@ -100,6 +100,7 @@ class RoomActivity : Activity() {
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.statusBarColor=Color.rgb(30,22,48);window.navigationBarColor=Color.rgb(18,15,28);window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
+  getSharedPreferences("MariamLive",MODE_PRIVATE).edit().putString("active_room_id",roomId).apply()
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
   roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(12),dp(10),dp(7));setBackgroundColor(Color.TRANSPARENT)}
   val top=LinearLayout(this).apply{
@@ -2173,7 +2174,11 @@ class RoomActivity : Activity() {
      AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",!closeRoom),authToken)
     }
    }catch(_:Exception){}
-   finally{finish()}
+   finally{
+    val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+    if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+    finish()
+   }
   }
  }
  private fun closeRoomNow(){
@@ -2203,6 +2208,8 @@ class RoomActivity : Activity() {
       if(!isFinishing)connect()
       return@launch
      }
+     val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+     if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
      finish()
     }
    }
