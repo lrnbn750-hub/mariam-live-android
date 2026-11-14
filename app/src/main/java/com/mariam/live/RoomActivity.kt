@@ -111,8 +111,8 @@ class RoomActivity : Activity() {
    isClickable=true;isFocusable=true;elevation=dp(5).toFloat()
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.argb(45,255,255,255))
-    setStroke(dp(1),Color.argb(75,255,255,255))
+    setColor(Color.argb(90,255,255,255))
+    setStroke(dp(1),Color.argb(95,255,255,255))
    }
    addView(ImageView(this@RoomActivity).apply{
     setImageResource(iconRes)
@@ -2132,8 +2132,8 @@ class RoomActivity : Activity() {
   micControl.setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
   micControl.background=GradientDrawable().apply{
    shape=GradientDrawable.OVAL
-   setColor(if(microphoneEnabled)Color.argb(150,133,88,190) else Color.argb(185,160,65,78))
-   setStroke(dp(1),Color.argb(75,255,255,255))
+   setColor(Color.argb(90,255,255,255))
+   setStroke(dp(1),Color.argb(95,255,255,255))
   }
   micControl.contentDescription=if(microphoneEnabled)"إيقاف المايك" else "تشغيل المايك"
  }
