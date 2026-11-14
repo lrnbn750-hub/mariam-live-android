@@ -285,6 +285,7 @@ class RoomActivity : Activity() {
   val screenHeight=resources.displayMetrics.heightPixels.toFloat()
   when(event.actionMasked){
    MotionEvent.ACTION_DOWN->{
+    dismissComposerFromOutsideTap(event.rawX,event.rawY)
     swipeDownX=event.rawX
     swipeDownY=event.rawY
     // Room switching is allowed only when the gesture starts above the chat panel.
@@ -715,6 +716,29 @@ class RoomActivity : Activity() {
  private fun collapseRoomComposer(){
   composerExpanded=false
   chatInput.setText("")
+  chatInput.clearFocus()
+  chatInput.visibility=View.GONE
+  sendButton.visibility=View.GONE
+  chatIcon.visibility=View.VISIBLE
+  micControl.visibility=View.VISIBLE
+  roomGiftButton.visibility=View.VISIBLE
+  roomToolsButton.visibility=View.VISIBLE
+  controlsSpacer.visibility=View.VISIBLE
+  val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+  imm.hideSoftInputFromWindow(chatInput.windowToken,0)
+ }
+
+ // Close the keyboard when the user taps the room outside the message field.
+ // Keep the unsent draft and never trigger the send action from this path.
+ private fun dismissComposerFromOutsideTap(rawX:Float,rawY:Float){
+  if(!composerExpanded || !::chatInput.isInitialized)return
+  fun contains(view:View):Boolean{
+   if(view.visibility!=View.VISIBLE)return false
+   val p=IntArray(2);view.getLocationOnScreen(p)
+   return rawX>=p[0] && rawX<=p[0]+view.width && rawY>=p[1] && rawY<=p[1]+view.height
+  }
+  if(contains(chatInput) || (::sendButton.isInitialized && contains(sendButton)))return
+  composerExpanded=false
   chatInput.clearFocus()
   chatInput.visibility=View.GONE
   sendButton.visibility=View.GONE
