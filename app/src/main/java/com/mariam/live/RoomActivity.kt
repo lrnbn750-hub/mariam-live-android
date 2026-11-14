@@ -1540,30 +1540,54 @@ class RoomActivity : Activity() {
   dialog.window?.setLayout(-1,-2)
   dialog.window?.setGravity(Gravity.BOTTOM)
  }
+ private data class StaticGift(val id:String,val name:String,val emoji:String,val price:Int)
+ private val staticGifts=listOf(
+  StaticGift("rose_gold","الوردة الذهبية","🌹",5),
+  StaticGift("lollipop","المصاصة","🍭",10),
+  StaticGift("donut","الدونات","🍩",15),
+  StaticGift("magic_star","النجمة السحرية","⭐",20),
+  StaticGift("pink_kiss","القبلة الوردية","💋",30),
+  StaticGift("royal_bell","الجرس الذهبي","🔔",40),
+  StaticGift("ruby_ring","خاتم الياقوت","💍",60),
+  StaticGift("royal_crown","التاج الملكي","👑",100)
+ )
  private fun showAladdinGiftPicker(){
   val panel=LinearLayout(this).apply{
    orientation=1
-   setPadding(dp(18),dp(14),dp(18),dp(14))
+   setPadding(dp(16),dp(14),dp(16),dp(12))
    setBackgroundColor(Color.rgb(250,250,247))
   }
-  panel.addView(label("الهدايا",20f,Color.rgb(37,64,45),true),LinearLayout.LayoutParams(-1,dp(42)))
-  val item=LinearLayout(this).apply{
-   orientation=1
-   gravity=Gravity.CENTER
-   setPadding(dp(12),dp(12),dp(12),dp(12))
-   background=GradientDrawable().apply{
-    setColor(Color.WHITE)
-    cornerRadius=dp(16).toFloat()
-    setStroke(dp(1),Color.rgb(216,226,215))
+  panel.addView(label("هدايا BAK LIVE",20f,Color.rgb(37,64,45),true),LinearLayout.LayoutParams(-1,dp(42)))
+  panel.addView(label("اختر هديتك",12f,Color.rgb(105,118,105)),LinearLayout.LayoutParams(-1,dp(25)))
+  val grid=android.widget.GridLayout(this).apply{columnCount=2;rowCount=4}
+  staticGifts.forEach{gift->
+   val card=LinearLayout(this).apply{
+    orientation=1;gravity=Gravity.CENTER
+    setPadding(dp(8),dp(8),dp(8),dp(8))
+    background=GradientDrawable().apply{
+     setColor(Color.WHITE);cornerRadius=dp(15).toFloat()
+     setStroke(dp(1),Color.rgb(222,228,218))
+    }
    }
+   card.addView(TextView(this).apply{
+    text=gift.emoji;textSize=38f;gravity=Gravity.CENTER
+   },LinearLayout.LayoutParams(-1,dp(58)))
+   card.addView(label(gift.name,13f,Color.rgb(48,75,52),true),LinearLayout.LayoutParams(-1,dp(25)))
+   card.addView(label("${gift.price} 💎",12f,Color.rgb(190,139,35),true),LinearLayout.LayoutParams(-1,dp(22)))
+   card.setOnClickListener{
+    Toast.makeText(this,"تم اختيار ${gift.name} — ${gift.price} ماسة. ربط الإرسال والخصم من المحفظة يحتاج خطوة التكامل التالية.",Toast.LENGTH_LONG).show()
+   }
+   val lp=android.widget.GridLayout.LayoutParams().apply{
+    width=0;height=dp(132);columnSpec=android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED,1f)
+    setMargins(dp(4),dp(4),dp(4),dp(4))
+   }
+   grid.addView(card,lp)
   }
-  item.addView(TextView(this).apply{text="🧞";textSize=48f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(82)))
-  item.addView(label("علاء الدين",16f,Color.rgb(48,75,52),true),LinearLayout.LayoutParams(-1,dp(30)))
-  item.addView(label("هدية متحركة • معاينة",11f,Color.rgb(105,118,105)),LinearLayout.LayoutParams(-1,dp(24)))
-  panel.addView(item,LinearLayout.LayoutParams(-1,-2))
+  panel.addView(grid,LinearLayout.LayoutParams(-1,-2))
   val dialog=AlertDialog.Builder(this).setView(panel).setNegativeButton("إغلاق",null).create()
-  item.setOnClickListener{dialog.dismiss();playAladdinGiftPreview()}
   dialog.show()
+  dialog.window?.setLayout(-1,-2)
+  dialog.window?.setGravity(Gravity.BOTTOM)
  }
 
  private fun playAladdinGiftPreview(){
