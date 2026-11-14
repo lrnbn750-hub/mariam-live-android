@@ -55,10 +55,12 @@ class AccountSecurityActivity : Activity() {
         scroll.addView(body)
 
         val section = TextView(this).apply {
-            text = "ربط الحساب"; textSize = 16f; setTextColor(ink)
+            text = "ربط الحساب"; textSize = 16f; setTextColor(Color.rgb(65, 75, 83))
+            typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(24), 0)
-            setBackgroundColor(Color.rgb(245, 246, 250))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(246, 248, 251), Color.rgb(241, 244, 248)))
         }
         body.addView(section, LinearLayout.LayoutParams(-1, dp(72)))
 
@@ -69,7 +71,6 @@ class AccountSecurityActivity : Activity() {
         body.addView(accountRow("الهاتف", "▯", phoneStatus) {
             startActivity(Intent(this, PhoneSecurityActivity::class.java))
         })
-        body.addView(noteBanner("✓", "لقد قمت بربط حسابك برقم الهاتف، وأصبح عامل أمان الحساب أفضل.", Color.rgb(226, 250, 248), teal))
         body.addView(separator())
 
         emailStatus = TextView(this).apply {
@@ -79,34 +80,14 @@ class AccountSecurityActivity : Activity() {
         body.addView(accountRow("البريد الإلكتروني", "✉", emailStatus) {
             Toast.makeText(this, "ربط البريد الإلكتروني سيكون متاحاً قريباً", Toast.LENGTH_SHORT).show()
         })
-        body.addView(noteBanner("i", "قم بربط بريدك الإلكتروني لتلقي أخبار BAK LIVE وتحديثات الخصوصية والمكافآت.", Color.rgb(255, 250, 239), Color.rgb(239, 177, 52)))
         body.addView(separator())
 
-        body.addView(accountRow("Facebook", "f", null) { comingSoon("Facebook") })
-        body.addView(separator())
         body.addView(accountRow("Google", "G", null) { comingSoon("Google") })
         body.addView(separator())
-        body.addView(accountRow("X", "𝕏", null) { comingSoon("X") })
-        body.addView(separator())
-        body.addView(accountRow("Snapchat", "♧", null) { comingSoon("Snapchat") })
-        body.addView(separator())
-        body.addView(accountRow("VK", "ᴠκ", null) { comingSoon("VK") })
-        body.addView(separator())
-        body.addView(accountRow("أبل", "●", null) { comingSoon("Apple") })
+        body.addView(accountRow("Snapchat", "👻", null) { comingSoon("Snapchat") })
         body.addView(separator())
 
-        val tipsTitle = TextView(this).apply {
-            text = "نصائح للأمان"; textSize = 18f; setTextColor(ink)
-            typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END
-            setPadding(dp(20), dp(28), dp(24), dp(12))
-        }
-        body.addView(tipsTitle)
-        body.addView(TextView(this).apply {
-            text = "1. لماذا يجب أن أقوم بربط هاتفي المحمول؟\nعندما تقوم بربط رقم هاتفك المحمول، يمكنك تلقي رمز التحقق عند تغيير إعدادات الحساب، كما يساعدك ذلك على استعادة حسابك عند الحاجة.\n\n2. حافظ على سرية كلمة المرور ورمز التحقق، ولا تشاركهما مع أي شخص."
-            textSize = 15f; setTextColor(ink); gravity = Gravity.END
-            setLineSpacing(dp(5).toFloat(), 1f)
-            setPadding(dp(24), 0, dp(24), dp(30))
-        })
+
 
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -123,8 +104,9 @@ class AccountSecurityActivity : Activity() {
             orientation = 0
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(18), 0, dp(18), 0)
-            minimumHeight = dp(72)
+            minimumHeight = dp(76)
             setBackgroundColor(Color.WHITE)
+            isFocusable = true
 
             addView(TextView(this@AccountSecurityActivity).apply {
                 text = "‹"; textSize = 28f; setTextColor(Color.rgb(155, 158, 163))
@@ -140,9 +122,28 @@ class AccountSecurityActivity : Activity() {
             }, LinearLayout.LayoutParams(-2, dp(64)))
 
             addView(TextView(this@AccountSecurityActivity).apply {
-                text = symbol; textSize = 23f; setTextColor(if (title == "الهاتف") teal else muted)
+                text = symbol
+                textSize = if (title == "Snapchat") 20f else 22f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setTextColor(when (title) {
+                    "الهاتف" -> Color.rgb(43, 190, 180)
+                    "البريد الإلكتروني" -> Color.rgb(112, 124, 143)
+                    "Google" -> Color.rgb(66, 133, 244)
+                    "Snapchat" -> Color.rgb(42, 42, 42)
+                    else -> muted
+                })
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(38), dp(64)))
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(13).toFloat()
+                    setColor(when (title) {
+                        "الهاتف" -> Color.rgb(226, 248, 246)
+                        "البريد الإلكتروني" -> Color.rgb(240, 243, 248)
+                        "Google" -> Color.rgb(235, 242, 255)
+                        "Snapchat" -> Color.rgb(255, 248, 213)
+                        else -> Color.rgb(244, 245, 247)
+                    })
+                }
+            }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { leftMargin = dp(5) })
 
             isClickable = true
             setOnClickListener { click() }
