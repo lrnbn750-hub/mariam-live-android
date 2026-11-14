@@ -252,11 +252,7 @@ class ProfileActivity : Activity() {
                 .show()
         }
         menuRow(R.drawable.ic_profile_security,"الأمان والخصوصية"){
-            android.app.AlertDialog.Builder(this)
-                .setTitle("الأمان والخصوصية")
-                .setMessage("حافظ على أمان حسابك وخصوصية معلوماتك. ستُضاف خيارات إدارة الخصوصية وأمان الحساب هنا.")
-                .setPositiveButton("حسناً",null)
-                .show()
+            startActivity(Intent(this,AccountSecurityActivity::class.java))
         }
 
         // Keep the existing profile fields available to the profile loader and editor.
