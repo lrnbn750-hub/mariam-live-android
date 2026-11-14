@@ -2472,6 +2472,7 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  "gift"->{c.drawRect(4f,13f,28f,28f,p);c.drawRect(2f,10f,30f,15f,p);c.drawLine(16f,10f,16f,28f,p);c.drawOval(RectF(6f,3f,16f,12f),p);c.drawOval(RectF(16f,3f,26f,12f),p)}
  "music"->{c.drawLine(12f,7f,12f,23f,p);c.drawLine(12f,7f,25f,4f,p);c.drawLine(25f,4f,25f,20f,p);c.drawOval(RectF(5f,21f,13f,28f),p);c.drawOval(RectF(18f,18f,26f,25f),p)}
  "leave"->{val q=Path().apply{moveTo(8f,5f);lineTo(4f,5f);lineTo(4f,27f);lineTo(8f,27f);moveTo(16f,10f);lineTo(27f,16f);lineTo(16f,22f);moveTo(27f,16f);lineTo(10f,16f)};c.drawPath(q,p)}
+ "chevron-left"->{val q=Path().apply{moveTo(19f,5f);lineTo(8f,16f);lineTo(19f,27f)};c.drawPath(q,p)}
  else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
  };c.restoreToCount(save)}
  override fun setAlpha(a:Int){p.alpha=a};override fun setColorFilter(f:ColorFilter?){p.colorFilter=f};override fun getOpacity()=PixelFormat.TRANSLUCENT;override fun getIntrinsicWidth()=size;override fun getIntrinsicHeight()=size
