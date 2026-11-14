@@ -18,10 +18,10 @@ import java.util.concurrent.Executors
 
 class AccountSecurityActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
-    private val green = Color.rgb(20, 145, 83)
-    private val ink = Color.rgb(27, 42, 34)
-    private val muted = Color.rgb(112, 128, 118)
-    private val page = Color.rgb(246, 249, 247)
+    private val green = Color.rgb(10, 126, 88)
+    private val ink = Color.rgb(24, 43, 37)
+    private val muted = Color.rgb(111, 128, 120)
+    private val page = Color.rgb(246, 248, 246)
     private lateinit var phoneValue: TextView
     private lateinit var status: TextView
     private var selectedCountry = Country("IQ", "العراق", "+964", "🇮🇶")
@@ -44,21 +44,70 @@ class AccountSecurityActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = Color.WHITE
+        val forest = Color.rgb(12, 48, 40)
+        val forestLight = Color.rgb(18, 83, 66)
+        val champagne = Color.rgb(221, 190, 126)
+        window.statusBarColor = forest
         window.navigationBarColor = page
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val root = LinearLayout(this).apply { orientation = 1; setBackgroundColor(page) }
-        val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(7), dp(18), dp(7)); setBackgroundColor(Color.WHITE) }
-        header.addView(TextView(this).apply { text = "‹"; textSize = 34f; setTextColor(green); gravity = Gravity.CENTER; setOnClickListener { finish() } }, LinearLayout.LayoutParams(dp(44), dp(50)))
-        header.addView(TextView(this).apply { text = "الأمان والخصوصية"; textSize = 18f; setTextColor(ink); typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        header.addView(View(this), LinearLayout.LayoutParams(dp(44), dp(50)))
+        val header = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(forest, forestLight))
+        }
+        header.addView(TextView(this).apply {
+            text = "‹"; textSize = 35f; setTextColor(champagne); gravity = Gravity.CENTER
+            contentDescription = "رجوع"; setOnClickListener { finish() }
+        }, LinearLayout.LayoutParams(dp(46), dp(52)))
+        header.addView(TextView(this).apply {
+            text = "الأمان والخصوصية"; textSize = 18f; setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        header.addView(TextView(this).apply {
+            text = "✦"; textSize = 19f; setTextColor(champagne); gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(38), dp(52)))
         root.addView(header)
 
         val scroll = ScrollView(this)
-        val body = LinearLayout(this).apply { orientation = 1; setPadding(dp(18), dp(24), dp(18), dp(28)) }
+        val body = LinearLayout(this).apply { orientation = 1; setPadding(dp(20), dp(25), dp(20), dp(30)) }
         scroll.addView(body)
-        body.addView(TextView(this).apply { text = "حماية حسابك"; textSize = 24f; setTextColor(ink); typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END })
-        body.addView(TextView(this).apply { text = "تحكّم بطرق تسجيل الدخول وحافظ على أمان BAK LIVE."; textSize = 14f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(7), 0, dp(24)) })
+        body.addView(TextView(this).apply {
+            text = "حماية حسابك"; textSize = 27f; setTextColor(ink)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.END
+        })
+        body.addView(TextView(this).apply {
+            text = "تحكّم بطرق تسجيل الدخول وحافظ على أمان BAK LIVE."
+            textSize = 14f; setTextColor(muted); gravity = Gravity.END
+            setPadding(0, dp(8), 0, dp(20))
+        })
+        val trust = LinearLayout(this).apply {
+            orientation = 0; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(17), dp(15), dp(17), dp(15))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(forest, forestLight)).apply { cornerRadius = dp(21).toFloat() }
+            elevation = dp(3).toFloat()
+        }
+        trust.addView(TextView(this).apply {
+            text = "✓"; textSize = 25f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(champagne); gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL; setColor(Color.argb(35, 255, 255, 255))
+                setStroke(dp(1), Color.argb(90, 221, 190, 126))
+            }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val trustText = LinearLayout(this).apply { orientation = 1; gravity = Gravity.END; setPadding(dp(13), 0, 0, 0) }
+        trustText.addView(TextView(this).apply {
+            text = "أمانك أولويتنا"; textSize = 16f; setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END
+        })
+        trustText.addView(TextView(this).apply {
+            text = "حافظ على بيانات الدخول محدثة وسرية"
+            textSize = 12f; setTextColor(Color.rgb(207, 222, 215)); gravity = Gravity.END
+            setPadding(0, dp(4), 0, 0)
+        })
+        trust.addView(trustText, LinearLayout.LayoutParams(0, -2, 1f))
+        body.addView(trust, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(22) })
 
         val phoneCard = card()
         heading(phoneCard, "رقم الهاتف", "📱", "استقبل رموز التحقق على واتساب")
@@ -72,7 +121,11 @@ class AccountSecurityActivity : Activity() {
         passCard.addView(TextView(this).apply { text = "اختر كلمة مرور قوية لا تستخدمها في حسابات أخرى."; textSize = 13f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(14), 0, dp(16)) })
         passCard.addView(actionButton("تغيير كلمة المرور") { showPasswordDialog() })
         body.addView(passCard)
-        status = TextView(this).apply { textSize = 13f; setTextColor(green); gravity = Gravity.CENTER; setPadding(dp(8), dp(14), dp(8), dp(8)) }
+        status = TextView(this).apply {
+            textSize = 13f; setTextColor(green); gravity = Gravity.CENTER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = shape(Color.rgb(235, 246, 240), 14, Color.rgb(220, 235, 226))
+        }
         body.addView(status)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -81,21 +134,43 @@ class AccountSecurityActivity : Activity() {
 
     private fun shape(color: Int, radius: Int, stroke: Int = color) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat(); setStroke(dp(1), stroke) }
     private fun card() = LinearLayout(this).apply {
-        orientation = 1; setPadding(dp(18), dp(18), dp(18), dp(18))
-        background = shape(Color.WHITE, 22, Color.rgb(232, 238, 234))
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) }
+        orientation = 1; setPadding(dp(19), dp(19), dp(19), dp(19))
+        background = shape(Color.WHITE, 24, Color.rgb(231, 237, 233))
+        elevation = dp(2).toFloat()
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) }
     }
     private fun heading(parent: LinearLayout, title: String, symbol: String, subtitle: String) {
         val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        row.addView(TextView(this).apply { text = symbol; textSize = 19f; gravity = Gravity.CENTER; background = shape(Color.rgb(232, 247, 238), 14) }, LinearLayout.LayoutParams(dp(46), dp(46)))
+        row.addView(TextView(this).apply {
+            text = if (symbol == "📱") "▣" else "◆"
+            textSize = 22f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(green); gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(233, 245, 239)); cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), Color.rgb(218, 235, 225))
+            }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
         val texts = LinearLayout(this).apply { orientation = 1; gravity = Gravity.END; setPadding(dp(12), 0, 0, 0) }
-        texts.addView(TextView(this).apply { text = title; textSize = 17f; setTextColor(ink); typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END })
-        texts.addView(TextView(this).apply { text = subtitle; textSize = 12f; setTextColor(muted); gravity = Gravity.END; setPadding(0, dp(4), 0, 0) })
+        texts.addView(TextView(this).apply {
+            text = title; textSize = 18f; setTextColor(ink)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD); gravity = Gravity.END
+        })
+        texts.addView(TextView(this).apply {
+            text = subtitle; textSize = 12f; setTextColor(muted); gravity = Gravity.END
+            setPadding(0, dp(5), 0, 0)
+        })
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f)); parent.addView(row)
     }
     private fun actionButton(label: String, click: () -> Unit) = TextView(this).apply {
         text = label; textSize = 15f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE); gravity = Gravity.CENTER
-        setPadding(dp(16), dp(15), dp(16), dp(15)); background = shape(green, 15); setOnClickListener { click() }
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(Color.rgb(10, 126, 88), Color.rgb(17, 151, 103))).apply {
+            cornerRadius = dp(17).toFloat()
+        }
+        elevation = dp(2).toFloat()
+        isClickable = true
+        setOnClickListener { click() }
     }
     private fun token() = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
 
