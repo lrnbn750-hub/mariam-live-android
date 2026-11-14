@@ -244,6 +244,20 @@ class ProfileActivity : Activity() {
         menuRow(R.drawable.ic_profile_svip,"SVIP"){showInfo("SVIP")}
         menuRow(R.drawable.ic_profile_tasks,"مركز المهام"){showInfo("مركز المهام")}
         sectionGap()
+        menuRow(R.drawable.ic_profile_help,"المساعدة والدعم"){
+            android.app.AlertDialog.Builder(this)
+                .setTitle("المساعدة والدعم")
+                .setMessage("نحن هنا لمساعدتك في استخدام BAK LIVE. يمكنك الرجوع إلى هذا القسم للحصول على المساعدة والإبلاغ عن المشكلات.")
+                .setPositiveButton("حسناً",null)
+                .show()
+        }
+        menuRow(R.drawable.ic_profile_security,"الأمان والخصوصية"){
+            android.app.AlertDialog.Builder(this)
+                .setTitle("الأمان والخصوصية")
+                .setMessage("حافظ على أمان حسابك وخصوصية معلوماتك. ستُضاف خيارات إدارة الخصوصية وأمان الحساب هنا.")
+                .setPositiveButton("حسناً",null)
+                .show()
+        }
 
         // Keep the existing profile fields available to the profile loader and editor.
         displayName=EditText(this)
