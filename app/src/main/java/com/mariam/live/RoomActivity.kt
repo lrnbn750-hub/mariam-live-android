@@ -1698,7 +1698,7 @@ class RoomActivity : Activity() {
    info.addView(label("@$username  •  ID: $account",10f,Color.rgb(190,179,207)).apply{gravity=Gravity.START;maxLines=1})
    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
    row.addView(label(role,10f,roleColor,true).apply{
-    background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,roleColor))}
+    background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
     setPadding(dp(8),dp(5),dp(8),dp(5))
    })
    row.setOnClickListener{dialog.dismiss();showMemberProfile(member)}
