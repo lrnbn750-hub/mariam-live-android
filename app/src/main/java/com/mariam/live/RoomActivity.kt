@@ -1993,12 +1993,12 @@ class RoomActivity : Activity() {
     background=GradientDrawable().apply{
      cornerRadius=dp(17).toFloat()
      setColor(Color.argb(205,42,54,47))
-     setStroke(dp(1),Color.argb(95,accent))
+     setStroke(dp(1),Color.argb(95,Color.red(accent),Color.green(accent),Color.blue(accent)))
     }
     isClickable=true;isFocusable=true
    }
    val iconBox=FrameLayout(this).apply{
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(32,accent));setStroke(dp(1),Color.argb(160,accent))}
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(32,accent));setStroke(dp(1),Color.argb(160,Color.red(accent),Color.green(accent),Color.blue(accent)))}
     addView(ImageView(this@RoomActivity).apply{
      setImageDrawable(VectorIcon(icon,accent,dp(21)))
      scaleType=ImageView.ScaleType.CENTER
@@ -2161,7 +2161,7 @@ class RoomActivity : Activity() {
    val row=LinearLayout(this).apply{
     orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
     setPadding(dp(12),dp(9),dp(12),dp(9))
-    background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(190,48,58,49));setStroke(dp(1),Color.argb(95,accent))}
+    background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(190,48,58,49));setStroke(dp(1),Color.argb(95,Color.red(accent),Color.green(accent),Color.blue(accent)))}
     isClickable=true;isFocusable=true
    }
    val iconBox=FrameLayout(this).apply{
