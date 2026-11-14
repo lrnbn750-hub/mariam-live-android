@@ -20,6 +20,7 @@
             android:stopWithTask="false"
             android:foregroundServiceType="microphone" />
         <activity android:name=".RoomSetupActivity" android:exported="false" />
+        <activity android:name=".RoomBackgroundEditorActivity" android:exported="false" />
         <activity android:name=".RoomActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
