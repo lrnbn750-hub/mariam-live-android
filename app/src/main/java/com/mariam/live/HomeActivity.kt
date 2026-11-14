@@ -61,14 +61,23 @@ class HomeActivity : Activity() {
         val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(16),dp(12),dp(16),dp(18));setBackgroundColor(pageBg)}
         val scroll=ScrollView(this).apply{isFillViewport=false;clipToPadding=false;addView(content)}
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-        val brand=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-        brand.addView(TextView(this).apply{text="BAK LIVE ✦";textSize=22f;typeface=Typeface.create("sans-serif",Typeface.BOLD);setTextColor(ink)})
-        brand.addView(TextView(this).apply{text="مساحتك للأصدقاء والأحاديث";textSize=11f;setTextColor(muted)})
-        header.addView(brand,LinearLayout.LayoutParams(0,-2,1f))
-        val searchButton=TextView(this).apply{text="⌕";textSize=29f;gravity=Gravity.CENTER;setTextColor(Color.rgb(34,158,92));background=GradientDrawable().apply{setColor(Color.rgb(242,250,245));cornerRadius=dp(15).toFloat();setStroke(dp(1),Color.rgb(190,225,202))};setOnClickListener{showSearchDialog()}}
-        header.addView(searchButton,LinearLayout.LayoutParams(dp(46),dp(46)))
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(58)))
+        // Minimal top bar: remove the BAK LIVE wordmark and place search lower on the physical left.
+        val header=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_LTR}
+        val searchButton=TextView(this).apply{
+            text="⌕";textSize=31f;gravity=Gravity.CENTER
+            setTextColor(Color.rgb(34,158,92))
+            background=GradientDrawable().apply{
+                setColor(Color.rgb(242,250,245));cornerRadius=dp(15).toFloat()
+                setStroke(dp(1),Color.rgb(190,225,202))
+            }
+            elevation=dp(2).toFloat()
+            contentDescription="بحث عن غرفة"
+            setOnClickListener{showSearchDialog()}
+        }
+        header.addView(searchButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.TOP or Gravity.LEFT).apply{
+            leftMargin=dp(8);topMargin=dp(26)
+        })
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(82)))
 
         val palestineBanner=PalestineBannerView(this)
         content.addView(palestineBanner,LinearLayout.LayoutParams(-1,dp(112)).apply{
@@ -167,30 +176,6 @@ class HomeActivity : Activity() {
             frame.addView(cover,FrameLayout.LayoutParams(-1,imageHeight))
             val presence=RoomPresenceView(this,room.count)
             frame.addView(presence,FrameLayout.LayoutParams(dp(40),dp(24),Gravity.BOTTOM or Gravity.START).apply{setMargins(dp(8),0,0,dp(8))})
-            val topBadge=LinearLayout(this).apply{
-                orientation=LinearLayout.HORIZONTAL
-                gravity=Gravity.CENTER
-                layoutDirection=View.LAYOUT_DIRECTION_LTR
-                setPadding(dp(9),dp(5),dp(9),dp(5))
-                background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(255,91,45),Color.rgb(220,35,42))).apply{cornerRadius=dp(16).toFloat()}
-                elevation=dp(4).toFloat()
-            }
-            topBadge.addView(TextView(this).apply{
-                text="TOP";textSize=11f;typeface=Typeface.DEFAULT_BOLD
-                setTextColor(Color.WHITE);gravity=Gravity.CENTER
-            })
-            topBadge.addView(TextView(this).apply{
-                text="🔥";textSize=14f;gravity=Gravity.CENTER
-                setPadding(dp(3),0,0,0)
-            })
-            frame.addView(topBadge,FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.END).apply{setMargins(0,dp(8),dp(8),0)})
-            ObjectAnimator.ofFloat(topBadge,View.SCALE_X,1f,1.10f).apply{
-                duration=650;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()
-            }
-            ObjectAnimator.ofFloat(topBadge,View.SCALE_Y,1f,1.10f).apply{
-                duration=650;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()
-            }
             if(!room.imageUrl.isNullOrBlank()){
                 loadRoomCover(cover,room.imageUrl)
             }
