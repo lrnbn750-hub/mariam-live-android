@@ -1915,7 +1915,7 @@ class RoomActivity : Activity() {
   }
   if(isSeated)addTool(if(microphoneEnabled)"كتم المايك" else "تشغيل المايك","mic"){toggleMic()}
   if(isOwner)addTool("الموسيقى","music"){showMusicOptions()}
-  if(isOwner)addTool("خلفية الغرفة","image"){chooseRoomBackground()}
+  if(isOwner)addTool("استوديو خلفية الغرفة","image"){openRoomBackgroundEditor()}
   if(items.childCount==0){
    addTool("لا توجد أدوات متاحة","settings"){}
   }
@@ -1924,6 +1924,11 @@ class RoomActivity : Activity() {
    .setView(items)
    .setNegativeButton("إغلاق",null)
    .show()
+ }
+
+ private fun openRoomBackgroundEditor(){
+  if(!isOwner){Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show();return}
+  startActivityForResult(Intent(this,RoomBackgroundEditorActivity::class.java).putExtra("room_id",roomId),4302)
  }
 
  private fun chooseRoomBackground(){
@@ -2130,6 +2135,7 @@ class RoomActivity : Activity() {
    startRoomMusic(uri)
   }else if(requestCode==4202){
    uploadRoomBackground(uri)
+   }else if(requestCode==4302){loadSeats()}
   }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
