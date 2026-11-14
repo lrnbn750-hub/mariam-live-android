@@ -108,7 +108,7 @@ class HomeActivity : Activity() {
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(74,24,112),Color.rgb(32,8,65))).apply{
-                cornerRadii=floatArrayOf(dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),0f,0f,0f,0f)
+                setCornerRadii(floatArrayOf(dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),dp(22).toFloat(),0f,0f,0f,0f))
                 setStroke(dp(1),Color.rgb(244,190,86))
             }
             setPadding(dp(5),dp(7),dp(5),dp(6))
