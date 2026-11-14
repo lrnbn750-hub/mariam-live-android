@@ -9,6 +9,8 @@ import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.widget.ImageView
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieDrawable
@@ -98,6 +100,7 @@ class RoomActivity : Activity() {
  private var giftPoll:Job?=null
  private var lastGiftEventId=0L
  private var giftFeedInitialized=false
+ private var giftSound:Ringtone?=null
  private var previousMemberIds:MutableSet<String>?=null
  private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
  private val joinNotices=ArrayList<RoomJoinNotice>()
@@ -1576,41 +1579,25 @@ class RoomActivity : Activity() {
    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
    val icon=FrameLayout(this).apply{
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
-    if(gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".json",true)){
-     addView(LottieAnimationView(this@RoomActivity).apply{
-      scaleType=ImageView.ScaleType.FIT_CENTER
-      contentDescription=gift.name
-      setAnimationFromUrl(AuthApi.absoluteUrl(gift.animationUrl))
-      repeatCount=LottieDrawable.INFINITE
-      playAnimation()
-     },FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+    if(gift.id.equals("aladdin",true) && gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".svga",true)){
+     val preview=SVGAImageView(this@RoomActivity).apply{loops=0;clearsAfterDetached=true;setBackgroundColor(Color.TRANSPARENT);contentDescription=gift.name}
+     addView(preview,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
+     loadGiftSvgaPreview(preview,gift.animationUrl)
+    }else if(gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".json",true)){
+     addView(LottieAnimationView(this@RoomActivity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name;setAnimationFromUrl(AuthApi.absoluteUrl(gift.animationUrl));repeatCount=LottieDrawable.INFINITE;playAnimation()},FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
     }else{
      addView(ImageView(this@RoomActivity).apply{
-      val giftImageRes=when(gift.id.lowercase()){
-       "rose"->R.drawable.gift_rose
-       "car"->R.drawable.gift_car
-       "lion"->R.drawable.gift_lion
-       "plane"->R.drawable.gift_plane
-       "castle"->R.drawable.gift_castle
-       else->0
-      }
-      if(giftImageRes!=0){setImageResource(giftImageRes)}else{setImageDrawable(VectorIcon("gift",Color.WHITE,dp(30)))}
-      scaleType=ImageView.ScaleType.FIT_CENTER
-      contentDescription=gift.name
-     },FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER))
-     if(gift.id.equals("aladdin",true)){
-      addView(TextView(this@RoomActivity).apply{
-       text="🧞‍♂️";textSize=34f;gravity=Gravity.CENTER
-       contentDescription="علاء الدين"
-      },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
-     }
+      val giftImageRes=when(gift.id.lowercase()){"rose"->R.drawable.gift_rose;"car"->R.drawable.gift_car;"lion"->R.drawable.gift_lion;"plane"->R.drawable.gift_plane;"castle"->R.drawable.gift_castle;else->0}
+      if(giftImageRes!=0)setImageResource(giftImageRes) else setImageDrawable(VectorIcon("gift",Color.WHITE,dp(48)))
+      scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name
+     },FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
     }
    }
-   card.addView(icon,LinearLayout.LayoutParams(dp(58),dp(58)))
+   card.addView(icon,LinearLayout.LayoutParams(dp(100),dp(100)))
    card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
    card.addView(label("${gift.price} عملة",12f,Color.rgb(255,213,145),true),LinearLayout.LayoutParams(-1,dp(25)))
    card.setOnClickListener{showGiftQuantityDialog(gift,recipientId,recipientName)}
-   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(145);columnSpec=android.widget.GridLayout.spec(index%2,1f);rowSpec=android.widget.GridLayout.spec(index/2);setMargins(dp(4),dp(4),dp(4),dp(4))}
+   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(172);columnSpec=android.widget.GridLayout.spec(index%2,1f);rowSpec=android.widget.GridLayout.spec(index/2);setMargins(dp(4),dp(4),dp(4),dp(4))}
    grid.addView(card,params)
   }
   val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid)}
@@ -1665,6 +1652,7 @@ class RoomActivity : Activity() {
  /** Native animated overlay using artwork already included in this app. */
  private fun showReceivedGiftAnimation(event:GiftRepository.GiftEvent){
   if(!::roomOverlayLayer.isInitialized || isFinishing || isDestroyed)return
+  playGiftSound()
   val imageRes=when(event.giftId.lowercase()){
    "rose"->R.drawable.gift_rose
    "car"->R.drawable.gift_car
@@ -1733,7 +1721,25 @@ class RoomActivity : Activity() {
  }
  
  /** Plays a server-hosted SVGA gift above the room without blocking room audio. */
- private fun showSvgaGiftOverlay(path:String,giftName:String){
+ private fun playGiftSound(){
+  try{
+   giftSound?.stop()
+   val uri=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+   giftSound=RingtoneManager.getRingtone(applicationContext,uri)?.also{tone->if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.P)tone.volume=0.72f;tone.play()}
+  }catch(_:Exception){}
+ }
+ private fun loadGiftSvgaPreview(view:SVGAImageView,path:String){
+  val absolute=AuthApi.absoluteUrl(path)
+  scope.launch{try{
+   val bytes=withContext(Dispatchers.IO){URL(absolute).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{it.readBytes()}}
+   if(bytes.isEmpty())return@launch
+   SVGAParser(this@RoomActivity).decodeFromInputStream(ByteArrayInputStream(bytes),"gift-preview-${absolute.hashCode()}",object:SVGAParser.ParseCompletion{
+    override fun onComplete(videoItem:SVGAVideoEntity){view.post{if(view.parent!=null){view.setVideoItem(videoItem);view.startAnimation()}}}
+    override fun onError(){}
+   },true)
+  }catch(_:Exception){}}
+ }
+  private fun showSvgaGiftOverlay(path:String,giftName:String){
   if(!::roomOverlayLayer.isInitialized || isFinishing || isDestroyed)return
   val player=SVGAImageView(this).apply{
    loops=1
@@ -1741,8 +1747,10 @@ class RoomActivity : Activity() {
    setBackgroundColor(Color.TRANSPARENT)
    contentDescription="هدية متحركة $giftName"
   }
-  val size=dp(300)
-  roomOverlayLayer.addView(player,FrameLayout.LayoutParams(size,size,Gravity.CENTER))
+  val size=(resources.displayMetrics.widthPixels*0.88f).toInt().coerceAtMost(dp(440))
+  val height=(resources.displayMetrics.heightPixels*0.58f).toInt().coerceAtMost(dp(520))
+  player.scaleType=ImageView.ScaleType.FIT_CENTER
+  roomOverlayLayer.addView(player,FrameLayout.LayoutParams(size,height,Gravity.CENTER))
   val absolute=AuthApi.absoluteUrl(path)
   scope.launch{
    try{
@@ -2553,7 +2561,7 @@ class RoomActivity : Activity() {
  }
 
  override fun onBackPressed(){leaveRoom()}
- override fun onDestroy(){
+ override fun onDestroy(){try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
   speakerEventsJob?.cancel()
   activeSpeakerLevels.clear()
