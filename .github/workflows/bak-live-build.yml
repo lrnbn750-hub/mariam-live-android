@@ -9,6 +9,7 @@ on:
       - feature/chat-bubble-wardrobe
       - feature/bak-live-gift-system
       - feature/bak-live-room-ui-inspired
+      - feature/bak-live-room-controls-reference
 
 permissions:
   contents: read
