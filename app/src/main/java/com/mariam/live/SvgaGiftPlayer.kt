@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -28,6 +29,8 @@ fun SvgaGiftPlayer(
 ) {
     val context = LocalContext.current
     val player = remember(context) { SVGAImageView(context) }
+    val currentOnFinished = rememberUpdatedState(onFinished)
+    val currentOnError = rememberUpdatedState(onError)
 
     DisposableEffect(player, assetPath, loops) {
         player.loops = loops.coerceAtLeast(1)
@@ -43,13 +46,13 @@ fun SvgaGiftPlayer(
             }
 
             override fun onError() {
-                onError?.invoke()
+                currentOnError.value?.invoke()
             }
         })
 
         player.callback = object : SVGACallback {
             override fun onFinished() {
-                onFinished?.invoke()
+                currentOnFinished.value?.invoke()
             }
 
             override fun onPause() = Unit
