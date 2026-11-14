@@ -540,7 +540,7 @@ class RoomActivity : Activity() {
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
     setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(45,255,255,255));setStroke(dp(1),Color.argb(75,255,255,255))}
+    background=null
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
@@ -576,11 +576,7 @@ class RoomActivity : Activity() {
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(5)})
    val roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
-    background=GradientDrawable().apply{
-     shape=GradientDrawable.OVAL
-     setColor(Color.argb(45,255,255,255))
-     setStroke(dp(1),Color.argb(75,255,255,255))
-    }
+    background=null
     addView(object:View(this@RoomActivity){
      private var phase=0f
      private val motion=android.animation.ValueAnimator.ofFloat(0f,1f).apply{
@@ -657,11 +653,7 @@ class RoomActivity : Activity() {
    val toolsButton=TextView(this@RoomActivity).apply{
     text="⋯";textSize=21f;gravity=Gravity.CENTER
     setTextColor(Color.WHITE)
-    background=GradientDrawable().apply{
-     shape=GradientDrawable.OVAL
-     setColor(Color.argb(45,255,255,255))
-     setStroke(dp(1),Color.argb(75,255,255,255))
-    }
+    background=null
     contentDescription="إعدادات الغرفة"
     setOnClickListener{showRoomTools()}
    }
@@ -2176,11 +2168,7 @@ class RoomActivity : Activity() {
   if(!::micControl.isInitialized)return
   micControl.setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
   micControl.setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
-  micControl.background=GradientDrawable().apply{
-   shape=GradientDrawable.OVAL
-   setColor(Color.argb(90,255,255,255))
-   setStroke(dp(1),Color.argb(95,255,255,255))
-  }
+  micControl.background=null
   micControl.contentDescription=if(microphoneEnabled)"إيقاف المايك" else "تشغيل المايك"
  }
  private fun showMusicOptions(){
