@@ -718,7 +718,7 @@ class RoomActivity : Activity() {
       orientation=LinearLayout.VERTICAL
       gravity=Gravity.CENTER
       layoutDirection=View.LAYOUT_DIRECTION_RTL
-      setPadding(dp(4),dp(2),dp(4),dp(2))
+      setPadding(dp(3),dp(1),dp(3),dp(1))
      }
      val senderLine=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.HORIZONTAL
@@ -731,17 +731,17 @@ class RoomActivity : Activity() {
       setTextColor(Color.rgb(255,231,190))
       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
       gravity=Gravity.CENTER
-      setPadding(dp(6),dp(2),dp(6),dp(2))
+      setPadding(dp(5),dp(1),dp(5),dp(1))
       background=GradientDrawable().apply{
        cornerRadius=dp(9).toFloat()
        setColor(Color.argb(205,112,17,23))
        setStroke(dp(1),Color.rgb(242,184,92))
       }
      }
-     senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(19)).apply{marginEnd=dp(6)})
+     senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(16)).apply{marginEnd=dp(5)})
      senderLine.addView(TextView(this@RoomActivity).apply{
       text=sender
-      textSize=11f
+      textSize=10.5f
       setTextColor(Color.WHITE)
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
@@ -749,34 +749,34 @@ class RoomActivity : Activity() {
       maxWidth=(maxBubbleWidth*0.72f).toInt()
       includeFontPadding=false
       setShadowLayer(2f,0f,1f,Color.BLACK)
-     },LinearLayout.LayoutParams(-2,dp(22)))
+     },LinearLayout.LayoutParams(-2,dp(18)))
      content.addView(senderLine,LinearLayout.LayoutParams(-2,dp(21)))
      content.addView(TextView(this@RoomActivity).apply{
       text=body
-      textSize=13f
+      textSize=12f
       setTextColor(Color.WHITE)
       typeface=android.graphics.Typeface.create("sans-serif",if(isMaxLevel)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
       gravity=Gravity.CENTER
       textAlignment=View.TEXT_ALIGNMENT_CENTER
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
       maxWidth=(maxBubbleWidth*0.76f).toInt()
-      maxLines=10
+      maxLines=4
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
-      setLineSpacing(dp(2).toFloat(),1f)
+      setLineSpacing(0f,1f)
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-2,-2))
      val contentParams=FrameLayout.LayoutParams(
       -2,-2,Gravity.CENTER
      ).apply{
       leftMargin=dp(10);rightMargin=dp(10)
-      topMargin=dp(6);bottomMargin=dp(6)
+      topMargin=dp(2);bottomMargin=dp(2)
      }
      bubble.addView(content,contentParams)
      val line=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.HORIZONTAL
       gravity=if(mine)Gravity.END else Gravity.START
-      setPadding(0,dp(2),0,dp(2))
+      setPadding(0,dp(1),0,dp(1))
       addView(bubble,LinearLayout.LayoutParams(-2,-2).apply{
        marginStart=dp(2);marginEnd=dp(2)
       })
