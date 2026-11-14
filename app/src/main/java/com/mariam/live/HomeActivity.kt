@@ -253,8 +253,8 @@ private class PremiumNavIcon(context:android.content.Context,private val kind:St
         val pink=Color.rgb(255,111,190)
         val blue=Color.rgb(105,218,255)
         val purple=Color.rgb(167,105,255)
-        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=dp(2.2f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
-        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=dp(1.7f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
+        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=2.2f*scale;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
+        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.7f*scale;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
         val jewel=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,cy-dp(14),0f,cy+dp(14),intArrayOf(Color.WHITE,pink,purple),null,Shader.TileMode.CLAMP)}
         canvas.save();canvas.translate(cx,cy);canvas.scale(scale,scale)
         when(kind){
