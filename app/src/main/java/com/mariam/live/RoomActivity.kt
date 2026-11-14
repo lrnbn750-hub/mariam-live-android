@@ -1706,6 +1706,7 @@ class RoomActivity : Activity() {
    }
   }
  }
+ // Premium white room-tools sheet; all actions continue to use the existing room handlers.
  private fun showRoomTools(){
   val dialog=android.app.Dialog(this)
   val ink=Color.rgb(28,35,32)
