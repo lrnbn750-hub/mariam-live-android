@@ -82,6 +82,9 @@ class RoomActivity : Activity() {
  private lateinit var chatInput:EditText
  private lateinit var chatIcon:ImageView
  private lateinit var sendButton:TextView
+ private lateinit var roomGiftButton:FrameLayout
+ private lateinit var roomToolsButton:View
+ private lateinit var controlsSpacer:View
  private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
  private var roomMembers=JSONArray()
@@ -578,7 +581,7 @@ class RoomActivity : Activity() {
     setOnClickListener{expandRoomComposer()}
    }
 
-   val roomGiftButton=FrameLayout(this@RoomActivity).apply{
+   roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
     background=null
     addView(object:View(this@RoomActivity){
@@ -645,7 +648,7 @@ class RoomActivity : Activity() {
    }
    composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(51),dp(51)).apply{marginEnd=dp(5)})
    // Flexible gap keeps mic + gift anchored on the left and menu + chat anchored on the right.
-   val controlsSpacer=View(this@RoomActivity)
+   controlsSpacer=View(this@RoomActivity)
    composer.addView(controlsSpacer,LinearLayout.LayoutParams(0,1,1f))
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
@@ -657,7 +660,7 @@ class RoomActivity : Activity() {
     setOnClickListener{sendRoomMessage()}
    }
    composer.addView(sendButton,LinearLayout.LayoutParams(dp(32),dp(32)))
-   val toolsButton=object:View(this@RoomActivity){
+   roomToolsButton=object:View(this@RoomActivity){
     private val linePaint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
      color=Color.WHITE
      strokeWidth=dp(2).toFloat()
@@ -680,7 +683,7 @@ class RoomActivity : Activity() {
     isFocusable=true
     setOnClickListener{showRoomTools()}
    }
-   composer.addView(toolsButton,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(4);marginEnd=dp(3)})
+   composer.addView(roomToolsButton,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(4);marginEnd=dp(3)})
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(3)})
    addView(composer,LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(4);bottomMargin=dp(2)})
 
@@ -697,6 +700,10 @@ class RoomActivity : Activity() {
   window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_VISIBLE
   window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
   chatIcon.visibility=View.GONE
+  micControl.visibility=View.GONE
+  roomGiftButton.visibility=View.GONE
+  roomToolsButton.visibility=View.GONE
+  controlsSpacer.visibility=View.GONE
   chatInput.visibility=View.VISIBLE
   sendButton.visibility=View.VISIBLE
   chatInput.requestFocus()
@@ -712,6 +719,10 @@ class RoomActivity : Activity() {
   chatInput.visibility=View.GONE
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
+  micControl.visibility=View.VISIBLE
+  roomGiftButton.visibility=View.VISIBLE
+  roomToolsButton.visibility=View.VISIBLE
+  controlsSpacer.visibility=View.VISIBLE
   val imm=getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
   imm.hideSoftInputFromWindow(chatInput.windowToken,0)
  }
