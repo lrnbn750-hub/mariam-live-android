@@ -534,7 +534,11 @@ class RoomActivity : Activity() {
     addView(chatMessages,android.widget.FrameLayout.LayoutParams(-1,-2))
    }
    addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(2)})
-   val composer=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   val composer=LinearLayout(this@RoomActivity).apply{
+    orientation=0
+    gravity=Gravity.CENTER_VERTICAL
+    layoutDirection=View.LAYOUT_DIRECTION_LTR
+   }
    roomComposer=composer
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(17)))
@@ -650,11 +654,27 @@ class RoomActivity : Activity() {
     setOnClickListener{sendRoomMessage()}
    }
    composer.addView(sendButton,LinearLayout.LayoutParams(dp(32),dp(32)))
-   val toolsButton=TextView(this@RoomActivity).apply{
-    text="⋯";textSize=21f;gravity=Gravity.CENTER
-    setTextColor(Color.WHITE)
-    background=null
+   val toolsButton=object:View(this@RoomActivity){
+    private val linePaint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
+     color=Color.WHITE
+     strokeWidth=dp(2).toFloat()
+     strokeCap=android.graphics.Paint.Cap.ROUND
+    }
+    override fun onDraw(canvas:android.graphics.Canvas){
+     super.onDraw(canvas)
+     val cx=width/2f
+     val cy=height/2f
+     val half=dp(9).toFloat()
+     val gap=dp(5).toFloat()
+     for(i in -1..1){
+      val y=cy+i*gap
+      canvas.drawLine(cx-half,y,cx+half,y,linePaint)
+     }
+    }
+   }.apply{
     contentDescription="إعدادات الغرفة"
+    isClickable=true
+    isFocusable=true
     setOnClickListener{showRoomTools()}
    }
    composer.addView(toolsButton,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginStart=dp(4);marginEnd=dp(3)})
