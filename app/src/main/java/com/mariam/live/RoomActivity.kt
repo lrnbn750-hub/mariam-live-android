@@ -2140,7 +2140,6 @@ class RoomActivity : Activity() {
   }else if(requestCode==4202){
    uploadRoomBackground(uri)
   }
-  }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
  private fun shareRoom(){
