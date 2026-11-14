@@ -588,11 +588,8 @@ class RoomActivity : Activity() {
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     contentDescription="فتح الهدايا"
-    animate().cancel()
-    scaleX=1f;scaleY=1f
-    animate().scaleX(1.08f).scaleY(1.08f).setDuration(720).withEndAction{
-     animate().scaleX(1f).scaleY(1f).setDuration(720).withEndAction{animate().scaleX(1.08f).scaleY(1.08f).setDuration(720).start()}.start()
-    }.start()
+    android.animation.ObjectAnimator.ofFloat(this,"scaleX",1f,1.09f,1f).apply{duration=1450;repeatCount=android.animation.ValueAnimator.INFINITE;start()}
+    android.animation.ObjectAnimator.ofFloat(this,"scaleY",1f,1.09f,1f).apply{duration=1450;repeatCount=android.animation.ValueAnimator.INFINITE;start()}
     setOnClickListener{
      Toast.makeText(this@RoomActivity,"إرسال الهدايا يحتاج ربط متجر الهدايا بالخادم",Toast.LENGTH_SHORT).show()
     }
