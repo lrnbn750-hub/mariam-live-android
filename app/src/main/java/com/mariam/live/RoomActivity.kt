@@ -644,6 +644,9 @@ class RoomActivity : Activity() {
     startAnimation(pulse)
    }
    composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(51),dp(51)).apply{marginEnd=dp(5)})
+   // Flexible gap keeps mic + gift anchored on the left and menu + chat anchored on the right.
+   val controlsSpacer=View(this@RoomActivity)
+   composer.addView(controlsSpacer,LinearLayout.LayoutParams(0,1,1f))
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
