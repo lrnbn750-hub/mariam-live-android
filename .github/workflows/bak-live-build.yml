@@ -8,6 +8,7 @@ on:
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
       - feature/bak-live-white-room-tools-from-working
+      - feature/bak-live-white-room-tools-aladdin-svga
 
 permissions:
   contents: read
