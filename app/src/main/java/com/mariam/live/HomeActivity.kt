@@ -127,7 +127,7 @@ class HomeActivity : Activity() {
                 cornerRadius=dp(14).toFloat()
                 setStroke(dp(1),0x44E9BE73)
             } else ColorDrawable(Color.TRANSPARENT)
-            addView(PremiumNavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(32),dp(32)))
+            addView(PremiumNavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(28),dp(28)))
             addView(TextView(this@HomeActivity).apply{
                 text=title;textSize=10.5f;gravity=Gravity.CENTER
                 setTextColor(if(selected)Color.rgb(255,218,139) else Color.rgb(239,224,255))
@@ -164,11 +164,11 @@ class HomeActivity : Activity() {
                 contentDescription="إنشاء غرفة"
                 setOnClickListener{showCreateRoomDialog()}
             }
-            addView(create,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
+            addView(create,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.CENTER))
             ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
             ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         }
-        nav.addView(createSlot,LinearLayout.LayoutParams(0,dp(54),1.12f))
+        nav.addView(createSlot,LinearLayout.LayoutParams(0,dp(51),1.08f))
         nav.addView(navItem("discover","اكتشف"){
             searchQuery=""
             loadRooms()
@@ -178,13 +178,13 @@ class HomeActivity : Activity() {
             searchQuery=""
             loadRooms()
         },LinearLayout.LayoutParams(0,dp(65),1f))
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(68)))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)))
         ViewCompat.setOnApplyWindowInsetsListener(nav){ view,insets->
             val bottomInset=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val lp=view.layoutParams
-            val targetHeight=dp(68)+bottomInset
+            val targetHeight=dp(64)+bottomInset
             if(lp.height!=targetHeight){lp.height=targetHeight;view.layoutParams=lp}
-            view.setPadding(dp(5),dp(4),dp(5),bottomInset)
+            view.setPadding(dp(5),dp(3),dp(5),bottomInset)
             insets
         }
         setContentView(root)
@@ -238,63 +238,93 @@ class HomeActivity : Activity() {
     }
 
 private class PremiumNavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
-    private val d=resources.displayMetrics.density
-    private val p=Paint(Paint.ANTI_ALIAS_FLAG)
-    private fun fill(color:Int)=Paint(Paint.ANTI_ALIAS_FLAG).apply{shader=LinearGradient(0f,0f,0f,dp(34).toFloat(),intArrayOf(color,Color.WHITE,color),floatArrayOf(0f,.42f,1f),Shader.TileMode.CLAMP)}
-    private fun dp(v:Int)=(v*resources.displayMetrics.density)
-    private fun dp(v:Float)=(v*resources.displayMetrics.density)
+    private val density=resources.displayMetrics.density
+    private fun dp(v:Float)=v*density
+    private fun dp(v:Int)=v*density
+    private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
+    private val gold=Color.rgb(255,211,126)
+    private val paleGold=Color.rgb(255,239,190)
+    private val violet=Color.rgb(161,91,255)
+    private val pink=Color.rgb(255,112,190)
+    private val cyan=Color.rgb(91,218,255)
+    private fun gradient(top:Int,bottom:Int,rect:RectF)=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+        shader=LinearGradient(0f,rect.top,0f,rect.bottom,top,bottom,Shader.TileMode.CLAMP)
+    }
+    private fun stroke(color:Int,width:Float)=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+        style=Paint.Style.STROKE;strokeWidth=dp(width);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=color
+    }
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas)
         val cx=width/2f;val cy=height/2f
-        val scale=1f
-        // Soft jewel-like aura behind each icon.
-        p.shader=RadialGradient(cx,cy,dp(20),intArrayOf(if(selected)0x66FFD77D else 0x335F9EFF,0x00321B57),null,Shader.TileMode.CLAMP)
-        canvas.drawCircle(cx,cy,dp(19),p);p.shader=null
-        val gold=Color.rgb(255,211,123)
-        val pink=Color.rgb(255,111,190)
-        val blue=Color.rgb(105,218,255)
-        val purple=Color.rgb(167,105,255)
-        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=dp(2.2f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
-        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=dp(1.7f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
-        val jewel=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,cy-dp(14),0f,cy+dp(14),intArrayOf(Color.WHITE,pink,purple),null,Shader.TileMode.CLAMP)}
-        canvas.save();canvas.translate(cx,cy);canvas.scale(scale,scale)
+        val aura=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+            shader=RadialGradient(cx,cy,dp(16),intArrayOf(if(selected)0x55FFD77D else 0x334A9BFF,0x00200A38),null,Shader.TileMode.CLAMP)
+        }
+        canvas.drawCircle(cx,cy,dp(16),aura)
+        canvas.save()
+        canvas.translate(cx,cy)
+        val s=dp(1)
+        canvas.scale(s,s)
+        val outline=stroke(0xCCFFE0A0.toInt(),1.25f)
         when(kind){
             "profile"->{
-                canvas.drawCircle(0f,-dp(7),dp(5.5f),shadow);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,shadow)
-                canvas.drawCircle(0f,-dp(7),dp(5.5f),jewel);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,jewel)
-                canvas.drawCircle(0f,-dp(7),dp(5.5f),hi);canvas.drawArc(RectF(-dp(11),-dp(1),dp(11),dp(17)),180f,180f,false,hi)
-                canvas.drawCircle(0f,-dp(7),dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                val head=RectF(-5.2f,-12f,5.2f,-1.6f)
+                canvas.drawOval(head,gradient(Color.WHITE,pink,head))
+                canvas.drawOval(head,outline)
+                val body=Path().apply{
+                    moveTo(-12.5f,12f);lineTo(-12.5f,8.5f)
+                    cubicTo(-12.5f,2f,-7.5f,-1f,0f,-1f)
+                    cubicTo(7.5f,-1f,12.5f,2f,12.5f,8.5f)
+                    lineTo(12.5f,12f);close()
+                }
+                val bodyRect=RectF(-13f,-2f,13f,13f)
+                canvas.drawPath(body,gradient(Color.rgb(255,220,151),Color.rgb(224,143,57),bodyRect))
+                canvas.drawPath(body,outline)
+                canvas.drawArc(RectF(-4f,3f,4f,13f),180f,180f,false,stroke(0xAAFFFFFF.toInt(),1f))
+                canvas.drawCircle(0f,-7f,1.4f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
             }
             "messages"->{
-                val r=RectF(-dp(14),-dp(11),dp(14),dp(9))
-                p.shader=LinearGradient(0f,r.top,0f,r.bottom,intArrayOf(blue,Color.rgb(54,139,235)),null,Shader.TileMode.CLAMP)
-                canvas.drawRoundRect(r,dp(7),dp(7),p);p.shader=null
-                canvas.drawRoundRect(r,dp(7),dp(7),hi)
-                val tail=Path().apply{moveTo(-dp(6),dp(8));lineTo(-dp(10),dp(15));lineTo(dp(1),dp(8));close()}
-                p.color=Color.rgb(255,211,123);canvas.drawPath(tail,p)
-                for(x in floatArrayOf(-dp(6),0f,dp(6)))canvas.drawCircle(x,-dp(1),dp(1.8f),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                val back=RectF(-12f,-10f,11f,7f)
+                canvas.drawRoundRect(back,5f,5f,gradient(Color.rgb(87,203,255),Color.rgb(50,104,220),back))
+                canvas.drawRoundRect(back,5f,5f,outline)
+                val front=RectF(-8f,-7f,13f,11f)
+                canvas.drawRoundRect(front,5f,5f,gradient(Color.rgb(255,158,218),Color.rgb(139,65,210),front))
+                canvas.drawRoundRect(front,5f,5f,outline)
+                val tail=Path().apply{moveTo(5f,10f);lineTo(3f,15f);lineTo(10f,10f);close()}
+                paint.color=gold;canvas.drawPath(tail,paint)
+                for(x in floatArrayOf(-2f,3f,8f)){
+                    canvas.drawCircle(x,1.5f,1.35f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                }
+                canvas.drawLine(-4f,-4f,7f,-4f,stroke(0x66FFFFFF,0.8f))
             }
             "discover"->{
-                p.shader=LinearGradient(-dp(13),-dp(13),dp(13),dp(13),intArrayOf(blue,purple,pink),null,Shader.TileMode.CLAMP)
-                canvas.drawCircle(0f,0f,dp(12),p);p.shader=null
-                canvas.drawCircle(0f,0f,dp(12),hi)
-                val needle=Path().apply{moveTo(dp(6),-dp(8));lineTo(dp(2),dp(2));lineTo(-dp(7),dp(8));lineTo(-dp(2),-dp(2));close()}
-                p.shader=LinearGradient(0f,-dp(8),0f,dp(8),intArrayOf(Color.WHITE,gold),null,Shader.TileMode.CLAMP);canvas.drawPath(needle,p);p.shader=null
-                canvas.drawCircle(0f,0f,dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                canvas.drawCircle(0f,0f,12.5f,Paint(Paint.ANTI_ALIAS_FLAG).apply{
+                    shader=LinearGradient(-10f,-12f,10f,12f,cyan,violet,Shader.TileMode.CLAMP)
+                })
+                canvas.drawCircle(0f,0f,12.5f,outline)
+                val north=Path().apply{moveTo(0f,-10f);lineTo(3.2f,0f);lineTo(0f,10f);lineTo(-3.2f,0f);close()}
+                canvas.drawPath(north,Paint(Paint.ANTI_ALIAS_FLAG).apply{shader=LinearGradient(0f,-10f,0f,10f,paleGold,Color.rgb(194,108,36),Shader.TileMode.CLAMP)})
+                val east=Path().apply{moveTo(10f,0f);lineTo(0f,3.2f);lineTo(-10f,0f);lineTo(0f,-3.2f);close()}
+                canvas.drawPath(east,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xCCFFFFFF.toInt()})
+                canvas.drawCircle(0f,0f,2.2f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=gold})
+                canvas.drawCircle(0f,0f,1f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
             }
             "home"->{
-                val roof=Path().apply{moveTo(-dp(15),-dp(1));lineTo(0f,-dp(15));lineTo(dp(15),-dp(1));close()}
-                p.shader=LinearGradient(0f,-dp(15),0f,dp(15),intArrayOf(Color.WHITE,gold,Color.rgb(207,125,31)),null,Shader.TileMode.CLAMP)
-                canvas.drawPath(roof,p);canvas.drawRoundRect(RectF(-dp(11),-dp(2),dp(11),dp(14)),dp(3),dp(3),p);p.shader=null
-                canvas.drawPath(roof,hi);canvas.drawRoundRect(RectF(-dp(11),-dp(2),dp(11),dp(14)),dp(3),dp(3),hi)
-                p.color=Color.rgb(67,28,100);canvas.drawRoundRect(RectF(-dp(2),dp(5),dp(2),dp(14)),dp(1),dp(1),p)
-                canvas.drawCircle(dp(7),-dp(7),dp(2),Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                val roof=Path().apply{moveTo(-14f,-2f);lineTo(0f,-14f);lineTo(14f,-2f);lineTo(11f,1f);lineTo(0f,-8f);lineTo(-11f,1f);close()}
+                canvas.drawPath(roof,Paint(Paint.ANTI_ALIAS_FLAG).apply{shader=LinearGradient(0f,-14f,0f,1f,paleGold,Color.rgb(195,111,35),Shader.TileMode.CLAMP)})
+                canvas.drawPath(roof,outline)
+                val house=RectF(-10f,-2f,10f,12f)
+                canvas.drawRoundRect(house,2f,2f,gradient(Color.rgb(255,224,155),Color.rgb(197,113,37),house))
+                canvas.drawRoundRect(house,2f,2f,outline)
+                canvas.drawRoundRect(RectF(-2.4f,4f,2.4f,12f),1.5f,1.5f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(75,28,105)})
+                canvas.drawRoundRect(RectF(-7f,1f,-4f,5f),1f,1f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                canvas.drawRoundRect(RectF(4f,1f,7f,5f),1f,1f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
+                canvas.drawCircle(7f,-8f,1.5f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE})
             }
         }
         canvas.restore()
         if(selected){
-            p.color=gold;p.style=Paint.Style.FILL
-            canvas.drawCircle(cx,height-dp(2),dp(2),p)
+            val dot=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=gold}
+            canvas.drawCircle(cx,height-dp(1.5f),dp(1.5f),dot)
         }
     }
 }
