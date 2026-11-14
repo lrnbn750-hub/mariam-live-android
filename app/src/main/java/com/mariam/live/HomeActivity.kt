@@ -251,7 +251,7 @@ private class PremiumNavIcon(context:android.content.Context,private val kind:St
         shader=LinearGradient(0f,rect.top,0f,rect.bottom,top,bottom,Shader.TileMode.CLAMP)
     }
     private fun stroke(color:Int,width:Float)=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-        style=Paint.Style.STROKE;strokeWidth=dp(width);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=color
+        style=Paint.Style.STROKE;strokeWidth=dp(width);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;this.color=color
     }
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas)
