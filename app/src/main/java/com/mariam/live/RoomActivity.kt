@@ -32,6 +32,12 @@ import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
 import com.mariam.live.data.GiftRepository
 import com.mariam.live.model.Gift
+import com.opensource.svgaplayer.SVGACallback
+import com.opensource.svgaplayer.SVGAImageView
+import com.opensource.svgaplayer.SVGAParser
+import com.opensource.svgaplayer.SVGAVideoEntity
+import java.io.ByteArrayInputStream
+import java.net.URL
 import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
@@ -1570,7 +1576,7 @@ class RoomActivity : Activity() {
    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
    val icon=FrameLayout(this).apply{
     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
-    if(gift.animationUrl.isNotBlank()){
+    if(gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".json",true)){
      addView(LottieAnimationView(this@RoomActivity).apply{
       scaleType=ImageView.ScaleType.FIT_CENTER
       contentDescription=gift.name
@@ -1662,7 +1668,8 @@ class RoomActivity : Activity() {
    else->0
   }
   val animationUrl=event.animationUrl.trim()
-  val animationView=if(animationUrl.isNotBlank()){
+  val isSvga=animationUrl.substringBefore("?").endsWith(".svga",true)
+  val animationView=if(animationUrl.isNotBlank() && !isSvga && animationUrl.substringBefore("?").endsWith(".json",true)){
    LottieAnimationView(this).apply{
     scaleType=ImageView.ScaleType.FIT_CENTER
     contentDescription="هدية ${event.name}"
@@ -1676,6 +1683,7 @@ class RoomActivity : Activity() {
    roomOverlayLayer.addView(animationView,FrameLayout.LayoutParams(dp(280),dp(280),Gravity.CENTER))
    animationView.animate().alpha(1f).setDuration(220).start()
   }
+  if(isSvga) showSvgaGiftOverlay(animationUrl,event.name)
   val card=LinearLayout(this).apply{
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
