@@ -1565,8 +1565,8 @@ class RoomActivity : Activity() {
   scope.launch{try{
    val response=withContext(Dispatchers.IO){giftRepository.loadCatalog(authToken)}
    if(response.status !in 200..299){Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر تحميل الهدايا"),Toast.LENGTH_LONG).show();return@launch}
-   val gifts=giftRepository.getGifts()
-   if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"لا توجد هدايا متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
+   val gifts=giftRepository.getGifts().filter{it.id.equals("aladdin",true)}
+   if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"هدية علاء الدين غير متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
    showGiftCatalogDialog(gifts,recipientId,recipientName)
   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()}}
  }
@@ -1574,30 +1574,19 @@ class RoomActivity : Activity() {
   val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(12));background=GradientDrawable().apply{setColor(Color.rgb(30,25,39));cornerRadius=dp(22).toFloat()}}
   content.addView(label("إرسال هدية إلى ${recipientName}",14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(38)))
   content.addView(label("اختر هديتك — سيتم خصم العملات بعد التأكيد",11f,Color.rgb(207,197,218)),LinearLayout.LayoutParams(-1,dp(28)))
-  val grid=android.widget.GridLayout(this).apply{columnCount=2;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_MARGINS}
+  val grid=android.widget.GridLayout(this).apply{columnCount=1;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_MARGINS}
   gifts.forEachIndexed{index,gift->
    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
-   val icon=FrameLayout(this).apply{
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(105,57,125))}
-    if(gift.id.equals("aladdin",true) && gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".svga",true)){
-     val preview=SVGAImageView(this@RoomActivity).apply{loops=0;clearsAfterDetached=true;setBackgroundColor(Color.TRANSPARENT);contentDescription=gift.name}
-     addView(preview,FrameLayout.LayoutParams(dp(96),dp(96),Gravity.CENTER))
-     loadGiftSvgaPreview(preview,gift.animationUrl)
-    }else if(gift.animationUrl.isNotBlank() && gift.animationUrl.substringBefore("?").endsWith(".json",true)){
-     addView(LottieAnimationView(this@RoomActivity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name;setAnimationFromUrl(AuthApi.absoluteUrl(gift.animationUrl));repeatCount=LottieDrawable.INFINITE;playAnimation()},FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
-    }else{
-     addView(ImageView(this@RoomActivity).apply{
-      val giftImageRes=when(gift.id.lowercase()){"rose"->R.drawable.gift_rose;"car"->R.drawable.gift_car;"lion"->R.drawable.gift_lion;"plane"->R.drawable.gift_plane;"castle"->R.drawable.gift_castle;else->0}
-      if(giftImageRes!=0)setImageResource(giftImageRes) else setImageDrawable(VectorIcon("gift",Color.WHITE,dp(48)))
-      scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name
-     },FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
+   val icon=ImageView(this).apply{
+     setImageResource(R.drawable.gift_aladdin)
+     scaleType=ImageView.ScaleType.FIT_CENTER
+     contentDescription="هدية علاء الدين"
     }
-   }
-   card.addView(icon,LinearLayout.LayoutParams(dp(100),dp(100)))
+    card.addView(icon,LinearLayout.LayoutParams(dp(148),dp(148)))
    card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
    card.addView(label("${gift.price} عملة",12f,Color.rgb(255,213,145),true),LinearLayout.LayoutParams(-1,dp(25)))
    card.setOnClickListener{showGiftQuantityDialog(gift,recipientId,recipientName)}
-   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(172);columnSpec=android.widget.GridLayout.spec(index%2,1f);rowSpec=android.widget.GridLayout.spec(index/2);setMargins(dp(4),dp(4),dp(4),dp(4))}
+   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(220);columnSpec=android.widget.GridLayout.spec(0,1f);rowSpec=android.widget.GridLayout.spec(0);setMargins(dp(4),dp(4),dp(4),dp(4))}
    grid.addView(card,params)
   }
   val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid)}
