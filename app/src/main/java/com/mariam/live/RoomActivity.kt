@@ -1718,6 +1718,62 @@ class RoomActivity : Activity() {
    }.start()
  }
  
+ /** Plays a server-hosted SVGA gift above the room without blocking room audio. */
+ private fun showSvgaGiftOverlay(path:String,giftName:String){
+  if(!::roomOverlayLayer.isInitialized || isFinishing || isDestroyed)return
+  val player=SVGAImageView(this).apply{
+   loops=1
+   clearsAfterDetached=true
+   setBackgroundColor(Color.TRANSPARENT)
+   contentDescription="هدية متحركة $giftName"
+  }
+  val size=dp(300)
+  roomOverlayLayer.addView(player,FrameLayout.LayoutParams(size,size,Gravity.CENTER))
+  val absolute=AuthApi.absoluteUrl(path)
+  scope.launch{
+   try{
+    val bytes=withContext(Dispatchers.IO){
+     val connection=URL(absolute).openConnection().apply{
+      connectTimeout=12000
+      readTimeout=20000
+      setRequestProperty("Accept","application/octet-stream")
+     }
+     connection.getInputStream().use{it.readBytes()}
+    }
+    if(bytes.isEmpty())throw IllegalStateException("ملف SVGA فارغ")
+    val parser=SVGAParser(this@RoomActivity)
+    player.callback=object:SVGACallback{
+     override fun onFinished(){player.post{if(player.parent===roomOverlayLayer)roomOverlayLayer.removeView(player)}}
+     override fun onPause()=Unit
+     override fun onRepeat()=Unit
+     override fun onStep(frame:Int,percentage:Double)=Unit
+    }
+    parser.decodeFromInputStream(
+     ByteArrayInputStream(bytes),
+     "bak-live-gift-${absolute.hashCode()}",
+     object:SVGAParser.ParseCompletion{
+      override fun onComplete(videoItem:SVGAVideoEntity){
+       player.post{
+        if(player.parent===roomOverlayLayer){
+         player.setVideoItem(videoItem)
+         player.startAnimation()
+         player.alpha=0f
+         player.animate().alpha(1f).setDuration(180).start()
+        }
+       }
+      }
+      override fun onError(){player.post{if(player.parent===roomOverlayLayer)roomOverlayLayer.removeView(player)}}
+     },
+     true
+    )
+   }catch(_:CancellationException){
+    if(player.parent===roomOverlayLayer)roomOverlayLayer.removeView(player)
+   }catch(_:Exception){
+    if(player.parent===roomOverlayLayer)roomOverlayLayer.removeView(player)
+   }
+  }
+ }
+
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
