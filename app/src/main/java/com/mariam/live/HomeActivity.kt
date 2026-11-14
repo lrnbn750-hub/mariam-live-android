@@ -77,7 +77,7 @@ class HomeActivity : Activity() {
         header.addView(searchButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.TOP or Gravity.LEFT).apply{
             leftMargin=dp(8);topMargin=dp(26)
         })
-        val returnRoomButton=headerAction("♫","العودة إلى غرفتك").apply{
+        val returnRoomButton=headerAction("🎙","العودة إلى غرفتك").apply{
             tag="return_room_button"
             val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
             val activeId=prefs.getString("active_room_id",null)
@@ -163,7 +163,7 @@ class HomeActivity : Activity() {
     override fun onResume(){
         super.onResume()
         val activeId=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("active_room_id",null)
-        findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
+        window.decorView.findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
         if(::grid.isInitialized && ::roomStatus.isInitialized)loadRooms()
     }
     private fun iconView(kind:String,tint:Int):View = object:View(this){
