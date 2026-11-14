@@ -2127,6 +2127,10 @@ class RoomActivity : Activity() {
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
   if(resultCode!=Activity.RESULT_OK)return
+  if(requestCode==4302){
+   loadSeats()
+   return
+  }
   val uri=data?.data?:return
   try{
    contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -2135,7 +2139,7 @@ class RoomActivity : Activity() {
    startRoomMusic(uri)
   }else if(requestCode==4202){
    uploadRoomBackground(uri)
-   }else if(requestCode==4302){loadSeats()}
+  }
   }
  }
  @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
