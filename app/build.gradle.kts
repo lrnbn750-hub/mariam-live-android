@@ -43,6 +43,7 @@ dependencies {
 
     implementation("com.airbnb.android:lottie-compose:6.6.2")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.github.yyued:SVGAPlayer-Android:2.6.1")
 
     implementation("io.livekit:livekit-android:2.30.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
