@@ -19,3 +19,9 @@ The route reads `gift_earnings` and `platform_share` from `wallet_settings`. Wit
 
 ## Important
 The starter catalog currently has empty `animation_url` values. Upload licensed, tested animation assets and update those URLs before enabling the gift UI. The room feed is cursor-based polling; a LiveKit data broadcast can replace it later if desired. No Android APK build or production deployment is included in this commit.
+
+
+## Updated BAK LIVE catalog (2026-11-14)
+The end of `gifts-migration.sql` now deactivates the unwanted car, lion, plane, and castle entries; keeps Rose and Aladdin; and adds lollipop, donut, magic star, pink kiss, royal bell, ruby ring, and royal crown. The new Android vector artwork is mapped by gift ID for both the picker and received-gift display.
+
+Apply the updated SQL migration to the backend database before expecting the new catalog to appear in the app. This repository change does not automatically alter the production database. Back up the database first, then run the migration using the production backend's configured PostgreSQL connection. Verify `GET /api/gifts` returns the active catalog before testing gift sending.
