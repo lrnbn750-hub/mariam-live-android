@@ -143,7 +143,7 @@ class HomeActivity : Activity() {
         },LinearLayout.LayoutParams(0,dp(54),1f))
         nav.addView(navItem("messages","رسائلي"){
             startActivity(Intent(this@HomeActivity,MessagesActivity::class.java))
-        },LinearLayout.LayoutParams(0,dp(65),1f))
+        },LinearLayout.LayoutParams(0,dp(54),1f))
         val createSlot=FrameLayout(this).apply{
             val halo=View(this@HomeActivity).apply{
                 background=GradientDrawable().apply{
@@ -173,7 +173,7 @@ class HomeActivity : Activity() {
             searchQuery=""
             loadRooms()
             Toast.makeText(this@HomeActivity,"تحديث الغرف المباشرة",Toast.LENGTH_SHORT).show()
-        },LinearLayout.LayoutParams(0,dp(65),1f))
+        },LinearLayout.LayoutParams(0,dp(54),1f))
         nav.addView(navItem("home","الرئيسية",true){
             searchQuery=""
             loadRooms()
