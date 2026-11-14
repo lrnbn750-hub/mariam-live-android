@@ -109,7 +109,13 @@ class RoomActivity : Activity() {
   }
   fun topRoomButton(iconRes:Int,description:String,accent:Int,onClick:()->Unit)=FrameLayout(this).apply{
    isClickable=true;isFocusable=true;elevation=dp(5).toFloat()
-   background=GradientDrawable().apply{
+   background=if(iconRes==R.drawable.ic_room_exit) GradientDrawable(
+    GradientDrawable.Orientation.TL_BR,
+    intArrayOf(Color.rgb(255,76,128),Color.rgb(153,65,211),Color.rgb(65,126,239))
+   ).apply{
+    shape=GradientDrawable.OVAL
+    setStroke(dp(1),Color.argb(210,255,255,255))
+   } else GradientDrawable().apply{
     shape=GradientDrawable.OVAL
     setColor(Color.argb(218,24,18,42))
     setStroke(dp(1.5f.toInt()),accent)
@@ -136,11 +142,11 @@ class RoomActivity : Activity() {
   })
   membersButton=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR
-   setPadding(dp(8),dp(3),dp(8),dp(3))
+   setPadding(dp(10),dp(4),dp(10),dp(4))
    background=GradientDrawable().apply{
-    setColor(Color.argb(48,255,255,255))
-    cornerRadius=dp(15).toFloat()
-    setStroke(dp(1),Color.argb(55,220,194,255))
+    setColor(Color.argb(155,48,58,67))
+    cornerRadius=dp(20).toFloat()
+    setStroke(dp(1),Color.argb(125,220,232,242))
    }
    addView(label("0",13f,Color.WHITE,true).apply{
     gravity=Gravity.CENTER
@@ -153,9 +159,7 @@ class RoomActivity : Activity() {
    },LinearLayout.LayoutParams(dp(20),dp(22)))
    setOnClickListener{showRoomMembers()}
   }
-  roomInfoGroup.addView(membersButton,LinearLayout.LayoutParams(-1,dp(28)).apply{
-   gravity=Gravity.START;topMargin=dp(2);bottomMargin=dp(2)
-  })
+  top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(38)).apply{marginStart=dp(9)})
   grid=LinearLayout(this).apply{orientation=1}
   roomInfoGroup.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
   roomPage.addView(roomInfoGroup,LinearLayout.LayoutParams(-1,-2))
@@ -576,20 +580,33 @@ class RoomActivity : Activity() {
    composer.addView(chatIcon,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(5)})
    val roomGiftButton=FrameLayout(this@RoomActivity).apply{
     isClickable=true;isFocusable=true
-    background=GradientDrawable().apply{
+    background=GradientDrawable(
+     GradientDrawable.Orientation.TL_BR,
+     intArrayOf(Color.rgb(255,72,151),Color.rgb(166,73,231),Color.rgb(65,151,244))
+    ).apply{
      shape=GradientDrawable.OVAL
-     setColor(Color.argb(28,255,255,255))
-     setStroke(dp(1),Color.argb(190,255,255,255))
+     setStroke(dp(1),Color.argb(220,255,255,255))
     }
     addView(ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(22)))
+     setImageDrawable(VectorIcon("gift",Color.WHITE,dp(23)))
      scaleType=ImageView.ScaleType.CENTER_INSIDE
      contentDescription="الهدايا"
     },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
     contentDescription="فتح الهدايا"
     setOnClickListener{showRoomGiftPicker()}
+    val pulse=android.view.animation.ScaleAnimation(
+     1f,1.10f,1f,1.10f,
+     android.view.animation.Animation.RELATIVE_TO_SELF,0.5f,
+     android.view.animation.Animation.RELATIVE_TO_SELF,0.5f
+    ).apply{
+     duration=850
+     repeatCount=android.view.animation.Animation.INFINITE
+     repeatMode=android.view.animation.Animation.REVERSE
+     interpolator=android.view.animation.AccelerateDecelerateInterpolator()
+    }
+    startAnimation(pulse)
    }
-   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(7)})
+   composer.addView(roomGiftButton,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(7)})
    composer.addView(chatInput,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(7)})
    sendButton=TextView(this@RoomActivity).apply{
     text="➤";textSize=15f;gravity=Gravity.CENTER
