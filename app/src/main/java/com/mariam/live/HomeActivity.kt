@@ -242,10 +242,11 @@ private class PremiumNavIcon(context:android.content.Context,private val kind:St
     private val p=Paint(Paint.ANTI_ALIAS_FLAG)
     private fun fill(color:Int)=Paint(Paint.ANTI_ALIAS_FLAG).apply{shader=LinearGradient(0f,0f,0f,dp(34).toFloat(),intArrayOf(color,Color.WHITE,color),floatArrayOf(0f,.42f,1f),Shader.TileMode.CLAMP)}
     private fun dp(v:Int)=(v*resources.displayMetrics.density)
+    private fun dp(v:Float)=(v*resources.displayMetrics.density)
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas)
         val cx=width/2f;val cy=height/2f
-        val scale=d
+        val scale=1f
         // Soft jewel-like aura behind each icon.
         p.shader=RadialGradient(cx,cy,dp(20),intArrayOf(if(selected)0x66FFD77D else 0x335F9EFF,0x00321B57),null,Shader.TileMode.CLAMP)
         canvas.drawCircle(cx,cy,dp(19),p);p.shader=null
@@ -253,8 +254,8 @@ private class PremiumNavIcon(context:android.content.Context,private val kind:St
         val pink=Color.rgb(255,111,190)
         val blue=Color.rgb(105,218,255)
         val purple=Color.rgb(167,105,255)
-        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=2.2f*scale;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
-        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.7f*scale;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
+        val shadow=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xAA16062D.toInt();style=Paint.Style.STROKE;strokeWidth=dp(2.2f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
+        val hi=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=dp(1.7f);strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND;color=gold}
         val jewel=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,cy-dp(14),0f,cy+dp(14),intArrayOf(Color.WHITE,pink,purple),null,Shader.TileMode.CLAMP)}
         canvas.save();canvas.translate(cx,cy);canvas.scale(scale,scale)
         when(kind){
