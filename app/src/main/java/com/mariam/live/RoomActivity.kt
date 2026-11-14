@@ -1565,34 +1565,103 @@ class RoomActivity : Activity() {
   scope.launch{try{
    val response=withContext(Dispatchers.IO){giftRepository.loadCatalog(authToken)}
    if(response.status !in 200..299){Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر تحميل الهدايا"),Toast.LENGTH_LONG).show();return@launch}
-   val gifts=giftRepository.getGifts().filter{it.id.equals("aladdin",true)}
-   if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"هدية علاء الدين غير متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
-   showGiftCatalogDialog(gifts,recipientId,recipientName)
+   val gifts=giftRepository.getGifts()
+   if(gifts.isEmpty()){Toast.makeText(this@RoomActivity,"لا توجد هدايا متاحة حالياً",Toast.LENGTH_SHORT).show();return@launch}
+   val walletResult=withContext(Dispatchers.IO){AuthApi.get("/api/wallet",authToken)}
+   val wallet=if(walletResult.status in 200..299) walletResult.body.optJSONObject("wallet")?:walletResult.body else null
+   val coins=wallet?.optLong("recharge_coins")
+   showGiftCatalogDialog(gifts,recipientId,recipientName,coins)
   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بخادم الهدايا",Toast.LENGTH_LONG).show()}}
  }
- private fun showGiftCatalogDialog(gifts:List<Gift>,recipientId:String,recipientName:String){
-  val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(12));background=GradientDrawable().apply{setColor(Color.rgb(30,25,39));cornerRadius=dp(22).toFloat()}}
-  content.addView(label("إرسال هدية إلى ${recipientName}",14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(38)))
-  content.addView(label("اختر هديتك — سيتم خصم العملات بعد التأكيد",11f,Color.rgb(207,197,218)),LinearLayout.LayoutParams(-1,dp(28)))
-  val grid=android.widget.GridLayout(this).apply{columnCount=1;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_MARGINS}
+ private fun giftArtwork(gift:Gift):Int=when(gift.id.lowercase()){
+  "rose","golden_rose"->R.drawable.gift_rose
+  "car","luxury_car"->R.drawable.gift_car
+  "lion"->R.drawable.gift_lion
+  "plane"->R.drawable.gift_plane
+  "castle"->R.drawable.gift_castle
+  "aladdin"->R.drawable.gift_aladdin
+  else->0
+ }
+ private fun showGiftCatalogDialog(gifts:List<Gift>,recipientId:String,recipientName:String,coins:Long?){
+  val ink=Color.rgb(7,6,10)
+  val purple=Color.rgb(127,48,235)
+  val muted=Color.rgb(160,151,170)
+  val gold=Color.rgb(255,196,49)
+  val root=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   setPadding(dp(12),dp(10),dp(12),dp(12))
+   setBackgroundColor(ink)
+  }
+  val heading=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+  heading.addView(label("هدايا الغرفة",16f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(34),1f))
+  heading.addView(label("إلى "+recipientName,11f,muted),LinearLayout.LayoutParams(-2,dp(34)))
+  root.addView(heading)
+  val tabs=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR;setPadding(0,dp(4),0,dp(8))}
+  val all=TextView(this).apply{text="ALL";textSize=11f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(30,20,43));setStroke(dp(2),purple)}}
+  tabs.addView(all,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(10)})
+  tabs.addView(label("الكل",12f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(42),1f))
+  tabs.addView(label("🪙  "+(coins?.let{String.format(java.util.Locale.US,"%,d",it)}?:"—"),12f,gold,true),LinearLayout.LayoutParams(-2,dp(42)))
+  root.addView(tabs)
+  val grid=android.widget.GridLayout(this).apply{columnCount=4;useDefaultMargins=false;alignmentMode=android.widget.GridLayout.ALIGN_BOUNDS}
+  var selected=gifts.first()
+  var quantity=1
+  val cards=ArrayList<LinearLayout>()
+  val updateSelection:(Gift)->Unit={chosen->
+   selected=chosen
+   cards.forEachIndexed{index,card->
+    val active=gifts[index].id==chosen.id
+    card.background=GradientDrawable().apply{setColor(if(active)Color.rgb(25,13,42) else ink);cornerRadius=dp(9).toFloat();if(active)setStroke(dp(2),purple) else setStroke(dp(1),Color.rgb(35,31,42))}
+   }
+  }
   gifts.forEachIndexed{index,gift->
-   val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(8),dp(12),dp(8),dp(10));background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))};isClickable=true;isFocusable=true}
-   val icon=ImageView(this).apply{
-     setImageResource(R.drawable.gift_aladdin)
-     scaleType=ImageView.ScaleType.FIT_CENTER
-     contentDescription="هدية علاء الدين"
-    }
-    card.addView(icon,LinearLayout.LayoutParams(dp(148),dp(148)))
-   card.addView(label(gift.name,14f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
-   card.addView(label("${gift.price} عملة",12f,Color.rgb(255,213,145),true),LinearLayout.LayoutParams(-1,dp(25)))
-   card.setOnClickListener{showGiftQuantityDialog(gift,recipientId,recipientName)}
-   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(220);columnSpec=android.widget.GridLayout.spec(0,1f);rowSpec=android.widget.GridLayout.spec(0);setMargins(dp(4),dp(4),dp(4),dp(4))}
+   val card=LinearLayout(this).apply{
+    orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(3),dp(5),dp(3),dp(4))
+    background=GradientDrawable().apply{setColor(if(index==0)Color.rgb(25,13,42) else ink);cornerRadius=dp(9).toFloat();setStroke(dp(if(index==0)2 else 1),if(index==0)purple else Color.rgb(35,31,42))}
+    isClickable=true;isFocusable=true
+   }
+   val image=ImageView(this).apply{
+    val art=giftArtwork(gift)
+    if(art!=0)setImageResource(art) else setImageDrawable(VectorIcon("gift",Color.rgb(244,205,255),dp(42)))
+    scaleType=ImageView.ScaleType.FIT_CENTER;contentDescription=gift.name
+   }
+   card.addView(image,LinearLayout.LayoutParams(-1,dp(76)))
+   card.addView(label(gift.name,11f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(24)))
+   val price=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+   price.addView(label(String.format(java.util.Locale.US,"%,d",gift.price),10f,muted),LinearLayout.LayoutParams(-2,dp(18)))
+   price.addView(label(" 🪙",10f,gold,true),LinearLayout.LayoutParams(-2,dp(18)))
+   card.addView(price)
+   card.setOnClickListener{updateSelection(gift)}
+   cards.add(card)
+   val params=android.widget.GridLayout.LayoutParams().apply{width=0;height=dp(132);columnSpec=android.widget.GridLayout.spec(index%4,1f);rowSpec=android.widget.GridLayout.spec(index/4);setMargins(dp(2),dp(3),dp(2),dp(3))}
    grid.addView(card,params)
   }
-  val scroll=ScrollView(this).apply{isFillViewport=true;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid)}
-  content.addView(scroll,LinearLayout.LayoutParams(-1,dp(350)))
-  val dialog=AlertDialog.Builder(this).setView(content).setNegativeButton("إغلاق",null).create()
-  dialog.show();dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.94f).toInt(),-2)
+  val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(grid,ScrollView.LayoutParams(-1,-2))}
+  root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+  root.addView(View(this).apply{setBackgroundColor(Color.rgb(43,35,51))},LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(8);bottomMargin=dp(8)})
+  val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  val send=TextView(this).apply{text="إرسال";textSize=15f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD;background=GradientDrawable().apply{setColor(purple);cornerRadius=dp(7).toFloat()}}
+  footer.addView(send,LinearLayout.LayoutParams(dp(92),dp(44)).apply{marginEnd=dp(8)})
+  val qtyBox=LinearLayout(this).apply{gravity=Gravity.CENTER;background=GradientDrawable().apply{setColor(Color.rgb(20,15,26));cornerRadius=dp(7).toFloat();setStroke(dp(1),purple)}}
+  val minus=TextView(this).apply{text="−";textSize=21f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
+  val qtyText=TextView(this).apply{text="1";textSize=15f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD}
+  val plus=TextView(this).apply{text="+";textSize=20f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
+  qtyBox.addView(minus,LinearLayout.LayoutParams(dp(34),dp(42)));qtyBox.addView(qtyText,LinearLayout.LayoutParams(dp(28),dp(42)));qtyBox.addView(plus,LinearLayout.LayoutParams(dp(34),dp(42)))
+  footer.addView(qtyBox,LinearLayout.LayoutParams(-2,dp(44)))
+  val total=label(selected.price.toString()+" 🪙",12f,gold,true).apply{gravity=Gravity.END or Gravity.CENTER_VERTICAL}
+  footer.addView(total,LinearLayout.LayoutParams(0,dp(44),1f).apply{marginStart=dp(8)})
+  fun refreshTotal(){total.text=String.format(java.util.Locale.US,"%,d",selected.price*quantity)+" 🪙";qtyText.text=quantity.toString()}
+  minus.setOnClickListener{if(quantity>1){quantity--;refreshTotal()}}
+  plus.setOnClickListener{if(quantity<99){quantity++;refreshTotal()}}
+  send.setOnClickListener{confirmGiftSend(selected,recipientId,recipientName,quantity)}
+  root.addView(footer)
+  val dialog=AlertDialog.Builder(this).setView(root).create()
+  dialog.show()
+  dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+  dialog.window?.setLayout(-1,(resources.displayMetrics.heightPixels*0.60f).toInt())
+  dialog.window?.setGravity(Gravity.BOTTOM)
+  dialog.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+  val lp=dialog.window?.attributes
+  if(lp!=null){lp.dimAmount=0.62f;dialog.window?.attributes=lp}
  }
  private fun showGiftQuantityDialog(gift:Gift,recipientId:String,recipientName:String){
   val quantityInput=EditText(this).apply{inputType=android.text.InputType.TYPE_CLASS_NUMBER;setText("1");gravity=Gravity.CENTER;textSize=20f;setTextColor(Color.WHITE);setSelectAllOnFocus(true);filters=arrayOf(android.text.InputFilter.LengthFilter(2));background=GradientDrawable().apply{cornerRadius=dp(12).toFloat();setColor(Color.rgb(55,43,67));setStroke(dp(1),Color.rgb(143,91,166))}}
