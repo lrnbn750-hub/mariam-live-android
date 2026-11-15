@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.widget.Toast
+import android.util.Log
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
@@ -27,7 +28,23 @@ class LevelActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.rgb(7, 15, 30)
         window.navigationBarColor = android.graphics.Color.rgb(7, 15, 30)
-        setContentView(R.layout.wealth_level_screen)
+        try {
+            setContentView(R.layout.wealth_level_screen)
+        } catch (error: Throwable) {
+            // Keep the app alive if Android cannot inflate the wealth screen or a custom view.
+            Log.e("BAKWealthLevel", "Failed to inflate wealth_level_screen", error)
+            val fallback = android.widget.TextView(this).apply {
+                text = "مستوى الثراء\n\nتعذر تحميل التصميم. حاول تحديث الصفحة."
+                textSize = 20f
+                setTextColor(android.graphics.Color.WHITE)
+                gravity = android.view.Gravity.CENTER
+                setBackgroundColor(android.graphics.Color.rgb(7, 15, 30))
+                setPadding(32, 32, 32, 32)
+                setOnClickListener { finish() }
+            }
+            setContentView(fallback)
+            return
+        }
 
         val toolbar = findViewById<View>(R.id.wealthToolbar)
         toolbar.setOnApplyWindowInsetsListener { view, insets ->
