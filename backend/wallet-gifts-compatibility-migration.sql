@@ -27,3 +27,16 @@ GRANT SELECT, INSERT, UPDATE ON public.wallet_accounts, public.wallet_transactio
   public.wallet_settings TO :"app_role";
 
 COMMIT;
+
+-- Revenue split explicitly approved for BAK LIVE:
+-- 50% creator/host, 50% platform. USD conversion is intentionally not seeded
+-- until the product owner confirms the value per gift unit.
+INSERT INTO public.wallet_settings(setting_key, setting_value, updated_at)
+VALUES (
+  'platform_share',
+  '{"creator_percent":50,"platform_percent":50}'::jsonb,
+  NOW()
+)
+ON CONFLICT (setting_key) DO UPDATE
+SET setting_value = EXCLUDED.setting_value,
+    updated_at = NOW();
