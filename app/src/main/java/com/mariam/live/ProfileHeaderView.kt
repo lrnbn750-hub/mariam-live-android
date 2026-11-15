@@ -45,7 +45,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
 
     /** Accepts the raw public ID only. The ID: prefix is provided by the XML label. */
     fun setUserIdText(rawUserId: String) {
-        userIdView.text = rawUserId.removePrefix("ID:").trim().ifBlank { "غير متوفر" }
+        userIdView.text = rawUserId.replace(Regex("^ID\\s*:?\\s*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "غير متوفر" }
     }
 
     fun setUserName(name: String) {
