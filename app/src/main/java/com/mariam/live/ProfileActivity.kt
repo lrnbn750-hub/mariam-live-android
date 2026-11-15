@@ -131,7 +131,8 @@ class ProfileActivity : Activity() {
 
         val profileRow=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
-            layoutDirection=View.LAYOUT_DIRECTION_RTL
+            // Keep identity on the left and avatar on the right, matching the reference.
+            layoutDirection=View.LAYOUT_DIRECTION_LTR
             setPadding(0,dp(12),0,dp(8))
         }
         val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
@@ -164,6 +165,7 @@ class ProfileActivity : Activity() {
             setOnClickListener{showEditProfile()}
         }
         avatarFrame.addView(avatarEdit,FrameLayout.LayoutParams(dp(30),dp(30),Gravity.BOTTOM or Gravity.END))
+        profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(116),dp(116)))
 
         val identity=LinearLayout(this).apply{
@@ -205,7 +207,6 @@ class ProfileActivity : Activity() {
         levelShortcutIcon=ImageView(this)
         levelShortcutCard=LinearLayout(this)
         identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4)})
-        profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(122)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
@@ -230,13 +231,14 @@ class ProfileActivity : Activity() {
                 text=title;textSize=11.5f;setTextColor(muted);gravity=Gravity.CENTER
             },LinearLayout.LayoutParams(-1,dp(25)))
         }
-        stats.addView(stat("—","الزوار"),LinearLayout.LayoutParams(0,dp(55),1f))
-        stats.addView(View(this).apply{setBackgroundColor(Color.rgb(239,241,244))},LinearLayout.LayoutParams(dp(1),dp(35)))
-        stats.addView(stat("0","الأصدقاء"),LinearLayout.LayoutParams(0,dp(55),1f))
+        // Visual order: visitors at far right, then friends, following, fans at left.
+        stats.addView(stat("0","المعجبون"){openFollowList("followers")},LinearLayout.LayoutParams(0,dp(55),1f))
         stats.addView(View(this).apply{setBackgroundColor(Color.rgb(239,241,244))},LinearLayout.LayoutParams(dp(1),dp(35)))
         stats.addView(stat("0","المتابَعون"){openFollowList("following")},LinearLayout.LayoutParams(0,dp(55),1f))
         stats.addView(View(this).apply{setBackgroundColor(Color.rgb(239,241,244))},LinearLayout.LayoutParams(dp(1),dp(35)))
-        stats.addView(stat("0","المعجبون"){openFollowList("followers")},LinearLayout.LayoutParams(0,dp(55),1f))
+        stats.addView(stat("0","الأصدقاء"),LinearLayout.LayoutParams(0,dp(55),1f))
+        stats.addView(View(this).apply{setBackgroundColor(Color.rgb(239,241,244))},LinearLayout.LayoutParams(dp(1),dp(35)))
+        stats.addView(stat("—","الزوار"),LinearLayout.LayoutParams(0,dp(55),1f))
         content.addView(stats,LinearLayout.LayoutParams(-1,-2))
 
         // Wallet balances are read from the existing API, not hard-coded.
@@ -275,7 +277,7 @@ class ProfileActivity : Activity() {
         // Coordinated colorful shortcuts inspired by the reference profile.
         // Events, tasks and cash-earning shortcuts remain intentionally absent.
         val shortcuts=GridLayout(this).apply{
-            columnCount=3;useDefaultMargins=false
+            columnCount=4;useDefaultMargins=false
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             background=shape(white,18);setPadding(dp(5),dp(10),dp(5),dp(10))
         }
@@ -324,14 +326,14 @@ class ProfileActivity : Activity() {
                     }
                 }
             }
-            cell.addView(iconBox,LinearLayout.LayoutParams(dp(64),dp(64)))
+            cell.addView(iconBox,LinearLayout.LayoutParams(dp(58),dp(58)))
             cell.addView(TextView(this@ProfileActivity).apply{
                 text=title;textSize=10.5f;setTextColor(ink);gravity=Gravity.CENTER
                 typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
                 maxLines=2
             },LinearLayout.LayoutParams(-1,dp(36)))
             val params=GridLayout.LayoutParams().apply{
-                width=0;height=dp(104)
+                width=0;height=dp(98)
                 columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f)
                 setMargins(dp(1),dp(2),dp(1),dp(2))
             }
