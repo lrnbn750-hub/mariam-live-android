@@ -131,8 +131,8 @@ class ProfileActivity : Activity() {
 
         val profileRow=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
-            // Keep identity on the left and avatar on the right, matching the reference.
-            layoutDirection=View.LAYOUT_DIRECTION_LTR
+            // RTL: avatar is the rightmost item; identity sits immediately to its left.
+            layoutDirection=View.LAYOUT_DIRECTION_RTL
             setPadding(0,dp(12),0,dp(8))
         }
         val avatarFrame=FrameLayout(this).apply{clipChildren=false;clipToPadding=false}
@@ -168,17 +168,17 @@ class ProfileActivity : Activity() {
         profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(116),dp(116)))
 
         val identity=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL
+            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL or Gravity.END
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             setPadding(dp(10),0,dp(4),0)
         }
         profileTitle=TextView(this).apply{
             text="جارٍ تحميل الاسم...";textSize=21f;setTextColor(ink)
             typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
-            gravity=Gravity.CENTER_VERTICAL
+            gravity=Gravity.CENTER_VERTICAL or Gravity.END
         }
         identity.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(36)))
-        val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+        val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         publicIdLabel=TextView(this).apply{
             text="ID: جارٍ التحميل";textSize=12.5f;setTextColor(Color.rgb(100,115,119))
         }
@@ -205,7 +205,7 @@ class ProfileActivity : Activity() {
         levelShortcutTitle=levelBadge
         levelShortcutIcon=ImageView(this)
         levelShortcutCard=LinearLayout(this)
-        identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4)})
+        identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4);gravity=Gravity.END})
         profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(122)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
