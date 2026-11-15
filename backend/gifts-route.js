@@ -94,9 +94,14 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       const creatorPercent = Number(config.platform_share && config.platform_share.creator_percent);
       const platformPercent = Number(config.platform_share && config.platform_share.platform_percent);
       if (![unitsPerGift, usdCentsPerUnit, creatorPercent, platformPercent].every(Number.isFinite) ||
+          !Number.isInteger(unitsPerGift) || !Number.isInteger(usdCentsPerUnit) ||
+          !Number.isInteger(creatorPercent) || !Number.isInteger(platformPercent) ||
           unitsPerGift <= 0 || usdCentsPerUnit <= 0 || creatorPercent < 0 || platformPercent < 0 ||
           creatorPercent + platformPercent !== 100) {
-        throw new Error("Invalid gift earnings settings");
+        await client.query("ROLLBACK");
+        return res.status(503).json({
+          error: "نظام أرباح الهدايا غير مهيأ. يجب ضبط إعدادات تحويل الماسات ونسبة المنصة قبل تفعيل الإرسال."
+        });
       }
       const totalCoins = BigInt(gift.price_coins) * BigInt(quantity);
       const units = BigInt(gift.gift_units) * BigInt(quantity);
@@ -112,16 +117,16 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
         [req.userId, recipientId]
       );
       const accounts = await client.query(
-        "SELECT user_id,recharge_coins FROM wallet_accounts WHERE user_id=ANY($1::uuid[]) ORDER BY user_id FOR UPDATE",
+        "SELECT user_id,diamonds_balance FROM wallet_accounts WHERE user_id=ANY($1::uuid[]) ORDER BY user_id FOR UPDATE",
         [[req.userId, recipientId]]
       );
       const sender = accounts.rows.find(row => String(row.user_id) === String(req.userId));
-      if (!sender || BigInt(sender.recharge_coins) < totalCoins) {
+      if (!sender || BigInt(sender.diamonds_balance) < totalCoins) {
         await client.query("ROLLBACK");
         return res.status(400).json({ error: "رصيد العملات غير كافٍ" });
       }
       await client.query(
-        "UPDATE wallet_accounts SET recharge_coins=recharge_coins-$2,updated_at=NOW() WHERE user_id=$1",
+        "UPDATE wallet_accounts SET diamonds_balance=diamonds_balance-$2,updated_at=NOW() WHERE user_id=$1",
         [req.userId, totalCoins.toString()]
       );
       await client.query(
@@ -141,12 +146,12 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
       );
       await client.query(
         `INSERT INTO wallet_transactions(user_id,transaction_type,amount,currency,status,event_key,related_user_id,metadata)
-         VALUES($1,'gift_sent',$2,'COIN','completed',$3,$4,$5)`,
+         VALUES($1,'gift_sent',$2,'diamonds','completed',$3,$4,$5)`,
         [req.userId,totalCoins.toString(),eventKey+":sender",recipientId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity})]
       );
       await client.query(
         `INSERT INTO wallet_transactions(user_id,transaction_type,amount,currency,status,event_key,related_user_id,metadata)
-         VALUES($1,'gift_received',$2,'DIAMOND','completed',$3,$4,$5)`,
+         VALUES($1,'gift_received',$2,'diamonds','completed',$3,$4,$5)`,
         [recipientId,diamonds.toString(),eventKey+":recipient",req.userId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity,creator_earnings_usd_cents:creatorCents.toString(),platform_share_usd_cents:platformCents.toString()})]
       );
       await client.query("COMMIT");
