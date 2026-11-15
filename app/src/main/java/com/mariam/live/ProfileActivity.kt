@@ -293,7 +293,7 @@ class ProfileActivity : Activity() {
                     "VIP"->Color.rgb(255,244,216)
                     "العائلة"->Color.rgb(239,231,255)
                     "مركز الوكالة"->Color.rgb(224,248,243)
-                    "مركز صناع المحتوى"->Color.rgb(225,244,255)
+                    "مركز المضيف"->Color.rgb(232,239,255)
                     else->Color.rgb(232,239,255)
                 }
                 background=shape(tileColor,15)
@@ -318,22 +318,22 @@ class ProfileActivity : Activity() {
             shortcuts.addView(cell,params)
         }
         // Six approved profile destinations. Noble and invitation center removed.
-        shortcut(R.drawable.ic_profile_appearance_color,"مظهري"){
+        shortcut(R.drawable.ic_profile_appearance_3d,"مظهري"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_store_color,"المتجر"){
+        shortcut(R.drawable.ic_profile_store_3d,"المتجر"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_vip_color,"VIP"){
+        shortcut(R.drawable.ic_profile_vip_3d,"VIP"){
             showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
         }
-        shortcut(R.drawable.ic_profile_family_color,"العائلة"){
+        shortcut(R.drawable.ic_profile_family_3d,"العائلة"){
             showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
         }
-        shortcut(R.drawable.ic_profile_creator_color,"مركز المضيف"){
+        shortcut(R.drawable.ic_profile_host_3d,"مركز المضيف"){
             startActivity(Intent(this,CreatorCenterActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_agency_color,"مركز الوكالة"){
+        shortcut(R.drawable.ic_profile_agency_3d,"مركز الوكالة"){
             showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
