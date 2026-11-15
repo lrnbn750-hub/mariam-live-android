@@ -201,6 +201,9 @@ class ProfileActivity : Activity() {
             setPadding(dp(10),dp(4),dp(10),dp(4))
             setOnClickListener{startActivity(Intent(this@ProfileActivity,LevelActivity::class.java))}
         }
+        levelShortcutTitle=levelBadge
+        levelShortcutIcon=ImageView(this)
+        levelShortcutCard=LinearLayout(this)
         identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4)})
         profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(122)))
@@ -308,7 +311,7 @@ class ProfileActivity : Activity() {
             cell.addView(iconBox,LinearLayout.LayoutParams(dp(62),dp(62)))
             cell.addView(TextView(this@ProfileActivity).apply{
                 text=title;textSize=10.5f;setTextColor(ink);gravity=Gravity.CENTER
-                typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.MEDIUM)
+                typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
                 maxLines=2
             },LinearLayout.LayoutParams(-1,dp(34)))
             val params=GridLayout.LayoutParams().apply{
