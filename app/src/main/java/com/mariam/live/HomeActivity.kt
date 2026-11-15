@@ -73,28 +73,19 @@ class HomeActivity : Activity() {
         startActivity(intent)
     }
 
+    private data class ProfileShortcut(
+        val title: String,
+        val icon: String,
+        val tileColor: Int,
+        val noble: Boolean = false
+    )
+
     private fun showProfile(scroll: ScrollView) {
         val profile = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(20), dp(24), dp(20), dp(30))
+            setPadding(dp(14), dp(14), dp(14), dp(28))
         }
-
-        profile.addView(text("الملف الشخصي", 24f, dark, true))
-
-        val subtitle = text("إدارة معلومات حسابك في Mariam Live", 13f, gray)
-        subtitle.setPadding(0, dp(6), 0, dp(22))
-        profile.addView(subtitle)
-
-        val avatar = TextView(this).apply {
-            text = "👤"
-            textSize = 42f
-            gravity = Gravity.CENTER
-            background = rounded(Color.rgb(235, 228, 255), 60)
-        }
-        val avatarParams = LinearLayout.LayoutParams(dp(100), dp(100))
-        avatarParams.gravity = Gravity.CENTER_HORIZONTAL
-        profile.addView(avatar, avatarParams)
 
         val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
         val displayName = EditText(this).apply {
@@ -102,26 +93,146 @@ class HomeActivity : Activity() {
             setSingleLine()
             setText(prefs.getString("profile_display_name", ""))
             textSize = 15f
+            setTextColor(dark)
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(Color.WHITE, 12)
+            background = rounded(Color.WHITE, 14)
         }
-        val nameParams = LinearLayout.LayoutParams(-1, dp(54))
-        nameParams.topMargin = dp(22)
-        profile.addView(displayName, nameParams)
-
         val bio = EditText(this).apply {
             hint = "نبذة عنك"
-            minLines = 3
-            maxLines = 4
+            minLines = 2
+            maxLines = 3
             gravity = Gravity.TOP or Gravity.RIGHT
             setText(prefs.getString("profile_bio", ""))
-            textSize = 15f
+            textSize = 14f
+            setTextColor(dark)
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(Color.WHITE, 12)
+            background = rounded(Color.WHITE, 14)
         }
-        val bioParams = LinearLayout.LayoutParams(-1, dp(110))
-        bioParams.topMargin = dp(12)
-        profile.addView(bio, bioParams)
+
+        // Profile header
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(218, 250, 241), Color.rgb(239, 249, 255))
+            ).apply { cornerRadius = dp(24).toFloat() }
+            setPadding(dp(16), dp(18), dp(16), dp(18))
+        }
+
+        val avatar = TextView(this).apply {
+            text = "👤"
+            textSize = 37f
+            gravity = Gravity.CENTER
+            background = rounded(Color.WHITE, 60)
+            elevation = dp(2).toFloat()
+        }
+        header.addView(avatar, LinearLayout.LayoutParams(dp(76), dp(76)))
+
+        val identity = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        identity.addView(text(
+            prefs.getString("profile_display_name", "")?.takeIf { it.isNotBlank() } ?: "ملفي الشخصي",
+            21f, dark, true
+        ))
+        identity.addView(text("BAK LIVE  •  حسابك الشخصي", 12f, gray).apply {
+            setPadding(0, dp(5), 0, 0)
+        })
+        header.addView(identity, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val editBadge = TextView(this).apply {
+            text = "✎"
+            textSize = 21f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(36, 190, 135), 30)
+        }
+        header.addView(editBadge, LinearLayout.LayoutParams(dp(38), dp(38)))
+        profile.addView(header)
+
+        // Profile shortcuts, ordered for right-to-left display to match the reference screen.
+        val shortcuts = listOf(
+            ProfileShortcut("Noble", "N", Color.rgb(239, 226, 255), true),
+            ProfileShortcut("VIP", "👑", Color.rgb(255, 242, 211)),
+            ProfileShortcut("المتجر", "🛍️", Color.rgb(255, 228, 244)),
+            ProfileShortcut("مظهري", "👕", Color.rgb(218, 247, 250)),
+            ProfileShortcut("العائلة", "🛡️", Color.rgb(239, 229, 255)),
+            ProfileShortcut("مركز صناع المحتوى", "🎤", Color.rgb(222, 244, 255)),
+            ProfileShortcut("مركز الوكالة", "👤", Color.rgb(224, 249, 242)),
+            ProfileShortcut("مركز الدعوات", "🎁", Color.rgb(255, 231, 247))
+        )
+
+        val shortcutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.WHITE, 22)
+            setPadding(dp(8), dp(14), dp(8), dp(12))
+        }
+        val shortcutTitle = text("مراكزك وخدماتك", 18f, dark, true)
+        shortcutTitle.setPadding(dp(8), 0, dp(8), dp(12))
+        shortcutCard.addView(shortcutTitle)
+
+        shortcuts.chunked(4).forEach { rowItems ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+            }
+            rowItems.forEach { item ->
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    isClickable = true
+                    isFocusable = true
+                    setPadding(dp(2), dp(5), dp(2), dp(7))
+                    background = rounded(Color.WHITE, 14)
+                }
+                val iconBox = TextView(this).apply {
+                    text = item.icon
+                    textSize = if (item.noble) 25f else 34f
+                    typeface = if (item.noble) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    gravity = Gravity.CENTER
+                    setTextColor(if (item.noble) Color.WHITE else dark)
+                    background = if (item.noble) {
+                        GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(Color.rgb(190, 117, 255), Color.rgb(111, 65, 214))
+                        ).apply { cornerRadius = dp(19).toFloat() }
+                    } else rounded(item.tileColor, 19)
+                    elevation = dp(2).toFloat()
+                }
+                tile.addView(iconBox, LinearLayout.LayoutParams(dp(64), dp(64)))
+                val label = text(item.title, 11.5f, dark, true).apply {
+                    gravity = Gravity.CENTER
+                    maxLines = 2
+                    setPadding(0, dp(7), 0, 0)
+                }
+                tile.addView(label, LinearLayout.LayoutParams(-1, dp(36)))
+                tile.setOnClickListener { showProfileShortcut(item.title) }
+                row.addView(tile, LinearLayout.LayoutParams(0, dp(112), 1f))
+            }
+            shortcutCard.addView(row)
+        }
+        val shortcutParams = LinearLayout.LayoutParams(-1, -2)
+        shortcutParams.topMargin = dp(16)
+        profile.addView(shortcutCard, shortcutParams)
+
+        // Edit profile section
+        val editCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.WHITE, 20)
+            setPadding(dp(15), dp(16), dp(15), dp(16))
+        }
+        editCard.addView(text("تعديل الملف الشخصي", 17f, dark, true))
+        displayName.hint = "الاسم الظاهر"
+        val nameParams = LinearLayout.LayoutParams(-1, dp(52))
+        nameParams.topMargin = dp(14)
+        editCard.addView(displayName, nameParams)
+        val bioParams = LinearLayout.LayoutParams(-1, dp(88))
+        bioParams.topMargin = dp(10)
+        editCard.addView(bio, bioParams)
 
         val save = TextView(this).apply {
             text = "حفظ التعديلات"
@@ -130,21 +241,16 @@ class HomeActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = gradient()
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setPadding(dp(16), dp(13), dp(16), dp(13))
         }
-        val saveParams = LinearLayout.LayoutParams(-1, dp(52))
-        saveParams.topMargin = dp(18)
-        profile.addView(save, saveParams)
-
+        val saveParams = LinearLayout.LayoutParams(-1, dp(50))
+        saveParams.topMargin = dp(14)
+        editCard.addView(save, saveParams)
         save.setOnClickListener {
             val nameValue = displayName.text.toString().trim()
             val bioValue = bio.text.toString().trim()
             if (nameValue.length > 30 || bioValue.length > 150) {
-                Toast.makeText(
-                    this,
-                    "الاسم بحد أقصى 30 حرفاً والنبذة 150 حرفاً",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(this, "الاسم بحد أقصى 30 حرفاً والنبذة 150 حرفاً", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
             prefs.edit()
@@ -153,21 +259,22 @@ class HomeActivity : Activity() {
                 .apply()
             Toast.makeText(this, "تم حفظ التعديلات على هذا الجهاز", Toast.LENGTH_SHORT).show()
         }
+        val editParams = LinearLayout.LayoutParams(-1, -2)
+        editParams.topMargin = dp(16)
+        profile.addView(editCard, editParams)
 
-        // تسجيل الخروج أسفل رابط/زر حفظ التعديلات مباشرة
         val logout = TextView(this).apply {
             text = "تسجيل الخروج"
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 45, 65))
-            background = rounded(Color.rgb(255, 235, 239), 12)
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = rounded(Color.rgb(255, 235, 239), 14)
+            setPadding(dp(16), dp(13), dp(16), dp(13))
         }
-        val logoutParams = LinearLayout.LayoutParams(-1, dp(52))
+        val logoutParams = LinearLayout.LayoutParams(-1, dp(50))
         logoutParams.topMargin = dp(12)
         profile.addView(logout, logoutParams)
-
         logout.setOnClickListener {
             android.app.AlertDialog.Builder(this)
                 .setTitle("تسجيل الخروج")
@@ -180,6 +287,19 @@ class HomeActivity : Activity() {
         scroll.removeAllViews()
         scroll.addView(profile)
         scroll.smoothScrollTo(0, 0)
+    }
+
+    private fun showProfileShortcut(title: String) {
+        val message = if (title == "VIP") {
+            "قسم VIP تمت إضافته إلى الملف الشخصي. الاشتراك والدفع يحتاجان ربطاً مستقلاً قبل تفعيل الشراء."
+        } else {
+            "تمت إضافة اختصار $title إلى الملف الشخصي. ربط وظائف هذا القسم يتم عند تجهيز خدمته."
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(if (title == "VIP") "👑 عضوية VIP" else title)
+            .setMessage(message)
+            .setPositiveButton("حسناً", null)
+            .show()
     }
 
     private fun performLogout() {
