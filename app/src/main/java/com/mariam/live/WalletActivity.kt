@@ -93,28 +93,30 @@ class WalletActivity:Activity(){
   content.removeAllViews()
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(20),dp(20),dp(20),dp(20));background=shape(intArrayOf(Color.rgb(93,38,130),Color.rgb(43,25,62)),Color.rgb(157,89,194),24)}
   val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-  top.addView(label("رصيد العملات",13f,Color.rgb(232,213,245),true),LinearLayout.LayoutParams(0,dp(28),1f))
+  top.addView(label("رصيد الأرباح",13f,Color.rgb(232,213,245),true),LinearLayout.LayoutParams(0,dp(28),1f))
   top.addView(label("BAK LIVE  •  WALLET",9f,Color.rgb(218,190,233),true))
   hero.addView(top)
-  hero.addView(label(String.format("%,d",wallet.optLong("diamonds_balance")),36f,mint,true),LinearLayout.LayoutParams(-1,dp(58)))
-  hero.addView(label("العملات المتاحة لإرسال الهدايا",12f,Color.rgb(228,211,239),true))
+  hero.addView(label("$"+money(wallet.optLong("withdrawable_usd_cents")),36f,mint,true),LinearLayout.LayoutParams(-1,dp(58)))
+  hero.addView(label("الرصيد المتاح للسحب",12f,Color.rgb(228,211,239),true))
   val divider=View(this).apply{setBackgroundColor(Color.rgb(112,73,137))}
   hero.addView(divider,LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(16);bottomMargin=dp(13)})
   val sub=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
   val reserved=LinearLayout(this).apply{orientation=1}
-  reserved.addView(label("نوع الرصيد",11f,Color.rgb(211,190,225)))
-  reserved.addView(label("عملات الشحن",16f,Color.WHITE,true))
+  reserved.addView(label("المبلغ المحجوز",11f,Color.rgb(211,190,225)))
+  reserved.addView(label("$"+money(wallet.optLong("reserved_usd_cents")),16f,Color.WHITE,true))
   val lifetime=LinearLayout(this).apply{orientation=1;gravity=Gravity.END}
-  lifetime.addView(label("الاستخدام",11f,Color.rgb(211,190,225)))
-  lifetime.addView(label("إرسال الهدايا",16f,Color.WHITE,true))
+  lifetime.addView(label("إجمالي الأرباح",11f,Color.rgb(211,190,225)))
+  lifetime.addView(label("$"+money(wallet.optLong("lifetime_earned_usd_cents")),16f,Color.WHITE,true))
   sub.addView(reserved,LinearLayout.LayoutParams(0,-2,1f));sub.addView(lifetime,LinearLayout.LayoutParams(0,-2,1f))
   hero.addView(sub)
   content.addView(hero,LinearLayout.LayoutParams(-1,-2))
   val balances=LinearLayout(this).apply{orientation=0}
-  balances.addView(smallBalance("عملات الشحن",String.format("%,d",wallet.optLong("diamonds_balance")),"🪙",gold),LinearLayout.LayoutParams(-1,-2))
+  balances.addView(smallBalance("عملات الشحن",String.format("%,d",wallet.optLong("recharge_coins")),"🪙",gold),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(6)})
+  balances.addView(smallBalance("الألماس المكتسب",String.format("%,d",wallet.optLong("earned_diamonds")),"💎",Color.rgb(116,203,255)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(6)})
   content.addView(balances,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
   val buttons=LinearLayout(this).apply{orientation=0}
-  buttons.addView(actionButton("سجل عمليات الشحن",{showHistory()},false),LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(14)})
+  buttons.addView(actionButton("سحب الأرباح",{showWithdrawal()}),LinearLayout.LayoutParams(0,dp(52),1f).apply{marginEnd=dp(6);topMargin=dp(14)})
+  buttons.addView(actionButton("سجل العمليات",{showHistory()},false),LinearLayout.LayoutParams(0,dp(52),1f).apply{marginStart=dp(6);topMargin=dp(14)})
   content.addView(buttons)
   section("باقات شحن العملات","اختر الباقة المناسبة لك")
   if(packages.length()==0){
