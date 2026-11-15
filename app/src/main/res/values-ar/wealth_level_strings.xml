@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wealth_screen_title">مستوى الثراء</string>
+    <string name="wealth_caption">رتبة الثراء • WEALTH RANK</string>
+    <string name="wealth_rank_format">رتبة %1$s</string>
+    <string name="wealth_xp_format">إجمالي نقاط الخبرة • %1$s XP</string>
+    <string name="wealth_progress_label">التقدم للمستوى التالي</string>
+    <string name="wealth_remaining_format">باقي %1$s XP للوصول إلى LV %2$d</string>
+    <string name="wealth_max_reached">وصلت إلى أعلى رتبة في BAK LIVE</string>
+    <string name="wealth_path_title">مسار الرتب</string>
+    <string name="wealth_path_count">%1$d مراحل</string>
+    <string name="wealth_path_subtitle">كل مرحلة تفتح هوية ومكانة جديدة لحسابك</string>
+    <string name="wealth_status_done">مكتملة</string>
+    <string name="wealth_status_current">رتبتك الحالية</string>
+    <string name="wealth_status_locked">مقفلة</string>
+</resources>
