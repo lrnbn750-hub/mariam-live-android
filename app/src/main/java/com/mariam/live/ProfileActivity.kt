@@ -289,13 +289,13 @@ class ProfileActivity : Activity() {
             val iconBox=FrameLayout(this@ProfileActivity).apply{
                 val tileColor=when(title){
                     "مظهري"->Color.rgb(220,247,250)
-                    "المحفظة"->Color.rgb(255,230,244)
+                    "المتجر"->Color.rgb(255,230,244)
                     "VIP"->Color.rgb(255,244,216)
+                    "Noble"->Color.rgb(239,231,255)
                     "العائلة"->Color.rgb(239,231,255)
                     "مركز الدعوات"->Color.rgb(249,229,248)
+                    "مركز الوكالة"->Color.rgb(224,248,243)
                     "مركز صناع المحتوى"->Color.rgb(225,244,255)
-                    "المستوى"->Color.rgb(255,244,220)
-                    "الدعم"->Color.rgb(224,248,243)
                     else->Color.rgb(232,239,255)
                 }
                 background=shape(tileColor,15)
@@ -319,34 +319,30 @@ class ProfileActivity : Activity() {
             }
             shortcuts.addView(cell,params)
         }
+        // Keep the exact eight profile destinations shown in the reference design.
         shortcut(R.drawable.ic_profile_appearance_color,"مظهري"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_store_color,"المحفظة"){
-            startActivity(Intent(this,WalletActivity::class.java))
+        shortcut(R.drawable.ic_profile_store_color,"المتجر"){
+            startActivity(Intent(this,InventoryActivity::class.java))
         }
         shortcut(R.drawable.ic_profile_vip_color,"VIP"){
             showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
         }
+        shortcut(R.drawable.ic_profile_noble_color,"Noble"){
+            showInfo("Noble - تمت إضافة مركز Noble إلى الملف الشخصي، وسيتم ربط نظام الرتب ومزاياه لاحقاً")
+        }
         shortcut(R.drawable.ic_profile_family_color,"العائلة"){
             showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
-        }
-        shortcut(R.drawable.ic_profile_invites_color,"مركز الدعوات"){
-            showInfo("مركز الدعوات")
         }
         shortcut(R.drawable.ic_profile_creator_color,"مركز صناع المحتوى"){
             startActivity(Intent(this,CreatorCenterActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_level_color,"المستوى"){
-            startActivity(Intent(this,LevelActivity::class.java))
+        shortcut(R.drawable.ic_profile_agency_color,"مركز الوكالة"){
+            showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
         }
-        shortcut(R.drawable.ic_profile_help_color,"الدعم"){
-            android.app.AlertDialog.Builder(this).setTitle("المساعدة والدعم")
-                .setMessage("نحن هنا لمساعدتك في استخدام BAK LIVE.")
-                .setPositiveButton("حسناً",null).show()
-        }
-        shortcut(R.drawable.ic_profile_security_color,"الأمان"){
-            startActivity(Intent(this,AccountSecurityActivity::class.java))
+        shortcut(R.drawable.ic_profile_invites_color,"مركز الدعوات"){
+            showInfo("مركز الدعوات")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
             setMargins(dp(14),dp(2),dp(14),dp(14))
