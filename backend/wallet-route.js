@@ -17,7 +17,7 @@ module.exports = function registerWalletRoutes(app, db, authenticateToken) {
         [req.userId]
       );
       const result = await db.query(
-        "SELECT diamonds_balance, earnings_iqd, updated_at FROM wallet_accounts WHERE user_id=$1",
+        "SELECT diamonds_balance, earnings_iqd, earned_diamonds, withdrawable_usd_cents, lifetime_earned_usd_cents, updated_at FROM wallet_accounts WHERE user_id=$1",
         [req.userId]
       );
       res.json({
