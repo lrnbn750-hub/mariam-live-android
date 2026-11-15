@@ -361,7 +361,7 @@ class ProfileActivity : Activity() {
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         setContentView(root)
 
-        loadProfile(TextView(this).also{it.tag="profile_id";idViewRef=it})
+        loadProfile(profileHeader.userIdView)
         loadLevelProgress()
         loadFollowStats()
         executor.execute{
