@@ -13,6 +13,7 @@ import android.net.Uri
 import android.util.Base64
 import android.view.Gravity
 import android.view.View
+import android.util.Log
 import android.widget.*
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -125,7 +126,12 @@ class ProfileActivity : Activity() {
             }
         }
         profileHeader.levelView.setOnClickListener{
-            startActivity(Intent(this,LevelActivity::class.java))
+            try {
+                startActivity(Intent(this,LevelActivity::class.java))
+            } catch (error: Throwable) {
+                Log.e("BAKWealthLevel", "Unable to launch LevelActivity", error)
+                Toast.makeText(this, "تعذر فتح صفحة مستوى الثراء", Toast.LENGTH_LONG).show()
+            }
         }
         profileHeader.settingsView.setOnClickListener{
             startActivity(Intent(this,AccountSecurityActivity::class.java))
