@@ -279,7 +279,7 @@ class ProfileActivity : Activity() {
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             background=shape(white,18);setPadding(dp(5),dp(10),dp(5),dp(10))
         }
-        fun shortcut(icon:Int,title:String,click:()->Unit){
+        fun shortcut(iconFile:String,title:String,click:()->Unit){
             val cell=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
                 layoutDirection=View.LAYOUT_DIRECTION_LTR
@@ -298,7 +298,13 @@ class ProfileActivity : Activity() {
                 }
                 background=shape(tileColor,15)
                 addView(ImageView(this@ProfileActivity).apply{
-                    setImageResource(icon)
+                    try {
+                        assets.open("profile-icons/$iconFile").use { stream ->
+                            setImageBitmap(BitmapFactory.decodeStream(stream))
+                        }
+                    } catch (_:Exception) {
+                        setImageDrawable(null)
+                    }
                     scaleType=ImageView.ScaleType.FIT_CENTER
                     setPadding(dp(3),dp(3),dp(3),dp(3))
                     contentDescription=title
@@ -318,22 +324,22 @@ class ProfileActivity : Activity() {
             shortcuts.addView(cell,params)
         }
         // Six approved profile destinations. Noble and invitation center removed.
-        shortcut(R.drawable.ic_profile_appearance_v2,"مظهري"){
+        shortcut("1-appearance.png","مظهري"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_store_v2,"المتجر"){
+        shortcut("2-store.png","المتجر"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_vip_v2,"VIP"){
+        shortcut("3-vip.png","VIP"){
             showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
         }
-        shortcut(R.drawable.ic_profile_family_v2,"العائلة"){
+        shortcut("4-family.png","العائلة"){
             showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
         }
-        shortcut(R.drawable.ic_profile_host_v2,"مركز المضيف"){
+        shortcut("5-host-center.png","مركز المضيف"){
             startActivity(Intent(this,CreatorCenterActivity::class.java))
         }
-        shortcut(R.drawable.ic_profile_agency_v2,"مركز الوكالة"){
+        shortcut("6-agency-center.png","مركز الوكالة"){
             showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
