@@ -297,18 +297,32 @@ class ProfileActivity : Activity() {
                     else->Color.rgb(232,239,255)
                 }
                 background=shape(tileColor,15)
-                addView(ImageView(this@ProfileActivity).apply{
-                    try {
-                        assets.open("profile-icons/$iconFile").use { stream ->
-                            setImageBitmap(BitmapFactory.decodeStream(stream))
-                        }
-                    } catch (_:Exception) {
-                        setImageDrawable(null)
-                    }
+                val iconView=ImageView(this@ProfileActivity).apply{
                     scaleType=ImageView.ScaleType.FIT_CENTER
                     setPadding(dp(3),dp(3),dp(3),dp(3))
                     contentDescription=title
-                },FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+                    // Decode the original 2048px PNG off the UI thread at display size.
+                    // This keeps the source PNG untouched while avoiding large bitmaps and scroll jank.
+                }
+                addView(iconView,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+                executor.execute{
+                    try{
+                        val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
+                        assets.open("profile-icons/$iconFile").use{BitmapFactory.decodeStream(it,null,bounds)}
+                        val targetPx=dp(180)
+                        var sample=1
+                        while(bounds.outWidth/(sample*2)>=targetPx && bounds.outHeight/(sample*2)>=targetPx)sample*=2
+                        val options=BitmapFactory.Options().apply{inSampleSize=sample.coerceAtLeast(1);inPreferredConfig=Bitmap.Config.ARGB_8888}
+                        val bitmap=assets.open("profile-icons/$iconFile").use{BitmapFactory.decodeStream(it,null,options)}
+                        if(bitmap!=null){
+                            runOnUiThread{
+                                if(!isFinishing && !isDestroyed)iconView.setImageBitmap(bitmap) else bitmap.recycle()
+                            }
+                        }
+                    }catch(e:Exception){
+                        android.util.Log.w("ProfileIcons","Could not load $iconFile",e)
+                    }
+                }
             }
             cell.addView(iconBox,LinearLayout.LayoutParams(dp(64),dp(64)))
             cell.addView(TextView(this@ProfileActivity).apply{
