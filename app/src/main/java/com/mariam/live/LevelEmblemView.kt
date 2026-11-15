@@ -11,6 +11,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import android.view.animation.LinearInterpolator
 import kotlin.math.cos
@@ -136,6 +137,20 @@ class LevelEmblemView @JvmOverloads constructor(
     }
     override fun onDraw(canvas: Canvas) {
         val r = min(width, height) / 2f * 0.60f
-        painter.draw(canvas, width / 2f, height / 2f, r, level, locked, true, rotation0)
+        try {
+            painter.draw(canvas, width / 2f, height / 2f, r, level, locked, true, rotation0)
+        } catch (error: Throwable) {
+            // A drawing defect must not crash the host Activity.
+            Log.e("BAKWealthLevel", "Medal drawing failed for level=$level", error)
+            val fallbackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = LevelTiers.ALL[LevelTiers.indexOf(level)].ringB
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(width / 2f, height / 2f, r * 0.82f, fallbackPaint)
+            fallbackPaint.color = android.graphics.Color.WHITE
+            fallbackPaint.textAlign = Paint.Align.CENTER
+            fallbackPaint.textSize = r * 0.65f
+            canvas.drawText(level.toString(), width / 2f, height / 2f + r * 0.22f, fallbackPaint)
+        }
     }
 }
