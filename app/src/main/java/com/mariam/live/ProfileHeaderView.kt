@@ -1,0 +1,61 @@
+package com.mariam.live
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+
+/**
+ * Dedicated profile header. Layout direction is fixed LTR for stable avatar placement;
+ * Arabic text views keep their own RTL content direction.
+ */
+class ProfileHeaderView(context: Context) : LinearLayout(context) {
+    val avatarView: ImageView
+    val editAvatarView: ImageView
+    val nameView: TextView
+    val userIdView: TextView
+    val levelView: TextView
+    val copyView: ImageView
+    val fansCountView: TextView
+    val followingCountView: TextView
+    val fansCell: View
+    val followingCell: View
+    val settingsView: TextView
+    val supportView: TextView
+
+    init {
+        orientation = VERTICAL
+        layoutDirection = View.LAYOUT_DIRECTION_LTR
+        LayoutInflater.from(context).inflate(R.layout.view_profile_header, this, true)
+        avatarView = findViewById(R.id.profileHeaderAvatar)
+        editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
+        nameView = findViewById(R.id.profileHeaderName)
+        userIdView = findViewById(R.id.profileHeaderUserId)
+        levelView = findViewById(R.id.profileHeaderLevel)
+        copyView = findViewById(R.id.profileHeaderCopy)
+        fansCountView = findViewById(R.id.profileHeaderFansCount)
+        followingCountView = findViewById(R.id.profileHeaderFollowingCount)
+        fansCell = findViewById(R.id.profileHeaderFansCell)
+        followingCell = findViewById(R.id.profileHeaderFollowingCell)
+        settingsView = findViewById(R.id.profileHeaderSettings)
+        supportView = findViewById(R.id.profileHeaderSupport)
+    }
+
+    /** Accepts the raw public ID only. The ID: prefix is provided by the XML label. */
+    fun setUserIdText(rawUserId: String) {
+        userIdView.text = rawUserId.removePrefix("ID:").trim().ifBlank { "غير متوفر" }
+    }
+
+    fun setUserName(name: String) {
+        nameView.text = name.ifBlank { "مستخدم BAK LIVE" }
+    }
+
+    fun setLevelText(level: Int) {
+        levelView.text = "LV ${level.coerceIn(1, 100)}"
+    }
+
+    fun setFansCount(value: String) { fansCountView.text = value }
+    fun setFollowingCount(value: String) { followingCountView.text = value }
+}

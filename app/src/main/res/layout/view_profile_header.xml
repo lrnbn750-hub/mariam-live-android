@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileHeaderRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/profile_header_background"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:id="@+id/profileHeaderTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <TextView
+            android:id="@+id/profileHeaderSupport"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="♫"
+            android:textColor="#304B4C"
+            android:textSize="22sp"
+            android:contentDescription="المساعدة والدعم" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/profileHeaderSettings"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="⚙"
+            android:textColor="#304B4C"
+            android:textSize="23sp"
+            android:contentDescription="إعدادات الحساب" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderIdentityRow"
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <LinearLayout
+            android:id="@+id/profileHeaderIdentity"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="end|center_vertical"
+            android:layoutDirection="ltr"
+            android:layout_marginEnd="14dp">
+
+            <TextView
+                android:id="@+id/profileHeaderName"
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
+                android:gravity="end|center_vertical"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:text="جارٍ تحميل الاسم..."
+                android:textColor="#262B34"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/profileHeaderIdRow"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layoutDirection="ltr">
+
+                <ImageView
+                    android:id="@+id/profileHeaderCopy"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:src="@drawable/ic_profile_copy"
+                    android:contentDescription="نسخ رقم الحساب"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:text="ID:"
+                    android:textColor="#647377"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/profileHeaderUserId"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:text="..."
+                    android:textColor="#647377"
+                    android:textDirection="ltr"
+                    android:textSize="12sp"
+                    android:singleLine="true" />
+
+                <TextView
+                    android:id="@+id/profileHeaderLevel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="7dp"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:gravity="center"
+                    android:background="@drawable/profile_header_level_badge"
+                    android:text="LV 1"
+                    android:textColor="#534E3A"
+                    android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/profileHeaderAvatarSlot"
+            android:layout_width="64dp"
+            android:layout_height="64dp">
+
+            <ImageView
+                android:id="@+id/profileHeaderAvatar"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:background="@drawable/profile_header_avatar_circle"
+                android:clipToOutline="true"
+                android:contentDescription="الصورة الشخصية" />
+
+            <ImageView
+                android:id="@+id/profileHeaderEditAvatar"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="bottom|start"
+                android:background="@drawable/profile_header_edit_badge"
+                android:padding="4dp"
+                android:src="@drawable/ic_profile_edit"
+                android:tint="#FFFFFF"
+                android:contentDescription="تعديل الصورة الشخصية" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="12dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layoutDirection="ltr"
+        android:background="@android:color/transparent">
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFansCell"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="المعجبون" android:textColor="#8B919D" android:textSize="11sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFollowingCell"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFollowingCount" android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="المتابَعون" android:textColor="#8B919D" android:textSize="11sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="الأصدقاء" android:textColor="#8B919D" android:textSize="11sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="—" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="الزوار" android:textColor="#8B919D" android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
