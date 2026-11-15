@@ -105,7 +105,7 @@ class ProfileActivity : Activity() {
         val hero=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
             layoutDirection=View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(18),dp(8),dp(18),dp(34))
+            setPadding(dp(18),dp(8),dp(18),dp(22))
             background=gradient(intArrayOf(Color.rgb(218,248,241),Color.rgb(237,251,247),Color.rgb(247,250,250)),0)
         }
         val topBar=LinearLayout(this).apply{
@@ -145,16 +145,15 @@ class ProfileActivity : Activity() {
             })
             contentDescription="الصورة الشخصية"
         }
-        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(64),dp(64),Gravity.CENTER))
+        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(72),dp(72),Gravity.CENTER))
         avatarRing=View(this).apply{
             background=android.graphics.drawable.GradientDrawable().apply{
                 shape=android.graphics.drawable.GradientDrawable.OVAL
                 setColor(Color.TRANSPARENT);setStroke(dp(2),white)
             }
         }
-        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
-        royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
-        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(80),dp(80),Gravity.CENTER))
+        // Profile header intentionally uses a clean circular avatar without decorative frames.
+        // Equipped animated frames are not rendered on this profile header.
         val avatarEdit=TextView(this).apply{
             text="✎";textSize=12f;setTextColor(white);gravity=Gravity.CENTER
             background=android.graphics.drawable.GradientDrawable().apply{
@@ -169,7 +168,7 @@ class ProfileActivity : Activity() {
         val identity=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT
             layoutDirection=View.LAYOUT_DIRECTION_LTR
-            setPadding(dp(8),0,dp(24),0)
+            setPadding(dp(8),0,dp(8),0)
         }
         profileTitle=TextView(this).apply{
             text="جارٍ تحميل الاسم...";textSize=19f;setTextColor(ink)
@@ -206,8 +205,8 @@ class ProfileActivity : Activity() {
         levelShortcutCard=LinearLayout(this)
         identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(23)).apply{topMargin=dp(8);gravity=Gravity.RIGHT})
         profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
-        profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(92),dp(92)))
-        hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(116)))
+        profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(80),dp(80)))
+        hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(92)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         // Four compact social counters.
@@ -482,7 +481,7 @@ class ProfileActivity : Activity() {
                 }
             }catch(e:Exception){android.util.Log.e("BAKProfile","Could not load wallet preview",e)}
         }
-        loadRoyalFrameState()
+        // Keep profile header lightweight: do not fetch or animate inventory frames here.
     }
 
     private fun loadFollowStats(){
@@ -617,7 +616,7 @@ class ProfileActivity : Activity() {
 
     override fun onResume(){
         super.onResume()
-        if(::frameToggle.isInitialized) loadRoyalFrameState()
+        // Profile screen does not render equipped decorative frames.
         if(::followingCountView.isInitialized) loadFollowStats()
     }
 
@@ -671,9 +670,8 @@ class ProfileActivity : Activity() {
 
     private fun renderRoyalFrameState(){
         if(royalFrameEquipped){
-            avatarRing.visibility=View.GONE
-            royalFrame.visibility=View.VISIBLE
-            royalFrame.startAnimation()
+            avatarRing.visibility=View.VISIBLE
+            royalFrame.visibility=View.GONE
             frameToggle.text="إيقاف الإطار  ◉"
             frameToggle.setTextColor(Color.rgb(190,48,65))
         }else{
@@ -946,7 +944,7 @@ class ProfileActivity : Activity() {
         })
         finish()
     }
-    override fun onDestroy(){royalFrame.stopAnimation();executor.shutdownNow();super.onDestroy()}
+    override fun onDestroy(){executor.shutdownNow();super.onDestroy()}
 }
 
 class RoyalGifFrame(context:android.content.Context):View(context){
