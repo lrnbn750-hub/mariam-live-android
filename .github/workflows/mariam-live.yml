@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/mariam-live-development
+      - feature/bak-live-wealth-level-redesign
 
 jobs:
   build:
