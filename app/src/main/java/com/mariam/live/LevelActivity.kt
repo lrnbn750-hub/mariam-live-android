@@ -49,7 +49,7 @@ class LevelActivity : Activity() {
         val back = text("‹", 36f); bar.addView(back, LinearLayout.LayoutParams(dp(48), dp(48))); back.setOnClickListener { finish() }
         bar.addView(text("مستوى الثراء", 19f, Color.WHITE, true), LinearLayout.LayoutParams(0, dp(48), 1f))
         bar.addView(View(this), LinearLayout.LayoutParams(dp(48), dp(48))); page.addView(bar)
-        val scroll = ScrollView(this).apply { fillViewport = true; clipToPadding = false; overScrollMode = View.OVER_SCROLL_NEVER }
+        val scroll = ScrollView(this).apply { setFillViewport(true); clipToPadding = false; overScrollMode = View.OVER_SCROLL_NEVER }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(30)) }
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(20), dp(22), dp(20), dp(22)); background = cardBackground() }
         hero.addView(text("WEALTH RANK  •  رتبة الثراء", 12f, 0xFFD5C9E8.toInt(), true))
