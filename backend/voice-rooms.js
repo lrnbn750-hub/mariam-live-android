@@ -53,6 +53,64 @@ module.exports = (app, db, authenticateToken) => {
   });
 
 
+  // Update the room background. Only the room owner may change it.
+  app.put("/api/voice-rooms/:roomId/background", authenticateToken, async (req, res) => {
+    let savedPath = null;
+    try {
+      const roomId = String(req.params.roomId || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(roomId)) {
+        return res.status(400).json({ error: "Invalid room ID" });
+      }
+      const room = await db.query(
+        "SELECT owner_id FROM voice_rooms WHERE id=$1 AND status='active' LIMIT 1",
+        [roomId]
+      );
+      if (!room.rows.length) return res.status(404).json({ error: "Room not found" });
+      if (String(room.rows[0].owner_id) !== String(req.userId)) {
+        return res.status(403).json({ error: "Only the room owner can change the background" });
+      }
+
+      const encoded = String(req.body && req.body.background_base64 || "");
+      if (!encoded || encoded.length > 6 * 1024 * 1024) {
+        return res.status(413).json({ error: "Background image must be 4 MB or smaller" });
+      }
+      const buffer = Buffer.from(encoded, "base64");
+      const mime = String(req.body && req.body.image_mime || "image/jpeg");
+      const valid = mime === "image/jpeg"
+        ? buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+        : mime === "image/png"
+          ? buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+          : mime === "image/webp"
+            ? buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP"
+            : false;
+      if (!valid || buffer.length > 4 * 1024 * 1024) {
+        return res.status(400).json({ error: "Choose a valid JPG, PNG or WebP image up to 4 MB" });
+      }
+
+      const fs = require("fs/promises");
+      const path = require("path");
+      const crypto = require("crypto");
+      const directory = "/opt/mariam-live/uploads/rooms";
+      await fs.mkdir(directory, { recursive: true, mode: 0o750 });
+      const extension = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
+      const filename = crypto.randomUUID() + "-background." + extension;
+      savedPath = path.join(directory, filename);
+      await fs.writeFile(savedPath, buffer, { flag: "wx", mode: 0o640 });
+      const backgroundUrl = "https://nokiraq.duckdns.org/uploads/rooms/" + filename;
+      await db.query(
+        "UPDATE voice_rooms SET room_background_url=$2 WHERE id=$1 AND owner_id=$3",
+        [roomId, backgroundUrl, req.userId]
+      );
+      return res.json({ message: "Room background updated", background_url: backgroundUrl });
+    } catch (error) {
+      if (savedPath) {
+        try { await require("fs/promises").unlink(savedPath); } catch (_) {}
+      }
+      console.error("Update room background:", error.message);
+      return res.status(500).json({ error: "Could not update room background" });
+    }
+  });
+
   // Create a room with a required, validated image selected by the owner.
   app.post("/api/voice-rooms", authenticateToken, async (req, res) => {
     let savedFile = null;
