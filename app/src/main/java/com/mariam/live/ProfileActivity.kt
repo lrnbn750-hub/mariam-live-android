@@ -272,7 +272,8 @@ class ProfileActivity : Activity() {
         balances.addView(diamondsCard,LinearLayout.LayoutParams(0,dp(78),1f).apply{marginStart=dp(5)})
         content.addView(balances,LinearLayout.LayoutParams(-1,-2))
 
-        // Keep the requested removals: no Events, VIP, Tasks or Earn Money entries.
+        // Coordinated colorful shortcuts inspired by the reference profile.
+        // Events, tasks and cash-earning shortcuts remain intentionally absent.
         val shortcuts=GridLayout(this).apply{
             columnCount=4;useDefaultMargins=false
             layoutDirection=View.LAYOUT_DIRECTION_RTL
@@ -282,57 +283,71 @@ class ProfileActivity : Activity() {
             val cell=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
                 layoutDirection=View.LAYOUT_DIRECTION_LTR
-                isClickable=true;setOnClickListener{click()}
+                isClickable=true;isFocusable=true;setOnClickListener{click()}
                 setPadding(dp(2),dp(5),dp(2),dp(5))
             }
             val iconBox=FrameLayout(this@ProfileActivity).apply{
                 val tileColor=when(title){
-                    "مظهري"->Color.rgb(222,247,250)
+                    "مظهري"->Color.rgb(220,247,250)
                     "المحفظة"->Color.rgb(255,230,244)
+                    "VIP"->Color.rgb(255,244,216)
                     "العائلة"->Color.rgb(239,231,255)
+                    "مركز الدعوات"->Color.rgb(249,229,248)
                     "مركز صناع المحتوى"->Color.rgb(225,244,255)
                     "المستوى"->Color.rgb(255,244,220)
-                    else->Color.rgb(239,233,255)
+                    "الدعم"->Color.rgb(224,248,243)
+                    else->Color.rgb(232,239,255)
                 }
-                background=shape(tileColor,13)
+                background=shape(tileColor,15)
                 addView(ImageView(this@ProfileActivity).apply{
                     setImageResource(icon)
-                    setColorFilter(when(title){
-                        "العائلة"->Color.rgb(145,94,225)
-                        "المستوى"->Color.rgb(227,160,42)
-                        "المحفظة"->Color.rgb(231,91,159)
-                        else->Color.rgb(57,153,179)
-                    },android.graphics.PorterDuff.Mode.SRC_IN)
-                    scaleType=ImageView.ScaleType.CENTER_INSIDE
-                    setPadding(dp(10),dp(10),dp(10),dp(10))
+                    scaleType=ImageView.ScaleType.FIT_CENTER
+                    setPadding(dp(3),dp(3),dp(3),dp(3))
                     contentDescription=title
-                },FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
+                },FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
             }
-            cell.addView(iconBox,LinearLayout.LayoutParams(dp(62),dp(62)))
+            cell.addView(iconBox,LinearLayout.LayoutParams(dp(64),dp(64)))
             cell.addView(TextView(this@ProfileActivity).apply{
                 text=title;textSize=10.5f;setTextColor(ink);gravity=Gravity.CENTER
                 typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
                 maxLines=2
-            },LinearLayout.LayoutParams(-1,dp(34)))
+            },LinearLayout.LayoutParams(-1,dp(36)))
             val params=GridLayout.LayoutParams().apply{
-                width=0;height=dp(100)
+                width=0;height=dp(104)
                 columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f)
                 setMargins(dp(1),dp(2),dp(1),dp(2))
             }
             shortcuts.addView(cell,params)
         }
-        shortcut(R.drawable.ic_profile_bag,"مظهري"){startActivity(Intent(this,InventoryActivity::class.java))}
-        shortcut(R.drawable.ic_profile_wallet,"المحفظة"){startActivity(Intent(this,WalletActivity::class.java))}
-        shortcut(R.drawable.ic_profile_crown,"العائلة"){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
-        shortcut(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){startActivity(Intent(this,CreatorCenterActivity::class.java))}
-        shortcut(R.drawable.ic_profile_level,"المستوى"){startActivity(Intent(this,LevelActivity::class.java))}
-        shortcut(R.drawable.ic_profile_publish,"أنشر"){showInfo("أنشر")}
-        shortcut(R.drawable.ic_profile_help,"الدعم"){
+        shortcut(R.drawable.ic_profile_appearance_color,"مظهري"){
+            startActivity(Intent(this,InventoryActivity::class.java))
+        }
+        shortcut(R.drawable.ic_profile_store_color,"المحفظة"){
+            startActivity(Intent(this,WalletActivity::class.java))
+        }
+        shortcut(R.drawable.ic_profile_vip_color,"VIP"){
+            showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
+        }
+        shortcut(R.drawable.ic_profile_family_color,"العائلة"){
+            showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
+        }
+        shortcut(R.drawable.ic_profile_invites_color,"مركز الدعوات"){
+            showInfo("مركز الدعوات")
+        }
+        shortcut(R.drawable.ic_profile_creator_color,"مركز صناع المحتوى"){
+            startActivity(Intent(this,CreatorCenterActivity::class.java))
+        }
+        shortcut(R.drawable.ic_profile_level_color,"المستوى"){
+            startActivity(Intent(this,LevelActivity::class.java))
+        }
+        shortcut(R.drawable.ic_profile_help_color,"الدعم"){
             android.app.AlertDialog.Builder(this).setTitle("المساعدة والدعم")
                 .setMessage("نحن هنا لمساعدتك في استخدام BAK LIVE.")
                 .setPositiveButton("حسناً",null).show()
         }
-        shortcut(R.drawable.ic_profile_security,"الأمان"){startActivity(Intent(this,AccountSecurityActivity::class.java))}
+        shortcut(R.drawable.ic_profile_security_color,"الأمان"){
+            startActivity(Intent(this,AccountSecurityActivity::class.java))
+        }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
             setMargins(dp(14),dp(2),dp(14),dp(14))
         })
