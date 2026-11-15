@@ -6,7 +6,8 @@
     android:orientation="vertical"
     android:background="@drawable/profile_header_background"
     android:clipChildren="false"
-    android:clipToPadding="false">
+    android:clipToPadding="false"
+    android:paddingTop="48dp">
 
     <LinearLayout
         android:id="@+id/profileHeaderTopBar"
@@ -55,20 +56,21 @@
         android:paddingEnd="14dp">
 
         <LinearLayout
-            android:id="@+id/profileHeaderIdentity"
+            android:id="@+id/profileIdentityGroup"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="end|center_vertical"
+            android:gravity="right|center_vertical"
             android:layoutDirection="ltr"
             android:layout_marginEnd="14dp">
 
             <TextView
                 android:id="@+id/profileHeaderName"
                 android:layout_width="match_parent"
+                android:layoutDirection="rtl"
                 android:layout_height="28dp"
-                android:gravity="end|center_vertical"
+                android:gravity="right|center_vertical"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:text="جارٍ تحميل الاسم..."
