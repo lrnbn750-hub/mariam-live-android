@@ -145,18 +145,18 @@ class ProfileActivity : Activity() {
             })
             contentDescription="الصورة الشخصية"
         }
-        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(102),dp(102),Gravity.CENTER))
+        avatarFrame.addView(avatarPreview,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
         avatarRing=View(this).apply{
             background=android.graphics.drawable.GradientDrawable().apply{
                 shape=android.graphics.drawable.GradientDrawable.OVAL
                 setColor(Color.TRANSPARENT);setStroke(dp(2),white)
             }
         }
-        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(108),dp(108),Gravity.CENTER))
+        avatarFrame.addView(avatarRing,FrameLayout.LayoutParams(dp(76),dp(76),Gravity.CENTER))
         royalFrame=RoyalGifFrame(this).apply{visibility=View.GONE}
-        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(122),dp(120),Gravity.CENTER))
+        avatarFrame.addView(royalFrame,FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
         val avatarEdit=TextView(this).apply{
-            text="✎";textSize=15f;setTextColor(white);gravity=Gravity.CENTER
+            text="✎";textSize=13f;setTextColor(white);gravity=Gravity.CENTER
             background=android.graphics.drawable.GradientDrawable().apply{
                 shape=android.graphics.drawable.GradientDrawable.OVAL
                 setColor(accent);setStroke(dp(2),white)
@@ -164,22 +164,22 @@ class ProfileActivity : Activity() {
             contentDescription="تعديل الصورة الشخصية"
             setOnClickListener{showEditProfile()}
         }
-        avatarFrame.addView(avatarEdit,FrameLayout.LayoutParams(dp(30),dp(30),Gravity.BOTTOM or Gravity.END))
+        avatarFrame.addView(avatarEdit,FrameLayout.LayoutParams(dp(24),dp(24),Gravity.BOTTOM or Gravity.END))
 
         val identity=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT
             layoutDirection=View.LAYOUT_DIRECTION_LTR
-            setPadding(dp(10),0,dp(4),0)
+            setPadding(dp(8),0,dp(12),0)
         }
         profileTitle=TextView(this).apply{
-            text="جارٍ تحميل الاسم...";textSize=21f;setTextColor(ink)
+            text="جارٍ تحميل الاسم...";textSize=19f;setTextColor(ink)
             typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
             gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT
         }
         identity.addView(profileTitle,LinearLayout.LayoutParams(-1,dp(36)))
         val idRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT;layoutDirection=View.LAYOUT_DIRECTION_LTR}
         publicIdLabel=TextView(this).apply{
-            text="ID: جارٍ التحميل";textSize=12.5f;setTextColor(Color.rgb(100,115,119))
+            text="ID: جارٍ التحميل";textSize=12f;setTextColor(Color.rgb(100,115,119))
         }
         idRow.addView(publicIdLabel,LinearLayout.LayoutParams(-2,dp(28)))
         idRow.addView(TextView(this).apply{
@@ -196,9 +196,9 @@ class ProfileActivity : Activity() {
         },LinearLayout.LayoutParams(-2,dp(28)))
         identity.addView(idRow)
         val levelBadge=TextView(this).apply{
-            text="LV 1";textSize=11f;setTextColor(Color.rgb(72,91,77));gravity=Gravity.CENTER
+            text="LV 1";textSize=10.5f;setTextColor(Color.rgb(72,91,77));gravity=Gravity.CENTER
             background=shape(Color.rgb(228,242,220),20)
-            setPadding(dp(10),dp(4),dp(10),dp(4))
+            setPadding(dp(9),dp(3),dp(9),dp(3))
             setOnClickListener{startActivity(Intent(this@ProfileActivity,LevelActivity::class.java))}
         }
         levelShortcutTitle=levelBadge
@@ -206,8 +206,8 @@ class ProfileActivity : Activity() {
         levelShortcutCard=LinearLayout(this)
         identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4);gravity=Gravity.RIGHT})
         profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
-        profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(116),dp(116)))
-        hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(122)))
+        profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(92),dp(92)))
+        hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(100)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
         // Four compact social counters.
