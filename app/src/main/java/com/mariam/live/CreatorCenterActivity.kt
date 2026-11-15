@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.widget.*
 import kotlin.concurrent.thread
 
+// BAK LIVE creator earnings screen.
 class CreatorCenterActivity : Activity() {
  private var token = ""
  private lateinit var content: LinearLayout
