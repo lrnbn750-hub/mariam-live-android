@@ -165,7 +165,6 @@ class ProfileActivity : Activity() {
             setOnClickListener{showEditProfile()}
         }
         avatarFrame.addView(avatarEdit,FrameLayout.LayoutParams(dp(30),dp(30),Gravity.BOTTOM or Gravity.END))
-        profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         profileRow.addView(avatarFrame,LinearLayout.LayoutParams(dp(116),dp(116)))
 
         val identity=LinearLayout(this).apply{
@@ -207,6 +206,7 @@ class ProfileActivity : Activity() {
         levelShortcutIcon=ImageView(this)
         levelShortcutCard=LinearLayout(this)
         identity.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(25)).apply{topMargin=dp(4)})
+        profileRow.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
         hero.addView(profileRow,LinearLayout.LayoutParams(-1,dp(122)))
         content.addView(hero,LinearLayout.LayoutParams(-1,-2))
 
