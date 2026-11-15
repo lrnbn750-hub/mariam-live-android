@@ -1,5 +1,5 @@
 name: BAK LIVE Android Build
-# Retry dependency resolution after transient Maven artifact lookup failure.
+# Build BAK LIVE after profile layout compile fix.
 
 on:
   workflow_dispatch:
