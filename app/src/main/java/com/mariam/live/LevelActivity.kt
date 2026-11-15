@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -13,7 +14,6 @@ import android.widget.TextView
 import android.widget.Toast
 import android.util.Log
 import org.json.JSONObject
-import java.util.Locale
 import java.util.concurrent.Executors
 
 /**
@@ -107,9 +107,9 @@ class LevelActivity : Activity() {
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         wealthContent = WealthLevelContentView(this)
-        wealthContent.layoutParams = ScrollView.LayoutParams(
-            ScrollView.LayoutParams.MATCH_PARENT,
-            ScrollView.LayoutParams.WRAP_CONTENT
+        wealthContent.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
         wealthContent.onTierClick = { tierIndex ->
             val first = LevelTiers.firstLevel(tierIndex)
