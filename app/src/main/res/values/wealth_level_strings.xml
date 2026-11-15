@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wealth_screen_title">Wealth level</string>
+    <string name="wealth_caption">WEALTH RANK</string>
+    <string name="wealth_rank_format">%1$s rank</string>
+    <string name="wealth_xp_format">Total XP • %1$s XP</string>
+    <string name="wealth_progress_label">Progress to next level</string>
+    <string name="wealth_remaining_format">%1$s XP left to reach LV %2$d</string>
+    <string name="wealth_max_reached">You reached the highest rank in BAK LIVE</string>
+    <string name="wealth_path_title">Rank path</string>
+    <string name="wealth_path_count">%1$d stages</string>
+    <string name="wealth_path_subtitle">Each stage unlocks a new identity and status for your account</string>
+    <string name="wealth_status_done">Completed</string>
+    <string name="wealth_status_current">Your current rank</string>
+    <string name="wealth_status_locked">Locked</string>
+</resources>
