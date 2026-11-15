@@ -1,5 +1,5 @@
 name: BAK LIVE Android Build
-# Build BAK LIVE after profile layout compile fix.
+# Build BAK LIVE after integrating the redesigned compact profile header.
 
 on:
   workflow_dispatch:
