@@ -34,7 +34,7 @@ class LevelActivity : Activity() {
             // Keep the app alive if Android cannot inflate the wealth screen or a custom view.
             Log.e("BAKWealthLevel", "Failed to inflate wealth_level_screen", error)
             val fallback = android.widget.TextView(this).apply {
-                text = "مستوى الثراء\n\nتعذر تحميل التصميم. حاول تحديث الصفحة."
+                text = "مستوى الثراء\\n\\nتعذر تحميل التصميم.\\n\\nالخطأ: " + error.javaClass.name + "\\n" + (error.message ?: "لا توجد تفاصيل") + "\\n\\nأرسل صورة هذه الرسالة للمطور."
                 textSize = 20f
                 setTextColor(android.graphics.Color.WHITE)
                 gravity = android.view.Gravity.CENTER
