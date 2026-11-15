@@ -256,8 +256,14 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         await client.query("ROLLBACK");
         return res.status(400).json({ error: "User must be in the room" });
       }
+      // A user may occupy only one seat in a room. Lock and clear any previous
+      // assignment before moving them, then replace the requested seat atomically.
       await client.query(
-        "INSERT INTO voice_room_seats(room_id,seat_number,user_id,assigned_at) VALUES($1,$2,$3,NOW()) ON CONFLICT(room_id,seat_number) DO UPDATE SET user_id=EXCLUDED.user_id,assigned_at=NOW()",
+        "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2 AND seat_number<>$3",
+        [roomId, targetUserId, seat]
+      );
+      await client.query(
+        "INSERT INTO voice_room_seats(room_id,seat_number,user_id,assigned_at) VALUES($1,$2,$3,NOW()) ON CONFLICT(room_id,seat_number) DO UPDATE SET user_id=EXCLUDED.user_id,is_muted=FALSE,assigned_at=NOW()",
         [roomId, seat, targetUserId]
       );
       await client.query("DELETE FROM voice_room_hand_raises WHERE room_id=$1 AND user_id=$2", [roomId, targetUserId]);
