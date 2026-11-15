@@ -234,7 +234,7 @@ class ProfileActivity : Activity() {
         }
         fun sectionGap(){content.addView(View(this).apply{setBackgroundColor(Color.rgb(238,233,244))},LinearLayout.LayoutParams(-1,dp(9)))}
         content.addView(separator,LinearLayout.LayoutParams(-1,dp(8)))
-        menuRow(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){showInfo("مركز صناع المحتوى")}
+        menuRow(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){startActivity(Intent(this,CreatorCenterActivity::class.java))}
         menuRow(R.drawable.ic_profile_events,"مركز الفعاليات"){showInfo("مركز الفعاليات")}
         sectionGap()
         menuRow(R.drawable.ic_profile_wallet,"المحفظة"){startActivity(Intent(this,WalletActivity::class.java))}
