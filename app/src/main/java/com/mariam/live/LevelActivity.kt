@@ -77,7 +77,7 @@ class LevelActivity : Activity() {
     private fun renderLevel() {
         if (!::heroSummary.isInitialized) return
         val idx = LevelTiers.indexOf(level); val tier = LevelTiers.ALL[idx]
-        heroSummary.text = "LV $level\\n" + tier.displayName(this)
+        heroSummary.text = "LV $level\n" + tier.displayName(this)
         xpText.text = "إجمالي نقاط الخبرة  •  " + String.format(Locale.US, "%,d", totalXp) + " XP"
         val p = if (level >= 100) 1f else progressValue.toFloat().coerceIn(0f, 1f)
         percentText.text = "${(p * 100).toInt()}%"; progressBar.progress = (p * 1000).toInt()
@@ -85,7 +85,7 @@ class LevelActivity : Activity() {
         tierRows.forEachIndexed { i, row ->
             val first = LevelTiers.firstLevel(i); val last = LevelTiers.lastLevel(i); val t = LevelTiers.ALL[i]
             val status = when { level > last -> "مكتملة"; level >= first -> "رتبتك الحالية"; else -> "مقفلة" }
-            row.text = "LV $first — LV $last\\n${t.displayName(this)}     •     $status"
+            row.text = "LV $first — LV $last\n${t.displayName(this)}     •     $status"
             row.alpha = if (level < first) 0.72f else 1f
             row.setOnClickListener { Toast.makeText(this, "${t.displayName(this)} • LV $first–$last • $status", Toast.LENGTH_SHORT).show() }
         }
