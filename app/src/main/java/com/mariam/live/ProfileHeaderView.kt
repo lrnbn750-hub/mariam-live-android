@@ -16,7 +16,8 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
     val editAvatarView: ImageView
     val nameView: TextView
     val userIdView: TextView
-    val levelView: TextView
+    val levelBadgeView: LevelBadgeView
+    val levelView: LevelBadgeView
     val copyView: ImageView
     val fansCountView: TextView
     val followingCountView: TextView
@@ -33,7 +34,8 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
         nameView = findViewById(R.id.profileHeaderName)
         userIdView = findViewById(R.id.profileHeaderUserId)
-        levelView = findViewById(R.id.profileHeaderLevel)
+        levelBadgeView = findViewById(R.id.profileLevelBadge)
+        levelView = levelBadgeView
         copyView = findViewById(R.id.profileHeaderCopy)
         fansCountView = findViewById(R.id.profileHeaderFansCount)
         followingCountView = findViewById(R.id.profileHeaderFollowingCount)
@@ -52,8 +54,12 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         nameView.text = name.ifBlank { "مستخدم BAK LIVE" }
     }
 
+    fun setLevel(level: Int) {
+        levelBadgeView.level = level
+    }
+
     fun setLevelText(level: Int) {
-        levelView.text = "LV ${level.coerceIn(1, 100)}"
+        setLevel(level)
     }
 
     fun setFansCount(value: String) { fansCountView.text = value }
