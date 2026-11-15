@@ -588,11 +588,10 @@ class ProfileActivity : Activity() {
                 if(result.status !in 200..299)throw Exception("تعذر تحميل المستوى")
                 val level=result.body.optInt("level",1).coerceIn(1,100)
                 runOnUiThread{
-                    if(!isFinishing && !isDestroyed)profileHeader.setLevelText(level)
+                    if(!isFinishing && !isDestroyed)profileHeader.setLevel(level)
                 }
             }catch(_:Exception){
                 runOnUiThread{
-                    if(!isFinishing && !isDestroyed)profileHeader.setLevelText(1)
                 }
             }
         }
