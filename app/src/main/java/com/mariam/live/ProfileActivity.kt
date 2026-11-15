@@ -288,7 +288,7 @@ class ProfileActivity : Activity() {
             val iconBox=FrameLayout(this@ProfileActivity).apply{
                 val tileColor=when(title){
                     "مظهري"->Color.rgb(222,247,250)
-                    "المتجر"->Color.rgb(255,230,244)
+                    "المحفظة"->Color.rgb(255,230,244)
                     "العائلة"->Color.rgb(239,231,255)
                     "مركز صناع المحتوى"->Color.rgb(225,244,255)
                     "المستوى"->Color.rgb(255,244,220)
@@ -300,7 +300,7 @@ class ProfileActivity : Activity() {
                     setColorFilter(when(title){
                         "العائلة"->Color.rgb(145,94,225)
                         "المستوى"->Color.rgb(227,160,42)
-                        "المتجر"->Color.rgb(231,91,159)
+                        "المحفظة"->Color.rgb(231,91,159)
                         else->Color.rgb(57,153,179)
                     },android.graphics.PorterDuff.Mode.SRC_IN)
                     scaleType=ImageView.ScaleType.CENTER_INSIDE
@@ -322,7 +322,7 @@ class ProfileActivity : Activity() {
             shortcuts.addView(cell,params)
         }
         shortcut(R.drawable.ic_profile_bag,"مظهري"){startActivity(Intent(this,InventoryActivity::class.java))}
-        shortcut(R.drawable.ic_profile_wallet,"المتجر"){startActivity(Intent(this,WalletActivity::class.java))}
+        shortcut(R.drawable.ic_profile_wallet,"المحفظة"){startActivity(Intent(this,WalletActivity::class.java))}
         shortcut(R.drawable.ic_profile_crown,"العائلة"){showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها وإظهار اسم العائلة في ملفك")}
         shortcut(R.drawable.ic_profile_creator,"مركز صناع المحتوى"){startActivity(Intent(this,CreatorCenterActivity::class.java))}
         shortcut(R.drawable.ic_profile_level,"المستوى"){startActivity(Intent(this,LevelActivity::class.java))}
