@@ -275,7 +275,7 @@ class ProfileActivity : Activity() {
         // Coordinated colorful shortcuts inspired by the reference profile.
         // Events, tasks and cash-earning shortcuts remain intentionally absent.
         val shortcuts=GridLayout(this).apply{
-            columnCount=4;useDefaultMargins=false
+            columnCount=3;useDefaultMargins=false
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             background=shape(white,18);setPadding(dp(5),dp(10),dp(5),dp(10))
         }
@@ -291,9 +291,7 @@ class ProfileActivity : Activity() {
                     "مظهري"->Color.rgb(220,247,250)
                     "المتجر"->Color.rgb(255,230,244)
                     "VIP"->Color.rgb(255,244,216)
-                    "Noble"->Color.rgb(239,231,255)
                     "العائلة"->Color.rgb(239,231,255)
-                    "مركز الدعوات"->Color.rgb(249,229,248)
                     "مركز الوكالة"->Color.rgb(224,248,243)
                     "مركز صناع المحتوى"->Color.rgb(225,244,255)
                     else->Color.rgb(232,239,255)
@@ -319,7 +317,7 @@ class ProfileActivity : Activity() {
             }
             shortcuts.addView(cell,params)
         }
-        // Keep the exact eight profile destinations shown in the reference design.
+        // Six approved profile destinations. Noble and invitation center removed.
         shortcut(R.drawable.ic_profile_appearance_color,"مظهري"){
             startActivity(Intent(this,InventoryActivity::class.java))
         }
@@ -329,20 +327,14 @@ class ProfileActivity : Activity() {
         shortcut(R.drawable.ic_profile_vip_color,"VIP"){
             showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
         }
-        shortcut(R.drawable.ic_profile_noble_color,"Noble"){
-            showInfo("Noble - تمت إضافة مركز Noble إلى الملف الشخصي، وسيتم ربط نظام الرتب ومزاياه لاحقاً")
-        }
         shortcut(R.drawable.ic_profile_family_color,"العائلة"){
             showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
         }
-        shortcut(R.drawable.ic_profile_creator_color,"مركز صناع المحتوى"){
+        shortcut(R.drawable.ic_profile_creator_color,"مركز المضيف"){
             startActivity(Intent(this,CreatorCenterActivity::class.java))
         }
         shortcut(R.drawable.ic_profile_agency_color,"مركز الوكالة"){
             showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
-        }
-        shortcut(R.drawable.ic_profile_invites_color,"مركز الدعوات"){
-            showInfo("مركز الدعوات")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
             setMargins(dp(14),dp(2),dp(14),dp(14))
