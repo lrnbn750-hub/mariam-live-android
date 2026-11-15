@@ -111,12 +111,10 @@ class WalletActivity:Activity(){
   hero.addView(sub)
   content.addView(hero,LinearLayout.LayoutParams(-1,-2))
   val balances=LinearLayout(this).apply{orientation=0}
-  balances.addView(smallBalance("عملات الشحن",String.format("%,d",wallet.optLong("recharge_coins")),"🪙",gold),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(6)})
-  balances.addView(smallBalance("الألماس المكتسب",String.format("%,d",wallet.optLong("earned_diamonds")),"💎",Color.rgb(116,203,255)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(6)})
+  balances.addView(smallBalance("عملات الشحن",String.format("%,d",wallet.optLong("diamonds_balance")),"🪙",gold),LinearLayout.LayoutParams(-1,-2))
   content.addView(balances,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
   val buttons=LinearLayout(this).apply{orientation=0}
-  buttons.addView(actionButton("مركز صُنّاع المحتوى",{AlertDialog.Builder(this).setMessage("إدارة الأرباح والسحب متاحة من مركز صُنّاع المحتوى في الملف الشخصي.").setPositiveButton("حسناً",null).show()}),LinearLayout.LayoutParams(0,dp(52),1f).apply{marginEnd=dp(6);topMargin=dp(14)})
-  buttons.addView(actionButton("سجل العمليات",{showHistory()},false),LinearLayout.LayoutParams(0,dp(52),1f).apply{marginStart=dp(6);topMargin=dp(14)})
+  buttons.addView(actionButton("سجل عمليات الشحن",{showHistory()},false),LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(14)})
   content.addView(buttons)
   section("باقات شحن العملات","اختر الباقة المناسبة لك")
   if(packages.length()==0){
