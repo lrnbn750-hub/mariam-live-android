@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import kotlin.math.ceil
 
@@ -97,7 +98,15 @@ class RankTierRowView @JvmOverloads constructor(
         val er = 24f*d
         val ecx = if (rtl) w-14f*d-er else 14f*d+er
         val shownLevel = if (current) currentLevel else LevelTiers.lastLevel(tier)
-        emblem.draw(canvas,ecx,cy,er*0.92f,shownLevel,locked,false,0f)
+        try {
+            emblem.draw(canvas,ecx,cy,er*0.92f,shownLevel,locked,false,0f)
+        } catch (error: Throwable) {
+            Log.e("BAKWealthLevel", "Tier emblem drawing failed for tier=$tier", error)
+            paint.shader = null
+            paint.style = Paint.Style.FILL
+            paint.color = t.ringB
+            canvas.drawCircle(ecx, cy, er * 0.88f, paint)
+        }
 
         val textOff = 14f*d + er*2f + 14f*d
         val align = if (rtl) Paint.Align.RIGHT else Paint.Align.LEFT
