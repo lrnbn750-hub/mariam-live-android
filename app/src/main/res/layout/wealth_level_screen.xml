@@ -9,15 +9,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingBottom="4dp">
-        <ImageView
+        <TextView
             android:id="@+id/wealthBack"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_gravity="start|center_vertical"
             android:layout_marginStart="6dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="12dp"
-            android:src="@drawable/wealth_ic_back" />
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="@android:color/white"
+            android:textSize="36sp"
+            android:includeFontPadding="false" />
         <TextView
             android:id="@+id/wealthTitle"
             android:layout_width="wrap_content"
