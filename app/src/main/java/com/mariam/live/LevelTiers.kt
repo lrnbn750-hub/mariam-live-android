@@ -44,13 +44,13 @@ internal object LevelTiers {
         return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 
-    private val G_STAR = floatArrayOf(0f,0f,-1f,1f,0.247f,-0.34f,1f,0.951f,-0.309f,1f,0.399f,0.13f,1f,0.588f,0.809f,1f,0f,0.42f,1f,-0.588f,0.809f,1f,-0.399f,0.13f,1f,-0.951f,-0.309f,1f,-0.247f,-0.34f,3f)
-    private val G_GEM = floatArrayOf(0f,-0.95f,-0.35f,1f,-0.55f,-0.9f,1f,0.55f,-0.9f,1f,0.95f,-0.35f,1f,0f,0.95f,3f)
-    private val G_GEM_FACETS = floatArrayOf(0f,-0.95f,-0.35f,1f,0.95f,-0.35f,0f,-0.4f,-0.9f,1f,-0.2f,-0.35f,1f,0f,0.95f,0f,0.4f,-0.9f,1f,0.2f,-0.35f,1f,0f,0.95f)
-    private val G_SHIELD = floatArrayOf(0f,0f,-1f,1f,0.85f,-0.65f,1f,0.85f,0.1f,2f,0.85f,0.65f,0f,1f,2f,-0.85f,0.65f,-0.85f,0.1f,1f,-0.85f,-0.65f,3f)
-    private val G_BOLT = floatArrayOf(0f,0.25f,-1f,1f,-0.6f,0.15f,1f,-0.05f,0.15f,1f,-0.3f,1f,1f,0.65f,-0.2f,1f,0.05f,-0.2f,3f)
-    private val G_CROWN = floatArrayOf(0f,-0.95f,0.75f,1f,-0.95f,-0.55f,1f,-0.45f,0f,1f,0f,-0.85f,1f,0.45f,0f,1f,0.95f,-0.55f,1f,0.95f,0.75f,3f)
-    private val G_SPARKLE = floatArrayOf(0f,0f,-1f,2f,0.12f,-0.12f,1f,0f,2f,0.12f,0.12f,0f,1f,2f,-0.12f,0.12f,-1f,0f,2f,-0.12f,-0.12f,0f,-1f,3f)
+    val G_STAR = floatArrayOf(0f,0f,-1f,1f,0.247f,-0.34f,1f,0.951f,-0.309f,1f,0.399f,0.13f,1f,0.588f,0.809f,1f,0f,0.42f,1f,-0.588f,0.809f,1f,-0.399f,0.13f,1f,-0.951f,-0.309f,1f,-0.247f,-0.34f,3f)
+    val G_GEM = floatArrayOf(0f,-0.95f,-0.35f,1f,-0.55f,-0.9f,1f,0.55f,-0.9f,1f,0.95f,-0.35f,1f,0f,0.95f,3f)
+    val G_GEM_FACETS = floatArrayOf(0f,-0.95f,-0.35f,1f,0.95f,-0.35f,0f,-0.4f,-0.9f,1f,-0.2f,-0.35f,1f,0f,0.95f,0f,0.4f,-0.9f,1f,0.2f,-0.35f,1f,0f,0.95f)
+    val G_SHIELD = floatArrayOf(0f,0f,-1f,1f,0.85f,-0.65f,1f,0.85f,0.1f,2f,0.85f,0.65f,0f,1f,2f,-0.85f,0.65f,-0.85f,0.1f,1f,-0.85f,-0.65f,3f)
+    val G_BOLT = floatArrayOf(0f,0.25f,-1f,1f,-0.6f,0.15f,1f,-0.05f,0.15f,1f,-0.3f,1f,1f,0.65f,-0.2f,1f,0.05f,-0.2f,3f)
+    val G_CROWN = floatArrayOf(0f,-0.95f,0.75f,1f,-0.95f,-0.55f,1f,-0.45f,0f,1f,0f,-0.85f,1f,0.45f,0f,1f,0.95f,-0.55f,1f,0.95f,0.75f,3f)
+    val G_SPARKLE = floatArrayOf(0f,0f,-1f,2f,0.12f,-0.12f,1f,0f,2f,0.12f,0.12f,0f,1f,2f,-0.12f,0.12f,-1f,0f,2f,-0.12f,-0.12f,0f,-1f,3f)
 
     fun buildGlyph(ops: FloatArray, cx: Float, cy: Float, s: Float, out: Path) {
         out.reset()
