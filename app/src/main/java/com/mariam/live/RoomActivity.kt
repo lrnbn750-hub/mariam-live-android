@@ -241,6 +241,10 @@ class RoomActivity : Activity() {
   top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)))
   top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f).apply{marginStart=dp(8)})
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)))
+  // مكان مخصص لمشغل يوتيوب فوق المقاعد: ارتفاعه 0 ويُفتح فقط أثناء المشاهدة (يديره RoomWatchPlayer).
+  val watchHost=FrameLayout(this).apply{isClickable=false;isFocusable=false}
+  watchLayer=watchHost
+  roomPage.addView(watchHost,LinearLayout.LayoutParams(-1,0))
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
@@ -270,10 +274,6 @@ class RoomActivity : Activity() {
     Color.argb(165,8,6,18),Color.argb(35,8,6,18),Color.argb(30,8,6,18),Color.argb(205,8,6,18)))
   },FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
-  // طبقة المشاهدة الجماعية: فوق المقاعد والدردشة وتحت أنيميشن الهدايا.
-  val watchHost=FrameLayout(this).apply{isClickable=false;isFocusable=false}
-  watchLayer=watchHost
-  roomRoot.addView(watchHost,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomOverlayLayer,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Respect the real status-bar inset so the header never sits under the clock/battery icons.
@@ -1656,7 +1656,7 @@ class RoomActivity : Activity() {
    if(card.parent==null)return@post
    val seatPos=IntArray(2);val overlayPos=IntArray(2)
    grid.getLocationOnScreen(seatPos);roomOverlayLayer.getLocationOnScreen(overlayPos)
-   params.topMargin=(seatPos[1]-overlayPos[1]+grid.height+dp(7)).coerceAtLeast(dp(110))
+   params.topMargin=(seatPos[1]-overlayPos[1]+(grid.height*grid.scaleY).toInt()+dp(7)).coerceAtLeast(dp(110))
    card.layoutParams=params
    card.animate().alpha(1f).translationX(0f).setDuration(430)
     .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
