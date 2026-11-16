@@ -7,12 +7,12 @@
     android:background="@drawable/profile_header_background"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:paddingTop="48dp">
+    android:paddingTop="10dp">
 
     <LinearLayout
         android:id="@+id/profileHeaderTopBar"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
+        android:layout_height="48dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layoutDirection="ltr"
@@ -48,7 +48,7 @@
     <LinearLayout
         android:id="@+id/profileHeaderIdentityRow"
         android:layout_width="match_parent"
-        android:layout_height="76dp"
+        android:layout_height="108dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layoutDirection="ltr"
@@ -75,7 +75,7 @@
                 android:ellipsize="end"
                 android:text="جارٍ تحميل الاسم..."
                 android:textColor="#262B34"
-                android:textSize="18sp"
+                android:textSize="23sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -123,13 +123,13 @@
 
         <FrameLayout
             android:id="@+id/profileHeaderAvatarSlot"
-            android:layout_width="64dp"
-            android:layout_height="64dp">
+            android:layout_width="92dp"
+            android:layout_height="92dp">
 
             <ImageView
                 android:id="@+id/profileHeaderAvatar"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
                 android:layout_gravity="center"
                 android:scaleType="centerCrop"
                 android:background="@drawable/profile_header_avatar_circle"
@@ -138,8 +138,8 @@
 
             <ImageView
                 android:id="@+id/profileHeaderEditAvatar"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:layout_gravity="bottom|start"
                 android:background="@drawable/profile_header_edit_badge"
                 android:padding="4dp"
@@ -153,10 +153,11 @@
         android:id="@+id/profileHeaderStats"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="16dp"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
-        android:paddingBottom="12dp"
+        android:paddingBottom="14dp"
+        android:paddingTop="8dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:layoutDirection="ltr"
@@ -165,14 +166,14 @@
         <LinearLayout
             android:id="@+id/profileHeaderFansCell"
             android:layout_width="0dp"
-            android:layout_height="54dp"
+            android:layout_height="64dp"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true">
-            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="المعجبون" android:textColor="#8B919D" android:textSize="11sp" />
+            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="21sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="26dp" android:gravity="center" android:text="المعجبون" android:textColor="#8B919D" android:textSize="12sp" />
         </LinearLayout>
 
         <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
