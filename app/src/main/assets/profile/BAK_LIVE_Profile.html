@@ -49,9 +49,9 @@ svg{display:block}
   background:conic-gradient(from 210deg,#f3dfa6,#d9b25a,#0f9d6e,#f3dfa6);padding:3px;
 }
 .av .ring i{display:block;width:100%;height:100%;border-radius:50%;background:#fff;padding:3px}
-.av img,.av .ph{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.av img,
 .av [hidden]{display:none}
-.av .ph{background:linear-gradient(180deg,#1b2740 0%,#2f4a6d 55%,#10192b 100%);display:grid;place-items:center;color:#cfe0f5;font-size:34px;font-weight:600}
+
 .edit{
   position:absolute;bottom:-1px;left:-1px;width:30px;height:30px;border-radius:50%;
   background:var(--navy);border:3px solid #fff;display:grid;place-items:center;
@@ -157,7 +157,7 @@ svg{display:block}
 
   <section class="me">
     <div class="av">
-      <div class="ring"><i><div class="ph" id="avPh"></div><img id="avImg" alt="" hidden></i></div>
+      <div class="ring"><i><img id="avImg" alt="" hidden></i></div>
       <button class="edit" id="editBtn" aria-label="تعديل الصورة">
         <svg viewBox="0 0 24 24"><path d="M4 20l4.500-1 10-10a2.100 2.100 0 00-3-3l-10 10z"/><path d="M13.500 7.500l3 3"/></svg>
       </button>
@@ -272,8 +272,8 @@ function render(){
   $('sFan').textContent = fmt(profile.fans);
   $('wDia').textContent = fmt(profile.diamonds);
   $('wCoin').textContent = fmt(profile.coins);
-  if(profile.avatarUrl){ $('avImg').src=profile.avatarUrl; $('avImg').hidden=false; $('avPh').hidden=true; }
-  else { $('avPh').textContent = profile.name.trim().charAt(0); }
+  if(profile.avatarUrl){ $('avImg').src=profile.avatarUrl; $('avImg').hidden=false; }
+  else { $('avImg').removeAttribute('src'); $('avImg').hidden=true; }
 }
 
 function toast(msg){
