@@ -323,7 +323,7 @@ module.exports = (app, db, authenticateToken) => {
           video_id VARCHAR(32) NOT NULL DEFAULT '',
           video_title TEXT NOT NULL DEFAULT '',
           playback_state VARCHAR(12) NOT NULL DEFAULT 'paused',
-          current_time DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "current_time" DOUBLE PRECISION NOT NULL DEFAULT 0,
           updated_at BIGINT NOT NULL DEFAULT 0,
           updated_by TEXT
         )
@@ -430,7 +430,7 @@ module.exports = (app, db, authenticateToken) => {
       const updatedAt = Date.now();
       const result = await db.query(
         `INSERT INTO bak_room_watch_state
-          (room_id, video_id, video_title, playback_state, current_time, updated_at, updated_by)
+          (room_id, video_id, video_title, playback_state, "current_time", updated_at, updated_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7)
          ON CONFLICT (room_id) DO UPDATE SET
           video_id=EXCLUDED.video_id,
@@ -439,7 +439,7 @@ module.exports = (app, db, authenticateToken) => {
           current_time=EXCLUDED.current_time,
           updated_at=EXCLUDED.updated_at,
           updated_by=EXCLUDED.updated_by
-         RETURNING video_id, video_title, playback_state, current_time, updated_at, updated_by`,
+         RETURNING video_id, video_title, playback_state, "current_time", updated_at, updated_by`,
         [roomId, videoId, title, playbackState, currentTime, updatedAt, String(req.userId)]
       );
       return res.json({ state: result.rows[0] });
