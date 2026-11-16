@@ -6,133 +6,267 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.GridLayout
 import android.widget.ImageView
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.WindowCompat
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.URL
+import java.util.Locale
 import java.util.concurrent.Executors
 
+/**
+ * Fully native Kotlin profile screen. The previous HTML/WebView and floating-avatar
+ * overlay are intentionally removed; all profile layout, scrolling and avatar UI
+ * are now part of the Android view hierarchy.
+ */
 class ProfileActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val photoPickerCode = 7421
-    private lateinit var web: WebView
-    private lateinit var root: FrameLayout
-    private lateinit var nativeAvatar: ImageView
-    private var selectedPhoto: Uri? = null
+    private lateinit var page: LinearLayout
+    private lateinit var header: ProfileHeaderView
+    private lateinit var avatar: ImageView
+    private lateinit var coinValue: TextView
+    private lateinit var diamondValue: TextView
+    private lateinit var visitorValue: TextView
+    private lateinit var friendValue: TextView
     private var profileData = JSONObject()
     private var publicId = ""
-    private var firstLoadStarted = false
     private var userId = ""
+
+    private val ink = Color.rgb(20, 24, 34)
+    private val muted = Color.rgb(143, 151, 164)
+    private val border = Color.rgb(238, 240, 244)
+    private val white = Color.WHITE
+    private val pageBg = Color.rgb(255, 255, 255)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        window.statusBarColor = android.graphics.Color.WHITE
-        window.navigationBarColor = android.graphics.Color.WHITE
+        window.statusBarColor = white
+        window.navigationBarColor = white
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-
-        web = WebView(this).apply {
-            setBackgroundColor(android.graphics.Color.WHITE)
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = true
-            settings.allowContentAccess = true
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
-            webViewClient = WebViewClient()
-            webChromeClient = WebChromeClient()
-            addJavascriptInterface(ProfileBridge(), "BAK")
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    positionNativeAvatar()
-                    loadNativeAvatarFromProfile()
-                }
-            }
-        }
-        root = FrameLayout(this)
-        nativeAvatar = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            visibility = View.INVISIBLE
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(android.graphics.Color.TRANSPARENT)
-            }
-            clipToOutline = true
-            contentDescription = "الصورة الشخصية"
-        }
-        root.addView(web, FrameLayout.LayoutParams(-1, -1))
-        root.addView(nativeAvatar, FrameLayout.LayoutParams(1, 1))
-        // Keep the native avatar aligned with its HTML frame whenever the WebView scrolls.
-        web.setOnScrollChangeListener { _, _, _, _, _ -> positionNativeAvatar() }
-        web.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> positionNativeAvatar() }
-        setContentView(root)
-        web.loadUrl("file:///android_asset/profile/BAK_LIVE_Profile.html")
+        buildNativePage()
         loadProfileData()
     }
 
-    inner class ProfileBridge {
-        @JavascriptInterface fun onAction(action: String) {
-            runOnUiThread {
-                when (action) {
-                    "settings", "privacy" -> startActivity(Intent(this@ProfileActivity, AccountSecurityActivity::class.java))
-                    "music" -> Toast.makeText(this@ProfileActivity, "الموسيقى", Toast.LENGTH_SHORT).show()
-                    "level" -> startActivity(Intent(this@ProfileActivity, LevelActivity::class.java))
-                    "diamonds", "coins" -> startActivity(Intent(this@ProfileActivity, WalletActivity::class.java))
-                    "look", "store" -> startActivity(Intent(this@ProfileActivity, InventoryActivity::class.java))
-                    "vip" -> startActivity(Intent(this@ProfileActivity, VipActivity::class.java))
-                    "host" -> startActivity(Intent(this@ProfileActivity, CreatorCenterActivity::class.java))
-                    "agency" -> showInfo("مركز الوكالة")
-                    "family" -> showInfo("العائلة")
-                    "help" -> showInfo("المساعدة والدعم")
-                    "post" -> showInfo("أنشر")
-                    "visitors", "friends" -> showInfo(if (action == "visitors") "الزوار" else "الأصدقاء")
-                    "followers" -> openFollowList("followers")
-                    "fans" -> openFollowList("followers")
-                    "following" -> openFollowList("following")
-                    "editAvatar" -> pickPhoto()
-                }
-            }
+    private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()
+    private fun rounded(fill: Int, radius: Float, stroke: Int = border): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = dp(radius).toFloat()
+            if (stroke != Color.TRANSPARENT) setStroke(dp(1f), stroke)
         }
 
-        @JavascriptInterface fun copyId() {
-            runOnUiThread {
-                if (publicId.isNotBlank()) {
-                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("BAK ID", publicId))
-                    Toast.makeText(this@ProfileActivity, "تم نسخ المعرّف", Toast.LENGTH_SHORT).show()
-                }
-            }
+    private fun text(value: String, size: Float, color: Int = ink, bold: Boolean = false): TextView =
+        TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(color)
+            gravity = Gravity.CENTER_VERTICAL
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+            includeFontPadding = true
         }
+
+    private fun buildNativePage() {
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(pageBg)
+            isFillViewport = true
+            clipToPadding = false
+        }
+        page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(pageBg)
+            setPadding(dp(16f), dp(8f), dp(16f), dp(28f))
+        }
+        scroll.addView(page, ScrollView.LayoutParams(-1, -2))
+        setContentView(scroll)
+
+        header = ProfileHeaderView(this)
+        header.layoutParams = LinearLayout.LayoutParams(-1, -2)
+        header.setBackgroundColor(pageBg)
+        val slot = header.findViewById<FrameLayout>(R.id.profileHeaderAvatarSlot)
+        slot.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(222, 190, 103), Color.rgb(38, 165, 119), Color.rgb(222, 190, 103))
+        ).apply { shape = GradientDrawable.OVAL }
+        avatar = header.avatarView
+        avatar.layoutParams = FrameLayout.LayoutParams(dp(84f), dp(84f), Gravity.CENTER)
+        avatar.background = rounded(Color.rgb(235, 239, 240), 50f, Color.TRANSPARENT)
+        avatar.clipToOutline = true
+        header.editAvatarView.setOnClickListener { pickPhoto() }
+        header.copyView.setOnClickListener { copyId() }
+        header.settingsView.setOnClickListener { openAction("settings") }
+        header.supportView.setOnClickListener { openAction("music") }
+        header.fansCell.setOnClickListener { openFollowList("followers") }
+        header.followingCell.setOnClickListener { openFollowList("following") }
+        page.addView(header)
+
+        val walletRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            setPadding(0, dp(14f), 0, dp(14f))
+        }
+        val coins = walletCard("20", "عملات الشحن", "Ⓑ", Color.rgb(255, 239, 193))
+        val diamonds = walletCard("0", "الألماس المكتسب", "◆", Color.rgb(216, 244, 255))
+        coinValue = coins.second
+        diamondValue = diamonds.second
+        walletRow.addView(diamonds.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginEnd = dp(8f) })
+        walletRow.addView(coins.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginStart = dp(8f) })
+        page.addView(walletRow)
+
+        val shortcutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 28f)
+            setPadding(dp(12f), dp(14f), dp(12f), dp(12f))
+        }
+        val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        rowOne.addView(shortcut("العائلة", R.drawable.ic_profile_family_color) { openAction("family") }, weighted())
+        rowOne.addView(shortcut("VIP", R.drawable.ic_profile_vip_color) { openAction("vip") }, weighted())
+        rowOne.addView(shortcut("المتجر", R.drawable.ic_profile_store_color) { openAction("store") }, weighted())
+        rowOne.addView(shortcut("مظهري", R.drawable.ic_profile_appearance_color) { openAction("look") }, weighted())
+        val rowTwo = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(0, dp(8f), 0, 0)
+        }
+        rowTwo.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color) { openAction("agency") }, weighted())
+        rowTwo.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color) { openAction("host") }, weighted())
+        rowTwo.addView(View(this), weighted())
+        rowTwo.addView(View(this), weighted())
+        shortcutCard.addView(rowOne)
+        shortcutCard.addView(rowTwo)
+        page.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f) })
+
+        val settingsTitle = text("إعدادات وخدمات الحساب", 18f, ink, true).apply {
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(0, dp(28f), dp(4f), dp(12f))
+        }
+        page.addView(settingsTitle)
+        val services = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 26f)
+            clipToOutline = true
+        }
+        serviceRow(services, "أنشر", R.drawable.ic_profile_publish) { openAction("post") }
+        serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color) { openAction("help") }
+        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color) { openAction("privacy") }
+        serviceRow(services, "المستوى", R.drawable.ic_profile_level_color) { openAction("level") }
+        page.addView(services, LinearLayout.LayoutParams(-1, -2))
     }
 
-    private fun sendProfileToPage() {
-        if (!::web.isInitialized || isFinishing) return
-        val json = JSONObject.quote(profileData.toString())
-        web.post {
-            web.evaluateJavascript("window.setProfileData && window.setProfileData(JSON.parse($json));", null)
-            positionNativeAvatar()
-            loadNativeAvatarFromProfile()
+    private fun weighted() = LinearLayout.LayoutParams(0, -2, 1f)
+
+    private fun walletCard(amount: String, label: String, symbol: String, tint: Int): Pair<View, TextView> {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 24f)
+            setPadding(dp(12f), dp(12f), dp(12f), dp(10f))
+            elevation = dp(2f).toFloat()
         }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+        }
+        val icon = TextView(this).apply {
+            text = symbol
+            textSize = 25f
+            setTextColor(if (tint == Color.rgb(255, 239, 193)) Color.rgb(178, 128, 24) else Color.rgb(48, 164, 210))
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply { setColor(tint); cornerRadius = dp(18f).toFloat() }
+        }
+        top.addView(icon, LinearLayout.LayoutParams(dp(64f), dp(64f)))
+        val value = text(amount, 25f, ink, true).apply { gravity = Gravity.CENTER }
+        top.addView(value, LinearLayout.LayoutParams(0, dp(64f), 1f))
+        box.addView(top)
+        box.addView(text(label, 14f, muted).apply {
+            gravity = Gravity.RIGHT
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(0, dp(8f), dp(2f), 0)
+        })
+        box.setOnClickListener { openAction(if (label.contains("ألماس")) "diamonds" else "coins") }
+        return box to value
+    }
+
+    private fun shortcut(label: String, iconRes: Int, action: () -> Unit): View {
+        val item = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(3f), dp(3f), dp(3f), dp(4f))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            background = rounded(
+                when (label) {
+                    "العائلة" -> Color.rgb(242, 237, 255)
+                    "VIP" -> Color.rgb(27, 31, 48)
+                    "المتجر" -> Color.rgb(255, 238, 244)
+                    "مظهري" -> Color.rgb(232, 244, 255)
+                    "مركز الوكالة" -> Color.rgb(228, 248, 243)
+                    else -> Color.rgb(246, 235, 255)
+                }, 20f, Color.TRANSPARENT
+            )
+            setPadding(dp(15f), dp(15f), dp(15f), dp(15f))
+        }
+        item.addView(icon, LinearLayout.LayoutParams(dp(76f), dp(76f)))
+        item.addView(text(label, 14f, if (label == "VIP") Color.rgb(151, 116, 37) else ink, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7f), 0, 0)
+        })
+        return item
+    }
+
+    private fun serviceRow(parent: LinearLayout, label: String, iconRes: Int, action: () -> Unit) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16f), dp(12f), dp(16f), dp(12f))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            background = rounded(Color.rgb(246, 248, 251), 16f, Color.TRANSPARENT)
+            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
+        }
+        row.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        row.addView(text(label, 17f, ink, true).apply {
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            textDirection = View.TEXT_DIRECTION_RTL
+        }, LinearLayout.LayoutParams(0, dp(48f), 1f).apply { marginStart = dp(14f) })
+        row.addView(text("‹", 28f, Color.rgb(177, 185, 195)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(26f), dp(48f)))
+        parent.addView(row, LinearLayout.LayoutParams(-1, -2))
+        val divider = View(this).apply { setBackgroundColor(border) }
+        parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)))
     }
 
     private fun loadProfileData() {
-        firstLoadStarted = true
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
         if (token.isNullOrBlank()) { finish(); return }
         executor.execute {
@@ -143,43 +277,20 @@ class ProfileActivity : Activity() {
                 userId = account.optString("id")
                 publicId = account.optString("public_id")
                 if (userId.isBlank() || userId == "null") throw Exception("معرّف المستخدم غير متوفر")
-
-                val detailsResponse = AuthApi.get("/api/users/$userId", token)
-                if (detailsResponse.status !in 200..299) throw Exception(detailsResponse.body.optString("error", "تعذر تحميل الملف الشخصي"))
-                val user = detailsResponse.body.optJSONObject("user") ?: JSONObject()
-
+                val details = AuthApi.get("/api/users/$userId", token)
+                if (details.status !in 200..299) throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
+                val user = details.body.optJSONObject("user") ?: JSONObject()
                 val data = JSONObject()
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
-                    .put("avatarUrl", "")
+                    .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
                     .put("friends", 0)
                     .put("followers", 0)
                     .put("fans", 0)
                     .put("diamonds", 0)
                     .put("coins", 0)
-
-                // Avatar may be stored on the user row or in a nested profile object.
-                val userProfile = user.optJSONObject("profile") ?: user.optJSONObject("user_profile")
-                val accountProfile = account.optJSONObject("profile") ?: account.optJSONObject("user_profile")
-                val avatarPath = sequenceOf(
-                    user.optString("avatar_url"),
-                    userProfile?.optString("avatar_url").orEmpty(),
-                    account.optString("avatar_url"),
-                    accountProfile?.optString("avatar_url").orEmpty()
-                ).firstOrNull { it.isNotBlank() && it != "null" }.orEmpty()
-                if (avatarPath.isNotBlank()) {
-                    try {
-                        data.put("avatarUrl", normalizeAvatar(avatarPath))
-                    } catch (avatarError: Exception) {
-                        Log.e("BAKProfileWeb", "Avatar download failed: ${normalizeAvatar(avatarPath)}", avatarError)
-                        data.put("avatarUrl", normalizeAvatar(avatarPath))
-                    }
-                } else {
-                    Log.w("BAKProfileWeb", "No avatar_url found in /api/auth/me or /api/users response")
-                }
-
                 try {
                     val level = AuthApi.get("/api/levels/me", token)
                     if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
@@ -192,21 +303,32 @@ class ProfileActivity : Activity() {
                     }
                 } catch (_: Exception) {}
                 try {
-                    val walletResponse = AuthApi.get("/api/wallet", token)
-                    if (walletResponse.status in 200..299) {
-                        val wallet = walletResponse.body.optJSONObject("wallet") ?: walletResponse.body
-                        data.put("coins", wallet.optLong("recharge_coins", 0L))
-                        data.put("diamonds", wallet.optLong("earned_diamonds", 0L))
+                    val wallet = AuthApi.get("/api/wallet", token)
+                    if (wallet.status in 200..299) {
+                        val w = wallet.body.optJSONObject("wallet") ?: wallet.body
+                        data.put("coins", w.optLong("recharge_coins", 0L))
+                        data.put("diamonds", w.optLong("earned_diamonds", 0L))
                     }
                 } catch (_: Exception) {}
-
                 profileData = data
-                runOnUiThread { sendProfileToPage() }
+                runOnUiThread { bindProfile(data, token) }
             } catch (e: Exception) {
-                Log.e("BAKProfileWeb", "Profile load failed", e)
+                Log.e("BAKProfileNative", "Profile load failed", e)
                 runOnUiThread { Toast.makeText(this, e.message ?: "تعذر تحميل بيانات الملف الشخصي", Toast.LENGTH_LONG).show() }
             }
         }
+    }
+
+    private fun bindProfile(data: JSONObject, token: String) {
+        header.setUserName(data.optString("name"))
+        header.setUserIdText(publicId)
+        header.setLevel(data.optInt("level", 1))
+        header.setFansCount(data.optInt("fans", 0).toString())
+        header.setFollowingCount(data.optInt("followers", 0).toString())
+        coinValue.text = data.optLong("coins", 0).toString()
+        diamondValue.text = data.optLong("diamonds", 0).toString()
+        val avatarUrl = normalizeAvatar(data.optString("avatarUrl"))
+        if (avatarUrl.isNotBlank()) loadAvatar(avatarUrl, token)
     }
 
     private fun normalizeAvatar(value: String): String {
@@ -215,46 +337,11 @@ class ProfileActivity : Activity() {
         else "https://nokiraq.duckdns.org/" + value.trimStart('/')
     }
 
-    private fun positionNativeAvatar() {
-        if (!::web.isInitialized || !::nativeAvatar.isInitialized || web.width == 0) return
-        web.evaluateJavascript(
-            "(function(){var e=document.querySelector('.av .ring i');if(!e)return '';var r=e.getBoundingClientRect();return JSON.stringify({x:r.left,y:r.top,w:r.width,h:r.height});})()"
-        ) { value ->
-            try {
-                val raw = org.json.JSONTokener(value).nextValue() as? String ?: return@evaluateJavascript
-                val rect = JSONObject(raw)
-                val density = resources.displayMetrics.density
-                val x = (rect.optDouble("x") * density).toInt()
-                val y = (rect.optDouble("y") * density).toInt()
-                val w = (rect.optDouble("w") * density).toInt().coerceAtLeast(1)
-                val h = (rect.optDouble("h") * density).toInt().coerceAtLeast(1)
-                val params = nativeAvatar.layoutParams as FrameLayout.LayoutParams
-                params.width = w
-                params.height = h
-                params.leftMargin = x
-                params.topMargin = y
-                nativeAvatar.layoutParams = params
-                nativeAvatar.bringToFront()
-            } catch (e: Exception) {
-                Log.e("BAKProfileNativeAvatar", "Could not position native avatar", e)
-            }
-        }
-    }
-
-    private fun loadNativeAvatarFromProfile() {
-        val avatarUrl = profileData.optString("avatarUrl")
-        if (avatarUrl.isBlank() || avatarUrl == "null") {
-            nativeAvatar.setImageDrawable(null)
-            nativeAvatar.visibility = View.INVISIBLE
-            return
-        }
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null).orEmpty()
+    private fun loadAvatar(url: String, token: String) {
         executor.execute {
             try {
-                val connection = (URL(avatarUrl).openConnection() as java.net.HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 20000
-                    instanceFollowRedirects = true
+                val connection = (URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 15000; readTimeout = 20000; instanceFollowRedirects = true
                     setRequestProperty("Accept", "image/*")
                     if (token.isNotBlank()) setRequestProperty("Authorization", "Bearer $token")
                     setRequestProperty("User-Agent", "BAK-LIVE-Android")
@@ -264,35 +351,36 @@ class ProfileActivity : Activity() {
                     if (status !in 200..299) throw Exception("Avatar HTTP $status")
                     val mime = connection.contentType?.substringBefore(';')?.trim().orEmpty()
                     if (!mime.startsWith("image/")) throw Exception("Avatar response is not image: $mime")
-                    val bytes = connection.inputStream.use { input ->
-                        val out = ByteArrayOutputStream()
-                        val buffer = ByteArray(8192)
-                        var total = 0
-                        while (true) {
-                            val n = input.read(buffer)
-                            if (n < 0) break
-                            total += n
-                            if (total > 5 * 1024 * 1024) throw Exception("Avatar exceeds 5 MB")
-                            out.write(buffer, 0, n)
-                        }
-                        out.toByteArray()
-                    }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        ?: throw Exception("Unsupported avatar image")
-                } finally {
-                    connection.disconnect()
-                }
-                runOnUiThread {
-                    if (!isFinishing && ::nativeAvatar.isInitialized) {
-                        nativeAvatar.setImageBitmap(bitmap)
-                        nativeAvatar.visibility = View.VISIBLE
-                        positionNativeAvatar()
-                    }
-                }
+                    val bytes = connection.inputStream.use { it.readBytes() }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: throw Exception("Unsupported avatar image")
+                } finally { connection.disconnect() }
+                runOnUiThread { if (!isFinishing) avatar.setImageBitmap(bitmap) }
             } catch (e: Exception) {
-                Log.e("BAKProfileNativeAvatar", "Native avatar load failed: $avatarUrl", e)
-                runOnUiThread { nativeAvatar.visibility = View.INVISIBLE }
+                Log.e("BAKProfileNative", "Avatar load failed: $url", e)
             }
+        }
+    }
+
+    private fun copyId() {
+        if (publicId.isBlank()) return
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("BAK ID", publicId))
+        Toast.makeText(this, "تم نسخ المعرّف", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openAction(action: String) {
+        when (action) {
+            "settings", "privacy" -> startActivity(Intent(this, AccountSecurityActivity::class.java))
+            "music" -> Toast.makeText(this, "الموسيقى", Toast.LENGTH_SHORT).show()
+            "level" -> startActivity(Intent(this, LevelActivity::class.java))
+            "diamonds", "coins" -> startActivity(Intent(this, WalletActivity::class.java))
+            "look", "store" -> startActivity(Intent(this, InventoryActivity::class.java))
+            "vip" -> startActivity(Intent(this, VipActivity::class.java))
+            "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
+            "agency" -> showInfo("مركز الوكالة")
+            "family" -> showInfo("العائلة")
+            "help" -> showInfo("المساعدة والدعم")
+            "post" -> showInfo("أنشر")
         }
     }
 
@@ -344,7 +432,6 @@ class ProfileActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == photoPickerCode && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
-            selectedPhoto = uri
             uploadPhoto(uri)
         }
     }
@@ -359,11 +446,12 @@ class ProfileActivity : Activity() {
                 BitmapFactory.decodeByteArray(source, 0, source.size, bounds)
                 var sample = 1
                 while (bounds.outWidth / sample > 1200 || bounds.outHeight / sample > 1200) sample *= 2
-                val bitmap = BitmapFactory.decodeByteArray(source, 0, source.size, BitmapFactory.Options().apply { inSampleSize = sample })
-                    ?: throw Exception("صيغة الصورة غير مدعومة")
+                val bitmap = BitmapFactory.decodeByteArray(source, 0, source.size,
+                    BitmapFactory.Options().apply { inSampleSize = sample }) ?: throw Exception("صيغة الصورة غير مدعومة")
                 val scaled = if (bitmap.width > 900 || bitmap.height > 900) {
                     val ratio = minOf(900f / bitmap.width, 900f / bitmap.height)
-                    Bitmap.createScaledBitmap(bitmap, (bitmap.width * ratio).toInt().coerceAtLeast(1), (bitmap.height * ratio).toInt().coerceAtLeast(1), true)
+                    Bitmap.createScaledBitmap(bitmap, (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                        (bitmap.height * ratio).toInt().coerceAtLeast(1), true)
                 } else bitmap
                 val output = ByteArrayOutputStream()
                 scaled.compress(Bitmap.CompressFormat.JPEG, 82, output)
@@ -375,7 +463,7 @@ class ProfileActivity : Activity() {
                 val url = normalizeAvatar(result.body.optString("avatar_url"))
                 profileData.put("avatarUrl", url)
                 runOnUiThread {
-                    sendProfileToPage()
+                    loadAvatar(url, token)
                     Toast.makeText(this, "تم تحديث الصورة الشخصية", Toast.LENGTH_SHORT).show()
                 }
                 if (scaled !== bitmap) scaled.recycle()
@@ -386,16 +474,7 @@ class ProfileActivity : Activity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (::web.isInitialized && firstLoadStarted) loadProfileData()
-    }
-
     override fun onDestroy() {
-        if (::web.isInitialized) {
-            web.removeJavascriptInterface("BAK")
-            web.destroy()
-        }
         executor.shutdownNow()
         super.onDestroy()
     }
