@@ -78,6 +78,9 @@ class ProfileActivity : Activity() {
         }
         root.addView(web, FrameLayout.LayoutParams(-1, -1))
         root.addView(nativeAvatar, FrameLayout.LayoutParams(1, 1))
+        // Keep the native avatar aligned with its HTML frame whenever the WebView scrolls.
+        web.setOnScrollChangeListener { _, _, _, _, _ -> positionNativeAvatar() }
+        web.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> positionNativeAvatar() }
         setContentView(root)
         web.loadUrl("file:///android_asset/profile/BAK_LIVE_Profile.html")
         loadProfileData()
