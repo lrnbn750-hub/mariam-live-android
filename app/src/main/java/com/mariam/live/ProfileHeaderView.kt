@@ -10,6 +10,8 @@ import android.widget.TextView
 /**
  * Dedicated profile header. Layout direction is fixed LTR for stable avatar placement;
  * Arabic text views keep their own RTL content direction.
+ * Public API is unchanged (same properties and setters); [settingsView] and [supportView]
+ * are now icon buttons, so they are typed as View (setOnClickListener works exactly the same).
  */
 class ProfileHeaderView(context: Context) : LinearLayout(context) {
     val avatarView: ImageView
@@ -23,12 +25,18 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
     val followingCountView: TextView
     val fansCell: View
     val followingCell: View
-    val settingsView: TextView
-    val supportView: TextView
+    val settingsView: View
+    val supportView: View
+
+    /** Animated avatar frame. `avatarFrame.frameEnabled = false` hides it. */
+    val avatarFrame: AvatarFrameView
 
     init {
         orientation = VERTICAL
         layoutDirection = View.LAYOUT_DIRECTION_LTR
+        clipChildren = false
+        clipToPadding = false
+        background = HeroBackdropDrawable(context)
         LayoutInflater.from(context).inflate(R.layout.view_profile_header, this, true)
         avatarView = findViewById(R.id.profileHeaderAvatar)
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
@@ -43,6 +51,10 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         followingCell = findViewById(R.id.profileHeaderFollowingCell)
         settingsView = findViewById(R.id.profileHeaderSettings)
         supportView = findViewById(R.id.profileHeaderSupport)
+        avatarFrame = findViewById(R.id.profileHeaderAvatarSlot)
+
+        // Tapping the whole ID chip copies the ID (uses the listener set on copyView).
+        findViewById<View>(R.id.profileHeaderIdChip).setOnClickListener { copyView.performClick() }
     }
 
     /** Accepts the raw public ID only. The ID: prefix is provided by the XML label. */
