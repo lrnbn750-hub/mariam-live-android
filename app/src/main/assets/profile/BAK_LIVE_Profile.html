@@ -49,7 +49,7 @@ svg{display:block}
   background:conic-gradient(from 210deg,#f3dfa6,#d9b25a,#0f9d6e,#f3dfa6);padding:3px;
 }
 .av .ring i{display:block;width:100%;height:100%;border-radius:50%;background:#fff;padding:3px}
-.av img,
+.av img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
 .av [hidden]{display:none}
 
 .edit{
@@ -272,8 +272,10 @@ function render(){
   $('sFan').textContent = fmt(profile.fans);
   $('wDia').textContent = fmt(profile.diamonds);
   $('wCoin').textContent = fmt(profile.coins);
-  if(profile.avatarUrl){ $('avImg').src=profile.avatarUrl; $('avImg').hidden=false; }
-  else { $('avImg').removeAttribute('src'); $('avImg').hidden=true; }
+  const avatar = $('avImg');
+  avatar.onerror = () => { avatar.hidden = true; avatar.removeAttribute('src'); };
+  if(profile.avatarUrl){ avatar.hidden = false; avatar.src = profile.avatarUrl; }
+  else { avatar.removeAttribute('src'); avatar.hidden = true; }
 }
 
 function toast(msg){
