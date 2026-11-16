@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/profile_header_background"
+    android:background="@android:color/white"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:paddingTop="10dp">
@@ -16,33 +16,35 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layoutDirection="ltr"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp">
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
 
         <TextView
             android:id="@+id/profileHeaderSupport"
-            android:layout_width="40dp"
-            android:layout_height="match_parent"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:gravity="center"
             android:text="♫"
-            android:textColor="#304B4C"
+            android:textColor="#161B27"
             android:textSize="22sp"
-            android:contentDescription="المساعدة والدعم" />
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الموسيقى" />
 
-        <TextView
+        <View
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
 
         <TextView
             android:id="@+id/profileHeaderSettings"
-            android:layout_width="40dp"
-            android:layout_height="match_parent"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:gravity="center"
             android:text="⚙"
-            android:textColor="#304B4C"
+            android:textColor="#161B27"
             android:textSize="23sp"
-            android:contentDescription="إعدادات الحساب" />
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الإعدادات" />
     </LinearLayout>
 
     <LinearLayout
@@ -52,8 +54,9 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layoutDirection="ltr"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp">
+        android:layout_marginTop="14dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
 
         <LinearLayout
             android:id="@+id/profileIdentityGroup"
@@ -63,33 +66,33 @@
             android:orientation="vertical"
             android:gravity="right|center_vertical"
             android:layoutDirection="ltr"
-            android:layout_marginEnd="14dp">
+            android:layout_marginEnd="16dp">
 
             <TextView
                 android:id="@+id/profileHeaderName"
                 android:layout_width="match_parent"
+                android:layout_height="32dp"
                 android:layoutDirection="rtl"
-                android:layout_height="28dp"
                 android:gravity="right|center_vertical"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:text="جارٍ تحميل الاسم..."
-                android:textColor="#262B34"
+                android:textColor="#12161F"
                 android:textSize="23sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/profileHeaderIdRow"
                 android:layout_width="wrap_content"
-                android:layout_height="28dp"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:layoutDirection="ltr">
 
                 <ImageView
                     android:id="@+id/profileHeaderCopy"
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
                     android:src="@drawable/ic_profile_copy"
                     android:contentDescription="نسخ رقم الحساب"
                     android:clickable="true"
@@ -98,10 +101,10 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="6dp"
                     android:text="ID:"
-                    android:textColor="#647377"
-                    android:textSize="12sp" />
+                    android:textColor="#5B6475"
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/profileHeaderUserId"
@@ -109,9 +112,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="3dp"
                     android:text="..."
-                    android:textColor="#647377"
+                    android:textColor="#5B6475"
                     android:textDirection="ltr"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
                     android:singleLine="true" />
 
                 <com.mariam.live.LevelBadgeView
@@ -138,11 +141,11 @@
 
             <ImageView
                 android:id="@+id/profileHeaderEditAvatar"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_gravity="bottom|start"
                 android:background="@drawable/profile_header_edit_badge"
-                android:padding="4dp"
+                android:padding="5dp"
                 android:src="@drawable/ic_profile_edit"
                 android:tint="#FFFFFF"
                 android:contentDescription="تعديل الصورة الشخصية" />
@@ -153,56 +156,58 @@
         android:id="@+id/profileHeaderStats"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
+        android:layout_marginTop="22dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        android:paddingTop="14dp"
         android:paddingBottom="14dp"
-        android:paddingTop="8dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:layoutDirection="ltr"
-        android:background="@android:color/transparent">
+        android:background="@drawable/profile_header_stats_background">
 
         <LinearLayout
             android:id="@+id/profileHeaderFansCell"
             android:layout_width="0dp"
-            android:layout_height="64dp"
+            android:layout_height="58dp"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true">
-            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="21sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="26dp" android:gravity="center" android:text="المعجبون" android:textColor="#8B919D" android:textSize="12sp" />
+            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المعجبون" android:textColor="#8A93A3" android:textSize="12sp" />
         </LinearLayout>
 
-        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
 
         <LinearLayout
             android:id="@+id/profileHeaderFollowingCell"
             android:layout_width="0dp"
-            android:layout_height="54dp"
+            android:layout_height="58dp"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true">
-            <TextView android:id="@+id/profileHeaderFollowingCount" android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="المتابَعون" android:textColor="#8B919D" android:textSize="11sp" />
+            <TextView android:id="@+id/profileHeaderFollowingCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المتابعون" android:textColor="#8A93A3" android:textSize="12sp" />
         </LinearLayout>
 
-        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
-            <TextView android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="0" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="الأصدقاء" android:textColor="#8B919D" android:textSize="11sp" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الأصدقاء" android:textColor="#8A93A3" android:textSize="12sp" />
         </LinearLayout>
 
-        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EFF1F4" />
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
-            <TextView android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center" android:text="—" android:textColor="#262B34" android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center" android:text="الزوار" android:textColor="#8B919D" android:textSize="11sp" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="—" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الزوار" android:textColor="#8A93A3" android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>
