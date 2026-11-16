@@ -14,6 +14,7 @@ on:
       - feature/bak-live-svga-gifts-from-working-43581935436
       - fix/bak-live-audit-2026-11
       - feature/bak-live-wealth-level-redesign
+      - feature/bak-live-youtube-watch-together-original
 
 permissions:
   contents: read
