@@ -899,3 +899,286 @@ class LevelBadgeView @JvmOverloads constructor(
     }
 }
 
+
+
+/// FILE: app/src/main/res/layout/view_profile_header.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileHeaderRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingTop="10dp">
+
+    <LinearLayout
+        android:id="@+id/profileHeaderTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <TextView
+            android:id="@+id/profileHeaderSupport"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:gravity="center"
+            android:text="♫"
+            android:textColor="#161B27"
+            android:textSize="22sp"
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الموسيقى" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/profileHeaderSettings"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:gravity="center"
+            android:text="⚙"
+            android:textColor="#161B27"
+            android:textSize="23sp"
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الإعدادات" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderIdentityRow"
+        android:layout_width="match_parent"
+        android:layout_height="108dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:layout_marginTop="14dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <LinearLayout
+            android:id="@+id/profileIdentityGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="right|center_vertical"
+            android:layoutDirection="ltr"
+            android:layout_marginEnd="16dp">
+
+            <TextView
+                android:id="@+id/profileHeaderName"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:layoutDirection="rtl"
+                android:gravity="right|center_vertical"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:text="جارٍ تحميل الاسم..."
+                android:textColor="#12161F"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/profileHeaderIdRow"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layoutDirection="ltr">
+
+                <ImageView
+                    android:id="@+id/profileHeaderCopy"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_profile_copy"
+                    android:contentDescription="نسخ رقم الحساب"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="ID:"
+                    android:textColor="#5B6475"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/profileHeaderUserId"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:text="..."
+                    android:textColor="#5B6475"
+                    android:textDirection="ltr"
+                    android:textSize="13sp"
+                    android:singleLine="true" />
+
+                <com.mariam.live.LevelBadgeView
+                    android:id="@+id/profileLevelBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/profileHeaderAvatarSlot"
+            android:layout_width="92dp"
+            android:layout_height="92dp">
+
+            <ImageView
+                android:id="@+id/profileHeaderAvatar"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:background="@drawable/profile_header_avatar_circle"
+                android:clipToOutline="true"
+                android:contentDescription="الصورة الشخصية" />
+
+            <ImageView
+                android:id="@+id/profileHeaderEditAvatar"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="bottom|start"
+                android:background="@drawable/profile_header_edit_badge"
+                android:padding="5dp"
+                android:src="@drawable/ic_profile_edit"
+                android:tint="#FFFFFF"
+                android:contentDescription="تعديل الصورة الشخصية" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layoutDirection="ltr"
+        android:background="@drawable/profile_header_stats_background">
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFansCell"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المعجبون" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFollowingCell"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFollowingCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المتابعون" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الأصدقاء" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="—" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الزوار" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
+
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_agency_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillColor="#42C7D5" android:pathData="M7,52c0,-10 6,-16 15,-16s15,6 15,16v4H7z"/>
+    <path android:fillColor="#238EBE" android:pathData="M29,54c0,-12 7,-19 17,-19s15,7 15,19v2H29z"/>
+    <path android:fillColor="#B8F1F1" android:pathData="M22,8a11,11 0,1 0,0 22a11,11 0,0 0,0 -22z"/>
+    <path android:fillColor="#FFD1A5" android:pathData="M46,12a9,9 0,1 0,0 18a9,9 0,0 0,0 -18z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M20,13a6,6 0,0 1,4 2l-3,4 -5,-1zM44,16a5,5 0,0 1,4 1l-2,4 -4,-1z" android:fillAlpha="0.8"/>
+    <path android:fillColor="#D8F7F4" android:pathData="M9,49c1,-7 5,-11 12,-12 5,1 9,4 11,9 -5,0 -8,3 -10,8H9z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_appearance_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#A6EAF5" android:pathData="M20,12L29,8h6l9,4 10,8 -7,10 -6,-4v25H23V26l-6,4 -7,-10z"/>
+ <path android:fillColor="#36BBD4" android:pathData="M20,12L29,8h6l9,4 10,8 -7,10 -6,-4v25H23V26l-6,4 -7,-10z"/>
+ <path android:fillColor="#168FAE" android:pathData="M23,26l9,5 9,-5v25H23z"/>
+ <path android:fillColor="#D8FAFF" android:pathData="M29,9h6l4,7 -7,6 -7,-6z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M18,19l5,-4 4,4 -6,7zM46,19l-5,-4 -4,4 6,7z" android:fillAlpha="0.8"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_copy.xml
+<?xml version="1.0" encoding="utf-8"?><vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="12dp" android:height="12dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#647377" android:pathData="M16,1H4C2.9,1 2,1.9 2,3v14h2V3h12V1zM20,5H8C6.9,5 6,5.9 6,7v14c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V7c0,-1.1 -0.9,-2 -2,-2zM20,21H8V7h12v14z"/></vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_creator_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#F45E9C" android:pathData="M25,8a7,7 0,0 1,14 0v22a7,7 0,0 1,-14 0z"/>
+ <path android:fillColor="#FFB4D1" android:pathData="M29,8a3,3 0,0 1,6 0v17a3,3 0,0 1,-6 0z"/>
+ <path android:fillColor="#D83D82" android:pathData="M15,27h5v4a12,12 0,0 0,24 0v-4h5v4a17,17 0,0 1,-15 17v7h9v5H21v-5h8v-7a17,17 0,0 1,-14 -17z"/>
+ <path android:fillColor="#FFD3E5" android:pathData="M10,17l4,2 -4,2 -2,4 -2,-4 -4,-2 4,-2 2,-4zM53,9l3,2 -3,2 -2,3 -2,-3 -3,-2 3,-2 2,-3z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_edit.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFFFF" android:pathData="M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34a0.9959,0.9959 0,0 0,-1.41 0l-1.83,1.83 3.75,3.75 1.83,-1.83z"/></vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_family_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#8B5BE8" android:pathData="M8,52c0,-12 8,-19 18,-19s18,7 18,19v4H8z"/>
+ <path android:fillColor="#F06EB5" android:pathData="M28,54c0,-13 7,-21 17,-21s15,8 15,21v2H28z"/>
+ <path android:fillColor="#45C7D9" android:pathData="M2,54c0,-9 5,-15 13,-15 5,0 9,3 11,8 -4,2 -6,5 -7,9H2z"/>
+ <path android:fillColor="#FFD4A8" android:pathData="M26,8a10,10 0,1 0,0 20a10,10 0,0 0,0 -20z"/>
+ <path android:fillColor="#FFC2D8" android:pathData="M47,13a8,8 0,1 0,0 16a8,8 0,0 0,0 -16z"/>
+ <path android:fillColor="#BDEFF4" android:pathData="M14,25a7,7 0,1 0,0 14a7,7 0,0 0,0 -14z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_help_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#38BDAA" android:pathData="M8,30a24,24 0,0 1,48 0v15a7,7 0,0 1,-7 7h-6V34h8v-4a19,19 0,0 0,-38 0v4h8v18h-6a7,7 0,0 1,-7 -7z"/>
+ <path android:fillColor="#8DE7D8" android:pathData="M18,35h8v14h-8zM38,35h8v14h-8z"/>
+ <path android:fillColor="#258F85" android:pathData="M24,48h16v5H24z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M32,14a3,3 0,0 1,3 3v2a3,3 0,0 1,-6 0v-2a3,3 0,0 1,3 -3z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_level_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#E49A22" android:pathData="M32,5l8,17 19,3 -14,13 4,19 -17,-9 -17,9 4,-19L5,25l19,-3z"/>
+ <path android:fillColor="#FFD45A" android:pathData="M32,8l7,15 16,2 -12,11 3,16 -14,-8 -14,8 3,-16 -12,-11 16,-2z"/>
+ <path android:fillColor="#FFF3B5" android:pathData="M32,15l4,10 11,2 -8,7 2,11 -9,-5 -9,5 2,-11 -8,-7 11,-2z"/>
+</vector>
