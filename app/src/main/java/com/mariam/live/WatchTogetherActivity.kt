@@ -87,7 +87,7 @@ class WatchTogetherActivity : Activity() {
             webChromeClient = WebChromeClient()
             webViewClient = WebViewClient()
             addJavascriptInterface(PlayerBridge(), "BakWatch")
-            loadDataWithBaseURL("https://www.youtube.com", playerHtml(), "text/html", "UTF-8", null)
+            loadDataWithBaseURL("https://nokiraq.duckdns.org/", playerHtml(), "text/html", "UTF-8", null)
         }
         root.addView(player, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12); bottomMargin = dp(10) })
 
@@ -131,14 +131,14 @@ class WatchTogetherActivity : Activity() {
     }
 
     private fun playerHtml(): String = """
-        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta name="referrer" content="origin">
         <style>html,body,#player{margin:0;width:100%;height:100%;background:#000;overflow:hidden}</style></head>
         <body><div id="player"></div>
         <script>
         var ytPlayer=null, pending=null;
         function onYouTubeIframeAPIReady(){
           ytPlayer=new YT.Player('player',{width:'100%',height:'100%',videoId:'',
-            playerVars:{playsinline:1,rel:0,modestbranding:1,enablejsapi:1},
+            playerVars:{playsinline:1,rel:0,modestbranding:1,enablejsapi:1,origin:'https://nokiraq.duckdns.org'},
             events:{onReady:function(){BakWatch.onReady();if(pending)applyRemoteState(pending.id,pending.state,pending.time,pending.updated);}}});
         }
         function applyRemoteState(id,state,time,updated){
