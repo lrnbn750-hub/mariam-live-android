@@ -74,9 +74,9 @@ class ProfileActivity : Activity() {
         val ink=Color.rgb(38,43,52)
         val muted=Color.rgb(139,145,157)
         val accent=Color.rgb(40,190,145)
-        val page=Color.rgb(246,247,250)
+        val page=Color.WHITE
         val white=Color.WHITE
-        window.statusBarColor=Color.rgb(226,249,244)
+        window.statusBarColor=Color.WHITE
         window.navigationBarColor=white
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
@@ -148,12 +148,12 @@ class ProfileActivity : Activity() {
         // Wallet balances are read from the existing API, not hard-coded.
         val balances=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(14),0,dp(14),dp(10))
+            setPadding(dp(18),dp(14),dp(18),dp(12))
         }
         fun balanceCard(title:String,initial:String,emoji:String):Pair<LinearLayout,TextView>{
             val card=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-                background=shape(white,17,Color.rgb(239,241,245))
+                background=shape(white,20,Color.rgb(237,240,244))
                 setPadding(dp(10),dp(8),dp(10),dp(8))
                 isClickable=true
                 setOnClickListener{startActivity(Intent(this@ProfileActivity,WalletActivity::class.java))}
@@ -174,8 +174,8 @@ class ProfileActivity : Activity() {
         }
         val (coinsCard,coinsValue)=balanceCard("عملات الشحن","—","🪙")
         val (diamondsCard,diamondsValue)=balanceCard("الألماس المكتسب","—","💎")
-        balances.addView(coinsCard,LinearLayout.LayoutParams(0,dp(78),1f).apply{marginEnd=dp(5)})
-        balances.addView(diamondsCard,LinearLayout.LayoutParams(0,dp(78),1f).apply{marginStart=dp(5)})
+        balances.addView(coinsCard,LinearLayout.LayoutParams(0,dp(92),1f).apply{marginEnd=dp(5)})
+        balances.addView(diamondsCard,LinearLayout.LayoutParams(0,dp(92),1f).apply{marginStart=dp(5)})
         content.addView(balances,LinearLayout.LayoutParams(-1,-2))
 
         // Coordinated colorful shortcuts inspired by the reference profile.
@@ -183,7 +183,7 @@ class ProfileActivity : Activity() {
         val shortcuts=GridLayout(this).apply{
             columnCount=4;useDefaultMargins=false
             layoutDirection=View.LAYOUT_DIRECTION_RTL
-            background=shape(white,18);setPadding(dp(5),dp(10),dp(5),dp(10))
+            background=shape(white,22,Color.rgb(237,240,244));setPadding(dp(7),dp(14),dp(7),dp(14))
         }
         fun shortcut(iconFile:String,title:String,click:()->Unit){
             val cell=LinearLayout(this).apply{
@@ -263,7 +263,7 @@ class ProfileActivity : Activity() {
             showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
-            setMargins(dp(14),dp(2),dp(14),dp(14))
+            setMargins(dp(18),dp(2),dp(18),dp(14))
         })
 
         // The large Emperor/XP level panel is intentionally removed from the profile.
@@ -277,7 +277,7 @@ class ProfileActivity : Activity() {
         content.addView(menuHeading,LinearLayout.LayoutParams(-1,dp(34)))
         val menu=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            background=shape(white,17,Color.rgb(238,240,244))
+            background=shape(white,22,Color.rgb(237,240,244))
             setPadding(dp(8),dp(4),dp(8),dp(4))
         }
         fun menuRow(icon:Int,title:String,detail:String,click:()->Unit){
@@ -317,7 +317,7 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this,AccountSecurityActivity::class.java))
         }
         content.addView(menu,LinearLayout.LayoutParams(-1,-2).apply{
-            setMargins(dp(14),0,dp(14),dp(22))
+            setMargins(dp(18),0,dp(18),dp(22))
         })
 
         displayName=EditText(this)
