@@ -152,13 +152,13 @@ class AvatarFrameView @JvmOverloads constructor(
     }
 
     // ------------------------------------------------------------------ animation lifecycle
-    private fun canAnimate(): Boolean {
+    private fun shouldAnimateFrame(): Boolean {
         if (!frameEnabled || !isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE) return false
         return if (Build.VERSION.SDK_INT >= 26) ValueAnimator.areAnimatorsEnabled() else true
     }
 
     private fun updateAnimator() {
-        if (canAnimate()) {
+        if (shouldAnimateFrame()) {
             if (animator == null) {
                 animator = ValueAnimator.ofFloat(0f, 1f).apply {
                     duration = 7000L
