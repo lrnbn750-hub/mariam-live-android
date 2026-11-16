@@ -589,7 +589,7 @@ window.addEventListener('load',()=>{
 $('buyBtn').onclick=openBuy;
 $('sendBtn').onclick=openSend;
 $('infoBtn').onclick=openInfo;
-$('backBtn').onclick=()=>{ if(history.length>1) history.back(); };
+$('backBtn').onclick=()=>{ if(window.AndroidVip) AndroidVip.close(); else if(history.length>1) history.back(); };
 
 // swipe on the badge to move between levels (RTL: swipe right = next level)
 (function(){
