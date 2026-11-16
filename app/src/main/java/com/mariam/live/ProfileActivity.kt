@@ -96,7 +96,7 @@ class ProfileActivity : Activity() {
             setBackgroundColor(pageBg)
             setPadding(dp(16f), dp(8f), dp(16f), dp(28f))
         }
-        scroll.addView(page, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(page, ViewGroup.LayoutParams(-1, -2))
         setContentView(scroll)
 
         header = ProfileHeaderView(this)
