@@ -120,13 +120,33 @@ class ProfileActivity : Activity() {
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
-                    .put("avatarUrl", normalizeAvatar(user.optString("avatar_url")))
+                    .put("avatarUrl", "")
                     .put("visitors", JSONObject.NULL)
                     .put("friends", 0)
                     .put("followers", 0)
                     .put("fans", 0)
                     .put("diamonds", 0)
                     .put("coins", 0)
+
+                // Avatar may be stored on the user row or in a nested profile object.
+                val userProfile = user.optJSONObject("profile") ?: user.optJSONObject("user_profile")
+                val accountProfile = account.optJSONObject("profile") ?: account.optJSONObject("user_profile")
+                val avatarPath = sequenceOf(
+                    user.optString("avatar_url"),
+                    userProfile?.optString("avatar_url").orEmpty(),
+                    account.optString("avatar_url"),
+                    accountProfile?.optString("avatar_url").orEmpty()
+                ).firstOrNull { it.isNotBlank() && it != "null" }.orEmpty()
+                if (avatarPath.isNotBlank()) {
+                    try {
+                        data.put("avatarUrl", downloadAvatarDataUrl(normalizeAvatar(avatarPath), token))
+                    } catch (avatarError: Exception) {
+                        Log.e("BAKProfileWeb", "Avatar download failed: ${normalizeAvatar(avatarPath)}", avatarError)
+                        data.put("avatarUrl", normalizeAvatar(avatarPath))
+                    }
+                } else {
+                    Log.w("BAKProfileWeb", "No avatar_url found in /api/auth/me or /api/users response")
+                }
 
                 try {
                     val level = AuthApi.get("/api/levels/me", token)
@@ -161,6 +181,45 @@ class ProfileActivity : Activity() {
         if (value.isBlank() || value == "null") return ""
         return if (value.startsWith("http://") || value.startsWith("https://")) value
         else "https://nokiraq.duckdns.org/" + value.trimStart('/')
+    }
+
+    /**
+     * Fetch the avatar natively and pass it to WebView as a data URL.
+     * This avoids WebView image/network policy differences and records HTTP failures in Logcat.
+     */
+    private fun downloadAvatarDataUrl(url: String, token: String): String {
+        val connection = (URL(url).openConnection() as java.net.HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15000
+            readTimeout = 20000
+            instanceFollowRedirects = true
+            setRequestProperty("Accept", "image/*")
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("User-Agent", "BAK-LIVE-Android")
+        }
+        try {
+            val status = connection.responseCode
+            if (status !in 200..299) throw Exception("Avatar HTTP $status")
+            val mime = connection.contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
+            if (!mime.startsWith("image/")) throw Exception("Avatar response is not an image: $mime")
+            val bytes = connection.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > 5 * 1024 * 1024) throw Exception("Avatar exceeds 5 MB")
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
+            if (bytes.isEmpty()) throw Exception("Avatar image is empty")
+            return "data:$mime;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun showInfo(title: String) {
