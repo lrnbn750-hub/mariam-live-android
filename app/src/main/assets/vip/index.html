@@ -356,7 +356,7 @@ function hexToRgb(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr
 function rgbToHex(a){return '#'+a.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('')}
 function shade(hex,t){const c=hexToRgb(hex),to=t>0?255:0,k=Math.abs(t);return rgbToHex(c.map(v=>v+(to-v)*k))}
 
-function badgeSVG(n){
+function buildBadgeSVG(n){
   const [metal,gem,rib]=TIERS[n-1];
   const hi=shade(metal,.62),lo=shade(metal,-.4),dk=shade(metal,-.68);
   const gHi=shade(gem,.6),gLo=shade(gem,-.5);
@@ -440,6 +440,8 @@ function badgeSVG(n){
   ${sp}
 </svg>`;
 }
+const BADGE_CACHE=new Array(13);
+function badgeSVG(n){return BADGE_CACHE[n]||(BADGE_CACHE[n]=buildBadgeSVG(n));}
 
 /* ===================== Render ===================== */
 function renderTabs(){
@@ -459,17 +461,26 @@ function renderTabs(){
   });
 }
 function select(n,scroll=true){
-  state.selected=Math.max(1,Math.min(12,n));
-  renderTabs();render();
+  const next=Math.max(1,Math.min(12,n));
+  if(next===state.selected){if(scroll){const same=$('tab'+next);same&&same.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}return;}
+  state.selected=next;
+  renderTabs();
+  render(true);
   if(scroll){const t=$('tab'+state.selected);t&&t.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}
 }
-function render(){
+function render(animate=false){
   const n=state.selected,p=pkg(),{fee,back}=calc(p.price);
   $('app').style.setProperty('--tier',TIERS[n-1][1]);
 
   const bd=$('badge');
-  bd.style.animation='none';bd.offsetHeight;bd.style.animation='';
-  bd.innerHTML=badgeSVG(n);
+  const nextBadge=badgeSVG(n);
+  if(bd.dataset.level!==String(n)){
+    bd.innerHTML=nextBadge;
+    bd.dataset.level=String(n);
+    if(animate && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+      bd.animate([{opacity:.72,transform:'translateY(5px) scale(.97)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:190,easing:'cubic-bezier(.2,.75,.25,1)'});
+    }
+  }
 
   const on=n>=ELITE_MIN;
   $('elite').className='elite'+(on?' on':'');
