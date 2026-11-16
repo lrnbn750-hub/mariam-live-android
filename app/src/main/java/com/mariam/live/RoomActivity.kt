@@ -54,6 +54,8 @@ class RoomActivity : Activity() {
  private lateinit var roomPage:LinearLayout
  private lateinit var roomBackgroundView:ImageView
  private lateinit var roomOverlayLayer:FrameLayout
+ private var watchLayer:FrameLayout?=null
+ private var watchPlayer:RoomWatchPlayer?=null
  private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
@@ -268,6 +270,10 @@ class RoomActivity : Activity() {
     Color.argb(165,8,6,18),Color.argb(35,8,6,18),Color.argb(30,8,6,18),Color.argb(205,8,6,18)))
   },FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
+  // طبقة المشاهدة الجماعية: فوق المقاعد والدردشة وتحت أنيميشن الهدايا.
+  val watchHost=FrameLayout(this).apply{isClickable=false;isFocusable=false}
+  watchLayer=watchHost
+  roomRoot.addView(watchHost,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomOverlayLayer,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Respect the real status-bar inset so the header never sits under the clock/battery icons.
@@ -294,15 +300,18 @@ class RoomActivity : Activity() {
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
+  watchLayer?.let{layer->watchPlayer=RoomWatchPlayer(this,layer,{grid},roomId,authToken,{isOwner}).also{it.start()}}
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
 
  override fun onResume(){
   super.onResume()
   hidePhoneNavigation()
+  watchPlayer?.onHostResume()
  }
 
  override fun onPause(){
+  watchPlayer?.onHostPause()
   window.decorView.systemUiVisibility =
    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
   super.onPause()
@@ -386,7 +395,8 @@ class RoomActivity : Activity() {
     val chatTop=if(::chatPanel.isInitialized){
      val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()
     }else screenHeight
-    roomSwipeGestureEligible=!switchingRoom && !composerExpanded && swipeDownY<chatTop
+    roomSwipeGestureEligible=!switchingRoom && !composerExpanded && swipeDownY<chatTop &&
+     watchPlayer?.containsTouch(swipeDownX,swipeDownY)!=true
     if(roomSwipeGestureEligible){
      roomPage.animate().cancel()
      roomPage.setLayerType(View.LAYER_TYPE_HARDWARE,null)
@@ -2465,7 +2475,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    "mic",Color.rgb(64,224,255)){toggleMic()}
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
   addTool("مشاهدة جماعية","ابحث عن فيديو YouTube وشاهده مع أعضاء الغرفة","play",Color.rgb(255,75,90)){
-   startActivity(Intent(this,WatchTogetherActivity::class.java).putExtra("room_id",roomId))
+   watchPlayer?.open()
   }
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
@@ -2803,6 +2813,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
+  watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
