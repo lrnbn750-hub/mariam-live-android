@@ -148,7 +148,7 @@ class ProfileActivity : Activity() {
         // Wallet balances are read from the existing API, not hard-coded.
         val balances=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(18),dp(14),dp(18),dp(12))
+            setPadding(dp(18),dp(14),dp(18),dp(14))
         }
         fun balanceCard(title:String,initial:String,emoji:String):Pair<LinearLayout,TextView>{
             val card=LinearLayout(this).apply{
@@ -160,22 +160,22 @@ class ProfileActivity : Activity() {
             }
             val row=LinearLayout(this).apply{gravity=Gravity.CENTER}
             val amount=TextView(this@ProfileActivity).apply{
-                text=initial;textSize=20f;setTextColor(ink);typeface=android.graphics.Typeface.DEFAULT_BOLD
+                text=initial;textSize=22f;setTextColor(ink);typeface=android.graphics.Typeface.DEFAULT_BOLD
             }
             row.addView(amount)
             row.addView(TextView(this@ProfileActivity).apply{
-                text=emoji;textSize=24f;setPadding(dp(6),0,0,0)
+                text=emoji;textSize=28f;setPadding(dp(6),0,0,0)
             })
             card.addView(row,LinearLayout.LayoutParams(-1,dp(36)))
             card.addView(TextView(this@ProfileActivity).apply{
-                text=title;textSize=11f;setTextColor(muted);gravity=Gravity.CENTER
+                text=title;textSize=12.5f;setTextColor(muted);gravity=Gravity.CENTER
             })
             return Pair(card,amount)
         }
         val (coinsCard,coinsValue)=balanceCard("عملات الشحن","—","🪙")
         val (diamondsCard,diamondsValue)=balanceCard("الألماس المكتسب","—","💎")
-        balances.addView(coinsCard,LinearLayout.LayoutParams(0,dp(92),1f).apply{marginEnd=dp(5)})
-        balances.addView(diamondsCard,LinearLayout.LayoutParams(0,dp(92),1f).apply{marginStart=dp(5)})
+        balances.addView(coinsCard,LinearLayout.LayoutParams(0,dp(108),1f).apply{marginEnd=dp(5)})
+        balances.addView(diamondsCard,LinearLayout.LayoutParams(0,dp(108),1f).apply{marginStart=dp(5)})
         content.addView(balances,LinearLayout.LayoutParams(-1,-2))
 
         // Coordinated colorful shortcuts inspired by the reference profile.
@@ -183,7 +183,7 @@ class ProfileActivity : Activity() {
         val shortcuts=GridLayout(this).apply{
             columnCount=4;useDefaultMargins=false
             layoutDirection=View.LAYOUT_DIRECTION_RTL
-            background=shape(white,22,Color.rgb(237,240,244));setPadding(dp(7),dp(14),dp(7),dp(14))
+            background=shape(white,22,Color.rgb(237,240,244));setPadding(dp(6),dp(18),dp(6),dp(16))
         }
         fun shortcut(iconFile:String,title:String,click:()->Unit){
             val cell=LinearLayout(this).apply{
@@ -237,7 +237,7 @@ class ProfileActivity : Activity() {
                 maxLines=2
             },LinearLayout.LayoutParams(-1,dp(36)))
             val params=GridLayout.LayoutParams().apply{
-                width=0;height=dp(98)
+                width=0;height=dp(90)
                 columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f)
                 setMargins(dp(1),dp(2),dp(1),dp(2))
             }
@@ -263,14 +263,14 @@ class ProfileActivity : Activity() {
             showInfo("مركز الوكالة - سيتم ربط إدارة الوكالات ودعوات المضيفين عند تجهيز الخدمة")
         }
         content.addView(shortcuts,LinearLayout.LayoutParams(-1,-2).apply{
-            setMargins(dp(18),dp(2),dp(18),dp(14))
+            setMargins(dp(18),dp(14),dp(18),dp(14))
         })
 
         // The large Emperor/XP level panel is intentionally removed from the profile.
         // Level remains visible beside the user ID in ProfileHeaderView.
 
         val menuHeading=TextView(this).apply{
-            text="إعدادات وخدمات الحساب";textSize=13f;setTextColor(ink)
+            text="إعدادات وخدمات الحساب";textSize=15f;setTextColor(ink)
             typeface=android.graphics.Typeface.DEFAULT_BOLD
             setPadding(dp(18),dp(5),dp(18),dp(7))
         }
@@ -317,7 +317,7 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this,AccountSecurityActivity::class.java))
         }
         content.addView(menu,LinearLayout.LayoutParams(-1,-2).apply{
-            setMargins(dp(18),0,dp(18),dp(22))
+            setMargins(dp(18),0,dp(18),dp(28))
         })
 
         displayName=EditText(this)
