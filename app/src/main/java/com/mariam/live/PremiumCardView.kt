@@ -154,13 +154,13 @@ class PremiumCardView(
     }
 
     // ------------------------------------------------------------------ shimmer lifecycle
-    private fun canAnimate(): Boolean {
+    private fun shouldAnimateShimmer(): Boolean {
         if (!isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE) return false
         return if (Build.VERSION.SDK_INT >= 26) ValueAnimator.areAnimatorsEnabled() else true
     }
 
     private fun updateAnimator() {
-        if (canAnimate()) {
+        if (shouldAnimateShimmer()) {
             if (animator == null) {
                 animator = ValueAnimator.ofFloat(0f, 1.9f).apply {
                     duration = 3600L
