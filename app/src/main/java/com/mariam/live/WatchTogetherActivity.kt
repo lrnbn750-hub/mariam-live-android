@@ -26,6 +26,8 @@ class WatchTogetherActivity : Activity() {
     private lateinit var searchInput: EditText
     private lateinit var status: TextView
     private lateinit var playButton: Button
+    private lateinit var pauseButton: Button
+    private var lastVideoTitle = ""
     private var roomId = ""
     private var token = ""
     private var isOwner = false
@@ -96,11 +98,12 @@ class WatchTogetherActivity : Activity() {
             setOnClickListener { sendOwnerCommand("playing") }
         }
         controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(6) })
-        val pauseButton = Button(this).apply {
+        pauseButton = Button(this).apply {
             text = "إيقاف"
             isEnabled = false
             setOnClickListener { sendOwnerCommand("paused") }
         }
+        pauseButton.isEnabled = false
         controls.addView(pauseButton, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(6) })
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
 
@@ -157,9 +160,9 @@ class WatchTogetherActivity : Activity() {
     """.trimIndent()
 
     private inner class PlayerBridge {
-        @JavascriptInterface fun onReady() { runOnUiThread { playerReady = true; status.text = if (isOwner) "أنت صاحب الغرفة: يمكنك اختيار الفيديو والتحكم بالتشغيل" else "المشاهدة متزامنة مع صاحب الغرفة"; playButton.isEnabled = isOwner } }
-        @JavascriptInterface fun onCommand(action: String, seconds: Double) { runOnUiThread { persistState(action, seconds, lastVideoId, "") } }
-        @JavascriptInterface fun onVideoSelected(videoId: String) { runOnUiThread { lastVideoId = videoId; persistState("paused", 0.0, videoId, "") } }
+        @JavascriptInterface fun onReady() { runOnUiThread { playerReady = true; status.text = if (isOwner) "أنت صاحب الغرفة: يمكنك اختيار الفيديو والتحكم بالتشغيل" else "المشاهدة متزامنة مع صاحب الغرفة"; playButton.isEnabled = isOwner; pauseButton.isEnabled = isOwner } }
+        @JavascriptInterface fun onCommand(action: String, seconds: Double) { runOnUiThread { persistState(action, seconds, lastVideoId, lastVideoTitle) } }
+        @JavascriptInterface fun onVideoSelected(videoId: String) { runOnUiThread { lastVideoId = videoId; persistState("paused", 0.0, videoId, lastVideoTitle) } }
     }
 
     private fun loadState() {
@@ -174,9 +177,11 @@ class WatchTogetherActivity : Activity() {
                 }
                 isOwner = result.body.optBoolean("is_owner", false)
                 playButton.isEnabled = isOwner && playerReady
+                pauseButton.isEnabled = isOwner && playerReady
                 val state = result.body.optJSONObject("state") ?: JSONObject()
                 val updated = state.optLong("updated_at", 0L)
                 val videoId = state.optString("video_id", "")
+                lastVideoTitle = state.optString("video_title", lastVideoTitle)
                 if (updated > 0 && updated != lastAppliedUpdate) {
                     lastAppliedUpdate = updated
                     lastVideoId = videoId
@@ -230,6 +235,7 @@ class WatchTogetherActivity : Activity() {
                         val title = selected.optString("title")
                         if (id.matches(Regex("[A-Za-z0-9_-]{11}"))) {
                             lastVideoId = id
+                            lastVideoTitle = title
                             player.evaluateJavascript("setVideo(" + JSONObject.quote(id) + ")", null)
                             persistState("paused", 0.0, id, title)
                             status.text = title
