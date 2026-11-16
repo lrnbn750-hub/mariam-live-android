@@ -4,20 +4,24 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.GridLayout
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -27,13 +31,14 @@ import androidx.core.view.WindowCompat
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.URL
+import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
 
 /**
- * Fully native Kotlin profile screen. The previous HTML/WebView and floating-avatar
- * overlay are intentionally removed; all profile layout, scrolling and avatar UI
- * are now part of the Android view hierarchy.
+ * Fully native Kotlin profile screen (no WebView). UI redesign only:
+ * all API calls, data parsing, wallet / level values, navigation targets and the avatar
+ * upload flow are identical to the previous version.
  */
 class ProfileActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
@@ -45,6 +50,7 @@ class ProfileActivity : Activity() {
     private lateinit var diamondValue: TextView
     private lateinit var visitorValue: TextView
     private lateinit var friendValue: TextView
+    private lateinit var levelRowBadge: LevelBadgeView
     private var profileData = JSONObject()
     private var publicId = ""
     private var userId = ""
@@ -53,21 +59,23 @@ class ProfileActivity : Activity() {
     private val muted = Color.rgb(143, 151, 164)
     private val border = Color.rgb(238, 240, 244)
     private val white = Color.WHITE
-    private val pageBg = Color.rgb(255, 255, 255)
+    private val pageBg = Color.rgb(243, 244, 250)
+    private val heroTop = Color.rgb(20, 10, 48)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        window.statusBarColor = white
-        window.navigationBarColor = white
-        window.decorView.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.statusBarColor = heroTop              // same color as the top of the hero gradient
+        window.navigationBarColor = pageBg
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR // light status icons on the dark hero
         buildNativePage()
         loadProfileData()
     }
 
+    // ------------------------------------------------------------------ small UI helpers
     private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()
+
     private fun rounded(fill: Int, radius: Float, stroke: Int = border): GradientDrawable =
         GradientDrawable().apply {
             setColor(fill)
@@ -85,31 +93,53 @@ class ProfileActivity : Activity() {
             includeFontPadding = true
         }
 
+    /** Touch ripple. [radius] = 0 gives a rectangular ripple (used for list rows). */
+    private fun ripple(content: Drawable?, radius: Float): Drawable {
+        val mask: Drawable = if (radius > 0f)
+            GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(radius).toFloat() }
+        else ColorDrawable(Color.WHITE)
+        return RippleDrawable(ColorStateList.valueOf(Color.argb(34, 90, 60, 200)), content, mask)
+    }
+
+    /** Subtle press-scale feedback; does not consume the touch so click listeners keep working. */
+    @Suppress("ClickableViewAccessibility")
+    private fun View.pressable() {
+        setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.animate().scaleX(1f).scaleY(1f).setDuration(140).start()
+            }
+            false
+        }
+    }
+
+    private fun cardBackground(radius: Float): GradientDrawable = rounded(white, radius, Color.rgb(236, 238, 246))
+
+    private fun formatNumber(v: Long): String = NumberFormat.getInstance(Locale.US).format(v)
+
+    // ------------------------------------------------------------------ page
     private fun buildNativePage() {
         val scroll = ScrollView(this).apply {
             setBackgroundColor(pageBg)
             isFillViewport = true
             clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            isVerticalScrollBarEnabled = false
         }
         page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(pageBg)
-            setPadding(dp(14f), dp(6f), dp(14f), dp(24f))
+            clipChildren = false
+            clipToPadding = false
+            setPadding(0, 0, 0, dp(28f))
         }
         scroll.addView(page, ViewGroup.LayoutParams(-1, -2))
         setContentView(scroll)
 
+        // ---- Hero header (avatar, name, ID, level, stats) -------------------------------
         header = ProfileHeaderView(this)
         header.layoutParams = LinearLayout.LayoutParams(-1, -2)
-        header.setBackgroundColor(pageBg)
-        val slot = header.findViewById<FrameLayout>(R.id.profileHeaderAvatarSlot)
-        slot.background = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(222, 190, 103), Color.rgb(38, 165, 119), Color.rgb(222, 190, 103))
-        ).apply { shape = GradientDrawable.OVAL }
         avatar = header.avatarView
-        avatar.layoutParams = FrameLayout.LayoutParams(dp(78f), dp(78f), Gravity.CENTER)
-        avatar.background = rounded(Color.rgb(235, 239, 240), 50f, Color.TRANSPARENT)
         avatar.clipToOutline = true
         header.editAvatarView.setOnClickListener { pickPhoto() }
         header.copyView.setOnClickListener { copyId() }
@@ -117,155 +147,190 @@ class ProfileActivity : Activity() {
         header.supportView.setOnClickListener { openAction("music") }
         header.fansCell.setOnClickListener { openFollowList("followers") }
         header.followingCell.setOnClickListener { openFollowList("following") }
+        header.settingsView.pressable()
+        header.supportView.pressable()
         page.addView(header)
 
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            clipChildren = false
+            clipToPadding = false
+            setPadding(dp(14f), dp(16f), dp(14f), 0)
+        }
+        page.addView(body, LinearLayout.LayoutParams(-1, -2))
+
+        // ---- Wallet: earned diamonds (left) + charge coins (right), same positions as before ----
         val walletRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            setPadding(0, dp(10f), 0, dp(12f))
+            clipChildren = false
         }
-        val coins = walletCard("20", "عملات الشحن", "Ⓑ", Color.rgb(255, 239, 193))
-        val diamonds = walletCard("0", "الألماس المكتسب", "◆", Color.rgb(216, 244, 255))
-        coinValue = coins.second
-        diamondValue = diamonds.second
-        walletRow.addView(diamonds.first, LinearLayout.LayoutParams(0, dp(112f), 1f).apply { marginEnd = dp(8f) })
-        walletRow.addView(coins.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginStart = dp(8f) })
-        page.addView(walletRow)
+        val coins = WalletCardView(this, WalletKind.COINS, "عملات الشحن")
+        val diamonds = WalletCardView(this, WalletKind.DIAMONDS, "الألماس المكتسب")
+        coinValue = coins.amountView
+        diamondValue = diamonds.amountView
+        coins.setOnClickListener { openAction("coins") }
+        diamonds.setOnClickListener { openAction("diamonds") }
+        coins.pressable()
+        diamonds.pressable()
+        walletRow.addView(diamonds, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6f) })
+        walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6f) })
+        body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        val shortcutCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(white, 22f)
-            setPadding(dp(8f), dp(10f), dp(8f), dp(10f))
-        }
-        val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        rowOne.addView(shortcut("العائلة", R.drawable.ic_profile_family_color) { openAction("family") }, weighted())
-        rowOne.addView(shortcut("VIP", R.drawable.ic_profile_vip_color) { openAction("vip") }, weighted())
-        rowOne.addView(shortcut("المتجر", R.drawable.ic_profile_store_color) { openAction("store") }, weighted())
-        rowOne.addView(shortcut("مظهري", R.drawable.ic_profile_appearance_color) { openAction("look") }, weighted())
-        val rowTwo = LinearLayout(this).apply {
+        // ---- VIP / SVIP cards ------------------------------------------------------------
+        val premiumRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(0, dp(4f), 0, 0)
+            clipChildren = false
         }
-        rowTwo.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color) { openAction("agency") }, weighted())
-        rowTwo.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color) { openAction("host") }, weighted())
-        rowTwo.addView(View(this), weighted())
-        rowTwo.addView(View(this), weighted())
-        shortcutCard.addView(rowOne)
-        shortcutCard.addView(rowTwo)
-        page.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f) })
+        val vip = PremiumCardView(this, PremiumKind.VIP, "VIP", "امتيازات حصرية")
+        val svip = PremiumCardView(this, PremiumKind.SVIP, "SVIP", "قمة التميّز والفخامة")
+        vip.setOnClickListener { openAction("vip") }
+        svip.setOnClickListener { openAction("vip") }
+        vip.pressable()
+        svip.pressable()
+        premiumRow.addView(vip, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6f) })
+        premiumRow.addView(svip, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6f) })
+        body.addView(premiumRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
 
-        val settingsTitle = text("إعدادات وخدمات الحساب", 18f, ink, true).apply {
-            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            textDirection = View.TEXT_DIRECTION_RTL
-            setPadding(0, dp(28f), dp(4f), dp(12f))
+        // ---- Shortcuts: family, store, my look, agency, host -------------------------------
+        val shortcutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            background = cardBackground(24f)
+            elevation = dp(2f).toFloat()
+            setPadding(dp(4f), dp(14f), dp(4f), dp(12f))
         }
-        page.addView(settingsTitle)
+        shortcutCard.addView(shortcut("العائلة", R.drawable.ic_profile_family_color, Color.rgb(242, 237, 255)) { openAction("family") }, weighted())
+        shortcutCard.addView(shortcut("المتجر", R.drawable.ic_profile_store_color, Color.rgb(255, 238, 244)) { openAction("store") }, weighted())
+        shortcutCard.addView(shortcut("مظهري", R.drawable.ic_profile_appearance_color, Color.rgb(232, 244, 255)) { openAction("look") }, weighted())
+        shortcutCard.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color, Color.rgb(228, 248, 243)) { openAction("agency") }, weighted())
+        shortcutCard.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color, Color.rgb(246, 235, 255)) { openAction("host") }, weighted())
+        body.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
+
+        // ---- Account settings & services ---------------------------------------------------
+        val settingsTitle = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4f), dp(26f), dp(4f), dp(12f))
+        }
+        val accent = View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(255, 201, 77), Color.rgb(40, 190, 145))
+            ).apply { cornerRadius = dp(2f).toFloat() }
+        }
+        settingsTitle.addView(accent, LinearLayout.LayoutParams(dp(4f), dp(18f)).apply { marginEnd = dp(8f) })
+        settingsTitle.addView(text("إعدادات وخدمات الحساب", 17f, ink, true).apply {
+            textDirection = View.TEXT_DIRECTION_RTL
+        })
+        body.addView(settingsTitle)
+
         val services = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(white, 26f)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            background = cardBackground(26f)
+            elevation = dp(2f).toFloat()
             clipToOutline = true
         }
-        serviceRow(services, "أنشر", R.drawable.ic_profile_publish) { openAction("post") }
-        serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color) { openAction("help") }
-        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color) { openAction("privacy") }
-        serviceRow(services, "المستوى", R.drawable.ic_profile_level_color) { openAction("level") }
-        page.addView(services, LinearLayout.LayoutParams(-1, -2))
+        val publishTile = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(53, 217, 168), Color.rgb(31, 166, 126))
+        ).apply { cornerRadius = dp(14f).toFloat() }
+        serviceRow(services, "أنشر", R.drawable.ic_profile_publish, publishTile, dp(9f)) { openAction("post") }
+        serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color, rounded(Color.rgb(226, 247, 243), 14f, Color.TRANSPARENT), dp(8f)) { openAction("help") }
+        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f)) { openAction("privacy") }
+        val levelRow = serviceRow(services, "المستوى", R.drawable.ic_profile_level_color, rounded(Color.rgb(255, 243, 214), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("level") }
+        levelRowBadge = LevelBadgeView(this).apply { level = 1 }
+        levelRow.addView(levelRowBadge, levelRow.childCount - 1, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(4f) })
+        body.addView(services, LinearLayout.LayoutParams(-1, -2))
+
+        animateIn(listOf(walletRow, premiumRow, shortcutCard, settingsTitle, services))
+    }
+
+    private fun animateIn(views: List<View>) {
+        views.forEachIndexed { i, v ->
+            v.alpha = 0f
+            v.translationY = dp(16f).toFloat()
+            v.animate().alpha(1f).translationY(0f)
+                .setStartDelay(70L * i).setDuration(380L)
+                .setInterpolator(DecelerateInterpolator()).start()
+        }
     }
 
     private fun weighted() = LinearLayout.LayoutParams(0, -2, 1f)
 
-    private fun walletCard(amount: String, label: String, symbol: String, tint: Int): Pair<View, TextView> {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(white, 22f)
-            setPadding(dp(10f), dp(10f), dp(10f), dp(8f))
-            elevation = dp(2f).toFloat()
-        }
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-        }
-        val icon = TextView(this).apply {
-            text = symbol
-            textSize = 25f
-            setTextColor(if (tint == Color.rgb(255, 239, 193)) Color.rgb(178, 128, 24) else Color.rgb(48, 164, 210))
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply { setColor(tint); cornerRadius = dp(18f).toFloat() }
-        }
-        top.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
-        val value = text(amount, 23f, ink, true).apply { gravity = Gravity.CENTER }
-        top.addView(value, LinearLayout.LayoutParams(0, dp(64f), 1f))
-        box.addView(top)
-        box.addView(text(label, 14f, muted).apply {
-            gravity = Gravity.RIGHT
-            textDirection = View.TEXT_DIRECTION_RTL
-            setPadding(0, dp(6f), dp(2f), 0)
-        })
-        box.setOnClickListener { openAction(if (label.contains("ألماس")) "diamonds" else "coins") }
-        return box to value
-    }
-
-    private fun shortcut(label: String, iconRes: Int, action: () -> Unit): View {
+    private fun shortcut(label: String, iconRes: Int, tint: Int, action: () -> Unit): View {
         val item = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(3f), dp(3f), dp(3f), dp(4f))
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(2f), dp(6f), dp(2f), dp(6f))
             isClickable = true
             isFocusable = true
+            contentDescription = label
+            background = ripple(null, 16f)
             setOnClickListener { action() }
         }
         val icon = ImageView(this).apply {
             setImageResource(iconRes)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            background = rounded(
-                when (label) {
-                    "العائلة" -> Color.rgb(242, 237, 255)
-                    "VIP" -> Color.rgb(27, 31, 48)
-                    "المتجر" -> Color.rgb(255, 238, 244)
-                    "مظهري" -> Color.rgb(232, 244, 255)
-                    "مركز الوكالة" -> Color.rgb(228, 248, 243)
-                    else -> Color.rgb(246, 235, 255)
-                }, 16f, Color.TRANSPARENT
-            )
-            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
+            background = rounded(tint, 16f, Color.TRANSPARENT)
+            setPadding(dp(9f), dp(9f), dp(9f), dp(9f))
         }
-        item.addView(icon, LinearLayout.LayoutParams(dp(58f), dp(58f)))
-        item.addView(text(label, 13f, if (label == "VIP") Color.rgb(151, 116, 37) else ink, true).apply {
+        item.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        item.addView(text(label, 12f, ink, true).apply {
             gravity = Gravity.CENTER
+            maxLines = 2
             setPadding(0, dp(7f), 0, 0)
-        })
+        }, LinearLayout.LayoutParams(-1, -2))
+        item.pressable()
         return item
     }
 
-    private fun serviceRow(parent: LinearLayout, label: String, iconRes: Int, action: () -> Unit) {
+    /** Adds one service row (RTL: icon on the right, label, chevron on the left) and returns it. */
+    private fun serviceRow(
+        parent: LinearLayout, label: String, iconRes: Int, tile: Drawable, iconPadding: Int,
+        last: Boolean = false, action: () -> Unit
+    ): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14f), dp(9f), dp(14f), dp(9f))
+            setPadding(dp(14f), dp(10f), dp(14f), dp(10f))
             isClickable = true
             isFocusable = true
+            background = ripple(null, 0f)
             setOnClickListener { action() }
         }
         val icon = ImageView(this).apply {
             setImageResource(iconRes)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = rounded(Color.rgb(246, 248, 251), 16f, Color.TRANSPARENT)
-            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
+            background = tile
+            setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
         }
         row.addView(icon, LinearLayout.LayoutParams(dp(40f), dp(40f)))
-        row.addView(text(label, 17f, ink, true).apply {
-            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+        row.addView(text(label, 15f, ink, true).apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
             textDirection = View.TEXT_DIRECTION_RTL
-        }, LinearLayout.LayoutParams(0, dp(42f), 1f).apply { marginStart = dp(12f) })
-        row.addView(text("‹", 24f, Color.rgb(177, 185, 195)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(22f), dp(42f)))
+        }, LinearLayout.LayoutParams(0, dp(40f), 1f).apply { marginStart = dp(12f) })
+        row.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_profile_chevron)
+            setColorFilter(Color.rgb(177, 185, 195))
+        }, LinearLayout.LayoutParams(dp(22f), dp(22f)))
         parent.addView(row, LinearLayout.LayoutParams(-1, -2))
-        val divider = View(this).apply { setBackgroundColor(border) }
-        parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)))
+        if (!last) {
+            val divider = View(this).apply { setBackgroundColor(border) }
+            parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)).apply {
+                marginStart = dp(66f)
+                marginEnd = dp(14f)
+            })
+        }
+        return row
     }
 
+    // ------------------------------------------------------------------ data (unchanged logic)
     private fun loadProfileData() {
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
         if (token.isNullOrBlank()) { finish(); return }
@@ -323,10 +388,11 @@ class ProfileActivity : Activity() {
         header.setUserName(data.optString("name"))
         header.setUserIdText(publicId)
         header.setLevel(data.optInt("level", 1))
+        levelRowBadge.level = data.optInt("level", 1)
         header.setFansCount(data.optInt("fans", 0).toString())
         header.setFollowingCount(data.optInt("followers", 0).toString())
-        coinValue.text = data.optLong("coins", 0).toString()
-        diamondValue.text = data.optLong("diamonds", 0).toString()
+        coinValue.text = formatNumber(data.optLong("coins", 0))
+        diamondValue.text = formatNumber(data.optLong("diamonds", 0))
         val avatarUrl = normalizeAvatar(data.optString("avatarUrl"))
         if (avatarUrl.isNotBlank()) loadAvatar(avatarUrl, token)
     }
