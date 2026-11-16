@@ -6,11 +6,14 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -27,6 +30,8 @@ class ProfileActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val photoPickerCode = 7421
     private lateinit var web: WebView
+    private lateinit var root: FrameLayout
+    private lateinit var nativeAvatar: ImageView
     private var selectedPhoto: Uri? = null
     private var profileData = JSONObject()
     private var publicId = ""
@@ -52,8 +57,28 @@ class ProfileActivity : Activity() {
             webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
             addJavascriptInterface(ProfileBridge(), "BAK")
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    positionNativeAvatar()
+                    loadNativeAvatarFromProfile()
+                }
+            }
         }
-        setContentView(web)
+        root = FrameLayout(this)
+        nativeAvatar = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = View.INVISIBLE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(android.graphics.Color.TRANSPARENT)
+            }
+            clipToOutline = true
+            contentDescription = "الصورة الشخصية"
+        }
+        root.addView(web, FrameLayout.LayoutParams(-1, -1))
+        root.addView(nativeAvatar, FrameLayout.LayoutParams(1, 1))
+        setContentView(root)
         web.loadUrl("file:///android_asset/profile/BAK_LIVE_Profile.html")
         loadProfileData()
     }
@@ -96,7 +121,11 @@ class ProfileActivity : Activity() {
     private fun sendProfileToPage() {
         if (!::web.isInitialized || isFinishing) return
         val json = JSONObject.quote(profileData.toString())
-        web.post { web.evaluateJavascript("window.setProfileData && window.setProfileData(JSON.parse($json));", null) }
+        web.post {
+            web.evaluateJavascript("window.setProfileData && window.setProfileData(JSON.parse($json));", null)
+            positionNativeAvatar()
+            loadNativeAvatarFromProfile()
+        }
     }
 
     private fun loadProfileData() {
@@ -139,7 +168,7 @@ class ProfileActivity : Activity() {
                 ).firstOrNull { it.isNotBlank() && it != "null" }.orEmpty()
                 if (avatarPath.isNotBlank()) {
                     try {
-                        data.put("avatarUrl", downloadAvatarDataUrl(normalizeAvatar(avatarPath), token))
+                        data.put("avatarUrl", normalizeAvatar(avatarPath))
                     } catch (avatarError: Exception) {
                         Log.e("BAKProfileWeb", "Avatar download failed: ${normalizeAvatar(avatarPath)}", avatarError)
                         data.put("avatarUrl", normalizeAvatar(avatarPath))
@@ -183,42 +212,84 @@ class ProfileActivity : Activity() {
         else "https://nokiraq.duckdns.org/" + value.trimStart('/')
     }
 
-    /**
-     * Fetch the avatar natively and pass it to WebView as a data URL.
-     * This avoids WebView image/network policy differences and records HTTP failures in Logcat.
-     */
-    private fun downloadAvatarDataUrl(url: String, token: String): String {
-        val connection = (URL(url).openConnection() as java.net.HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 15000
-            readTimeout = 20000
-            instanceFollowRedirects = true
-            setRequestProperty("Accept", "image/*")
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("User-Agent", "BAK-LIVE-Android")
-        }
-        try {
-            val status = connection.responseCode
-            if (status !in 200..299) throw Exception("Avatar HTTP $status")
-            val mime = connection.contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
-            if (!mime.startsWith("image/")) throw Exception("Avatar response is not an image: $mime")
-            val bytes = connection.inputStream.use { input ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > 5 * 1024 * 1024) throw Exception("Avatar exceeds 5 MB")
-                    output.write(buffer, 0, count)
-                }
-                output.toByteArray()
+    private fun positionNativeAvatar() {
+        if (!::web.isInitialized || !::nativeAvatar.isInitialized || web.width == 0) return
+        web.evaluateJavascript(
+            "(function(){var e=document.querySelector('.av .ring i');if(!e)return '';var r=e.getBoundingClientRect();return JSON.stringify({x:r.left,y:r.top,w:r.width,h:r.height});})()"
+        ) { value ->
+            try {
+                val raw = org.json.JSONTokener(value).nextValue() as? String ?: return@evaluateJavascript
+                val rect = JSONObject(raw)
+                val density = resources.displayMetrics.density
+                val x = (rect.optDouble("x") * density).toInt()
+                val y = (rect.optDouble("y") * density).toInt()
+                val w = (rect.optDouble("w") * density).toInt().coerceAtLeast(1)
+                val h = (rect.optDouble("h") * density).toInt().coerceAtLeast(1)
+                val params = nativeAvatar.layoutParams as FrameLayout.LayoutParams
+                params.width = w
+                params.height = h
+                params.leftMargin = x
+                params.topMargin = y
+                nativeAvatar.layoutParams = params
+                nativeAvatar.bringToFront()
+            } catch (e: Exception) {
+                Log.e("BAKProfileNativeAvatar", "Could not position native avatar", e)
             }
-            if (bytes.isEmpty()) throw Exception("Avatar image is empty")
-            return "data:$mime;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
-        } finally {
-            connection.disconnect()
+        }
+    }
+
+    private fun loadNativeAvatarFromProfile() {
+        val avatarUrl = profileData.optString("avatarUrl")
+        if (avatarUrl.isBlank() || avatarUrl == "null") {
+            nativeAvatar.setImageDrawable(null)
+            nativeAvatar.visibility = View.INVISIBLE
+            return
+        }
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null).orEmpty()
+        executor.execute {
+            try {
+                val connection = (URL(avatarUrl).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 20000
+                    instanceFollowRedirects = true
+                    setRequestProperty("Accept", "image/*")
+                    if (token.isNotBlank()) setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("User-Agent", "BAK-LIVE-Android")
+                }
+                val bitmap = try {
+                    val status = connection.responseCode
+                    if (status !in 200..299) throw Exception("Avatar HTTP $status")
+                    val mime = connection.contentType?.substringBefore(';')?.trim().orEmpty()
+                    if (!mime.startsWith("image/")) throw Exception("Avatar response is not image: $mime")
+                    val bytes = connection.inputStream.use { input ->
+                        val out = ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        var total = 0
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            total += n
+                            if (total > 5 * 1024 * 1024) throw Exception("Avatar exceeds 5 MB")
+                            out.write(buffer, 0, n)
+                        }
+                        out.toByteArray()
+                    }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        ?: throw Exception("Unsupported avatar image")
+                } finally {
+                    connection.disconnect()
+                }
+                runOnUiThread {
+                    if (!isFinishing && ::nativeAvatar.isInitialized) {
+                        nativeAvatar.setImageBitmap(bitmap)
+                        nativeAvatar.visibility = View.VISIBLE
+                        positionNativeAvatar()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("BAKProfileNativeAvatar", "Native avatar load failed: $avatarUrl", e)
+                runOnUiThread { nativeAvatar.visibility = View.INVISIBLE }
+            }
         }
     }
 
