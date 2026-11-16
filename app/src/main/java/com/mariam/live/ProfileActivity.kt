@@ -251,7 +251,7 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this,InventoryActivity::class.java))
         }
         shortcut("3-vip.png","VIP"){
-            showInfo("عضوية VIP - سيتم تفعيل الباقات والمزايا بعد ربط نظام الاشتراكات")
+            startActivity(Intent(this,VipActivity::class.java))
         }
         shortcut("4-family.png","العائلة"){
             showInfo("العائلة - قريباً ستتمكن من إنشاء عائلتك وتنظيم أعضائها")
