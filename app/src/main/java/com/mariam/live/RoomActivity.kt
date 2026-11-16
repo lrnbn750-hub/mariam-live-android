@@ -2126,7 +2126,100 @@ class RoomActivity : Activity() {
   root.addView(close,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(10)})
   presentSheet(dialog,root)
  }
- private fun memberLevelColors(level:Int):IntArray = when(level){
+   private fun showMemberModeration(member:JSONObject){
+   if(!isOwner)return
+   val userId=member.optString("user_id")
+   if(userId.isBlank() || userId=="null" || userId==currentUserId)return
+   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+   scope.launch{
+    try{
+     val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/moderation",authToken)}
+     if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحميل حالة العضو"))
+     val restrictions=response.body.optJSONArray("restrictions")?:JSONArray()
+     var chatBanned=false
+     var roomBanned=false
+     for(i in 0 until restrictions.length()){
+      val item=restrictions.optJSONObject(i)?:continue
+      if(item.optString("user_id")!=userId)continue
+      when(item.optString("action_type")){"chat_ban"->chatBanned=true;"room_ban"->roomBanned=true}
+     }
+     showChoiceSheet("إدارة العضو",name,listOf(
+      SheetOption("عرض الملف الشخصي",2){showMemberProfile(member)},
+      SheetOption(if(chatBanned)"إلغاء حظر التعليقات" else "حظر التعليقات",if(chatBanned)2 else 0){applyRoomModeration(userId,"chat_ban",chatBanned)},
+      SheetOption(if(roomBanned)"إلغاء الطرد من الغرفة" else "طرد من الغرفة",1){applyRoomModeration(userId,"room_ban",roomBanned)}
+     ))
+    }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر تحميل خيارات الإدارة",Toast.LENGTH_LONG).show()}
+   }
+  }
+
+  private fun applyRoomModeration(userId:String,actionType:String,currentlyActive:Boolean){
+   if(!isOwner || userId.isBlank() || userId==currentUserId)return
+   scope.launch{
+    try{
+     val result=withContext(Dispatchers.IO){
+      if(currentlyActive)AuthApi.delete("/api/voice-rooms/$roomId/moderation/$userId/$actionType",authToken)
+      else AuthApi.post("/api/voice-rooms/$roomId/moderation",JSONObject().put("userId",userId).put("actionType",actionType),authToken)
+     }
+     if(result.status !in 200..299)throw Exception(result.body.optString("error","تعذر تنفيذ الإجراء"))
+     val message=when(actionType){
+      "chat_ban"->if(currentlyActive)"تم إلغاء حظر التعليقات" else "تم حظر العضو من التعليقات"
+      else->if(currentlyActive)"تم إلغاء الطرد" else "تم طرد العضو من الغرفة"
+     }
+     Toast.makeText(this@RoomActivity,message,Toast.LENGTH_LONG).show()
+     loadRoomMembers()
+    }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر الاتصال بالخادم",Toast.LENGTH_LONG).show()}
+   }
+  }
+
+  private fun showRoomModerationList(){
+   if(!isOwner)return
+   scope.launch{
+    try{
+     val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/moderation",authToken)}
+     if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحميل قائمة القيود"))
+     val restrictions=response.body.optJSONArray("restrictions")?:JSONArray()
+     val dialog=android.app.Dialog(this@RoomActivity)
+     val root=sheetRoot()
+     root.addView(label("المحظورون والمطرودون",18f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(34)))
+     val list=LinearLayout(this@RoomActivity).apply{orientation=1}
+     if(restrictions.length()==0)list.addView(label("لا توجد قيود على أعضاء هذه الغرفة",13f,Color.LTGRAY).apply{setPadding(0,dp(20),0,dp(20))})
+     for(i in 0 until restrictions.length()){
+      val item=restrictions.optJSONObject(i)?:continue
+      val userId=item.optString("user_id")
+      val actionType=item.optString("action_type")
+      val displayName=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
+      val isChat=actionType=="chat_ban"
+      val row=LinearLayout(this@RoomActivity).apply{
+       orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
+       setPadding(dp(12),dp(10),dp(12),dp(10));background=glassBg(48,15,55);isClickable=true
+      }
+      val info=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+      info.addView(label(displayName,13.5f,Color.WHITE,true).apply{gravity=Gravity.START})
+      info.addView(label(if(isChat)"حظر التعليقات" else "طرد من الغرفة",10.5f,if(isChat)Color.rgb(255,205,120) else Color.rgb(255,130,145)).apply{gravity=Gravity.START})
+      row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+      row.addView(label("إلغاء",12f,Color.WHITE,true).apply{
+       background=GradientDrawable().apply{setColor(Color.argb(70,90,190,130));cornerRadius=dp(14).toFloat()}
+       setPadding(dp(12),dp(7),dp(12),dp(7))
+      })
+      row.setOnClickListener{
+       dialog.dismiss()
+       showChoiceSheet("إلغاء القيد","هل تريد إزالة هذا القيد عن $displayName؟",listOf(
+        SheetOption("تأكيد الإلغاء",0){applyRoomModeration(userId,actionType,true)},
+        SheetOption("رجوع",2){}
+       ))
+      }
+      list.addView(row,LinearLayout.LayoutParams(-1,dp(58)).apply{bottomMargin=dp(7)})
+     }
+     root.addView(ScrollView(this@RoomActivity).apply{overScrollMode=View.OVER_SCROLL_NEVER;addView(list)},LinearLayout.LayoutParams(-1,dp(340)))
+     root.addView(label("إغلاق",13f,Color.WHITE,true).apply{
+      background=glassBg(40,20,60);setPadding(0,dp(10),0,dp(10));setOnClickListener{dialog.dismiss()}
+     },LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(8)})
+     presentSheet(dialog,root)
+    }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر تحميل قائمة القيود",Toast.LENGTH_LONG).show()}
+   }
+  }
+
+private fun memberLevelColors(level:Int):IntArray = when(level){
   in 1..10 -> intArrayOf(Color.rgb(54,37,25),Color.rgb(112,75,43),Color.rgb(43,29,22),Color.rgb(218,157,91),Color.rgb(255,220,174),Color.rgb(226,173,113),Color.rgb(88,61,39))
   in 11..20 -> intArrayOf(Color.rgb(37,43,55),Color.rgb(104,116,133),Color.rgb(34,39,51),Color.rgb(192,205,221),Color.rgb(245,249,255),Color.rgb(218,228,241),Color.rgb(91,103,122))
   in 21..30 -> intArrayOf(Color.rgb(55,39,10),Color.rgb(150,105,20),Color.rgb(64,43,10),Color.rgb(255,207,70),Color.rgb(255,239,164),Color.rgb(255,218,105),Color.rgb(111,76,16))
