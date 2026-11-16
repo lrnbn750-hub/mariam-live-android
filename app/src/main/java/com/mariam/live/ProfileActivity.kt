@@ -133,8 +133,8 @@ class ProfileActivity : Activity() {
                 try {
                     val follows = AuthApi.get("/api/follows/me", token)
                     if (follows.status in 200..299) {
-                        data.put("followers", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
-                        data.put("fans", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
+                        data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
+                        data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
                     }
                 } catch (_: Exception) {}
                 try {
