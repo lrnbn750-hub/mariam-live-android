@@ -2464,6 +2464,9 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك",
    "mic",Color.rgb(64,224,255)){toggleMic()}
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
+  addTool("مشاهدة جماعية","ابحث عن فيديو YouTube وشاهده مع أعضاء الغرفة","play",Color.rgb(255,75,90)){
+   startActivity(Intent(this,WatchTogetherActivity::class.java).putExtra("room_id",roomId))
+  }
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
   if(isOwner)addTool("المحظورون والمطرودون","إدارة قيود التعليقات والطرد وإلغائها","users",Color.rgb(239,132,132)){showRoomModerationList()}
