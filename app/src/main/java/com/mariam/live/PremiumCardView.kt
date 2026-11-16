@@ -35,7 +35,7 @@ class PremiumCardView(
 ) : FrameLayout(context) {
 
     private val d = resources.displayMetrics.density
-    private val radius = 22f * d
+    private val radius = 18f * d
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val clip = Path()
@@ -60,21 +60,17 @@ class PremiumCardView(
 
     init {
         setWillNotDraw(false)
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-        minimumHeight = (78f * d).toInt()
+        minimumHeight = (62f * d).toInt()
         isClickable = true
         isFocusable = true
-        elevation = 4f * d
+        elevation = 3f * d
         contentDescription = titleText
-        setPadding((12f * d).toInt(), (10f * d).toInt(), (12f * d).toInt(), (10f * d).toInt())
+        setPadding((14f * d).toInt(), (8f * d).toInt(), (14f * d).toInt(), (8f * d).toInt())
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setRoundRect(0, 0, view.width, view.height, radius)
+                outline.alpha = 1f
             }
-        }
-        if (Build.VERSION.SDK_INT >= 28) {
-            outlineSpotShadowColor = colors[1]
-            outlineAmbientShadowColor = colors[1]
         }
 
         val row = LinearLayout(context).apply {
@@ -85,18 +81,16 @@ class PremiumCardView(
             setImageResource(if (isVip) R.drawable.ic_profile_vip_color else R.drawable.ic_profile_svip_color)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        row.addView(icon, LinearLayout.LayoutParams((38f * d).toInt(), (38f * d).toInt()))
-
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         val textColor = if (isVip) 0xFF3A2400.toInt() else 0xFFFFE9A8.toInt()
         val title = TextView(context).apply {
             text = titleText
             setTextColor(textColor)
-            textSize = 18f
+            textSize = 17f
             setTypeface(typeface, Typeface.BOLD_ITALIC)
             letterSpacing = 0.04f
             maxLines = 1
-            gravity = Gravity.START
+            gravity = Gravity.RIGHT
         }
         val sub = TextView(context).apply {
             text = subtitleText
@@ -104,11 +98,13 @@ class PremiumCardView(
             textSize = 11f
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            gravity = Gravity.START
+            gravity = Gravity.RIGHT
         }
         texts.addView(title)
         texts.addView(sub)
-        row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = (10f * d).toInt() })
+        // visual order: texts (right aligned) | crown icon on the right edge
+        row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = (10f * d).toInt() })
+        row.addView(icon, LinearLayout.LayoutParams((34f * d).toInt(), (34f * d).toInt()))
         addView(row, LayoutParams(-1, -2, Gravity.CENTER_VERTICAL))
     }
 

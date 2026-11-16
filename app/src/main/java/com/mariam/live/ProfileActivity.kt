@@ -50,7 +50,6 @@ class ProfileActivity : Activity() {
     private lateinit var diamondValue: TextView
     private lateinit var visitorValue: TextView
     private lateinit var friendValue: TextView
-    private lateinit var levelRowBadge: LevelBadgeView
     private var profileData = JSONObject()
     private var publicId = ""
     private var userId = ""
@@ -145,18 +144,26 @@ class ProfileActivity : Activity() {
         header.copyView.setOnClickListener { copyId() }
         header.settingsView.setOnClickListener { openAction("settings") }
         header.supportView.setOnClickListener { openAction("music") }
+        header.levelBadgeView.setOnClickListener { openAction("level") }
         header.fansCell.setOnClickListener { openFollowList("followers") }
         header.followingCell.setOnClickListener { openFollowList("following") }
         header.settingsView.pressable()
         header.supportView.pressable()
         page.addView(header)
+        // Edge-to-edge (Android 15+ ignores setDecorFitsSystemWindows): pad for status / navigation bars.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scroll) { _, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            header.setPadding(0, bars.top, 0, 0)
+            page.setPadding(0, 0, 0, dp(28f) + bars.bottom)
+            insets
+        }
 
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             clipChildren = false
             clipToPadding = false
-            setPadding(dp(14f), dp(16f), dp(14f), 0)
+            setPadding(dp(20f), dp(16f), dp(20f), 0)
         }
         page.addView(body, LinearLayout.LayoutParams(-1, -2))
 
@@ -174,46 +181,36 @@ class ProfileActivity : Activity() {
         diamonds.setOnClickListener { openAction("diamonds") }
         coins.pressable()
         diamonds.pressable()
-        walletRow.addView(diamonds, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6f) })
-        walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6f) })
+        walletRow.addView(diamonds, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(5f) })
+        walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5f) })
         body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        // ---- VIP / SVIP cards ------------------------------------------------------------
-        val premiumRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            clipChildren = false
-        }
-        val vip = PremiumCardView(this, PremiumKind.VIP, "VIP", "امتيازات حصرية")
+        // ---- SVIP card (VIP card removed; both used to open VipActivity) -------------------
         val svip = PremiumCardView(this, PremiumKind.SVIP, "SVIP", "قمة التميّز والفخامة")
-        vip.setOnClickListener { openAction("vip") }
         svip.setOnClickListener { openAction("vip") }
-        vip.pressable()
         svip.pressable()
-        premiumRow.addView(vip, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6f) })
-        premiumRow.addView(svip, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6f) })
-        body.addView(premiumRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
+        body.addView(svip, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10f) })
 
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = cardBackground(24f)
             elevation = dp(2f).toFloat()
-            setPadding(dp(4f), dp(14f), dp(4f), dp(12f))
+            setPadding(dp(4f), dp(12f), dp(4f), dp(10f))
         }
-        shortcutCard.addView(shortcut("العائلة", R.drawable.ic_profile_family_color, Color.rgb(242, 237, 255)) { openAction("family") }, weighted())
-        shortcutCard.addView(shortcut("المتجر", R.drawable.ic_profile_store_color, Color.rgb(255, 238, 244)) { openAction("store") }, weighted())
-        shortcutCard.addView(shortcut("مظهري", R.drawable.ic_profile_appearance_color, Color.rgb(232, 244, 255)) { openAction("look") }, weighted())
-        shortcutCard.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color, Color.rgb(228, 248, 243)) { openAction("agency") }, weighted())
-        shortcutCard.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color, Color.rgb(246, 235, 255)) { openAction("host") }, weighted())
+        shortcutCard.addView(shortcut("مركز المضيف", R.drawable.ic_shortcut_host, Color.rgb(255, 154, 92), Color.rgb(240, 68, 122)) { openAction("host") }, weighted())
+        shortcutCard.addView(shortcut("مركز الوكالة", R.drawable.ic_shortcut_agency, Color.rgb(62, 224, 176), Color.rgb(20, 163, 127)) { openAction("agency") }, weighted())
+        shortcutCard.addView(shortcut("مظهري", R.drawable.ic_shortcut_look, Color.rgb(79, 211, 240), Color.rgb(31, 143, 214)) { openAction("look") }, weighted())
+        shortcutCard.addView(shortcut("المتجر", R.drawable.ic_shortcut_store, Color.rgb(255, 123, 181), Color.rgb(224, 51, 138)) { openAction("store") }, weighted())
+        shortcutCard.addView(shortcut("العائلة", R.drawable.ic_shortcut_family, Color.rgb(166, 124, 255), Color.rgb(106, 63, 224)) { openAction("family") }, weighted())
         body.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
 
         // ---- Account settings & services ---------------------------------------------------
         val settingsTitle = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             setPadding(dp(4f), dp(26f), dp(4f), dp(12f))
         }
         val accent = View(this).apply {
@@ -222,39 +219,30 @@ class ProfileActivity : Activity() {
                 intArrayOf(Color.rgb(255, 201, 77), Color.rgb(40, 190, 145))
             ).apply { cornerRadius = dp(2f).toFloat() }
         }
-        settingsTitle.addView(accent, LinearLayout.LayoutParams(dp(4f), dp(18f)).apply { marginEnd = dp(8f) })
         settingsTitle.addView(text("إعدادات وخدمات الحساب", 17f, ink, true).apply {
             textDirection = View.TEXT_DIRECTION_RTL
         })
+        settingsTitle.addView(accent, LinearLayout.LayoutParams(dp(4f), dp(18f)).apply { marginStart = dp(8f) })
         body.addView(settingsTitle)
 
         val services = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = cardBackground(26f)
             elevation = dp(2f).toFloat()
             clipToOutline = true
         }
-        val publishTile = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(53, 217, 168), Color.rgb(31, 166, 126))
-        ).apply { cornerRadius = dp(14f).toFloat() }
-        serviceRow(services, "أنشر", R.drawable.ic_profile_publish, publishTile, dp(9f)) { openAction("post") }
         serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color, rounded(Color.rgb(226, 247, 243), 14f, Color.TRANSPARENT), dp(8f)) { openAction("help") }
-        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f)) { openAction("privacy") }
-        val levelRow = serviceRow(services, "المستوى", R.drawable.ic_profile_level_color, rounded(Color.rgb(255, 243, 214), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("level") }
-        levelRowBadge = LevelBadgeView(this).apply { level = 1 }
-        levelRow.addView(levelRowBadge, levelRow.childCount - 1, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(4f) })
+        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
         body.addView(services, LinearLayout.LayoutParams(-1, -2))
 
-        animateIn(listOf(walletRow, premiumRow, shortcutCard, settingsTitle, services))
+        animateIn(listOf(walletRow, svip, shortcutCard, settingsTitle, services))
     }
 
     private fun animateIn(views: List<View>) {
         views.forEachIndexed { i, v ->
-            v.alpha = 0f
             v.translationY = dp(16f).toFloat()
-            v.animate().alpha(1f).translationY(0f)
+            v.animate().translationY(0f)
                 .setStartDelay(70L * i).setDuration(380L)
                 .setInterpolator(DecelerateInterpolator()).start()
         }
@@ -262,7 +250,7 @@ class ProfileActivity : Activity() {
 
     private fun weighted() = LinearLayout.LayoutParams(0, -2, 1f)
 
-    private fun shortcut(label: String, iconRes: Int, tint: Int, action: () -> Unit): View {
+    private fun shortcut(label: String, iconRes: Int, colorA: Int, colorB: Int, action: () -> Unit): View {
         val item = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -276,10 +264,11 @@ class ProfileActivity : Activity() {
         val icon = ImageView(this).apply {
             setImageResource(iconRes)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            background = rounded(tint, 16f, Color.TRANSPARENT)
-            setPadding(dp(9f), dp(9f), dp(9f), dp(9f))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(colorA, colorB))
+                .apply { cornerRadius = dp(15f).toFloat() }
+            setPadding(dp(11f), dp(11f), dp(11f), dp(11f))
         }
-        item.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        item.addView(icon, LinearLayout.LayoutParams(dp(46f), dp(46f)))
         item.addView(text(label, 12f, ink, true).apply {
             gravity = Gravity.CENTER
             maxLines = 2
@@ -296,7 +285,7 @@ class ProfileActivity : Activity() {
     ): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14f), dp(10f), dp(14f), dp(10f))
             isClickable = true
@@ -310,21 +299,22 @@ class ProfileActivity : Activity() {
             background = tile
             setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
         }
-        row.addView(icon, LinearLayout.LayoutParams(dp(40f), dp(40f)))
-        row.addView(text(label, 15f, ink, true).apply {
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
-            textDirection = View.TEXT_DIRECTION_RTL
-        }, LinearLayout.LayoutParams(0, dp(40f), 1f).apply { marginStart = dp(12f) })
+        // visual order (LTR container, Arabic look): chevron | label | icon  -> icon on the right
         row.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_profile_chevron)
             setColorFilter(Color.rgb(177, 185, 195))
         }, LinearLayout.LayoutParams(dp(22f), dp(22f)))
+        row.addView(text(label, 15f, ink, true).apply {
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            textDirection = View.TEXT_DIRECTION_RTL
+        }, LinearLayout.LayoutParams(0, dp(40f), 1f).apply { marginEnd = dp(12f) })
+        row.addView(icon, LinearLayout.LayoutParams(dp(40f), dp(40f)))
         parent.addView(row, LinearLayout.LayoutParams(-1, -2))
         if (!last) {
             val divider = View(this).apply { setBackgroundColor(border) }
             parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)).apply {
-                marginStart = dp(66f)
-                marginEnd = dp(14f)
+                marginEnd = dp(66f)
+                marginStart = dp(14f)
             })
         }
         return row
@@ -388,7 +378,6 @@ class ProfileActivity : Activity() {
         header.setUserName(data.optString("name"))
         header.setUserIdText(publicId)
         header.setLevel(data.optInt("level", 1))
-        levelRowBadge.level = data.optInt("level", 1)
         header.setFansCount(data.optInt("fans", 0).toString())
         header.setFollowingCount(data.optInt("followers", 0).toString())
         coinValue.text = formatNumber(data.optLong("coins", 0))

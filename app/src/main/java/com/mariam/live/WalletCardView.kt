@@ -12,7 +12,6 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -40,7 +39,7 @@ class WalletCardView(
     val labelView: TextView
 
     private val d = resources.displayMetrics.density
-    private val radius = 22f * d
+    private val radius = 18f * d
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val clip = Path()
@@ -51,32 +50,28 @@ class WalletCardView(
         intArrayOf(0xFFFFC445.toInt(), 0xFFF29A1B.toInt(), 0xFFC9600A.toInt())
     else
         intArrayOf(0xFF33D4F4.toInt(), 0xFF3A74EA.toInt(), 0xFF4A2DB5.toInt())
+
     private val watermark: Drawable? = ContextCompat.getDrawable(
         context, if (kind == WalletKind.COINS) R.drawable.ic_wallet_coin else R.drawable.ic_wallet_diamond
     )?.mutate()
 
     init {
         setWillNotDraw(false)
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-        minimumHeight = (104f * d).toInt()
+        minimumHeight = (60f * d).toInt()
         isClickable = true
         isFocusable = true
         clipChildren = false
-        elevation = 4f * d
-        setPadding((14f * d).toInt(), (12f * d).toInt(), (14f * d).toInt(), (12f * d).toInt())
+        elevation = 3f * d
+        setPadding((10f * d).toInt(), (9f * d).toInt(), (10f * d).toInt(), (9f * d).toInt())
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setRoundRect(0, 0, view.width, view.height, radius)
+                outline.alpha = 1f
             }
         }
-        if (Build.VERSION.SDK_INT >= 28) {
-            outlineSpotShadowColor = colors[1]
-            outlineAmbientShadowColor = colors[1]
-        }
 
-        val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-
-        val top = LinearLayout(context).apply {
+        // compact row (visual order): arrow | amount + label (right aligned) | icon chip
+        val content = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
@@ -91,38 +86,37 @@ class WalletCardView(
             setImageResource(if (kind == WalletKind.COINS) R.drawable.ic_wallet_coin else R.drawable.ic_wallet_diamond)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        chip.addView(icon, LayoutParams((26f * d).toInt(), (26f * d).toInt(), Gravity.CENTER))
-        top.addView(chip, LinearLayout.LayoutParams((40f * d).toInt(), (40f * d).toInt()))
-        top.addView(View(context), LinearLayout.LayoutParams(0, 1, 1f))
+        chip.addView(icon, LayoutParams((20f * d).toInt(), (20f * d).toInt(), Gravity.CENTER))
         val arrow = ImageView(context).apply {
             setImageResource(R.drawable.ic_profile_chevron)
             setColorFilter(Color.WHITE)
-            setPadding((3f * d).toInt(), (3f * d).toInt(), (3f * d).toInt(), (3f * d).toInt())
+            setPadding((2f * d).toInt(), (2f * d).toInt(), (2f * d).toInt(), (2f * d).toInt())
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
         }
-        top.addView(arrow, LinearLayout.LayoutParams((24f * d).toInt(), (24f * d).toInt()))
-        content.addView(top, LinearLayout.LayoutParams(-1, -2))
-
+        val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         amountView = TextView(context).apply {
             text = "0"
             setTextColor(Color.WHITE)
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             setShadowLayer(2f * d, 0f, 1f * d, 0x33000000)
         }
-        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(amountView, 14, 24, 1, TypedValue.COMPLEX_UNIT_SP)
-        content.addView(amountView, LinearLayout.LayoutParams(-1, (32f * d).toInt()).apply { topMargin = (8f * d).toInt() })
-
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(amountView, 12, 19, 1, TypedValue.COMPLEX_UNIT_SP)
+        texts.addView(amountView, LinearLayout.LayoutParams(-1, (24f * d).toInt()))
         labelView = TextView(context).apply {
             text = labelText
             setTextColor(0xE6FFFFFF.toInt())
-            textSize = 12f
+            textSize = 11f
             maxLines = 1
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
         }
-        content.addView(labelView, LinearLayout.LayoutParams(-1, -2))
-
+        texts.addView(labelView, LinearLayout.LayoutParams(-1, -2))
+        content.addView(arrow, LinearLayout.LayoutParams((20f * d).toInt(), (20f * d).toInt()))
+        content.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply {
+            marginStart = (6f * d).toInt(); marginEnd = (8f * d).toInt()
+        })
+        content.addView(chip, LinearLayout.LayoutParams((32f * d).toInt(), (32f * d).toInt()))
         addView(content, LayoutParams(-1, -2))
     }
 
@@ -146,14 +140,14 @@ class WalletCardView(
         canvas.clipPath(clip)
         paint.shader = null
         paint.color = 0x22FFFFFF
-        canvas.drawCircle(18f * d, 8f * d, 62f * d, paint)
+        canvas.drawCircle(14f * d, 6f * d, 44f * d, paint)
         paint.color = 0x14FFFFFF
-        canvas.drawCircle(w * 0.78f, h + 6f * d, 56f * d, paint)
+        canvas.drawCircle(w * 0.78f, h + 4f * d, 40f * d, paint)
 
         watermark?.let {
-            val size = (82f * d).toInt()
-            val left = (w - size + 10f * d).toInt()
-            val topY = (h - size * 0.62f).toInt()
+            val size = (56f * d).toInt()
+            val left = (-8f * d).toInt()
+            val topY = (h - size * 0.7f).toInt()
             it.setBounds(left, topY, left + size, topY + size)
             it.alpha = 44
             canvas.save()
