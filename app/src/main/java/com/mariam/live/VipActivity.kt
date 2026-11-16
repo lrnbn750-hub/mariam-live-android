@@ -144,6 +144,11 @@ class VipActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun close() {
+            runOnUiThread { finish() }
+        }
+
+        @JavascriptInterface
         fun refresh() {
             runOnUiThread { loadVipData() }
         }
