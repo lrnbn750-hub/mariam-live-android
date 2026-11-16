@@ -2426,7 +2426,27 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
  }
- private fun showRoomTools(){
+ private fun openYouTubeApp(){
+  try{
+   val youtubePackage="com.google.android.youtube"
+   val launchIntent=packageManager.getLaunchIntentForPackage(youtubePackage)
+   if(launchIntent!=null){
+    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    startActivity(launchIntent)
+    Toast.makeText(this,"شغّل الفيديو في YouTube، ثم اضغط زر Home. إذا كان Picture-in-Picture مفعّلاً سيبقى الفيديو عائماً فوق BAK LIVE",Toast.LENGTH_LONG).show()
+    return
+   }
+   val webIntent=Intent(Intent.ACTION_VIEW,Uri.parse("https://www.youtube.com"))
+   startActivity(webIntent)
+   Toast.makeText(this,"YouTube غير مثبت؛ تم فتحه بالمتصفح. النافذة العائمة قد لا تكون مدعومة هنا",Toast.LENGTH_LONG).show()
+  }catch(_:android.content.ActivityNotFoundException){
+   Toast.makeText(this,"لم يتم العثور على تطبيق أو متصفح لفتح YouTube",Toast.LENGTH_LONG).show()
+  }catch(_:Exception){
+   Toast.makeText(this,"تعذر فتح YouTube. تحقق من اتصال الإنترنت والتطبيق",Toast.LENGTH_LONG).show()
+  }
+ }
+
+private fun showRoomTools(){
   val dialog=android.app.Dialog(this)
   val root=sheetRoot()
   root.addView(label("مركز أدوات الغرفة",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
@@ -2464,6 +2484,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك",
    "mic",Color.rgb(64,224,255)){toggleMic()}
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
+   addTool("مشاهدة YouTube","افتح تطبيق YouTube وشاهد الفيديو بنافذة عائمة إذا كان PiP مدعوماً ومفعّلاً","play",Color.rgb(255,70,70)){openYouTubeApp()}
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
   if(isOwner)addTool("المحظورون والمطرودون","إدارة قيود التعليقات والطرد وإلغائها","users",Color.rgb(239,132,132)){showRoomModerationList()}
