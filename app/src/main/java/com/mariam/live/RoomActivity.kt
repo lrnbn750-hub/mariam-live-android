@@ -2107,7 +2107,11 @@ class RoomActivity : Activity() {
     background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
     setPadding(dp(8),dp(5),dp(8),dp(5))
    })
-   row.setOnClickListener{dialog.dismiss();showMemberProfile(member)}
+   row.setOnClickListener{
+    dialog.dismiss()
+    if(isOwner && !isOwnerMember && member.optString("user_id")!=currentUserId)showMemberModeration(member)
+    else showMemberProfile(member)
+   }
    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
   }
   val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(list)}
@@ -2369,6 +2373,7 @@ class RoomActivity : Activity() {
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
+  if(isOwner)addTool("المحظورون والمطرودون","إدارة قيود التعليقات والطرد وإلغائها","users",Color.rgb(239,132,132)){showRoomModerationList()}
   val close=TextView(this).apply{
    text="إغلاق";textSize=13f;gravity=Gravity.CENTER
    setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
