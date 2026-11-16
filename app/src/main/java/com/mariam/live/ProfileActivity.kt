@@ -30,6 +30,7 @@ class ProfileActivity : Activity() {
     private var selectedPhoto: Uri? = null
     private var profileData = JSONObject()
     private var publicId = ""
+    private var firstLoadStarted = false
     private var userId = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +100,7 @@ class ProfileActivity : Activity() {
     }
 
     private fun loadProfileData() {
+        firstLoadStarted = true
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
         if (token.isNullOrBlank()) { finish(); return }
         executor.execute {
@@ -253,7 +255,7 @@ class ProfileActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::web.isInitialized) loadProfileData()
+        if (::web.isInitialized && firstLoadStarted) loadProfileData()
     }
 
     override fun onDestroy() {
