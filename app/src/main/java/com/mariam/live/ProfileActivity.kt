@@ -94,7 +94,7 @@ class ProfileActivity : Activity() {
         page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(pageBg)
-            setPadding(dp(16f), dp(8f), dp(16f), dp(28f))
+            setPadding(dp(14f), dp(6f), dp(14f), dp(24f))
         }
         scroll.addView(page, ViewGroup.LayoutParams(-1, -2))
         setContentView(scroll)
@@ -108,7 +108,7 @@ class ProfileActivity : Activity() {
             intArrayOf(Color.rgb(222, 190, 103), Color.rgb(38, 165, 119), Color.rgb(222, 190, 103))
         ).apply { shape = GradientDrawable.OVAL }
         avatar = header.avatarView
-        avatar.layoutParams = FrameLayout.LayoutParams(dp(84f), dp(84f), Gravity.CENTER)
+        avatar.layoutParams = FrameLayout.LayoutParams(dp(78f), dp(78f), Gravity.CENTER)
         avatar.background = rounded(Color.rgb(235, 239, 240), 50f, Color.TRANSPARENT)
         avatar.clipToOutline = true
         header.editAvatarView.setOnClickListener { pickPhoto() }
@@ -122,20 +122,20 @@ class ProfileActivity : Activity() {
         val walletRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            setPadding(0, dp(14f), 0, dp(14f))
+            setPadding(0, dp(10f), 0, dp(12f))
         }
         val coins = walletCard("20", "عملات الشحن", "Ⓑ", Color.rgb(255, 239, 193))
         val diamonds = walletCard("0", "الألماس المكتسب", "◆", Color.rgb(216, 244, 255))
         coinValue = coins.second
         diamondValue = diamonds.second
-        walletRow.addView(diamonds.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginEnd = dp(8f) })
+        walletRow.addView(diamonds.first, LinearLayout.LayoutParams(0, dp(112f), 1f).apply { marginEnd = dp(8f) })
         walletRow.addView(coins.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginStart = dp(8f) })
         page.addView(walletRow)
 
         val shortcutCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(white, 28f)
-            setPadding(dp(12f), dp(14f), dp(12f), dp(12f))
+            background = rounded(white, 22f)
+            setPadding(dp(8f), dp(10f), dp(8f), dp(10f))
         }
         val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
         rowOne.addView(shortcut("العائلة", R.drawable.ic_profile_family_color) { openAction("family") }, weighted())
@@ -145,7 +145,7 @@ class ProfileActivity : Activity() {
         val rowTwo = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(0, dp(8f), 0, 0)
+            setPadding(0, dp(4f), 0, 0)
         }
         rowTwo.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color) { openAction("agency") }, weighted())
         rowTwo.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color) { openAction("host") }, weighted())
@@ -178,8 +178,8 @@ class ProfileActivity : Activity() {
     private fun walletCard(amount: String, label: String, symbol: String, tint: Int): Pair<View, TextView> {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(white, 24f)
-            setPadding(dp(12f), dp(12f), dp(12f), dp(10f))
+            background = rounded(white, 22f)
+            setPadding(dp(10f), dp(10f), dp(10f), dp(8f))
             elevation = dp(2f).toFloat()
         }
         val top = LinearLayout(this).apply {
@@ -194,14 +194,14 @@ class ProfileActivity : Activity() {
             gravity = Gravity.CENTER
             background = GradientDrawable().apply { setColor(tint); cornerRadius = dp(18f).toFloat() }
         }
-        top.addView(icon, LinearLayout.LayoutParams(dp(64f), dp(64f)))
-        val value = text(amount, 25f, ink, true).apply { gravity = Gravity.CENTER }
+        top.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        val value = text(amount, 23f, ink, true).apply { gravity = Gravity.CENTER }
         top.addView(value, LinearLayout.LayoutParams(0, dp(64f), 1f))
         box.addView(top)
         box.addView(text(label, 14f, muted).apply {
             gravity = Gravity.RIGHT
             textDirection = View.TEXT_DIRECTION_RTL
-            setPadding(0, dp(8f), dp(2f), 0)
+            setPadding(0, dp(6f), dp(2f), 0)
         })
         box.setOnClickListener { openAction(if (label.contains("ألماس")) "diamonds" else "coins") }
         return box to value
@@ -227,12 +227,12 @@ class ProfileActivity : Activity() {
                     "مظهري" -> Color.rgb(232, 244, 255)
                     "مركز الوكالة" -> Color.rgb(228, 248, 243)
                     else -> Color.rgb(246, 235, 255)
-                }, 20f, Color.TRANSPARENT
+                }, 16f, Color.TRANSPARENT
             )
-            setPadding(dp(15f), dp(15f), dp(15f), dp(15f))
+            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
         }
-        item.addView(icon, LinearLayout.LayoutParams(dp(76f), dp(76f)))
-        item.addView(text(label, 14f, if (label == "VIP") Color.rgb(151, 116, 37) else ink, true).apply {
+        item.addView(icon, LinearLayout.LayoutParams(dp(58f), dp(58f)))
+        item.addView(text(label, 13f, if (label == "VIP") Color.rgb(151, 116, 37) else ink, true).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(7f), 0, 0)
         })
@@ -244,7 +244,7 @@ class ProfileActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16f), dp(12f), dp(16f), dp(12f))
+            setPadding(dp(14f), dp(9f), dp(14f), dp(9f))
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
@@ -255,12 +255,12 @@ class ProfileActivity : Activity() {
             background = rounded(Color.rgb(246, 248, 251), 16f, Color.TRANSPARENT)
             setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
         }
-        row.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        row.addView(icon, LinearLayout.LayoutParams(dp(40f), dp(40f)))
         row.addView(text(label, 17f, ink, true).apply {
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             textDirection = View.TEXT_DIRECTION_RTL
-        }, LinearLayout.LayoutParams(0, dp(48f), 1f).apply { marginStart = dp(14f) })
-        row.addView(text("‹", 28f, Color.rgb(177, 185, 195)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(26f), dp(48f)))
+        }, LinearLayout.LayoutParams(0, dp(42f), 1f).apply { marginStart = dp(12f) })
+        row.addView(text("‹", 24f, Color.rgb(177, 185, 195)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(22f), dp(42f)))
         parent.addView(row, LinearLayout.LayoutParams(-1, -2))
         val divider = View(this).apply { setBackgroundColor(border) }
         parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)))
