@@ -997,7 +997,8 @@ class RoomActivity : Activity() {
      ).apply{
       leftMargin=dp(10);rightMargin=dp(10)
       topMargin=dp(2);bottomMargin=dp(2)
-     }     bubble.addView(content,contentParams)
+     }
+     bubble.addView(content,contentParams)
      val line=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.HORIZONTAL
       gravity=if(mine)Gravity.END else Gravity.START
