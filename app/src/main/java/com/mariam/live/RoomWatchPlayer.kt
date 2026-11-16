@@ -1,11 +1,14 @@
 package com.mariam.live
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -18,21 +21,22 @@ import android.graphics.drawable.GradientDrawable
 import android.os.SystemClock
 import android.text.TextUtils
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.view.animation.DecelerateInterpolator
 import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.*
@@ -44,16 +48,18 @@ import java.net.URLEncoder
 /**
  * مشغل المشاهدة الجماعية (YouTube) داخل الغرفة الصوتية نفسها.
  *
- * - نافذة عائمة فوق المقاعد (قابلة للسحب، تصغير/تكبير، إغلاق) بدون فتح Activity مستقلة.
+ * - مكان مخصص للمشغل فوق المقاعد: عند التشغيل تتصغر المقاعد قليلاً ويظهر الفيديو فوقها،
+ *   وعند الإغلاق ترجع المقاعد لشكلها الطبيعي (بدون نافذة عائمة وبدون Activity مستقلة).
+ * - تحكم بالصوت (كتم + شريط مستوى) لكل مستخدم محلياً دون التأثير على بقية الأعضاء.
  * - المالك فقط يختار الفيديو ويتحكم بالتشغيل/الإيقاف/التقديم.
  * - الأعضاء يشاهدون متزامنين مع المالك (نفس endpoints القديمة، بدون أي تغيير في الخادم).
  * - لا يلمس LiveKit ولا المقاعد ولا الدردشة ولا الهدايا.
  */
 class RoomWatchPlayer(
     private val activity: Activity,
-    /** طبقة فارغة فوق صفحة الغرفة وتحت طبقة الهدايا. */
+    /** المكان المخصص (FrameLayout ارتفاعه 0 داخل صفحة الغرفة، بين الهيدر والمقاعد). */
     private val host: FrameLayout,
-    /** شبكة المقاعد: تُستخدم فقط لتحديد المكان الافتراضي للنافذة. */
+    /** شبكة المقاعد: تُصغَّر قليلاً أثناء المشاهدة وتعود طبيعية عند الإغلاق. */
     private val anchorProvider: () -> View?,
     private val roomId: String,
     private val token: String,
@@ -63,18 +69,28 @@ class RoomWatchPlayer(
         val ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
         const val EMBED_ORIGIN = "https://nokiraq.duckdns.org"
         const val HEARTBEAT_MS = 5000L
+        /** مقدار تصغير المقاعد أثناء المشاهدة (1.0 = بدون تصغير). */
+        const val SEAT_SCALE = 0.8f
+        /** أقصى ارتفاع للفيديو بالـ dp. */
+        const val MAX_VIDEO_DP = 190
+        const val VOLUME_ROW_DP = 32
+        const val VOLUME_GAP_DP = 4
+        const val PREF_VOLUME = "watch_volume"
+        const val PREF_VOLUME_LAST = "watch_volume_last"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // ---- views ----
-    private var panelWindow: FrameLayout? = null
+    private var panelWindow: LinearLayout? = null
     private var web: WebView? = null
     private var emptyView: TextView? = null
     private var topBar: LinearLayout? = null
     private var bottomBar: FrameLayout? = null
     private var titleView: TextView? = null
-    private var sizeBtn: WatchGlyph? = null
+    private var volumeIcon: WatchGlyph? = null
+    private var volumeSeek: SeekBar? = null
+    private var volumeText: TextView? = null
     private var playBtn: WatchGlyph? = null
     private var backBtn: WatchGlyph? = null
     private var fwdBtn: WatchGlyph? = null
@@ -91,8 +107,6 @@ class RoomWatchPlayer(
     private var isOwner = false
     private var playerReady = false
     private var visible = false
-    private var compact = false
-    private var placedOnce = false
     private var controlsShown = true
     private var initialSeen = false
     private var lastApplied = -1L
@@ -107,6 +121,11 @@ class RoomWatchPlayer(
     private var lastKick = 0L
     private var lastErrorToastAt = 0L
     private val thumbCache = HashMap<String, Bitmap>()
+
+    // ---- volume (محلي لكل مستخدم ويُحفظ بين الجلسات)
+    private val prefs = activity.getSharedPreferences("MariamLive", Context.MODE_PRIVATE)
+    private var volume = prefs.getInt(PREF_VOLUME, 80).coerceIn(0, 100)
+    private var lastVolume = prefs.getInt(PREF_VOLUME_LAST, 80).coerceIn(1, 100)
 
     private fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
 
@@ -144,7 +163,10 @@ class RoomWatchPlayer(
             refreshState()
             dismissedVideoId = null
             if (visible) {
-                if (isOwner) showSearch() else setCompact(false)
+                if (isOwner) showSearch() else {
+                    showControls(true)
+                    scheduleControlsHide()
+                }
                 return@launch
             }
             if (!isOwner && !ID_REGEX.matches(videoId)) {
@@ -161,11 +183,10 @@ class RoomWatchPlayer(
     }
 
     fun containsTouch(rawX: Float, rawY: Float): Boolean {
-        val box = panelWindow ?: return false
-        if (!visible || box.visibility != View.VISIBLE) return false
+        if (panelWindow == null || !visible || host.height <= 0) return false
         val loc = IntArray(2)
-        box.getLocationOnScreen(loc)
-        return rawX >= loc[0] && rawX <= loc[0] + box.width && rawY >= loc[1] && rawY <= loc[1] + box.height
+        host.getLocationOnScreen(loc)
+        return rawX >= loc[0] && rawX <= loc[0] + host.width && rawY >= loc[1] && rawY <= loc[1] + host.height
     }
 
     fun onHostPause() {
@@ -195,6 +216,8 @@ class RoomWatchPlayer(
         controlsJob?.cancel()
         poll?.cancel()
         scope.cancel()
+        dockAnim?.cancel()
+        try { applyDockFraction(0f) } catch (_: Exception) {}
         try { searchDialog?.dismiss() } catch (_: Exception) {}
         searchDialog = null
         web?.let { wv ->
@@ -337,42 +360,48 @@ class RoomWatchPlayer(
     }
 
     // =====================================================================
-    // Window
+    // Docked window: مكان مخصص فوق المقاعد (المقاعد تصغر قليلاً وتعود عند الإغلاق)
     // =====================================================================
 
-    private fun sizeFor(c: Boolean): Pair<Int, Int> {
-        val w = if (c) dp(172) else (host.width - dp(24)).coerceAtMost(dp(560)).coerceAtLeast(dp(220))
-        return w to (w * 9 / 16)
+    private var dockAnim: ValueAnimator? = null
+    private var dockFraction = 0f
+    private var dockHeightPx = 0
+
+    private fun availWidth(): Int {
+        if (host.width > 0) return host.width
+        val p = host.parent as? View ?: return 0
+        return p.width - p.paddingLeft - p.paddingRight
     }
 
-    private fun gridTopY(): Int {
-        val a = anchorProvider() ?: return dp(120)
-        val aLoc = IntArray(2)
-        val hLoc = IntArray(2)
-        a.getLocationOnScreen(aLoc)
-        host.getLocationOnScreen(hLoc)
-        return aLoc[1] - hLoc[1]
-    }
-
-    private fun minY(): Int = (gridTopY() - dp(10)).coerceAtLeast(0)
-
-    private fun clampX(v: Float, w: Int) = v.coerceIn(0f, (host.width - w).coerceAtLeast(0).toFloat())
-    private fun clampY(v: Float, h: Int): Float {
-        val lo = minY().toFloat()
-        val hi = (host.height - h - dp(4)).toFloat().coerceAtLeast(lo)
-        return v.coerceIn(lo, hi)
+    /** مقاس الفيديو 16:9 بحد أقصى للارتفاع حتى لا تضيق الدردشة على الشاشات الصغيرة. */
+    private fun videoSize(): Pair<Int, Int> {
+        val maxH = minOf(dp(MAX_VIDEO_DP), (activity.resources.displayMetrics.heightPixels * 0.23f).toInt())
+        val availW = availWidth().coerceAtLeast(dp(220))
+        var w = availW
+        var h = w * 9 / 16
+        if (h > maxH) {
+            h = maxH
+            w = h * 16 / 9
+        }
+        return w to h
     }
 
     @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
-    private fun ensureWindow(): FrameLayout {
+    private fun ensureWindow(): LinearLayout {
         panelWindow?.let { return it }
-        val (w0, h0) = sizeFor(compact)
+        val (vw, vh) = videoSize()
+
+        val dock = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            alpha = 0f
+        }
+
         val box = FrameLayout(activity).apply {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = rounded(Color.BLACK, 16, Color.argb(80, 255, 255, 255))
             clipToOutline = true
-            elevation = dp(14).toFloat()
-            visibility = View.GONE
         }
 
         val wv = WebView(activity).apply {
@@ -398,9 +427,9 @@ class RoomWatchPlayer(
         emptyView = empty
         box.addView(empty, FrameLayout.LayoutParams(-1, -1))
 
-        // طبقة شفافة: تمنع لمس الفيديو (الأعضاء لا يتحكمون) وتسمح بالسحب والضغط لإظهار الأزرار.
+        // طبقة شفافة: تمنع لمس الفيديو (الأعضاء لا يتحكمون) والضغط عليها يُظهر/يُخفي الأزرار.
         val shield = View(activity)
-        shield.setOnTouchListener(dragListener(box))
+        shield.setOnClickListener { toggleControls() }
         box.addView(shield, FrameLayout.LayoutParams(-1, -1))
 
         val track = FrameLayout(activity).apply { setBackgroundColor(Color.argb(70, 255, 255, 255)) }
@@ -413,7 +442,7 @@ class RoomWatchPlayer(
         track.addView(fillView, FrameLayout.LayoutParams(-1, -1))
         box.addView(track, FrameLayout.LayoutParams(-1, dp(3), Gravity.BOTTOM))
 
-        // ---- الشريط العلوي: [إغلاق][تصغير/تكبير] ......... [العنوان]
+        // ---- الشريط العلوي: [إغلاق] ......... [العنوان]
         val top = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -425,7 +454,6 @@ class RoomWatchPlayer(
             setPadding(dp(6), dp(5), dp(10), dp(14))
         }
         val closeBtn = glyphButton(WatchGlyph.CLOSE) { onClosePressed() }
-        val sizeB = glyphButton(WatchGlyph.SHRINK) { setCompact(!compact) }
         val titleTv = TextView(activity).apply {
             textSize = 11.5f
             setTextColor(Color.WHITE)
@@ -434,12 +462,10 @@ class RoomWatchPlayer(
             ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
         }
-        top.addView(closeBtn, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(6) })
-        top.addView(sizeB, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
+        top.addView(closeBtn, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
         top.addView(titleTv, LinearLayout.LayoutParams(0, -2, 1f))
         box.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
         topBar = top
-        sizeBtn = sizeB
         titleView = titleTv
 
         // ---- الشريط السفلي (للمالك فقط)
@@ -471,9 +497,102 @@ class RoomWatchPlayer(
         fwdBtn = fwdB
         searchBtn = searchB
 
-        host.addView(box, FrameLayout.LayoutParams(w0, h0, Gravity.TOP or Gravity.LEFT))
-        panelWindow = box
-        return box
+        dock.addView(box, LinearLayout.LayoutParams(vw, vh))
+        dock.addView(
+            buildVolumeRow(),
+            LinearLayout.LayoutParams(vw, dp(VOLUME_ROW_DP)).apply { topMargin = dp(VOLUME_GAP_DP) }
+        )
+
+        dockHeightPx = vh + dp(VOLUME_GAP_DP) + dp(VOLUME_ROW_DP)
+        host.addView(dock, FrameLayout.LayoutParams(-1, dockHeightPx, Gravity.TOP))
+        panelWindow = dock
+        return dock
+    }
+
+    // ---- صف التحكم بالصوت (محلي لكل مستخدم، لا يُزامن مع الخادم) ----
+    private fun buildVolumeRow(): LinearLayout {
+        val accent = Color.rgb(255, 75, 90)
+        val row = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = rounded(Color.argb(80, 16, 12, 30), 14, Color.argb(50, 255, 255, 255))
+            setPadding(dp(6), 0, dp(10), 0)
+        }
+        val icon = WatchGlyph(activity, volumeGlyphKind()).apply {
+            isClickable = true
+            setOnClickListener { toggleMute() }
+        }
+        volumeIcon = icon
+        row.addView(icon, LinearLayout.LayoutParams(dp(32), dp(32)))
+
+        val seek = SeekBar(activity).apply {
+            max = 100
+            progress = volume
+            setPadding(dp(10), 0, dp(10), 0)
+            progressTintList = ColorStateList.valueOf(accent)
+            thumbTintList = ColorStateList.valueOf(Color.WHITE)
+            progressBackgroundTintList = ColorStateList.valueOf(Color.argb(90, 255, 255, 255))
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                    if (!fromUser) return
+                    volume = p
+                    if (p > 0) lastVolume = p
+                    refreshVolumeUi(updateSeek = false)
+                    applyVolume()
+                }
+
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) { saveVolume() }
+            })
+        }
+        volumeSeek = seek
+        row.addView(seek, LinearLayout.LayoutParams(0, dp(32), 1f))
+
+        val pct = TextView(activity).apply {
+            textSize = 11f
+            setTextColor(Color.argb(210, 255, 255, 255))
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            gravity = Gravity.CENTER
+            text = "$volume%"
+        }
+        volumeText = pct
+        row.addView(pct, LinearLayout.LayoutParams(dp(40), -1))
+        return row
+    }
+
+    private fun volumeGlyphKind() = if (volume == 0) WatchGlyph.MUTE else WatchGlyph.VOLUME
+
+    private fun refreshVolumeUi(updateSeek: Boolean) {
+        volumeText?.text = "$volume%"
+        volumeIcon?.let {
+            val k = volumeGlyphKind()
+            if (it.kind != k) {
+                it.kind = k
+                it.invalidate()
+            }
+        }
+        if (updateSeek) volumeSeek?.progress = volume
+    }
+
+    private fun toggleMute() {
+        if (volume > 0) {
+            lastVolume = volume
+            volume = 0
+        } else {
+            volume = lastVolume.coerceAtLeast(30)
+        }
+        refreshVolumeUi(updateSeek = true)
+        applyVolume()
+        saveVolume()
+    }
+
+    private fun applyVolume() {
+        web?.evaluateJavascript("setVol($volume)", null)
+    }
+
+    private fun saveVolume() {
+        prefs.edit().putInt(PREF_VOLUME, volume).putInt(PREF_VOLUME_LAST, lastVolume).apply()
     }
 
     private fun glyphButton(kind: Int, onClick: () -> Unit): WatchGlyph =
@@ -488,100 +607,81 @@ class RoomWatchPlayer(
             }
         }
 
-    private fun dragListener(box: FrameLayout) = object : View.OnTouchListener {
-        private var downX = 0f
-        private var downY = 0f
-        private var startTx = 0f
-        private var startTy = 0f
-        private var dragging = false
-        private val slop = ViewConfiguration.get(activity).scaledTouchSlop
-
-        @SuppressLint("ClickableViewAccessibility")
-        override fun onTouch(v: View, e: MotionEvent): Boolean {
-            when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = e.rawX; downY = e.rawY
-                    startTx = box.translationX; startTy = box.translationY
-                    dragging = false
-                    v.parent?.requestDisallowInterceptTouchEvent(true)
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = e.rawX - downX
-                    val dy = e.rawY - downY
-                    if (!dragging && (kotlin.math.abs(dx) > slop || kotlin.math.abs(dy) > slop)) dragging = true
-                    if (dragging) {
-                        box.translationX = clampX(startTx + dx, box.width)
-                        box.translationY = clampY(startTy + dy, box.height)
-                    }
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!dragging) toggleControls() else settleAfterDrag(box)
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    if (dragging) settleAfterDrag(box)
+    /**
+     * f = 0 → المقاعد بحجمها الطبيعي والمكان المخصص مغلق.
+     * f = 1 → المكان مفتوح والمقاعد مصغّرة قليلاً (تحت المشغل).
+     */
+    private fun applyDockFraction(f: Float) {
+        dockFraction = f
+        (host.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+            lp.height = (dockHeightPx * f).toInt()
+            lp.topMargin = (dp(8) * f).toInt()
+            host.layoutParams = lp
+        }
+        panelWindow?.alpha = ((f - 0.25f) / 0.75f).coerceIn(0f, 1f)
+        anchorProvider()?.let { seats ->
+            val s = 1f - (1f - SEAT_SCALE) * f
+            seats.pivotX = seats.width / 2f
+            seats.pivotY = 0f
+            seats.scaleX = s
+            seats.scaleY = s
+            // التصغير بصري فقط؛ نسترجع المساحة الفارغة حتى ترتفع الدردشة بدل أن تبقى فجوة.
+            val h = if (seats.height > 0) seats.height else dp(236)
+            (seats.layoutParams as? ViewGroup.MarginLayoutParams)?.let { glp ->
+                val mb = -(h * (1f - s)).toInt()
+                if (glp.bottomMargin != mb) {
+                    glp.bottomMargin = mb
+                    seats.layoutParams = glp
                 }
             }
-            return true
         }
     }
 
-    private fun settleAfterDrag(box: FrameLayout) {
-        if (!compact) return
-        val target = if (box.translationX + box.width / 2f < host.width / 2f) dp(8).toFloat()
-        else (host.width - box.width - dp(8)).toFloat()
-        box.animate().translationX(clampX(target, box.width)).setDuration(160).start()
+    private fun animateDock(open: Boolean) {
+        dockAnim?.cancel()
+        val to = if (open) 1f else 0f
+        dockAnim = ValueAnimator.ofFloat(dockFraction, to).apply {
+            duration = 280
+            interpolator = DecelerateInterpolator(1.5f)
+            addUpdateListener { applyDockFraction(it.animatedValue as Float) }
+            addListener(object : AnimatorListenerAdapter() {
+                private var cancelled = false
+                override fun onAnimationCancel(a: Animator) { cancelled = true }
+                override fun onAnimationEnd(a: Animator) {
+                    if (cancelled || released) return
+                    if (!open && !visible) web?.onPause()
+                }
+            })
+            start()
+        }
     }
 
     private fun show() {
         if (released) return
-        if (host.width == 0 || host.height == 0) {
+        if (availWidth() == 0) {
             host.post { show() }
             return
         }
-        val box = ensureWindow()
+        ensureWindow()
         if (!visible) {
             visible = true
-            val (tw, th) = sizeFor(compact)
-            val lp = box.layoutParams as FrameLayout.LayoutParams
-            lp.width = tw; lp.height = th
-            box.layoutParams = lp
-            if (!placedOnce) {
-                placedOnce = true
-                box.translationX = if (compact) (host.width - tw - dp(10)).toFloat() else (host.width - tw) / 2f
-                box.translationY = clampY(gridTopY().toFloat(), th)
-            } else {
-                box.translationX = clampX(box.translationX, tw)
-                box.translationY = clampY(box.translationY, th)
-            }
-            box.alpha = 0f
-            box.scaleX = 0.94f
-            box.scaleY = 0.94f
-            box.visibility = View.VISIBLE
-            box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start()
             web?.onResume()
+            animateDock(open = true)
             showControls(true)
             scheduleControlsHide()
         }
         applyRoleUi()
         updateEmpty()
         updateTitle()
-        box.bringToFront()
     }
 
     private fun hide(localDismiss: Boolean) {
-        val box = panelWindow ?: return
-        if (!visible) return
+        if (panelWindow == null || !visible) return
         visible = false
         if (localDismiss && videoId.isNotBlank()) dismissedVideoId = videoId
         web?.evaluateJavascript("if(ytPlayer&&ytPlayer.pauseVideo)ytPlayer.pauseVideo()", null)
-        box.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(160).withEndAction {
-            box.visibility = View.GONE
-            box.alpha = 1f
-            box.scaleX = 1f
-            box.scaleY = 1f
-            if (!visible) web?.onPause()
-        }.start()
         controlsJob?.cancel()
+        animateDock(open = false)
     }
 
     private fun onClosePressed() {
@@ -600,40 +700,7 @@ class RoomWatchPlayer(
         }
     }
 
-    private fun setCompact(c: Boolean) {
-        val box = panelWindow ?: return
-        if (compact == c) return
-        compact = c
-        applyRoleUi()
-        val lp = box.layoutParams as FrameLayout.LayoutParams
-        val fw = lp.width
-        val fh = lp.height
-        val fx = box.translationX
-        val fy = box.translationY
-        val (tw, th) = sizeFor(c)
-        val tx = if (c) (host.width - tw - dp(10)).toFloat() else (host.width - tw) / 2f
-        val ty = if (c) clampY(fy, th) else clampY(gridTopY().toFloat(), th)
-        ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 200
-            addUpdateListener { a ->
-                val f = a.animatedValue as Float
-                lp.width = (fw + (tw - fw) * f).toInt()
-                lp.height = (fh + (th - fh) * f).toInt()
-                box.layoutParams = lp
-                box.translationX = fx + (tx - fx) * f
-                box.translationY = fy + (ty - fy) * f
-            }
-            start()
-        }
-    }
-
     private fun applyRoleUi() {
-        sizeBtn?.kind = if (compact) WatchGlyph.EXPAND else WatchGlyph.SHRINK
-        sizeBtn?.invalidate()
-        titleView?.visibility = if (compact) View.GONE else View.VISIBLE
-        backBtn?.visibility = if (compact) View.GONE else View.VISIBLE
-        fwdBtn?.visibility = if (compact) View.GONE else View.VISIBLE
-        searchBtn?.visibility = if (compact) View.GONE else View.VISIBLE
         val bar = bottomBar
         if (bar != null) {
             if (!isOwner) bar.visibility = View.GONE
@@ -734,6 +801,7 @@ class RoomWatchPlayer(
             activity.runOnUiThread {
                 if (released) return@runOnUiThread
                 playerReady = true
+                applyVolume()
                 if (visible) pushToPlayer()
             }
         }
@@ -756,6 +824,7 @@ class RoomWatchPlayer(
                 if (released) return@runOnUiThread
                 playerCode = state
                 updatePlayPauseIcon()
+                if (state == 1) applyVolume() // المشغل أحياناً يعيد الصوت الافتراضي عند بدء فيديو جديد
                 if (state == 0 && isOwner && visible) {
                     desired = "paused"
                     persist("paused", seconds)
@@ -835,6 +904,15 @@ class RoomWatchPlayer(
           }
           if(id && Math.abs((ytPlayer.getCurrentTime()||0)-start)>3.5){ytPlayer.seekTo(start,true);}
           if(state==='playing') ytPlayer.playVideo(); else ytPlayer.pauseVideo();
+        }
+        function setVol(v){
+          if(!ytPlayer||!ytPlayer.setVolume)return;
+          try{
+            v=Math.max(0,Math.min(100,v|0));
+            ytPlayer.setVolume(v);
+            if(v===0){ytPlayer.mute();}
+            else if(ytPlayer.isMuted&&ytPlayer.isMuted()){ytPlayer.unMute();}
+          }catch(e){}
         }
         function ownerLoad(id){
           if(!ytPlayer||!ytPlayer.loadVideoById){pending={id:id,owner:true};return;}
@@ -1059,6 +1137,8 @@ private class WatchGlyph(context: Context, var kind: Int) : View(context) {
         const val BACK = 5
         const val FWD = 6
         const val SEARCH = 7
+        const val VOLUME = 8
+        const val MUTE = 9
     }
 
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -1147,6 +1227,29 @@ private class WatchGlyph(context: Context, var kind: Int) : View(context) {
                 c.drawPath(path, fill)
                 text.textSize = s * 0.95f
                 c.drawText("10", cx, cy + s * 0.33f, text)
+            }
+            VOLUME, MUTE -> {
+                val ox = cx - s * 0.15f
+                path.reset()
+                path.moveTo(ox - s * 0.95f, cy - s * 0.42f)
+                path.lineTo(ox - s * 0.4f, cy - s * 0.42f)
+                path.lineTo(ox + s * 0.2f, cy - s * 0.9f)
+                path.lineTo(ox + s * 0.2f, cy + s * 0.9f)
+                path.lineTo(ox - s * 0.4f, cy + s * 0.42f)
+                path.lineTo(ox - s * 0.95f, cy + s * 0.42f)
+                path.close()
+                c.drawPath(path, fill)
+                if (kind == VOLUME) {
+                    val r1 = s * 0.55f
+                    val r2 = s * 1.0f
+                    c.drawArc(RectF(ox + s * 0.2f - r1, cy - r1, ox + s * 0.2f + r1, cy + r1), -50f, 100f, false, stroke)
+                    c.drawArc(RectF(ox + s * 0.2f - r2, cy - r2, ox + s * 0.2f + r2, cy + r2), -50f, 100f, false, stroke)
+                } else {
+                    val x0 = ox + s * 0.55f
+                    val x1 = ox + s * 1.2f
+                    c.drawLine(x0, cy - s * 0.4f, x1, cy + s * 0.4f, stroke)
+                    c.drawLine(x0, cy + s * 0.4f, x1, cy - s * 0.4f, stroke)
+                }
             }
             SEARCH -> {
                 val r = s * 0.62f
