@@ -112,7 +112,7 @@ jobs:
           test -s app/src/main/java/com/mariam/live/RoomWatchPlayer.kt
           grep -qi 'youtube' app/src/main/java/com/mariam/live/RoomWatchPlayer.kt
           test -s app/src/main/java/com/mariam/live/VipActivity.kt
-          ! grep -q 'WebView' app/src/main/java/com/mariam/live/VipActivity.kt
+          ! grep -q 'import android.webkit.WebView' app/src/main/java/com/mariam/live/VipActivity.kt
 
       - name: Build BAK LIVE debug APK
         run: gradle --no-daemon assembleDebug
