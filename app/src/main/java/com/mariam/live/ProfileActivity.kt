@@ -53,6 +53,7 @@ class ProfileActivity : Activity() {
     private var profileData = JSONObject()
     private var publicId = ""
     private var userId = ""
+    private lateinit var adminEntry: LinearLayout
 
     private val ink = Color.rgb(20, 24, 34)
     private val muted = Color.rgb(143, 151, 164)
@@ -232,6 +233,26 @@ class ProfileActivity : Activity() {
         serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
         body.addView(services, LinearLayout.LayoutParams(-1, -2))
 
+        // لا نعرض قسم الإدارة إلا بعد تأكيد الصلاحية من الخادم.
+        val adminCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = cardBackground(26f)
+            elevation = dp(2f).toFloat()
+            clipToOutline = true
+            visibility = View.GONE
+        }
+        serviceRow(
+            adminCard,
+            "لوحة الإدارة والتحكم",
+            R.drawable.ic_profile_security_color,
+            rounded(Color.rgb(245, 238, 255), 14f, Color.TRANSPARENT),
+            dp(8f),
+            last = true
+        ) { startActivity(Intent(this, AdminActivity::class.java)) }
+        body.addView(adminCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14f) })
+        adminEntry = adminCard
+
         animateIn(listOf(walletRow, shortcutCard, settingsTitle, services))
     }
 
@@ -362,7 +383,19 @@ class ProfileActivity : Activity() {
                     }
                 } catch (_: Exception) {}
                 profileData = data
-                runOnUiThread { bindProfile(data, token) }
+                var isAdmin = false
+                try {
+                    val adminCheck = AuthApi.get("/api/admin/v2/me", token)
+                    isAdmin = adminCheck.status in 200..299 &&
+                        adminCheck.body.optBoolean("success", false) &&
+                        adminCheck.body.optJSONObject("admin") != null
+                } catch (e: Exception) {
+                    Log.w("BAKProfileNative", "Admin capability check unavailable", e)
+                }
+                runOnUiThread {
+                    bindProfile(data, token)
+                    if (::adminEntry.isInitialized) adminEntry.visibility = if (isAdmin) View.VISIBLE else View.GONE
+                }
             } catch (e: Exception) {
                 Log.e("BAKProfileNative", "Profile load failed", e)
                 runOnUiThread { Toast.makeText(this, e.message ?: "تعذر تحميل بيانات الملف الشخصي", Toast.LENGTH_LONG).show() }
