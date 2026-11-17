@@ -30,6 +30,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
 
     /** Animated avatar frame. `avatarFrame.frameEnabled = false` hides it. */
     val avatarFrame: AvatarFrameView
+    private lateinit var vipFrameOverlay: ImageView
 
     init {
         orientation = VERTICAL
@@ -52,6 +53,17 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         settingsView = findViewById(R.id.profileHeaderSettings)
         supportView = findViewById(R.id.profileHeaderSupport)
         avatarFrame = findViewById(R.id.profileHeaderAvatarSlot)
+        vipFrameOverlay = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            contentDescription = "إطار VIP"
+            visibility = View.GONE
+        }
+        // Keep the avatar below the VIP artwork and the edit control above it.
+        avatarFrame.addView(vipFrameOverlay, 1, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        editAvatarView.bringToFront()
 
         // Tapping the whole ID chip copies the ID (uses the listener set on copyView).
         findViewById<View>(R.id.profileHeaderIdChip).setOnClickListener { copyView.performClick() }
@@ -72,6 +84,21 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
 
     fun setLevelText(level: Int) {
         setLevel(level)
+    }
+
+    /** Applies the matching VIP 1..12 frame without replacing the user's avatar. */
+    fun setVipLevel(level: Int) {
+        val safeLevel = level.coerceIn(0, 12)
+        val resource = if (safeLevel == 0) 0 else VipAssetResources.frame(context, safeLevel)
+        if (resource == 0) {
+            vipFrameOverlay.setImageDrawable(null)
+            vipFrameOverlay.visibility = View.GONE
+            avatarFrame.frameEnabled = true
+        } else {
+            vipFrameOverlay.setImageResource(resource)
+            vipFrameOverlay.visibility = View.VISIBLE
+            avatarFrame.frameEnabled = false
+        }
     }
 
     fun setFansCount(value: String) { fansCountView.text = value }
