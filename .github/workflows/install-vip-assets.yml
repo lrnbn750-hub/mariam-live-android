@@ -1,0 +1,101 @@
+name: Install BAK LIVE VIP 1-12 assets and build
+
+on:
+  push:
+    branches:
+      - feature/bak-live-wealth-level-redesign
+    paths:
+      - .github/workflows/install-vip-assets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout VIP feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bak-live-wealth-level-redesign
+          fetch-depth: 0
+
+      - name: Checkout uploaded asset archive from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: vip-archive-source
+          sparse-checkout: BAK_LIVE_VIP_MERGED_PATCH.zip
+
+      - name: Extract and install Android resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s vip-archive-source/BAK_LIVE_VIP_MERGED_PATCH.zip
+          mkdir -p /tmp/bak-vip-patch
+          unzip -q vip-archive-source/BAK_LIVE_VIP_MERGED_PATCH.zip -d /tmp/bak-vip-patch
+          test -d /tmp/bak-vip-patch/app/src/main/res/drawable-nodpi
+          test -d /tmp/bak-vip-patch/app/src/main/res/raw
+          test -s /tmp/bak-vip-patch/app/src/main/java/com/mariam/live/VipAssetResources.kt
+          mkdir -p app/src/main/res/drawable-nodpi app/src/main/res/raw app/src/main/java/com/mariam/live docs
+          cp -a /tmp/bak-vip-patch/app/src/main/res/drawable-nodpi/. app/src/main/res/drawable-nodpi/
+          cp -a /tmp/bak-vip-patch/app/src/main/res/raw/. app/src/main/res/raw/
+          install -m 0644 /tmp/bak-vip-patch/app/src/main/java/com/mariam/live/VipAssetResources.kt app/src/main/java/com/mariam/live/VipAssetResources.kt
+          if [ -f /tmp/bak-vip-patch/docs/BAK_LIVE_VIP_ASSETS_README.md ]; then
+            install -m 0644 /tmp/bak-vip-patch/docs/BAK_LIVE_VIP_ASSETS_README.md docs/BAK_LIVE_VIP_ASSETS_README.md
+          fi
+          if [ -d /tmp/bak-vip-patch/app/src/main/assets/vip_levels ]; then
+            mkdir -p app/src/main/assets/vip_levels
+            cp -a /tmp/bak-vip-patch/app/src/main/assets/vip_levels/. app/src/main/assets/vip_levels/
+          fi
+          if [ -f /tmp/bak-vip-patch/app/src/main/assets/vip_levels_manifest.json ]; then
+            install -m 0644 /tmp/bak-vip-patch/app/src/main/assets/vip_levels_manifest.json app/src/main/assets/vip_levels_manifest.json
+          fi
+          echo "Drawable VIP assets: $(find app/src/main/res/drawable-nodpi -maxdepth 1 -type f -name 'vip_*' | wc -l)"
+          echo "Lottie VIP assets: $(find app/src/main/res/raw -maxdepth 1 -type f -name 'vip_*' | wc -l)"
+          test "$(find app/src/main/res/drawable-nodpi -maxdepth 1 -type f -name 'vip_*' | wc -l)" -ge 60
+          test "$(find app/src/main/res/raw -maxdepth 1 -type f -name 'vip_*' | wc -l)" -ge 24
+
+      - name: Commit installed VIP assets to feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/res/drawable-nodpi/vip_* app/src/main/res/raw/vip_* app/src/main/java/com/mariam/live/VipAssetResources.kt docs/BAK_LIVE_VIP_ASSETS_README.md app/src/main/assets/vip_levels app/src/main/assets/vip_levels_manifest.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Install BAK LIVE VIP 1-12 visual assets"
+            git push origin HEAD:feature/bak-live-wealth-level-redesign
+          else
+            echo "VIP assets already installed; no asset commit needed."
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Validate VIP resource references
+        run: |
+          test -s app/src/main/java/com/mariam/live/VipAssetResources.kt
+          grep -q 'fun frame' app/src/main/java/com/mariam/live/VipAssetResources.kt
+          grep -q 'fun bubble' app/src/main/java/com/mariam/live/VipAssetResources.kt
+          grep -q 'fun entrance' app/src/main/java/com/mariam/live/VipAssetResources.kt
+          grep -q 'com.airbnb.android:lottie' app/build.gradle.kts
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BAK-LIVE-VIP-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
