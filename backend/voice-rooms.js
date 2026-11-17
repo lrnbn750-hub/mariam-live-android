@@ -311,4 +311,142 @@ module.exports = (app, db, authenticateToken) => {
     }
   });
 
+
+  // BAK LIVE watch-together: official YouTube Data API search and room playback state.
+  // Keep YOUTUBE_API_KEY on the backend environment; never ship it in the Android app.
+  let watchStateTableReady = null;
+  const ensureWatchStateTable = async () => {
+    if (!watchStateTableReady) {
+      watchStateTableReady = db.query(`
+        CREATE TABLE IF NOT EXISTS bak_room_watch_state (
+          room_id UUID PRIMARY KEY,
+          video_id VARCHAR(32) NOT NULL DEFAULT '',
+          video_title TEXT NOT NULL DEFAULT '',
+          playback_state VARCHAR(12) NOT NULL DEFAULT 'paused',
+          "current_time" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          updated_at BIGINT NOT NULL DEFAULT 0,
+          updated_by TEXT
+        )
+      `).catch((error) => {
+        watchStateTableReady = null;
+        throw error;
+      });
+    }
+    return watchStateTableReady;
+  };
+
+  const validWatchRoomId = (value) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+
+  app.get("/api/watch/youtube/search", authenticateToken, async (req, res) => {
+    try {
+      const query = String(req.query.q || "").trim().slice(0, 100);
+      if (query.length < 2) return res.status(400).json({ error: "اكتب كلمتين على الأقل للبحث" });
+      const apiKey = String(process.env.YOUTUBE_API_KEY || "").trim();
+      if (!apiKey) return res.status(503).json({ error: "بحث YouTube غير مهيأ على الخادم بعد" });
+      const params = new URLSearchParams({
+        part: "snippet",
+        type: "video",
+        videoEmbeddable: "true",
+        maxResults: "15",
+        safeSearch: "moderate",
+        q: query,
+        key: apiKey
+      });
+      const response = await fetch("https://www.googleapis.com/youtube/v3/search?" + params.toString());
+      const payload = await response.json();
+      if (!response.ok) {
+        console.error("YouTube search API:", payload && payload.error ? payload.error.message : response.status);
+        return res.status(response.status === 403 ? 503 : 502).json({ error: "تعذر البحث في YouTube حالياً" });
+      }
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      return res.json({
+        results: items.map((item) => ({
+          video_id: String(item.id && item.id.videoId || ""),
+          title: String(item.snippet && item.snippet.title || ""),
+          channel: String(item.snippet && item.snippet.channelTitle || ""),
+          thumbnail: String(item.snippet && item.snippet.thumbnails && (item.snippet.thumbnails.medium || item.snippet.thumbnails.default) && (item.snippet.thumbnails.medium || item.snippet.thumbnails.default).url || "")
+        })).filter((item) => /^[A-Za-z0-9_-]{11}$/.test(item.video_id))
+      });
+    } catch (error) {
+      console.error("YouTube search:", error.message);
+      return res.status(500).json({ error: "حدث خطأ أثناء البحث في YouTube" });
+    }
+  });
+
+  app.get("/api/voice-rooms/:roomId/watch/state", authenticateToken, async (req, res) => {
+    try {
+      const roomId = String(req.params.roomId || "");
+      if (!validWatchRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      await ensureWatchStateTable();
+      const membership = await db.query(
+        `SELECT r.owner_id, EXISTS(
+           SELECT 1 FROM room_members m WHERE m.room_id = r.id AND m.user_id = $2
+         ) AS is_member
+         FROM voice_rooms r WHERE r.id = $1 AND r.status = 'active' LIMIT 1`,
+        [roomId, req.userId]
+      );
+      if (!membership.rows.length) return res.status(404).json({ error: "Room not found" });
+      if (!membership.rows[0].is_member) return res.status(403).json({ error: "انضم إلى الغرفة أولاً" });
+      const state = await db.query("SELECT * FROM bak_room_watch_state WHERE room_id=$1 LIMIT 1", [roomId]);
+      const row = state.rows[0] || {};
+      return res.json({
+        is_owner: String(membership.rows[0].owner_id) === String(req.userId),
+        state: {
+          video_id: row.video_id || "",
+          video_title: row.video_title || "",
+          playback_state: row.playback_state || "paused",
+          current_time: Number(row.current_time || 0),
+          updated_at: Number(row.updated_at || 0),
+          updated_by: row.updated_by || ""
+        }
+      });
+    } catch (error) {
+      console.error("Get room watch state:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل حالة المشاهدة" });
+    }
+  });
+
+  app.put("/api/voice-rooms/:roomId/watch/state", authenticateToken, async (req, res) => {
+    try {
+      const roomId = String(req.params.roomId || "");
+      if (!validWatchRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      const videoId = String(req.body && req.body.video_id || "");
+      const title = String(req.body && req.body.video_title || "").trim().slice(0, 300);
+      const playbackState = String(req.body && req.body.playback_state || "paused");
+      const currentTime = Number(req.body && req.body.current_time || 0);
+      if (videoId && !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return res.status(400).json({ error: "Invalid YouTube video ID" });
+      if (!["playing", "paused"].includes(playbackState)) return res.status(400).json({ error: "Invalid playback state" });
+      if (!Number.isFinite(currentTime) || currentTime < 0 || currentTime > 86400) return res.status(400).json({ error: "Invalid playback position" });
+      const room = await db.query(
+        "SELECT owner_id FROM voice_rooms WHERE id=$1 AND status='active' LIMIT 1",
+        [roomId]
+      );
+      if (!room.rows.length) return res.status(404).json({ error: "Room not found" });
+      if (String(room.rows[0].owner_id) !== String(req.userId)) {
+        return res.status(403).json({ error: "صاحب الغرفة فقط يستطيع التحكم بالمشاهدة" });
+      }
+      await ensureWatchStateTable();
+      const updatedAt = Date.now();
+      const result = await db.query(
+        `INSERT INTO bak_room_watch_state
+          (room_id, video_id, video_title, playback_state, "current_time", updated_at, updated_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (room_id) DO UPDATE SET
+          video_id=EXCLUDED.video_id,
+          video_title=EXCLUDED.video_title,
+          playback_state=EXCLUDED.playback_state,
+          current_time=EXCLUDED.current_time,
+          updated_at=EXCLUDED.updated_at,
+          updated_by=EXCLUDED.updated_by
+         RETURNING video_id, video_title, playback_state, "current_time", updated_at, updated_by`,
+        [roomId, videoId, title, playbackState, currentTime, updatedAt, String(req.userId)]
+      );
+      return res.json({ state: result.rows[0] });
+    } catch (error) {
+      console.error("Update room watch state:", error.message);
+      return res.status(500).json({ error: "تعذر تحديث المشاهدة الجماعية" });
+    }
+  });
+
 };

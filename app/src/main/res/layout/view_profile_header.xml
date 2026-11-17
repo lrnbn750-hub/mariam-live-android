@@ -80,23 +80,43 @@
             android:layoutDirection="ltr"
             android:layout_marginEnd="10dp">
 
-            <TextView
-                android:id="@+id/profileHeaderName"
+            <LinearLayout
+                android:id="@+id/profileHeaderNameRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="30dp"
-                android:layoutDirection="rtl"
-                android:gravity="right|center_vertical"
-                android:singleLine="true"
-                android:ellipsize="end"
-                android:text="جارٍ تحميل الاسم..."
-                android:textColor="#FFFFFF"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:shadowColor="#40000000"
-                android:shadowDx="0"
-                android:shadowDy="2"
-                android:shadowRadius="4" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layoutDirection="rtl">
+
+                <TextView
+                    android:id="@+id/profileHeaderName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="30dp"
+                    android:layoutDirection="rtl"
+                    android:gravity="right|center_vertical"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="جارٍ تحميل الاسم..."
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:shadowColor="#40000000"
+                    android:shadowDx="0"
+                    android:shadowDy="2"
+                    android:shadowRadius="4" />
+
+                <ImageView
+                    android:id="@+id/profileHeaderVipBadge"
+                    android:layout_width="34dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="6dp"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone"
+                    android:contentDescription="شارة عضوية VIP" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/profileHeaderIdRow"

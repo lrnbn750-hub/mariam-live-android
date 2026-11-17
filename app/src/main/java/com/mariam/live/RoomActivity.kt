@@ -54,6 +54,8 @@ class RoomActivity : Activity() {
  private lateinit var roomPage:LinearLayout
  private lateinit var roomBackgroundView:ImageView
  private lateinit var roomOverlayLayer:FrameLayout
+ private var watchLayer:FrameLayout?=null
+ private var watchPlayer:RoomWatchPlayer?=null
  private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
@@ -61,6 +63,7 @@ class RoomActivity : Activity() {
  private var ownerProfileRequested=false
  private var roomOwnerUserId=""
  private var currentUserLevel=1
+ private var currentUserVipLevel=0
  private var followRequestSent=false
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
@@ -102,7 +105,7 @@ class RoomActivity : Activity() {
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
  private var previousMemberIds:MutableSet<String>?=null
- private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0)
  private val joinNotices=ArrayList<RoomJoinNotice>()
  private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
  private var joinToastShowing=false
@@ -239,6 +242,10 @@ class RoomActivity : Activity() {
   top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)))
   top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f).apply{marginStart=dp(8)})
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)))
+  // مكان مخصص لمشغل يوتيوب فوق المقاعد: ارتفاعه 0 ويُفتح فقط أثناء المشاهدة (يديره RoomWatchPlayer).
+  val watchHost=FrameLayout(this).apply{isClickable=false;isFocusable=false}
+  watchLayer=watchHost
+  roomPage.addView(watchHost,LinearLayout.LayoutParams(-1,0))
   grid=LinearLayout(this).apply{orientation=1}
   roomPage.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
   status=label("",11f,Color.rgb(90,105,95)).apply{visibility=View.GONE}
@@ -294,15 +301,18 @@ class RoomActivity : Activity() {
   emptySeats()
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
+  watchLayer?.let{layer->watchPlayer=RoomWatchPlayer(this,layer,{grid},roomId,authToken,{isOwner}).also{it.start()}}
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
  }
 
  override fun onResume(){
   super.onResume()
   hidePhoneNavigation()
+  watchPlayer?.onHostResume()
  }
 
  override fun onPause(){
+  watchPlayer?.onHostPause()
   window.decorView.systemUiVisibility =
    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
   super.onPause()
@@ -386,7 +396,8 @@ class RoomActivity : Activity() {
     val chatTop=if(::chatPanel.isInitialized){
      val location=IntArray(2);chatPanel.getLocationOnScreen(location);location[1].toFloat()
     }else screenHeight
-    roomSwipeGestureEligible=!switchingRoom && !composerExpanded && swipeDownY<chatTop
+    roomSwipeGestureEligible=!switchingRoom && !composerExpanded && swipeDownY<chatTop &&
+     watchPlayer?.containsTouch(swipeDownX,swipeDownY)!=true
     if(roomSwipeGestureEligible){
      roomPage.animate().cancel()
      roomPage.setLayerType(View.LAYER_TYPE_HARDWARE,null)
@@ -929,15 +940,24 @@ class RoomActivity : Activity() {
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
      val senderId=item.optString("user_id").ifBlank { item.optString("sender_id").ifBlank { senderUser?.optString("id").orEmpty() } }
+     val payloadSenderVipLevel=(if(item.has("vip_level"))item.optInt("vip_level",0) else senderUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+     val senderVipLevel=if(senderId==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadSenderVipLevel
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
+     val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
+     val vipBubbleResource=if(selectedBubbleStyle.isNullOrBlank() && senderVipLevel in 1..12)
+      VipAssetResources.bubble(this@RoomActivity,senderVipLevel) else 0
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
-      background=ChatBubbleStyleDrawable(chatBubbleStylesByUser[senderId] ?: "chat-bubble-dragon")
+      background=when{
+       !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
+       vipBubbleResource!=0->resources.getDrawable(vipBubbleResource,theme)
+       else->ChatBubbleStyleDrawable("chat-bubble-dragon")
+      }
       elevation=dp(2).toFloat()
      }
      val content=LinearLayout(this@RoomActivity).apply{
@@ -1077,6 +1097,15 @@ class RoomActivity : Activity() {
     val levelResponse=withContext(Dispatchers.IO){AuthApi.get("/api/levels/me",authToken)}
     if(levelResponse.status in 200..299){
      currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
+    }
+   }catch(_:Exception){}
+   // Load the authenticated user's active VIP membership for room decorations.
+   try{
+    val vipResponse=withContext(Dispatchers.IO){AuthApi.get("/api/vip/me",authToken)}
+    if(vipResponse.status in 200..299){
+     val membership=vipResponse.body.optJSONObject("membership")
+      ?:vipResponse.body.optJSONObject("vip")?:vipResponse.body
+     currentUserVipLevel=membership.optInt("vip_level",0).coerceIn(0,12)
     }
    }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
@@ -1260,6 +1289,9 @@ class RoomActivity : Activity() {
      }
     }
     val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
+    val payloadVipLevel=(if(seat.has("vip_level"))seat.optInt("vip_level",0) else seatUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+    val seatVipLevel=if(uid==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadVipLevel
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
@@ -1298,6 +1330,17 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     // VIP artwork is a fallback frame; a separately equipped store frame remains on top.
+     if(occupied && seatVipLevel in 1..12){
+      val vipFrameResource=VipAssetResources.frame(this@RoomActivity,seatVipLevel)
+      if(vipFrameResource!=0){
+       addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipFrameResource)
+        scaleType=ImageView.ScaleType.FIT_XY
+        contentDescription="إطار VIP $seatVipLevel"
+       },FrameLayout.LayoutParams(dp(74),dp(74),Gravity.CENTER))
+      }
+     }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -1325,6 +1368,16 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(15),1f))
+     if(seatVipLevel in 1..12){
+      val vipBadgeResource=VipAssetResources.badge(this@RoomActivity,seatVipLevel)
+      if(vipBadgeResource!=0){
+       nameLine.addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipBadgeResource)
+        scaleType=ImageView.ScaleType.FIT_CENTER
+        contentDescription="VIP $seatVipLevel"
+       },LinearLayout.LayoutParams(dp(25),dp(14)).apply{marginEnd=dp(3)})
+      }
+     }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
@@ -1636,6 +1689,17 @@ class RoomActivity : Activity() {
    setPadding(0,dp(1),0,0)
   })
   card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+  if(notice.vipLevel in 1..12){
+   val entranceResource=VipAssetResources.entrance(this,notice.vipLevel)
+   if(entranceResource!=0){
+    card.addView(LottieAnimationView(this).apply{
+     setAnimation(entranceResource)
+     repeatCount=0
+     playAnimation()
+     contentDescription="دخول VIP ${notice.vipLevel}"
+    },LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginStart=dp(4)})
+   }
+  }
   val width=resources.displayMetrics.widthPixels-dp(42)
   val params=FrameLayout.LayoutParams(width,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{
    marginStart=dp(21);marginEnd=dp(21)
@@ -1646,7 +1710,7 @@ class RoomActivity : Activity() {
    if(card.parent==null)return@post
    val seatPos=IntArray(2);val overlayPos=IntArray(2)
    grid.getLocationOnScreen(seatPos);roomOverlayLayer.getLocationOnScreen(overlayPos)
-   params.topMargin=(seatPos[1]-overlayPos[1]+grid.height+dp(7)).coerceAtLeast(dp(110))
+   params.topMargin=(seatPos[1]-overlayPos[1]+(grid.height*grid.scaleY).toInt()+dp(7)).coerceAtLeast(dp(110))
    card.layoutParams=params
    card.animate().alpha(1f).translationX(0f).setDuration(430)
     .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
@@ -2021,7 +2085,7 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty())
+     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12))
      joinNotices.add(myNotice)
      // Show the entrance banner for the current user too; initial membership
      // is the first observed state, so it must not be treated as a silent baseline.
@@ -2038,7 +2102,7 @@ class RoomActivity : Activity() {
         if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
        val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
         ?:nested?.optString("avatar_url").orEmpty()
-       val notice=RoomJoinNotice(name,level,id,avatarUrl)
+       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12))
        joinNotices.add(notice)
        showRoomJoinToast(notice)
       }
@@ -2464,6 +2528,9 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك",
    "mic",Color.rgb(64,224,255)){toggleMic()}
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
+  addTool("مشاهدة جماعية","ابحث عن فيديو YouTube وشاهده مع أعضاء الغرفة","play",Color.rgb(255,75,90)){
+   watchPlayer?.open()
+  }
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("قائمة الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
   if(isOwner)addTool("المحظورون والمطرودون","إدارة قيود التعليقات والطرد وإلغائها","users",Color.rgb(239,132,132)){showRoomModerationList()}
@@ -2800,6 +2867,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  override fun onBackPressed(){leaveRoom()}
  override fun onDestroy(){try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
+  watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()

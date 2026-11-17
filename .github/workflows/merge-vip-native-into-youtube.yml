@@ -1,0 +1,126 @@
+name: Merge Native VIP and VIP assets into YouTube branch
+
+on:
+  push:
+    branches:
+      - feature/bak-live-youtube-watch-together-original
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  merge-vip-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout YouTube-enabled base branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bak-live-youtube-watch-together-original
+          fetch-depth: 0
+
+      - name: Checkout native VIP Kotlin implementation
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bak-live-wealth-level-redesign
+          path: vip-native-source
+          sparse-checkout: |
+            app/src/main/java/com/mariam/live/VipActivity.kt
+            app/src/main/java/com/mariam/live/VipModels.kt
+            app/src/main/java/com/mariam/live/VipIcons.kt
+            app/src/main/java/com/mariam/live/VipBadgeView.kt
+            app/src/main/java/com/mariam/live/VipAssetResources.kt
+
+      - name: Checkout uploaded VIP asset archive
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: vip-archive-source
+          sparse-checkout: BAK_LIVE_VIP_MERGED_PATCH.zip
+
+      - name: Merge VIP Kotlin Native files and art assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Preserve all YouTube watch-together files by copying only VIP-specific Kotlin files.
+          VIP_SRC="vip-native-source/app/src/main/java/com/mariam/live"
+          VIP_DST="app/src/main/java/com/mariam/live"
+          for f in VipActivity.kt VipModels.kt VipIcons.kt VipBadgeView.kt VipAssetResources.kt; do
+            test -s "$VIP_SRC/$f"
+            install -m 0644 "$VIP_SRC/$f" "$VIP_DST/$f"
+          done
+
+          # Install the newly uploaded visual pack into Android resource folders.
+          test -s vip-archive-source/BAK_LIVE_VIP_MERGED_PATCH.zip
+          mkdir -p /tmp/bak-vip-patch
+          unzip -q vip-archive-source/BAK_LIVE_VIP_MERGED_PATCH.zip -d /tmp/bak-vip-patch
+          test -d /tmp/bak-vip-patch/app/src/main/res/drawable-nodpi
+          test -d /tmp/bak-vip-patch/app/src/main/res/raw
+          mkdir -p app/src/main/res/drawable-nodpi app/src/main/res/raw
+          cp -a /tmp/bak-vip-patch/app/src/main/res/drawable-nodpi/. app/src/main/res/drawable-nodpi/
+          cp -a /tmp/bak-vip-patch/app/src/main/res/raw/. app/src/main/res/raw/
+          if [ -d /tmp/bak-vip-patch/app/src/main/assets/vip_levels ]; then
+            mkdir -p app/src/main/assets/vip_levels
+            cp -a /tmp/bak-vip-patch/app/src/main/assets/vip_levels/. app/src/main/assets/vip_levels/
+          fi
+          if [ -f /tmp/bak-vip-patch/app/src/main/assets/vip_levels_manifest.json ]; then
+            install -m 0644 /tmp/bak-vip-patch/app/src/main/assets/vip_levels_manifest.json app/src/main/assets/vip_levels_manifest.json
+          fi
+          if [ -f /tmp/bak-vip-patch/docs/BAK_LIVE_VIP_ASSETS_README.md ]; then
+            mkdir -p docs
+            install -m 0644 /tmp/bak-vip-patch/docs/BAK_LIVE_VIP_ASSETS_README.md docs/BAK_LIVE_VIP_ASSETS_README.md
+          fi
+
+          test "$(find app/src/main/res/drawable-nodpi -maxdepth 1 -type f -name 'vip_*' | wc -l)" -ge 60
+          test "$(find app/src/main/res/raw -maxdepth 1 -type f -name 'vip_*' | wc -l)" -ge 24
+          grep -q 'class VipActivity' "$VIP_DST/VipActivity.kt"
+          ! grep -q 'WebView' "$VIP_DST/VipActivity.kt"
+          grep -q 'class VipBadgeView' "$VIP_DST/VipBadgeView.kt"
+          grep -q 'fun frame' "$VIP_DST/VipAssetResources.kt"
+
+      - name: Commit VIP-only merge to YouTube branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/mariam/live/VipActivity.kt app/src/main/java/com/mariam/live/VipModels.kt app/src/main/java/com/mariam/live/VipIcons.kt app/src/main/java/com/mariam/live/VipBadgeView.kt app/src/main/java/com/mariam/live/VipAssetResources.kt app/src/main/res/drawable-nodpi/vip_* app/src/main/res/raw/vip_* app/src/main/assets/vip_levels app/src/main/assets/vip_levels_manifest.json docs/BAK_LIVE_VIP_ASSETS_README.md 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Merge native VIP screen and VIP 1-12 assets into YouTube branch"
+            git fetch origin feature/bak-live-youtube-watch-together-original
+            git rebase FETCH_HEAD
+            git push origin HEAD:feature/bak-live-youtube-watch-together-original
+          else
+            echo "VIP implementation already present."
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Validate YouTube feature was preserved
+        run: |
+          test -s app/src/main/java/com/mariam/live/RoomActivity.kt
+          grep -qi 'youtube' app/src/main/java/com/mariam/live/RoomActivity.kt
+          test -s app/src/main/java/com/mariam/live/RoomWatchPlayer.kt
+          grep -qi 'youtube' app/src/main/java/com/mariam/live/RoomWatchPlayer.kt
+          test -s app/src/main/java/com/mariam/live/VipActivity.kt
+          ! grep -q 'import android.webkit.WebView' app/src/main/java/com/mariam/live/VipActivity.kt
+
+      - name: Build BAK LIVE debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload merged BAK LIVE APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BAK-LIVE-YouTube-Native-VIP-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
