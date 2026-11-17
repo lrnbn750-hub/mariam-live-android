@@ -427,7 +427,7 @@ class ProfileActivity : Activity() {
             "diamonds", "coins" -> startActivity(Intent(this, WalletActivity::class.java))
             "look", "store" -> startActivity(Intent(this, InventoryActivity::class.java))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
-            "agency" -> showInfo("مركز الوكالة")
+            "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
