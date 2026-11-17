@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - feature/bak-live-youtube-watch-together-original
-    paths:
-      - .github/workflows/merge-vip-native-into-youtube.yml
   workflow_dispatch:
 
 permissions:
