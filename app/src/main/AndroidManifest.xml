@@ -50,6 +50,7 @@
         <activity android:name=".CreatorCenterActivity" android:exported="false" />
         <activity android:name=".MalakWelcomeActivity" android:exported="false" />
         <activity android:name=".RegisterActivity" android:exported="false" />
+        <activity android:name=".AccountBannedActivity" android:exported="false" />
         <activity android:name=".LoginActivity" android:exported="false" />
 
         <activity
