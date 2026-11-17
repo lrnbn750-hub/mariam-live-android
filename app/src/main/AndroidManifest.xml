@@ -16,6 +16,16 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/agency_file_paths" />
+        </provider>
+
         <service
             android:name=".VoiceForegroundService"
             android:exported="false"
@@ -27,6 +37,7 @@
         <activity android:name=".RoomActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
+        <activity android:name=".AgencyActivity" android:exported="false" />
         <activity android:name=".AccountSecurityActivity" android:exported="false" />
         <activity android:name=".PhoneSecurityActivity" android:exported="false" />
         <activity android:name=".LevelActivity" android:exported="false" />
