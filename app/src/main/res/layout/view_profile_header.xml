@@ -108,14 +108,6 @@
                     android:shadowDy="2"
                     android:shadowRadius="4" />
 
-                <ImageView
-                    android:id="@+id/profileHeaderVipBadge"
-                    android:layout_width="34dp"
-                    android:layout_height="24dp"
-                    android:layout_marginStart="6dp"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone"
-                    android:contentDescription="شارة عضوية VIP" />
             </LinearLayout>
 
             <LinearLayout
