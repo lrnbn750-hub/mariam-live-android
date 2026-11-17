@@ -181,13 +181,27 @@ class LoginActivity : Activity() {
                             finish()
                         }
                     } else {
-                        val error = when (result.status) {
-                            401 -> "بيانات الدخول أو كلمة المرور غير صحيحة"
-                            403 -> "هذا الحساب غير نشط"
-                            404 -> "الحساب غير موجود"
-                            else -> result.body.optString("error", "تعذر تسجيل الدخول")
+                        val ban = result.body.optJSONObject("ban")
+                        val isBanned = result.status == 403 &&
+                            (result.body.optBoolean("banned") || result.body.optString("code") == "ACCOUNT_BANNED" || ban != null)
+                        if (isBanned) {
+                            runOnUiThread {
+                                startActivity(Intent(this, AccountBannedActivity::class.java).apply {
+                                    putExtra("reason", ban?.optString("reason").orEmpty().ifBlank { result.body.optString("reason") })
+                                    putExtra("ban_type", ban?.optString("ban_type").orEmpty().ifBlank { result.body.optString("ban_type") })
+                                    putExtra("started_at", ban?.optString("created_at").orEmpty().ifBlank { result.body.optString("created_at") })
+                                    putExtra("expires_at", ban?.optString("expires_at").orEmpty().ifBlank { result.body.optString("expires_at") })
+                                })
+                            }
+                        } else {
+                            val error = when (result.status) {
+                                401 -> "بيانات الدخول أو كلمة المرور غير صحيحة"
+                                403 -> result.body.optString("error", "هذا الحساب غير نشط")
+                                404 -> "الحساب غير موجود"
+                                else -> result.body.optString("error", "تعذر تسجيل الدخول")
+                            }
+                            runOnUiThread { AuthUi.showMessage(message, error); submit.isEnabled = true; submit.text = "تسجيل الدخول" }
                         }
-                        runOnUiThread { AuthUi.showMessage(message, error); submit.isEnabled = true; submit.text = "تسجيل الدخول" }
                     }
                 } catch (_: Exception) {
                     runOnUiThread {
