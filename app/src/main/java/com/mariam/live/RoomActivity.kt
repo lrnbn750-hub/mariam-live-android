@@ -940,8 +940,6 @@ class RoomActivity : Activity() {
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
      val senderId=item.optString("user_id").ifBlank { item.optString("sender_id").ifBlank { senderUser?.optString("id").orEmpty() } }
-     val payloadSenderVipLevel=(if(item.has("vip_level"))item.optInt("vip_level",0) else senderUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
-     val senderVipLevel=if(senderId==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadSenderVipLevel
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
@@ -949,13 +947,10 @@ class RoomActivity : Activity() {
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
      val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
-     val vipBubbleResource=if(selectedBubbleStyle.isNullOrBlank() && senderVipLevel in 1..12)
-      VipAssetResources.bubble(this@RoomActivity,senderVipLevel) else 0
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
       background=when{
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
-       vipBubbleResource!=0->resources.getDrawable(vipBubbleResource,theme)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
       }
       elevation=dp(2).toFloat()
@@ -1352,17 +1347,6 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
-     // VIP artwork is a fallback frame; a separately equipped store frame remains on top.
-     if(occupied && seatVipLevel in 1..12){
-      val vipFrameResource=VipAssetResources.frame(this@RoomActivity,seatVipLevel)
-      if(vipFrameResource!=0){
-       addView(ImageView(this@RoomActivity).apply{
-        setImageResource(vipFrameResource)
-        scaleType=ImageView.ScaleType.FIT_XY
-        contentDescription="إطار VIP $seatVipLevel"
-       },FrameLayout.LayoutParams(dp(74),dp(74),Gravity.CENTER))
-      }
-     }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -1390,16 +1374,6 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(15),1f))
-     if(seatVipLevel in 1..12){
-      val vipBadgeResource=VipAssetResources.badge(this@RoomActivity,seatVipLevel)
-      if(vipBadgeResource!=0){
-       nameLine.addView(ImageView(this@RoomActivity).apply{
-        setImageResource(vipBadgeResource)
-        scaleType=ImageView.ScaleType.FIT_CENTER
-        contentDescription="VIP $seatVipLevel"
-       },LinearLayout.LayoutParams(dp(25),dp(14)).apply{marginEnd=dp(3)})
-      }
-     }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
@@ -1711,17 +1685,6 @@ class RoomActivity : Activity() {
    setPadding(0,dp(1),0,0)
   })
   card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-  if(notice.vipLevel in 1..12){
-   val entranceResource=VipAssetResources.entrance(this,notice.vipLevel)
-   if(entranceResource!=0){
-    card.addView(LottieAnimationView(this).apply{
-     setAnimation(entranceResource)
-     repeatCount=0
-     playAnimation()
-     contentDescription="دخول VIP ${notice.vipLevel}"
-    },LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginStart=dp(4)})
-   }
-  }
   val width=resources.displayMetrics.widthPixels-dp(42)
   val params=FrameLayout.LayoutParams(width,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{
    marginStart=dp(21);marginEnd=dp(21)
