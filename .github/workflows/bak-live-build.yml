@@ -15,6 +15,7 @@ on:
       - fix/bak-live-audit-2026-11
       - feature/bak-live-wealth-level-redesign
       - feature/bak-live-youtube-watch-together-original
+      - fix/vip-display-youtube-base
 
 permissions:
   contents: read
