@@ -189,11 +189,11 @@ class HomeActivity : Activity() {
         }
         setContentView(root)
         ViewCompat.requestApplyInsets(nav)
-        verifyAccount()
     }
 
     override fun onResume(){
         super.onResume()
+        verifyAccount()
         val activeId=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("active_room_id",null)
         window.decorView.findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
         if(::grid.isInitialized && ::roomStatus.isInitialized)loadRooms()
@@ -361,8 +361,33 @@ private class PremiumNavIcon(context:android.content.Context,private val kind:St
         }
     }
     private fun verifyAccount(){
-        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)?:return
-        executor.execute{try{val r=AuthApi.get("/api/auth/me",token);if(r.status==401||r.status==403){getSharedPreferences("MariamLive",MODE_PRIVATE).edit().remove("token").apply();runOnUiThread{openLogin()}}}catch(_:Exception){}}
+        val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+        val token=prefs.getString("token",null)?:return
+        executor.execute{
+            try{
+                val r=AuthApi.get("/api/auth/me",token)
+                if(r.status==401 || r.status==403){
+                    val banned=r.body.optBoolean("banned") ||
+                        r.body.optString("code")=="ACCOUNT_BANNED"
+                    if(banned){
+                        runOnUiThread{
+                            if(isFinishing || isDestroyed)return@runOnUiThread
+                            startActivity(Intent(this,AccountBannedActivity::class.java).apply{
+                                putExtra("reason",r.body.optString("reason"))
+                                putExtra("ban_type",r.body.optString("ban_type"))
+                                putExtra("started_at",r.body.optString("created_at"))
+                                putExtra("expires_at",r.body.optString("expires_at"))
+                                flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            })
+                            finishAffinity()
+                        }
+                    }else{
+                        prefs.edit().clear().apply()
+                        runOnUiThread{if(!isFinishing && !isDestroyed)openLogin()}
+                    }
+                }
+            }catch(_:Exception){}
+        }
     }
     private fun loadRooms(){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
