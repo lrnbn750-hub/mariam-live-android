@@ -4,6 +4,7 @@ import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -119,8 +120,20 @@ internal class VipBadgeView(context: Context) : View(context) {
         if (width <= 0 || height <= 0) return
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        c.scale(width / 240f, height / 272f)
-        drawStatic(c, level)
+        val badgeResource = VipAssetResources.badge(context, level)
+        if (badgeResource != 0) {
+            val artwork = BitmapFactory.decodeResource(resources, badgeResource)
+            if (artwork != null) {
+                c.drawBitmap(artwork, null, Rect(0, 0, width, height), null)
+                artwork.recycle()
+            } else {
+                c.scale(width / 240f, height / 272f)
+                drawStatic(c, level)
+            }
+        } else {
+            c.scale(width / 240f, height / 272f)
+            drawStatic(c, level)
+        }
         cache = bmp
     }
 
