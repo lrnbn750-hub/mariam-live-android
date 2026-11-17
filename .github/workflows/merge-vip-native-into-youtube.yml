@@ -87,6 +87,8 @@ jobs:
           git add app/src/main/java/com/mariam/live/VipActivity.kt app/src/main/java/com/mariam/live/VipModels.kt app/src/main/java/com/mariam/live/VipIcons.kt app/src/main/java/com/mariam/live/VipBadgeView.kt app/src/main/java/com/mariam/live/VipAssetResources.kt app/src/main/res/drawable-nodpi/vip_* app/src/main/res/raw/vip_* app/src/main/assets/vip_levels app/src/main/assets/vip_levels_manifest.json docs/BAK_LIVE_VIP_ASSETS_README.md 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "Merge native VIP screen and VIP 1-12 assets into YouTube branch"
+            git fetch origin feature/bak-live-youtube-watch-together-original
+            git rebase FETCH_HEAD
             git push origin HEAD:feature/bak-live-youtube-watch-together-original
           else
             echo "VIP implementation already present."
