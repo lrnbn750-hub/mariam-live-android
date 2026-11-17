@@ -34,12 +34,13 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
  * شاشة VIP — Kotlin Native بالكامل (بدون WebView).
  * منطق الـ API مطابق للنسخة السابقة:
- *   GET  /api/vip/packages   GET /api/wallet   GET /api/vip/me   POST /api/vip/purchase {vip_level}
+ *   GET  /api/vip/packages   GET /api/wallet   GET /api/vip/me   POST /api/vip/purchase {vip_level, request_id}
  * ولا يوجد أي حساب مالي هنا: الخصم والإرجاع (35% / 65%) والاشتراك تنفَّذ كلها في الخادم،
  * والأرقام في الواجهة للعرض فقط.
  */
@@ -215,17 +216,53 @@ class VipActivity : Activity() {
         purchase(level)
     }
 
+    /**
+     * Keep one id per VIP level until the server gives a definitive response.
+     * If the network drops after the server commits, retrying uses the same id
+     * and the backend idempotency check prevents a second deduction.
+     */
+    private fun getOrCreatePurchaseRequestId(level: Int): String {
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val key = "vip_purchase_request_id_$level"
+        val existing = prefs.getString(key, null)
+        if (!existing.isNullOrBlank()) return existing
+
+        val requestId = UUID.randomUUID().toString()
+        check(prefs.edit().putString(key, requestId).commit()) {
+            "تعذر حفظ معرّف عملية الشراء"
+        }
+        return requestId
+    }
+
+    private fun clearPurchaseRequestId(level: Int, requestId: String) {
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val key = "vip_purchase_request_id_$level"
+        if (prefs.getString(key, null) == requestId) {
+            prefs.edit().remove(key).apply()
+        }
+    }
+
     private fun purchase(level: Int) {
         if (token.isBlank()) {
             showResult(false, "سجّل الدخول أولاً")
             return
         }
+
+        val requestId = try {
+            getOrCreatePurchaseRequestId(level)
+        } catch (e: Exception) {
+            showResult(false, e.message ?: "تعذر تجهيز عملية الشراء")
+            return
+        }
+
         purchasing = true
         worker.execute {
             try {
                 val response = AuthApi.post(
                     "/api/vip/purchase",
-                    JSONObject().put("vip_level", level),
+                    JSONObject()
+                        .put("vip_level", level)
+                        .put("request_id", requestId),
                     token
                 )
                 val success = response.status in 200..299 &&
@@ -235,6 +272,11 @@ class VipActivity : Activity() {
                 } else {
                     response.body.optString("error", "فشل شراء العضوية")
                 }
+
+                // A received HTTP response is definitive. Only transport failures
+                // keep the id so a retry can safely reuse it.
+                clearPurchaseRequestId(level, requestId)
+
                 runOnUiThread {
                     purchasing = false
                     if (success) {
@@ -246,6 +288,8 @@ class VipActivity : Activity() {
                     }
                 }
             } catch (e: Exception) {
+                // Keep requestId in SharedPreferences: the server may have committed
+                // even though the response was lost.
                 runOnUiThread {
                     purchasing = false
                     showResult(false, e.message ?: "تعذر الاتصال بالخادم")
