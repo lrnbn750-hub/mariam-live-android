@@ -42,7 +42,7 @@ class BanSessionMonitor : Application(), Application.ActivityLifecycleCallbacks 
                 if (result.status == 403 || result.status == 401) {
                     val banned = result.body.optBoolean("banned") ||
                         result.body.optString("code") == "ACCOUNT_BANNED"
-                    prefs.edit().clear().apply()
+                    prefs.edit().remove("token").remove("user_id").remove("username")\n                        .remove("phone").remove("email").remove("active_room_id").apply()
 
                     handler.post {
                         if (banned) {
