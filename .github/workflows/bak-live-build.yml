@@ -1,10 +1,11 @@
 name: BAK LIVE Android Build
-# Build BAK LIVE after integrating the redesigned compact profile header.
+# Build BAK LIVE debug APK for test installation.
 
 on:
   workflow_dispatch:
   push:
     branches:
+      - bak-live
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
@@ -59,14 +60,3 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
-
-
-
-
-
-
-
-
-
-
-
