@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import com.airbnb.lottie.LottieAnimationView
 import android.widget.TextView
 
 /**
@@ -31,6 +32,8 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
     /** Animated avatar frame. `avatarFrame.frameEnabled = false` hides it. */
     val avatarFrame: AvatarFrameView
     private lateinit var vipFrameOverlay: ImageView
+    private lateinit var vipAppearOverlay: LottieAnimationView
+    private var renderedVipLevel = -1
 
     init {
         orientation = VERTICAL
@@ -60,6 +63,16 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         }
         // Keep the avatar below the VIP artwork and the edit control above it.
         avatarFrame.addView(vipFrameOverlay, 1, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        vipAppearOverlay = LottieAnimationView(context).apply {
+            visibility = View.GONE
+            isClickable = false
+            isFocusable = false
+            repeatCount = 0
+        }
+        avatarFrame.addView(vipAppearOverlay, 2, android.widget.FrameLayout.LayoutParams(
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT
         ))
@@ -93,11 +106,23 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         if (resource == 0) {
             vipFrameOverlay.setImageDrawable(null)
             vipFrameOverlay.visibility = View.GONE
+            vipAppearOverlay.cancelAnimation()
+            vipAppearOverlay.visibility = View.GONE
             avatarFrame.frameEnabled = true
         } else {
             vipFrameOverlay.setImageResource(resource)
             vipFrameOverlay.visibility = View.VISIBLE
             avatarFrame.frameEnabled = false
+            if (renderedVipLevel != safeLevel) {
+                val appearResource = VipAssetResources.appear(context, safeLevel)
+                if (appearResource != 0) {
+                    vipAppearOverlay.setAnimation(appearResource)
+                    vipAppearOverlay.visibility = View.VISIBLE
+                    vipAppearOverlay.progress = 0f
+                    vipAppearOverlay.playAnimation()
+                }
+                renderedVipLevel = safeLevel
+            }
         }
     }
 
