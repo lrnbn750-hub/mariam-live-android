@@ -1214,6 +1214,12 @@ class RoomActivity : Activity() {
     val seat=seats.optJSONObject(i)?:JSONObject()
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
+    val vipUser=seat.optJSONObject("user")?:seat.optJSONObject("profile")
+    val rawVipLevel: Int = if (seat.has("vip_level")) seat.optInt("vip_level", 0) else (vipUser?.optInt("vip_level", 0) ?: 0)
+    val vipLevel: Int = rawVipLevel.coerceIn(0, 12)
+    val nestedVipActive: Boolean = vipUser?.optBoolean("vip_active") ?: (vipLevel > 0)
+    val seatVipActive: Boolean = seat.optBoolean("vip_active", nestedVipActive)
+    val vipActive: Boolean = seatVipActive && vipLevel >= 1 && vipLevel <= 12
     val isHost=i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
      ?:if(occupied)"متحدث" else "مقعد فارغ"
@@ -1310,6 +1316,16 @@ class RoomActivity : Activity() {
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
+     if(occupied && vipActive){
+      val vipFrameRes=VipAssetResources.frame(this@RoomActivity,vipLevel)
+      if(vipFrameRes!=0){
+       addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipFrameRes)
+        scaleType=ImageView.ScaleType.FIT_CENTER
+        contentDescription="إطار VIP $vipLevel"
+       },FrameLayout.LayoutParams(dp(76),dp(76),Gravity.CENTER))
+      }
+     }
     }
     tile.addView(avatarStage,LinearLayout.LayoutParams(dp(70),dp(70)))
     if(occupied){
@@ -1335,7 +1351,26 @@ class RoomActivity : Activity() {
        setPadding(dp(3),0,dp(3),0)
       },LinearLayout.LayoutParams(-2,dp(14)))
      }
-     tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(15)))
+     if(vipActive){
+      val vipBadgeRes=VipAssetResources.badge(this@RoomActivity,vipLevel)
+      if(vipBadgeRes!=0){
+       nameLine.addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipBadgeRes)
+        scaleType=ImageView.ScaleType.FIT_CENTER
+        contentDescription="VIP $vipLevel"
+       },LinearLayout.LayoutParams(dp(25),dp(20)).apply{marginStart=dp(3)})
+      }else{
+       nameLine.addView(label("VIP$vipLevel",8f,Color.rgb(255,224,151),true).apply{
+        background=GradientDrawable().apply{
+         cornerRadius=dp(6).toFloat()
+         setColor(Color.argb(175,75,45,105))
+         setStroke(dp(1),Color.rgb(210,165,255))
+        }
+        setPadding(dp(3),0,dp(3),0)
+       },LinearLayout.LayoutParams(-2,dp(14)))
+      }
+     }
+     tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(20)))
     }else{
      tile.addView(label("متاح",10f,Color.argb(190,225,235,245),false).apply{
       includeFontPadding=false
