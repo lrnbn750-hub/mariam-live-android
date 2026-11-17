@@ -123,16 +123,11 @@ class DirectChatActivity : Activity() {
     private fun addMessage(item: JSONObject) {
         val ownId = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("user_id", "")
         val mine = item.optString("sender_id") == ownId
-        val sender = item.optJSONObject("sender") ?: item.optJSONObject("user")
-        val vipLevel = (if (item.has("vip_level")) item.optInt("vip_level", 0)
-            else sender?.optInt("vip_level", 0) ?: 0).coerceIn(0, 12)
-        val vipBubble = if (vipLevel in 1..12) VipAssetResources.bubble(this, vipLevel) else 0
         val bubble = TextView(this).apply {
             text = item.optString("content"); textSize = 14f
             setTextColor(if (mine) Color.WHITE else ink)
             setPadding(dp(13), dp(10), dp(13), dp(10))
-            background = if (vipBubble != 0) resources.getDrawable(vipBubble, theme)
-                else rounded(if (mine) green else Color.WHITE, 16)
+            background = rounded(if (mine) green else Color.WHITE, 16)
             maxWidth = (resources.displayMetrics.widthPixels * 0.78f).toInt()
         }
         val row = LinearLayout(this).apply {
