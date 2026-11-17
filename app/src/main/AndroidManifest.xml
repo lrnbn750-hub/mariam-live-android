@@ -34,7 +34,6 @@
         <activity android:name=".DirectChatActivity" android:exported="false" />
         <activity android:name=".InventoryActivity" android:exported="false" />
         <activity android:name=".WalletActivity" android:exported="false" />
-        <activity android:name=".VipActivity" android:exported="false" />
         <activity android:name=".CreatorCenterActivity" android:exported="false" />
         <activity android:name=".MalakWelcomeActivity" android:exported="false" />
         <activity android:name=".RegisterActivity" android:exported="false" />
