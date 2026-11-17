@@ -939,15 +939,23 @@ class RoomActivity : Activity() {
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
      val senderId=item.optString("user_id").ifBlank { item.optString("sender_id").ifBlank { senderUser?.optString("id").orEmpty() } }
+     val senderVipLevel=(if(item.has("vip_level"))item.optInt("vip_level",0) else senderUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
+     val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
+     val vipBubbleResource=if(selectedBubbleStyle.isNullOrBlank() && senderVipLevel in 1..12)
+      VipAssetResources.bubble(this@RoomActivity,senderVipLevel) else 0
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
-      background=ChatBubbleStyleDrawable(chatBubbleStylesByUser[senderId] ?: "chat-bubble-dragon")
+      background=when{
+       !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
+       vipBubbleResource!=0->resources.getDrawable(vipBubbleResource,theme)
+       else->ChatBubbleStyleDrawable("chat-bubble-dragon")
+      }
       elevation=dp(2).toFloat()
      }
      val content=LinearLayout(this@RoomActivity).apply{
@@ -1270,6 +1278,8 @@ class RoomActivity : Activity() {
      }
     }
     val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
+    val seatVipLevel=(if(seat.has("vip_level"))seat.optInt("vip_level",0) else seatUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
@@ -1308,6 +1318,17 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     // VIP artwork is a fallback frame; a separately equipped store frame remains on top.
+     if(occupied && seatVipLevel in 1..12){
+      val vipFrameResource=VipAssetResources.frame(this@RoomActivity,seatVipLevel)
+      if(vipFrameResource!=0){
+       addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipFrameResource)
+        scaleType=ImageView.ScaleType.FIT_XY
+        contentDescription="إطار VIP $seatVipLevel"
+       },FrameLayout.LayoutParams(dp(74),dp(74),Gravity.CENTER))
+      }
+     }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
