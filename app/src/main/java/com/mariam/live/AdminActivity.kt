@@ -29,6 +29,8 @@ class AdminActivity : Activity() {
     private lateinit var searchInput: EditText
     private lateinit var usersBox: LinearLayout
     private lateinit var auditBox: LinearLayout
+    private lateinit var agenciesBox: LinearLayout
+    private var agencyStatus = "pending"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +84,20 @@ class AdminActivity : Activity() {
         searchButton.setOnClickListener { searchUsers() }
         usersBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(usersBox)
+
+        page.addView(title("إدارة الوكالات", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
+        val agencyFilters = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf("pending" to "قيد المراجعة", "approved" to "مقبولة", "blocked" to "محظورة", "all" to "الكل").forEach { (status, label) ->
+            val filter = actionButton(label)
+            agencyFilters.addView(filter, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(4) })
+            filter.setOnClickListener { agencyStatus = status; loadAgencies() }
+        }
+        page.addView(agencyFilters)
+        agenciesBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        page.addView(agenciesBox)
+        val refreshAgencies = actionButton("تحديث طلبات الوكالات")
+        page.addView(refreshAgencies, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
+        refreshAgencies.setOnClickListener { loadAgencies() }
 
         page.addView(title("سجل العمليات الإدارية", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
         val auditButton = actionButton("عرض آخر العمليات")
@@ -250,6 +266,94 @@ class AdminActivity : Activity() {
                     }
                 }
             }.show()
+    }
+
+    private fun loadAgencies() {
+        val token = tokenOrClose() ?: return
+        agenciesBox.removeAllViews()
+        agenciesBox.addView(line("جارٍ تحميل الوكالات…", 14, false, muted))
+        executor.execute {
+            try {
+                val response = AuthApi.get("/api/admin/v2/agencies?status=" + URLEncoder.encode(agencyStatus, "UTF-8"), token)
+                if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل الوكالات"))
+                val array = response.body.optJSONArray("agencies")
+                val rows = ArrayList<JSONObject>()
+                if (array != null) for (i in 0 until array.length()) {
+                    val item = array.optJSONObject(i) ?: continue
+                    rows.add(item)
+                }
+                runOnUiThread {
+                    agenciesBox.removeAllViews()
+                    if (rows.isEmpty()) agenciesBox.addView(line("لا توجد وكالات ضمن هذا التصنيف", 14, false, muted))
+                    rows.forEach { agency ->
+                        val id = agency.optString("id")
+                        val card = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(13), dp(10), dp(13), dp(10))
+                            background = rounded(Color.WHITE)
+                        }
+                        card.addView(line(agency.optString("agency_name", "وكالة بدون اسم"), 16, true))
+                        card.addView(line("صاحب الطلب: ${agency.optString("username")} • ID: ${agency.optString("public_id")}", 13, false, muted))
+                        card.addView(line("الاسم القانوني: ${agency.optString("legal_name")} • الدولة: ${agency.optString("country_code")}", 13, false, muted))
+                        card.addView(line("الحالة: ${agency.optString("status")} • تاريخ الطلب: ${agency.optString("created_at")}", 12, false, muted))
+                        if (agency.optString("review_note").isNotBlank()) card.addView(line("ملاحظة: ${agency.optString("review_note")}", 12, false, muted))
+                        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                        fun addAction(label: String, endpoint: String) {
+                            val button = actionButton(label)
+                            actions.addView(button, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(4) })
+                            button.setOnClickListener { askAgencyAction(id, endpoint, label) }
+                        }
+                        when (agency.optString("status")) {
+                            "pending" -> { addAction("قبول", "approve"); addAction("رفض", "reject") }
+                            "approved" -> { addAction("حظر", "block"); addAction("إلغاء الوكالة", "revoke") }
+                            "blocked" -> { addAction("رفع الحظر", "unblock"); addAction("إلغاء الوكالة", "revoke") }
+                        }
+                        if (actions.childCount > 0) card.addView(actions)
+                        agenciesBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    agenciesBox.removeAllViews()
+                    agenciesBox.addView(line(e.message ?: "فشل تحميل الوكالات", 14, false, Color.RED))
+                }
+            }
+        }
+    }
+
+    private fun askAgencyAction(id: String, action: String, label: String) {
+        val reason = EditText(this).apply { hint = "اكتب سبب $label (إلزامي)" }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("$label — وكالة #$id")
+            .setView(reason)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("تأكيد", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(-1).setOnClickListener {
+                        val why = reason.text.toString().trim()
+                        if (why.isBlank()) {
+                            Toast.makeText(this, "السبب إلزامي لتوثيق العملية", Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                        val token = tokenOrClose() ?: return@setOnClickListener
+                        executor.execute {
+                            try {
+                                val response = AuthApi.post("/api/admin/v2/agencies/$id/$action", JSONObject().put("reason", why), token)
+                                if (response.status !in 200..299) throw Exception(response.body.optString("error", "فشلت العملية"))
+                                runOnUiThread {
+                                    dialog.dismiss()
+                                    Toast.makeText(this, "تم $label وتسجيل العملية", Toast.LENGTH_LONG).show()
+                                    loadAgencies()
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread { Toast.makeText(this, e.message ?: "فشلت العملية", Toast.LENGTH_LONG).show() }
+                            }
+                        }
+                    }
+                }
+                dialog.show()
+            }
     }
 
     private fun loadAudit() {
