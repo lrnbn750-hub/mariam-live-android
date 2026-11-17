@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
-import com.airbnb.lottie.LottieAnimationView
 import android.widget.TextView
 
 /**
@@ -31,10 +30,6 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
 
     /** Animated avatar frame. `avatarFrame.frameEnabled = false` hides it. */
     val avatarFrame: AvatarFrameView
-    private lateinit var vipBadgeView: ImageView
-    private lateinit var vipFrameOverlay: ImageView
-    private lateinit var vipAppearOverlay: LottieAnimationView
-    private var renderedVipLevel = -1
 
     init {
         orientation = VERTICAL
@@ -46,7 +41,6 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         avatarView = findViewById(R.id.profileHeaderAvatar)
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
         nameView = findViewById(R.id.profileHeaderName)
-        vipBadgeView = findViewById(R.id.profileHeaderVipBadge)
         userIdView = findViewById(R.id.profileHeaderUserId)
         levelBadgeView = findViewById(R.id.profileLevelBadge)
         levelView = levelBadgeView
@@ -58,26 +52,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         settingsView = findViewById(R.id.profileHeaderSettings)
         supportView = findViewById(R.id.profileHeaderSupport)
         avatarFrame = findViewById(R.id.profileHeaderAvatarSlot)
-        vipFrameOverlay = ImageView(context).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
-            contentDescription = "إطار VIP"
-            visibility = View.GONE
-        }
-        // Keep the avatar below the VIP artwork and the edit control above it.
-        avatarFrame.addView(vipFrameOverlay, 1, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
-        ))
-        vipAppearOverlay = LottieAnimationView(context).apply {
-            visibility = View.GONE
-            isClickable = false
-            isFocusable = false
-            repeatCount = 0
-        }
-        avatarFrame.addView(vipAppearOverlay, 2, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
-        ))
+        // Avatar frame remains the standard profile frame; no membership overlay.
         editAvatarView.bringToFront()
 
         // Tapping the whole ID chip copies the ID (uses the listener set on copyView).
@@ -101,41 +76,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         setLevel(level)
     }
 
-    /** Applies the matching VIP 1..12 frame without replacing the user's avatar. */
-    fun setVipLevel(level: Int) {
-        val safeLevel = level.coerceIn(0, 12)
-        val badgeResource = if (safeLevel == 0) 0 else VipAssetResources.badge(context, safeLevel)
-        if (badgeResource != 0) {
-            vipBadgeView.setImageResource(badgeResource)
-            vipBadgeView.visibility = View.VISIBLE
-        } else {
-            vipBadgeView.setImageDrawable(null)
-            vipBadgeView.visibility = View.GONE
-        }
-        val resource = if (safeLevel == 0) 0 else VipAssetResources.frame(context, safeLevel)
-        if (resource == 0) {
-            vipFrameOverlay.setImageDrawable(null)
-            vipFrameOverlay.visibility = View.GONE
-            vipAppearOverlay.cancelAnimation()
-            vipAppearOverlay.visibility = View.GONE
-            avatarFrame.frameEnabled = true
-        } else {
-            vipFrameOverlay.setImageResource(resource)
-            vipFrameOverlay.visibility = View.VISIBLE
-            avatarFrame.frameEnabled = false
-            if (renderedVipLevel != safeLevel) {
-                val appearResource = VipAssetResources.appear(context, safeLevel)
-                if (appearResource != 0) {
-                    vipAppearOverlay.setAnimation(appearResource)
-                    vipAppearOverlay.visibility = View.VISIBLE
-                    vipAppearOverlay.progress = 0f
-                    vipAppearOverlay.playAnimation()
-                }
-                renderedVipLevel = safeLevel
-            }
-        }
-    }
-
+    // Membership badge and overlay removed; normal avatar frame is retained.
     fun setFansCount(value: String) { fansCountView.text = value }
     fun setFollowingCount(value: String) { followingCountView.text = value }
 }
