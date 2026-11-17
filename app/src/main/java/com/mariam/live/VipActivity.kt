@@ -34,6 +34,7 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -215,17 +216,48 @@ class VipActivity : Activity() {
         purchase(level)
     }
 
+    /** Keep one request id for retries until the server returns an HTTP response. */
+    private fun getOrCreatePurchaseRequestId(level: Int): String {
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val key = "vip_purchase_request_id_$level"
+        val existing = prefs.getString(key, null)
+        if (!existing.isNullOrBlank()) return existing
+
+        val requestId = UUID.randomUUID().toString()
+        check(prefs.edit().putString(key, requestId).commit()) {
+            "تعذر حفظ معرّف عملية الشراء"
+        }
+        return requestId
+    }
+
+    private fun clearPurchaseRequestId(level: Int, requestId: String) {
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val key = "vip_purchase_request_id_$level"
+        if (prefs.getString(key, null) == requestId) {
+            prefs.edit().remove(key).apply()
+        }
+    }
+
     private fun purchase(level: Int) {
         if (token.isBlank()) {
             showResult(false, "سجّل الدخول أولاً")
             return
         }
+        val requestId = try {
+            getOrCreatePurchaseRequestId(level)
+        } catch (e: Exception) {
+            showResult(false, e.message ?: "تعذر تجهيز عملية الشراء")
+            return
+        }
+
         purchasing = true
         worker.execute {
             try {
                 val response = AuthApi.post(
                     "/api/vip/purchase",
-                    JSONObject().put("vip_level", level),
+                    JSONObject()
+                        .put("vip_level", level)
+                        .put("request_id", requestId),
                     token
                 )
                 val success = response.status in 200..299 &&
@@ -235,6 +267,8 @@ class VipActivity : Activity() {
                 } else {
                     response.body.optString("error", "فشل شراء العضوية")
                 }
+                // A received HTTP response is definitive; keep the id only for transport retries.
+                clearPurchaseRequestId(level, requestId)
                 runOnUiThread {
                     purchasing = false
                     if (success) {
