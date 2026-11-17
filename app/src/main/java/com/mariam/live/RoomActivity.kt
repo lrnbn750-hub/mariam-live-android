@@ -1217,7 +1217,9 @@ class RoomActivity : Activity() {
     val vipUser=seat.optJSONObject("user")?:seat.optJSONObject("profile")
     val rawVipLevel: Int = if (seat.has("vip_level")) seat.optInt("vip_level", 0) else (vipUser?.optInt("vip_level", 0) ?: 0)
     val vipLevel: Int = rawVipLevel.coerceIn(0, 12)
-    val vipActive=seat.optBoolean("vip_active",vipUser?.optBoolean("vip_active",vipLevel>0)?:vipLevel>0) && vipLevel in 1..12
+    val nestedVipActive: Boolean = vipUser?.optBoolean("vip_active") ?: (vipLevel > 0)
+    val seatVipActive: Boolean = seat.optBoolean("vip_active", nestedVipActive)
+    val vipActive: Boolean = seatVipActive && vipLevel >= 1 && vipLevel <= 12
     val isHost=i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
      ?:if(occupied)"متحدث" else "مقعد فارغ"
