@@ -128,25 +128,128 @@ class AdminActivity : Activity() {
                 val response = AuthApi.get(path, token)
                 if (response.status !in 200..299) throw Exception(response.body.optString("error", "فشل البحث"))
                 val users = response.body.optJSONArray("users")
-                val rows = ArrayList<String>()
+                val rows = ArrayList<JSONObject>()
                 if (users != null) for (i in 0 until users.length()) {
                     val user = users.optJSONObject(i) ?: continue
-                    rows.add("${user.optString("username")}  •  ${user.optString("public_id")}\nالحالة: ${user.optString("status")}")
+                    rows.add(user)
                 }
                 runOnUiThread {
                     usersBox.removeAllViews()
                     if (rows.isEmpty()) usersBox.addView(line("لا توجد نتائج", 14, false, muted))
-                    rows.forEach { value ->
-                        usersBox.addView(line(value, 14).apply {
-                            setPadding(dp(12), dp(12), dp(12), dp(12))
+                    rows.forEach { user ->
+                        val publicId = user.optString("public_id")
+                        val card = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(12), dp(10), dp(12), dp(10))
                             background = rounded(Color.WHITE)
-                        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+                        }
+                        card.addView(line("${user.optString("username")}  •  $publicId", 15, true))
+                        card.addView(line("الحالة: ${user.optString("status")}", 13, false, muted))
+                        val activeBan = user.optJSONObject("active_ban")
+                        if (activeBan != null) {
+                            card.addView(line("الحظر: ${activeBan.optString("ban_type")}  •  ${activeBan.optString("expires_at", "دائم")}", 12, false, Color.rgb(180, 75, 55)))
+                            val unban = actionButton("رفع الحظر")
+                            card.addView(unban, LinearLayout.LayoutParams(-1, dp(42)))
+                            unban.setOnClickListener { askUnban(publicId) }
+                        } else {
+                            val ban = actionButton("حظر المستخدم")
+                            card.addView(ban, LinearLayout.LayoutParams(-1, dp(42)))
+                            ban.setOnClickListener { askBan(publicId) }
+                        }
+                        usersBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread { usersBox.removeAllViews(); usersBox.addView(line(e.message ?: "فشل البحث", 14, false, Color.RED)) }
             }
         }
+    }
+
+    private fun askBan(publicId: String) {
+        val reason = EditText(this).apply { hint = "سبب الحظر (إلزامي)" }
+        val duration = EditText(this).apply {
+            hint = "مدة الحظر بالساعات (1 إلى 8760)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+        val type = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.VERTICAL
+            val temporary = android.widget.RadioButton(this@AdminActivity).apply { text = "حظر مؤقت"; id = View.generateViewId(); isChecked = true }
+            val permanent = android.widget.RadioButton(this@AdminActivity).apply { text = "حظر دائم"; id = View.generateViewId() }
+            addView(temporary); addView(permanent)
+            tag = Pair(temporary.id, permanent.id)
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(type); addView(duration); addView(reason)
+        }
+        type.setOnCheckedChangeListener { _, checked ->
+            duration.visibility = if (checked == (type.tag as Pair<*, *>).first) View.VISIBLE else View.GONE
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("حظر $publicId")
+            .setView(content)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("تأكيد الحظر", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(-1).setOnClickListener {
+                        val why = reason.text.toString().trim()
+                        val temporary = type.checkedRadioButtonId == (type.tag as Pair<*, *>).first
+                        val hours = duration.text.toString().toIntOrNull()
+                        if (why.isBlank() || (temporary && (hours == null || hours !in 1..8760))) {
+                            Toast.makeText(this, "أدخل السبب والمدة الصحيحة", Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                        val payload = JSONObject().put("ban_type", if (temporary) "temporary" else "permanent").put("reason", why)
+                        if (temporary) payload.put("duration_hours", hours)
+                        submitBan(publicId, payload, dialog)
+                    }
+                }
+                dialog.show()
+            }
+    }
+
+    private fun submitBan(publicId: String, payload: JSONObject, dialog: android.app.AlertDialog) {
+        val token = tokenOrClose() ?: return
+        executor.execute {
+            try {
+                val response = AuthApi.post("/api/admin/v2/users/$publicId/ban", payload, token)
+                if (response.status !in 200..299) throw Exception(response.body.optString("error", "فشل الحظر"))
+                runOnUiThread {
+                    dialog.dismiss()
+                    Toast.makeText(this, "تم تنفيذ الحظر وتسجيل العملية", Toast.LENGTH_LONG).show()
+                    searchUsers()
+                }
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this, e.message ?: "فشل الحظر", Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    private fun askUnban(publicId: String) {
+        val reason = EditText(this).apply { hint = "سبب رفع الحظر (إلزامي)" }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("رفع الحظر عن $publicId")
+            .setView(reason)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("تأكيد") { _, _ ->
+                val why = reason.text.toString().trim()
+                if (why.isBlank()) {
+                    Toast.makeText(this, "اكتب سبب رفع الحظر", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val token = tokenOrClose() ?: return@setPositiveButton
+                executor.execute {
+                    try {
+                        val response = AuthApi.post("/api/admin/v2/users/$publicId/unban", JSONObject().put("reason", why), token)
+                        if (response.status !in 200..299) throw Exception(response.body.optString("error", "فشل رفع الحظر"))
+                        runOnUiThread { Toast.makeText(this, "تم رفع الحظر", Toast.LENGTH_SHORT).show(); searchUsers() }
+                    } catch (e: Exception) {
+                        runOnUiThread { Toast.makeText(this, e.message ?: "فشل رفع الحظر", Toast.LENGTH_LONG).show() }
+                    }
+                }
+            }.show()
     }
 
     private fun loadAudit() {
