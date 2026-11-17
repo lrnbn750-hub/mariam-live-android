@@ -1103,9 +1103,7 @@ class RoomActivity : Activity() {
    try{
     val vipResponse=withContext(Dispatchers.IO){AuthApi.get("/api/vip/me",authToken)}
     if(vipResponse.status in 200..299){
-     val membership=vipResponse.body.optJSONObject("membership")
-      ?:vipResponse.body.optJSONObject("vip")?:vipResponse.body
-     currentUserVipLevel=membership.optInt("vip_level",0).coerceIn(0,12)
+     currentUserVipLevel=readActiveVipLevel(vipResponse.body)
     }
    }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
@@ -1230,6 +1228,18 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun readActiveVipLevel(payload:JSONObject?):Int{
+  if(payload==null)return 0
+  val nested=payload.optJSONObject("membership")
+   ?:payload.optJSONObject("vip_membership")
+   ?:payload.optJSONObject("vip")
+  val source=nested?:payload
+  val active=source.optBoolean("active",source.optBoolean("vip_active",payload.optBoolean("vip_active",true)))
+  if(!active)return 0
+  return source.optInt("vip_level",source.optInt("vipLevel",payload.optInt("vip_level",payload.optInt("vipLevel",0))))
+   .coerceIn(0,12)
+ }
+
  private fun drawSeats(){
   grid.removeAllViews()
   speakerWaveViews.clear()
@@ -1290,8 +1300,19 @@ class RoomActivity : Activity() {
     }
     val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
-    val payloadVipLevel=(if(seat.has("vip_level"))seat.optInt("vip_level",0) else seatUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
-    val seatVipLevel=if(uid==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadVipLevel
+    val nestedVip=seat.optJSONObject("vip_membership")
+      ?:seat.optJSONObject("vip")
+      ?:seatUser?.optJSONObject("vip_membership")
+      ?:seatUser?.optJSONObject("vip")
+      ?:seatUser?.optJSONObject("membership")
+    val vipPayload=nestedVip?:seatUser?:seat
+    val payloadVipLevel=readActiveVipLevel(vipPayload)
+    val seatVipLevel=when {
+     uid==currentUserId && currentUserVipLevel>0 -> currentUserVipLevel
+     seat.has("vip_active") && !seat.optBoolean("vip_active") -> 0
+     payloadVipLevel>0 -> payloadVipLevel
+     else -> 0
+    }
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
