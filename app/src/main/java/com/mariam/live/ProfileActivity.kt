@@ -185,11 +185,7 @@ class ProfileActivity : Activity() {
         walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5f) })
         body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        // ---- SVIP card (VIP card removed; both used to open VipActivity) -------------------
-        val svip = PremiumCardView(this, PremiumKind.SVIP, "SVIP", "قمة التميّز والفخامة")
-        svip.setOnClickListener { openAction("vip") }
-        svip.pressable()
-        body.addView(svip, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10f) })
+        // Premium membership system removed. Wallet and general store remain available.
 
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
@@ -236,7 +232,7 @@ class ProfileActivity : Activity() {
         serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
         body.addView(services, LinearLayout.LayoutParams(-1, -2))
 
-        animateIn(listOf(walletRow, svip, shortcutCard, settingsTitle, services))
+        animateIn(listOf(walletRow, shortcutCard, settingsTitle, services))
     }
 
     private fun animateIn(views: List<View>) {
@@ -339,7 +335,6 @@ class ProfileActivity : Activity() {
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
-                    .put("vipLevel", 0)
                     .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
                     .put("friends", 0)
@@ -350,15 +345,6 @@ class ProfileActivity : Activity() {
                 try {
                     val level = AuthApi.get("/api/levels/me", token)
                     if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
-                } catch (_: Exception) {}
-                // VIP membership is optional profile decoration; never block the profile if unavailable.
-                try {
-                    val vip = AuthApi.get("/api/vip/me", token)
-                    if (vip.status in 200..299) {
-                        val membership = vip.body.optJSONObject("membership")
-                            ?: vip.body.optJSONObject("vip") ?: vip.body
-                        data.put("vipLevel", membership.optInt("vip_level", 0).coerceIn(0, 12))
-                    }
                 } catch (_: Exception) {}
                 try {
                     val follows = AuthApi.get("/api/follows/me", token)
@@ -388,7 +374,6 @@ class ProfileActivity : Activity() {
         header.setUserName(data.optString("name"))
         header.setUserIdText(publicId)
         header.setLevel(data.optInt("level", 1))
-        header.setVipLevel(data.optInt("vipLevel", 0))
         header.setFansCount(data.optInt("fans", 0).toString())
         header.setFollowingCount(data.optInt("followers", 0).toString())
         coinValue.text = formatNumber(data.optLong("coins", 0))
@@ -441,7 +426,6 @@ class ProfileActivity : Activity() {
             "level" -> startActivity(Intent(this, LevelActivity::class.java))
             "diamonds", "coins" -> startActivity(Intent(this, WalletActivity::class.java))
             "look", "store" -> startActivity(Intent(this, InventoryActivity::class.java))
-            "vip" -> startActivity(Intent(this, VipActivity::class.java))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> showInfo("مركز الوكالة")
             "family" -> showInfo("العائلة")
