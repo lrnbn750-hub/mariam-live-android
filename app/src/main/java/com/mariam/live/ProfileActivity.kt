@@ -339,6 +339,7 @@ class ProfileActivity : Activity() {
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
+                    .put("vipLevel", 0)
                     .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
                     .put("friends", 0)
@@ -349,6 +350,15 @@ class ProfileActivity : Activity() {
                 try {
                     val level = AuthApi.get("/api/levels/me", token)
                     if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
+                } catch (_: Exception) {}
+                // VIP membership is optional profile decoration; never block the profile if unavailable.
+                try {
+                    val vip = AuthApi.get("/api/vip/me", token)
+                    if (vip.status in 200..299) {
+                        val membership = vip.body.optJSONObject("membership")
+                            ?: vip.body.optJSONObject("vip") ?: vip.body
+                        data.put("vipLevel", membership.optInt("vip_level", 0).coerceIn(0, 12))
+                    }
                 } catch (_: Exception) {}
                 try {
                     val follows = AuthApi.get("/api/follows/me", token)
@@ -378,6 +388,7 @@ class ProfileActivity : Activity() {
         header.setUserName(data.optString("name"))
         header.setUserIdText(publicId)
         header.setLevel(data.optInt("level", 1))
+        header.setVipLevel(data.optInt("vipLevel", 0))
         header.setFansCount(data.optInt("fans", 0).toString())
         header.setFollowingCount(data.optInt("followers", 0).toString())
         coinValue.text = formatNumber(data.optLong("coins", 0))
