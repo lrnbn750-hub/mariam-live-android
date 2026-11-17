@@ -104,7 +104,7 @@ class RoomActivity : Activity() {
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
  private var previousMemberIds:MutableSet<String>?=null
- private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis())
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0)
  private val joinNotices=ArrayList<RoomJoinNotice>()
  private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
  private var joinToastShowing=false
@@ -1667,6 +1667,17 @@ class RoomActivity : Activity() {
    setPadding(0,dp(1),0,0)
   })
   card.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+  if(notice.vipLevel in 1..12){
+   val entranceResource=VipAssetResources.entrance(this,notice.vipLevel)
+   if(entranceResource!=0){
+    card.addView(LottieAnimationView(this).apply{
+     setAnimation(entranceResource)
+     repeatCount=0
+     playAnimation()
+     contentDescription="دخول VIP ${notice.vipLevel}"
+    },LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginStart=dp(4)})
+   }
+  }
   val width=resources.displayMetrics.widthPixels-dp(42)
   val params=FrameLayout.LayoutParams(width,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{
    marginStart=dp(21);marginEnd=dp(21)
@@ -2052,7 +2063,7 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty())
+     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12))
      joinNotices.add(myNotice)
      // Show the entrance banner for the current user too; initial membership
      // is the first observed state, so it must not be treated as a silent baseline.
@@ -2069,7 +2080,7 @@ class RoomActivity : Activity() {
         if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
        val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
         ?:nested?.optString("avatar_url").orEmpty()
-       val notice=RoomJoinNotice(name,level,id,avatarUrl)
+       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12))
        joinNotices.add(notice)
        showRoomJoinToast(notice)
       }
