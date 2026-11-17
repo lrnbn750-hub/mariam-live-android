@@ -26,6 +26,7 @@ class AgencyActivity : Activity() {
     private val pickFront = 8101
     private val pickBack = 8102
     private val takeSelfie = 8103
+    private val cameraPermissionRequest = 8104
     private var frontUri: Uri? = null
     private var backUri: Uri? = null
     private var selfieUri: Uri? = null
@@ -159,6 +160,12 @@ class AgencyActivity : Activity() {
     }
 
     private fun captureSelfie() {
+        if (android.os.Build.VERSION.SDK_INT >= 23 &&
+            checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.CAMERA), cameraPermissionRequest)
+            return
+        }
         try {
             val dir=File(cacheDir,"agency-capture").apply { mkdirs() }
             cameraFile=File(dir,"selfie-${System.currentTimeMillis()}.jpg")
@@ -170,6 +177,21 @@ class AgencyActivity : Activity() {
             startActivityForResult(intent,takeSelfie)
         } catch (_:Exception) {
             Toast.makeText(this,"تعذر فتح الكاميرا",Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == cameraPermissionRequest) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                captureSelfie()
+            } else {
+                Toast.makeText(this, "يجب السماح باستخدام الكاميرا لالتقاط صورة السيلفي", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
