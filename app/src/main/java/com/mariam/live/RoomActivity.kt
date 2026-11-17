@@ -63,6 +63,7 @@ class RoomActivity : Activity() {
  private var ownerProfileRequested=false
  private var roomOwnerUserId=""
  private var currentUserLevel=1
+ private var currentUserVipLevel=0
  private var followRequestSent=false
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
@@ -939,7 +940,8 @@ class RoomActivity : Activity() {
      // Read level when the chat API supplies it, including nested user payloads.
      val senderUser=item.optJSONObject("user")?:item.optJSONObject("sender")
      val senderId=item.optString("user_id").ifBlank { item.optString("sender_id").ifBlank { senderUser?.optString("id").orEmpty() } }
-     val senderVipLevel=(if(item.has("vip_level"))item.optInt("vip_level",0) else senderUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+     val payloadSenderVipLevel=(if(item.has("vip_level"))item.optInt("vip_level",0) else senderUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+     val senderVipLevel=if(senderId==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadSenderVipLevel
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
@@ -1095,6 +1097,15 @@ class RoomActivity : Activity() {
     val levelResponse=withContext(Dispatchers.IO){AuthApi.get("/api/levels/me",authToken)}
     if(levelResponse.status in 200..299){
      currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
+    }
+   }catch(_:Exception){}
+   // Load the authenticated user's active VIP membership for room decorations.
+   try{
+    val vipResponse=withContext(Dispatchers.IO){AuthApi.get("/api/vip/me",authToken)}
+    if(vipResponse.status in 200..299){
+     val membership=vipResponse.body.optJSONObject("membership")
+      ?:vipResponse.body.optJSONObject("vip")?:vipResponse.body
+     currentUserVipLevel=membership.optInt("vip_level",0).coerceIn(0,12)
     }
    }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
@@ -1279,7 +1290,8 @@ class RoomActivity : Activity() {
     }
     val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
-    val seatVipLevel=(if(seat.has("vip_level"))seat.optInt("vip_level",0) else seatUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+    val payloadVipLevel=(if(seat.has("vip_level"))seat.optInt("vip_level",0) else seatUser?.optInt("vip_level",0)?:0).coerceIn(0,12)
+    val seatVipLevel=if(uid==currentUserId && currentUserVipLevel>0)currentUserVipLevel else payloadVipLevel
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
@@ -1356,6 +1368,16 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(15),1f))
+     if(seatVipLevel in 1..12){
+      val vipBadgeResource=VipAssetResources.badge(this@RoomActivity,seatVipLevel)
+      if(vipBadgeResource!=0){
+       nameLine.addView(ImageView(this@RoomActivity).apply{
+        setImageResource(vipBadgeResource)
+        scaleType=ImageView.ScaleType.FIT_CENTER
+        contentDescription="VIP $seatVipLevel"
+       },LinearLayout.LayoutParams(dp(25),dp(14)).apply{marginEnd=dp(3)})
+      }
+     }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
