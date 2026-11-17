@@ -75,18 +75,21 @@ module.exports = function registerAgencyRoutes(app, db, authenticateToken) {
       return res.status(status).json({ error: status === 503 ? "خدمة توثيق الوكالات غير مهيأة حالياً" : error.message });
     }
 
-    const client = await db.connect();
+    let client;
     try {
+      client = await db.connect();
       await client.query("BEGIN");
+      // Serialize submissions for this user, including the no-existing-row case.
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [String(req.userId)]);
       const existing = await client.query(
         `SELECT id, status FROM agency_applications
-         WHERE user_id=$1 AND status IN ('pending','approved')
+         WHERE user_id=$1 AND status IN ('pending','approved','blocked')
          FOR UPDATE`,
         [req.userId]
       );
       if (existing.rows.length) {
         await client.query("ROLLBACK");
-        return res.status(409).json({ error: "لديك طلب وكالة قيد المراجعة أو وكالة مفعّلة بالفعل" });
+        return res.status(409).json({ error: "لديك طلب قيد المراجعة أو وكالة مفعّلة أو محظورة" });
       }
 
       const result = await client.query(
@@ -105,11 +108,32 @@ module.exports = function registerAgencyRoutes(app, db, authenticateToken) {
         application: result.rows[0]
       });
     } catch (error) {
-      await client.query("ROLLBACK");
+      if (client) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
+      }
       console.error("Create agency application:", error.message);
       return res.status(500).json({ error: "تعذر إرسال طلب الوكالة" });
     } finally {
-      client.release();
+      if (client) client.release();
+    }
+  });
+
+  app.post("/api/agency/activity", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        `UPDATE agency_applications
+         SET last_activity_at = NOW(), updated_at = NOW()
+         WHERE user_id = $1 AND status = 'approved'
+         RETURNING id, last_activity_at`,
+        [req.userId]
+      );
+      if (!result.rows.length) {
+        return res.status(404).json({ error: "لا توجد وكالة مفعّلة لهذا الحساب" });
+      }
+      return res.json({ success: true, last_activity_at: result.rows[0].last_activity_at });
+    } catch (error) {
+      console.error("Agency activity:", error.message);
+      return res.status(500).json({ error: "تعذر تحديث نشاط الوكالة" });
     }
   });
 };
