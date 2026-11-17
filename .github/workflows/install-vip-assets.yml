@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - feature/bak-live-wealth-level-redesign
-    paths:
-      - .github/workflows/install-vip-assets.yml
   workflow_dispatch:
 
 permissions:
