@@ -709,6 +709,12 @@ class VipActivity : Activity() {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 gravity = Gravity.CENTER
                 setPadding(dp(10f), dp(6f), dp(10f), dp(9f))
+                // Use the level-specific shipped VIP icon instead of a generic tab marker.
+                val levelIcon = VipAssetResources.icon(this@VipActivity, p.level)
+                if (levelIcon != 0) {
+                    setCompoundDrawablesWithIntrinsicBounds(0, levelIcon, 0, 0)
+                    compoundDrawablePadding = dp(3f)
+                }
                 setOnClickListener { select(p.level) }
             }
             tabViews[p.level] = t
