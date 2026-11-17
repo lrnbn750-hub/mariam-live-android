@@ -77,12 +77,16 @@ class AdminActivity : Activity() {
             setPadding(dp(14), 0, dp(14), 0)
         }
         page.addView(searchInput, LinearLayout.LayoutParams(-1, dp(52)))
-        page.addView(actionButton("بحث عن مستخدم"), LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) }).setOnClickListener { searchUsers() }
+        val searchButton = actionButton("بحث عن مستخدم")
+        page.addView(searchButton, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        searchButton.setOnClickListener { searchUsers() }
         usersBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(usersBox)
 
         page.addView(title("سجل العمليات الإدارية", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
-        page.addView(actionButton("عرض آخر العمليات"), LinearLayout.LayoutParams(-1, dp(48))).setOnClickListener { loadAudit() }
+        val auditButton = actionButton("عرض آخر العمليات")
+        page.addView(auditButton, LinearLayout.LayoutParams(-1, dp(48)))
+        auditButton.setOnClickListener { loadAudit() }
         auditBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(auditBox)
         loadDashboard()
