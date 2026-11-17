@@ -70,7 +70,7 @@ class AdminActivity : Activity() {
         searchInput = EditText(this).apply {
             hint = "ابحث بالمعرّف أو اسم المستخدم"
             textSize = 14f
-            singleLine = true
+            isSingleLine = true
             setTextColor(ink)
             setHintTextColor(muted)
             background = rounded(Color.WHITE)
