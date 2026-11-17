@@ -31,6 +31,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
 
     /** Animated avatar frame. `avatarFrame.frameEnabled = false` hides it. */
     val avatarFrame: AvatarFrameView
+    private lateinit var vipBadgeView: ImageView
     private lateinit var vipFrameOverlay: ImageView
     private lateinit var vipAppearOverlay: LottieAnimationView
     private var renderedVipLevel = -1
@@ -45,6 +46,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         avatarView = findViewById(R.id.profileHeaderAvatar)
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
         nameView = findViewById(R.id.profileHeaderName)
+        vipBadgeView = findViewById(R.id.profileHeaderVipBadge)
         userIdView = findViewById(R.id.profileHeaderUserId)
         levelBadgeView = findViewById(R.id.profileLevelBadge)
         levelView = levelBadgeView
@@ -102,6 +104,14 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
     /** Applies the matching VIP 1..12 frame without replacing the user's avatar. */
     fun setVipLevel(level: Int) {
         val safeLevel = level.coerceIn(0, 12)
+        val badgeResource = if (safeLevel == 0) 0 else VipAssetResources.badge(context, safeLevel)
+        if (badgeResource != 0) {
+            vipBadgeView.setImageResource(badgeResource)
+            vipBadgeView.visibility = View.VISIBLE
+        } else {
+            vipBadgeView.setImageDrawable(null)
+            vipBadgeView.visibility = View.GONE
+        }
         val resource = if (safeLevel == 0) 0 else VipAssetResources.frame(context, safeLevel)
         if (resource == 0) {
             vipFrameOverlay.setImageDrawable(null)
