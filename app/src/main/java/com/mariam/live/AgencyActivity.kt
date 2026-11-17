@@ -30,6 +30,7 @@ class AgencyActivity : Activity() {
     private var backUri: Uri? = null
     private var selfieUri: Uri? = null
     private var cameraFile: File? = null
+    private lateinit var countryCodes: List<String>
     private lateinit var agencyName: EditText
     private lateinit var legalName: EditText
     private lateinit var country: Spinner
@@ -88,6 +89,7 @@ class AgencyActivity : Activity() {
         val countries = Locale.getISOCountries().map { code ->
             code to (Locale("", code).getDisplayCountry(Locale("ar")).ifBlank { Locale("", code).displayCountry })
         }.sortedBy { it.second }
+        countryCodes = countries.map { it.first }
         country = Spinner(this).apply {
             adapter = ArrayAdapter(this@AgencyActivity, android.R.layout.simple_spinner_dropdown_item,
                 countries.map { "${it.second} (+${it.first})" })
@@ -160,7 +162,7 @@ class AgencyActivity : Activity() {
         try {
             val dir=File(cacheDir,"agency-capture").apply { mkdirs() }
             cameraFile=File(dir,"selfie-${System.currentTimeMillis()}.jpg")
-            val uri=FileProvider.getUriForFile(this,"${applicationId}.fileprovider",cameraFile!!)
+            val uri=FileProvider.getUriForFile(this,"${packageName}.fileprovider",cameraFile!!)
             val intent=Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT,uri)
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -213,7 +215,7 @@ class AgencyActivity : Activity() {
         if(name.length<2 || legal.length<3 || front==null || back==null || selfie==null || !consent.isChecked) {
             Toast.makeText(this,"أكمل البيانات والصور الثلاثة والموافقة أولاً",Toast.LENGTH_LONG).show(); return
         }
-        val countryCode=Locale.getISOCountries().getOrNull(country.selectedItemPosition)
+        val countryCode=countryCodes.getOrNull(country.selectedItemPosition)
             ?: run { Toast.makeText(this,"اختر الدولة",Toast.LENGTH_SHORT).show(); return }
         val auth=token() ?: run { finish(); return }
         submit.isEnabled=false; status.text="جارٍ تجهيز الصور وإرسال الطلب..."
