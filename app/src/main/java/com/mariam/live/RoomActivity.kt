@@ -1228,6 +1228,7 @@ class RoomActivity : Activity() {
   }
  }
 
+ // Normalize VIP membership payloads returned by both seat and /api/vip/me endpoints.
  private fun readActiveVipLevel(payload:JSONObject?):Int{
   if(payload==null)return 0
   val nested=payload.optJSONObject("membership")
