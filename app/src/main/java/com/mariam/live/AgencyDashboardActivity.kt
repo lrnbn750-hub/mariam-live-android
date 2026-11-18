@@ -216,7 +216,14 @@ class AgencyDashboardActivity: Activity() {
     worker.execute{try{
       val r=AuthApi.delete("/api/agency/members/$publicId",tok)
       if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إزالة العضو"))
-      runOnUiThread{\n        val updated=JSONArray()\n        for(i in 0 until members.length()){val item=members.optJSONObject(i);if(item!=null&&item.optString("public_id")!=publicId)updated.put(item)}\n        members=updated\n        render()\n        status.text="تمت إزالة العضو من الوكالة بنجاح"\n        loadData(afterRemoval=true)\n      }
+      runOnUiThread{
+        val updated=JSONArray()
+        for(i in 0 until members.length()){val item=members.optJSONObject(i);if(item!=null&&item.optString("public_id")!=publicId)updated.put(item)}
+        members=updated
+        render()
+        status.text="تمت إزالة العضو من الوكالة بنجاح"
+        loadData(afterRemoval=true)
+      }
     }catch(e:Exception){runOnUiThread{status.text="تعذر إزالة العضو. حاول مرة أخرى."}}
   }
  }.show()
