@@ -79,14 +79,14 @@ class AgencyDashboardActivity: Activity() {
   if(panel.childCount>0)body.addView(panel,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
  }
  private fun statCard(title:String,value:String)=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(14));background=card();addView(t(title,12f,muted,true));addView(t(value,22f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})}
- private fun loadData(){val tok=token()?:run{status.text="يرجى تسجيل الدخول مجدداً";return};status.text="جارٍ تحديث البيانات..."
+ private fun loadData(afterRemoval:Boolean=false){val tok=token()?:run{status.text="يرجى تسجيل الدخول مجدداً";return};if(!afterRemoval)status.text="جارٍ تحديث البيانات..."
  worker.execute{try{
   val m=AuthApi.get("/api/agency/members",tok);val i=AuthApi.get("/api/agency/invitations",tok)
   if(m.status !in 200..299)throw Exception(m.body.optString("error","فشل تحميل الأعضاء"))
   if(i.status !in 200..299)throw Exception(i.body.optString("error","فشل تحميل الدعوات"))
   val mm=m.body.optJSONArray("members")?:JSONArray();val ii=i.body.optJSONArray("invitations")?:JSONArray();val ag=m.body.optJSONObject("agency")
   runOnUiThread{members=mm;invites=ii;agencyInfo=ag?:JSONObject();agencyName=ag?.optString("agency_name")?.takeIf{it.isNotBlank()}?:agencyName;status.text="تم تحديث $agencyName";render()}
- }catch(e:Exception){runOnUiThread{status.text="تعذر تحديث بيانات الوكالة. حاول مرة أخرى.";render()}}}
+ }catch(e:Exception){runOnUiThread{status.text=if(afterRemoval) "تمت إزالة العضو، لكن تعذر تحديث القائمة. اضغط تحديث." else "تعذر تحديث بيانات الوكالة. حاول مرة أخرى.";render()}}}
  }
  private fun sendInvitation(){val id=input.text.toString().trim();if(id.isBlank()||id.length>40){input.error="أدخل ID صحيح";return};val tok=token()?:run{status.text="يرجى تسجيل الدخول";return};send.isEnabled=false;status.text="جارٍ إرسال الدعوة..."
  worker.execute{try{val r=AuthApi.post("/api/agency/invitations",JSONObject().put("public_id",id),tok);if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إرسال الدعوة"));runOnUiThread{input.setText("");status.text="تم إرسال الدعوة إلى ID $id";send.isEnabled=true};loadData()}catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إرسال الدعوة";send.isEnabled=true}}}
@@ -140,8 +140,8 @@ class AgencyDashboardActivity: Activity() {
     worker.execute{try{
       val r=AuthApi.delete("/api/agency/members/$publicId",tok)
       if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إزالة العضو"))
-      runOnUiThread{status.text="تمت إزالة العضو من الوكالة";loadData()}
-    }catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إزالة العضو"}}
+      runOnUiThread{\n        val updated=JSONArray()\n        for(i in 0 until members.length()){val item=members.optJSONObject(i);if(item!=null&&item.optString("public_id")!=publicId)updated.put(item)}\n        members=updated\n        render()\n        status.text="تمت إزالة العضو من الوكالة بنجاح"\n        loadData(afterRemoval=true)\n      }
+    }catch(e:Exception){runOnUiThread{status.text="تعذر إزالة العضو. حاول مرة أخرى."}}
   }
  }.show()
  }
