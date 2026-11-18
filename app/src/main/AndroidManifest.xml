@@ -41,6 +41,7 @@
         <activity android:name=".ProfileActivity" android:exported="false" />
         <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".AgencyActivity" android:exported="false" />
+        <activity android:name=".AgencyDashboardActivity" android:exported="false" />
         <activity android:name=".AccountSecurityActivity" android:exported="false" />
         <activity android:name=".PhoneSecurityActivity" android:exported="false" />
         <activity android:name=".LevelActivity" android:exported="false" />
