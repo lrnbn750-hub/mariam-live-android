@@ -31,13 +31,13 @@ class AgencyDashboardActivity : Activity() {
  private val imageWorker = Executors.newFixedThreadPool(2)
 
  // ── Palette ──────────────────────────────────────────────
- private val bg = Color.parseColor("#0A0814")
- private val bg2 = Color.parseColor("#140E2B")
- private val panel = Color.parseColor("#151129")
- private val panelHi = Color.parseColor("#1C1637")
- private val stroke = Color.parseColor("#2B2450")
- private val ink = Color.WHITE
- private val muted = Color.parseColor("#9088AE")
+ private val bg = Color.parseColor("#F6F7FB")
+ private val bg2 = Color.parseColor("#FFFFFF")
+ private val panel = Color.parseColor("#FFFFFF")
+ private val panelHi = Color.parseColor("#F1EEFA")
+ private val stroke = Color.parseColor("#E5E1EF")
+ private val ink = Color.parseColor("#1F1933")
+ private val muted = Color.parseColor("#716A85")
  private val violet = Color.parseColor("#8B5CF6")
  private val violetLight = Color.parseColor("#C4B5FD")
  private val gold = Color.parseColor("#F5C451")
