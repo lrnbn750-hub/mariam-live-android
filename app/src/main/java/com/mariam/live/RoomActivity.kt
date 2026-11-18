@@ -890,7 +890,8 @@ class RoomActivity : Activity() {
   chatInput.visibility=View.GONE
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
-  micControl.visibility=View.VISIBLE
+  micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
+  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
