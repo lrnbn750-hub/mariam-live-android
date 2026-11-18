@@ -71,7 +71,7 @@ class AgencyDashboardActivity: Activity() {
   loadEarnings()
  }
 
- private fun money(cents:Int):String="USD "+"%.2f".format(java.util.Locale.US,cents/100.0)
+ private fun coins(value:Long):String=String.format(java.util.Locale.US,"%,d",value)+" 💎"
  private fun loadEarnings(){
   val tok=token()?:run{if(::earningsStatus.isInitialized)earningsStatus.text="يرجى تسجيل الدخول";return}
   if(::earningsStatus.isInitialized)earningsStatus.text="جارٍ تحميل تقرير الأرباح..."
@@ -82,9 +82,9 @@ class AgencyDashboardActivity: Activity() {
    if(overview.status !in 200..299)throw Exception(overview.body.optString("error","فشل تحميل الأرباح"))
    if(perMember.status !in 200..299)throw Exception(perMember.body.optString("error","فشل تحميل أرباح الأعضاء"))
    if(history.status !in 200..299)throw Exception(history.body.optString("error","فشل تحميل سجل الأرباح"))
-   val o=overview.body.optJSONObject("earnings")?:overview.body
+   val o=overview.body.optJSONObject("coin_earnings")?:JSONObject()
    val m=perMember.body.optJSONArray("members")?:JSONArray()
-   val h=history.body.optJSONArray("history")?:history.body.optJSONArray("earnings")?:JSONArray()
+   val h=history.body.optJSONArray("coin_history")?:JSONArray()
    runOnUiThread{renderEarnings(o,m,h);earningsStatus.text="تم تحديث الأرباح من الخادم"}
   }catch(e:Exception){runOnUiThread{earningsStatus.text=e.message?: "تعذر تحميل الأرباح. حاول تحديث التقرير."}}
   }
@@ -97,28 +97,28 @@ class AgencyDashboardActivity: Activity() {
  private fun renderEarnings(o:JSONObject,m:JSONArray,h:JSONArray){
   if(!::earningsBox.isInitialized)return
   earningsBox.removeAllViews()
-  val total=o.optInt("total_cents",0);val available=o.optInt("available_cents",0);val paid=o.optInt("paid_cents",0)
-  val today=o.optInt("today_cents",0);val week=o.optInt("last_7_days_cents",0);val month=o.optInt("month_cents",0)
+  val total=o.optLong("total_coins",0);val available=o.optLong("available_coins",0);val paid=o.optLong("paid_coins",0)
+  val today=o.optLong("today_coins",0);val week=o.optLong("last_7_days_coins",0);val month=o.optLong("month_coins",0)
   val row1=LinearLayout(this).apply{orientation=0}
-  row1.addView(earnCard("إجمالي عمولة الوكالة",money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row1.addView(earnCard("المتاح للسحب",money(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row1.addView(earnCard("إجمالي أرباح الوكالة",coins(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row1.addView(earnCard("العملات المتاحة",coins(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row1)
   val row2=LinearLayout(this).apply{orientation=0}
-  row2.addView(earnCard("عمولات مدفوعة",money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row2.addView(earnCard("عمولة اليوم",money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row2.addView(earnCard("عملات تمت تسويتها",coins(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row2.addView(earnCard("أرباح اليوم",coins(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row2,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   val row3=LinearLayout(this).apply{orientation=0}
-  row3.addView(earnCard("عمولة آخر 7 أيام",money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row3.addView(earnCard("عمولة هذا الشهر",money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row3.addView(earnCard("آخر 7 أيام",coins(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row3.addView(earnCard("هذا الشهر",coins(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row3,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   membersEarningsBox.removeAllViews()
   if(m.length()==0)membersEarningsBox.addView(t("لا توجد بيانات أرباح أعضاء بعد",12f,muted).apply{setPadding(dp(12),dp(12),dp(12),dp(12))})
   for(i in 0 until m.length()){
    val item=m.optJSONObject(i)?:continue;val id=item.optString("public_id","—");val name=item.optString("display_name").ifBlank{item.optString("username").ifBlank{"ID $id"}}
-   val totalMember=item.optInt("total_cents",0);val availMember=item.optInt("available_cents",0);val gifts=item.optInt("gifts_count",0)
+   val totalMember=item.optLong("total_coins",0);val availMember=item.optLong("available_coins",0);val gifts=item.optLong("coin_gifts_count",0)
    val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()}
    card.addView(t(name,14f,ink,true));card.addView(t("ID $id • هدايا: $gifts",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
-   card.addView(t("عمولة الوكالة: "+money(totalMember)+"   •   متاح: "+money(availMember),13f,Color.rgb(150,235,180),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
+   card.addView(t("عمولة الوكالة: "+coins(totalMember)+" • متاح: "+coins(availMember),13f,Color.rgb(150,235,180),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
    membersEarningsBox.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
   }
   historyBox.removeAllViews()
@@ -126,11 +126,11 @@ class AgencyDashboardActivity: Activity() {
   for(i in 0 until h.length()){
    val item=h.optJSONObject(i)?:continue
    val name=item.optString("display_name").ifBlank{item.optString("public_id","عضو")}
-   val amount=item.optInt("amount_usd_cents",item.optInt("amount_cents",0))
+   val amount=item.optLong("amount_coins",0)
    val status=when(item.optString("status")){"available"->"متاح";"pending"->"قيد الانتظار";"paid"->"مدفوع";"reversed"->"معكوس";else->item.optString("status","—")}
    val date=item.optString("created_at","").replace("T"," ").take(16)
    val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()}
-   card.addView(t(name,13f,ink,true));card.addView(t("$"+"%.2f".format(java.util.Locale.US,amount/100.0)+" • $status • $date",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
+   card.addView(t(name,13f,ink,true));card.addView(t("${coins(amount)} • $status • $date",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
    historyBox.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
   }
  }
