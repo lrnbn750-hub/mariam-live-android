@@ -94,22 +94,43 @@ class AgencyDashboardActivity: Activity() {
  private fun renderInvites(){if(!::invitesBox.isInitialized)return;invitesBox.removeAllViews();val q=if(::inviteSearch.isInitialized)inviteSearch.text.toString().trim().lowercase() else "";val filtered=(0 until invites.length()).mapNotNull{invites.optJSONObject(it)}.filter{o->val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val status=o.optString("status");val arabicStatus=when(status){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->status};name.lowercase().contains(q)||id.lowercase().contains(q)||status.lowercase().contains(q)||arabicStatus.lowercase().contains(q)};if(filtered.isEmpty()){invitesBox.addView(t(if(q.isNotBlank())"لا توجد دعوات مطابقة" else "لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))});return};for(o in filtered){val uid=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $uid"};val st=when(o.optString("status")){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->o.optString("status")};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $uid • $st",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});if(o.optString("status")=="pending"){row.addView(button("إلغاء الدعوة"){cancelInvitation(o.optLong("id"))},LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(8)})};invitesBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}}
  private fun renderMembers(){if(!::membersBox.isInitialized)return;membersBox.removeAllViews();val query=if(::memberSearch.isInitialized)memberSearch.text.toString().trim().lowercase() else "";val filtered=(0 until members.length()).mapNotNull{members.optJSONObject(it)}.filter{ o-> val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};name.lowercase().contains(query)||id.lowercase().contains(query)};if(filtered.isEmpty()){membersBox.addView(t(if(query.isNotBlank())"لا توجد نتائج مطابقة" else "لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))});return};for(o in filtered){val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id",12f,Color.rgb(130,220,170),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});row.addView(t("عضو وكالة • اضغط لعرض الملف وإدارته",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)});row.setOnClickListener{showMemberDetails(o)};membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})}}
  private fun showMemberDetails(member:JSONObject){
-  val labels=mapOf("public_id" to "معرّف المستخدم","display_name" to "اسم المستخدم","username" to "اسم الحساب","name" to "الاسم","diamonds" to "الألماس","diamond_count" to "الألماس","total_diamonds" to "إجمالي الألماس","live_hours" to "ساعات البث","total_live_hours" to "إجمالي ساعات البث","joined_at" to "تاريخ الانضمام","created_at" to "تاريخ إنشاء الحساب","status" to "الحالة","avatar" to "الصورة الشخصية","level" to "المستوى")
-  val box=LinearLayout(this).apply{orientation=1;setPadding(dp(4),dp(4),dp(4),dp(4))}
-  val keys=member.keys()
-  while(keys.hasNext()){
-   val key=keys.next()
-   val raw=member.opt(key)
-   if(raw==null||raw==JSONObject.NULL)continue
-   val value=raw.toString().trim()
-   if(value.isBlank()||value=="null")continue
-   val line=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(8),dp(10),dp(8))}
-   line.addView(t(labels[key]?:key.replace("_"," "),12f,muted,true))
-   line.addView(t(value,14f,ink),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(3)})
-   box.addView(line)
+  val name=member.optString("display_name").ifBlank{"—"}
+  val id=member.optString("public_id").ifBlank{"—"}
+  val joined=member.optString("joined_at").ifBlank{"—"}
+  val avatarUrl=member.optString("avatar_url").ifBlank{member.optString("avatar")}
+  val content=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_HORIZONTAL;setPadding(dp(18),dp(12),dp(18),dp(12))}
+  val avatar=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(48,38,65))}
   }
-  if(box.childCount==0)box.addView(t("لا توجد تفاصيل إضافية من السيرفر",13f,muted))
-  android.app.AlertDialog.Builder(this).setTitle(member.optString("display_name").ifBlank{"تفاصيل عضو الوكالة"}).setView(ScrollView(this).apply{addView(box)}).setNegativeButton("إغلاق",null).setPositiveButton("إزالة من الوكالة"){_,_->confirmRemoveMember(member.optString("public_id"))}.show()
+  content.addView(avatar,LinearLayout.LayoutParams(dp(86),dp(86)).apply{bottomMargin=dp(14)})
+  if(avatarUrl.isNotBlank()){
+   worker.execute{try{
+    val url=java.net.URL(avatarUrl)
+    val conn=url.openConnection() as java.net.HttpURLConnection
+    conn.connectTimeout=8000;conn.readTimeout=8000
+    conn.setRequestProperty("User-Agent","BAK LIVE Android")
+    val bitmap=android.graphics.BitmapFactory.decodeStream(conn.inputStream)
+    conn.disconnect()
+    if(bitmap!=null)runOnUiThread{avatar.setImageBitmap(bitmap)}
+   }catch(_:Exception){}}
+  }
+  content.addView(t(name,17f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
+  fun info(label:String,value:String){
+   val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(10),dp(12),dp(10));background=card()}
+   card.addView(t(label,12f,muted,true))
+   card.addView(t(value,14f,ink),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
+   content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
+  }
+  info("معرّف المستخدم (ID)",id)
+  info("اسم الحساب",name)
+  info("تاريخ الانضمام",joined)
+  android.app.AlertDialog.Builder(this)
+   .setTitle("بيانات عضو الوكالة")
+   .setView(content)
+   .setNegativeButton("إغلاق",null)
+   .setPositiveButton("إزالة من الوكالة"){_,_->confirmRemoveMember(id)}
+   .show()
  }
  private fun confirmRemoveMember(publicId:String){
   if(publicId.isBlank()||publicId=="—")return
