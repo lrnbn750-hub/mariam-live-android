@@ -276,7 +276,7 @@ class AgencyActivity : Activity() {
     }
 
     private fun loadStatus() {
-        val auth=token() ?: return
+        val auth=token() ?: run { agencyRoot.visibility = View.VISIBLE; return }
         worker.execute {
             try {
                 val result=AuthApi.get("/api/agency/application",auth)
