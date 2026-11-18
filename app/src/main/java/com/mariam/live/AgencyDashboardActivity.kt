@@ -19,8 +19,7 @@ class AgencyDashboardActivity: Activity() {
  private fun card()=GradientDrawable().apply{cornerRadius=dp(16).toFloat();setColor(panel);setStroke(dp(1),Color.rgb(58,43,76))}
  private fun t(s:String,z:Float=14f,c:Int=ink,b:Boolean=false)=TextView(this).apply{text=s;textSize=z;setTextColor(c);if(b)typeface=android.graphics.Typeface.DEFAULT_BOLD}
  private fun button(s:String,action:()->Unit)=t(s,14f,ink,true).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(14),dp(10),dp(14));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(145,69,214),Color.rgb(91,45,149))).apply{cornerRadius=dp(13).toFloat()};setOnClickListener{action()}}
- private fun section(s:String,sub:String=""){body.addView(t(s,17f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20);bottomMargin=dp(5)});if(sub.isNotBlank())body.addView(t(sub,12f,muted))}
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
+ private fun section(s:String,sub:String=""){\n  body.addView(t(s,17f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20);bottomMargin=dp(5)})\n  if(sub.isNotBlank()) body.addView(t(sub,12f,muted))\n }\n override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
   val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
   val head=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(8),dp(16),dp(8))}
   head.addView(t("‹",32f).apply{gravity=Gravity.CENTER;setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(48)))
@@ -64,7 +63,7 @@ class AgencyDashboardActivity: Activity() {
   (stats.getChildAt(1) as? LinearLayout)?.let{(it.getChildAt(1) as? TextView)?.text=pending.toString()}
   if(invites.length()==0)invitesBox.addView(t("لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))})
   for(n in 0 until invites.length()){val o=invites.optJSONObject(n)?:continue;val uid=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $uid"};val st=when(o.optString("status")){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->o.optString("status")};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $uid • $st",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});invitesBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
-  if(members.length()==0)membersBox.addView(t("لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;padding=dp(12)})
-  for(n in 0 until members.length()){val o=members.optJSONObject(n)?:continue;val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;padding=dp(12);background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id • عضو فعلي",12f,Color.rgb(130,220,170)),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
+  if(members.length()==0)membersBox.addView(t("لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))})
+  for(n in 0 until members.length()){val o=members.optJSONObject(n)?:continue;val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id • عضو فعلي",12f,Color.rgb(130,220,170)),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
  }
 }
