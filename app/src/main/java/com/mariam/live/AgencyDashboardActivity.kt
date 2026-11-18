@@ -19,7 +19,11 @@ class AgencyDashboardActivity: Activity() {
  private fun card()=GradientDrawable().apply{cornerRadius=dp(16).toFloat();setColor(panel);setStroke(dp(1),Color.rgb(58,43,76))}
  private fun t(s:String,z:Float=14f,c:Int=ink,b:Boolean=false)=TextView(this).apply{text=s;textSize=z;setTextColor(c);if(b)typeface=android.graphics.Typeface.DEFAULT_BOLD}
  private fun button(s:String,action:()->Unit)=t(s,14f,ink,true).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(14),dp(10),dp(14));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(145,69,214),Color.rgb(91,45,149))).apply{cornerRadius=dp(13).toFloat()};setOnClickListener{action()}}
- private fun section(s:String,sub:String=""){\n  body.addView(t(s,17f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20);bottomMargin=dp(5)})\n  if(sub.isNotBlank()) body.addView(t(sub,12f,muted))\n }\n override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
+ private fun section(s:String,sub:String=""){
+  body.addView(t(s,17f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20);bottomMargin=dp(5)})
+  if(sub.isNotBlank()) body.addView(t(sub,12f,muted))
+ }
+ override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg
   val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg)}
   val head=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),dp(8),dp(16),dp(8))}
   head.addView(t("‹",32f).apply{gravity=Gravity.CENTER;setOnClickListener{finish()}},LinearLayout.LayoutParams(dp(42),dp(48)))
