@@ -998,3 +998,47 @@ class AgencyDashboardActivity : Activity() {
 
  private fun confirmRemoveMember(publicId: String) {
   if (publicId.isBlank() || publicId == "—") return
+  confirmDialog("إزالة عضو الوكالة", "هل تريد إزالة هذا المذيع من وكالتك؟ لن يتم حذف حسابه.", "إزالة", "إلغاء", true) {
+   val tok = token() ?: run { status.text = "يرجى تسجيل الدخول"; return@confirmDialog }
+   status.text = "جارٍ إزالة العضو..."
+   worker.execute {
+    try {
+     val r = AuthApi.delete("/api/agency/members/$publicId", tok)
+     if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر إزالة العضو"))
+     runOnUiThread {
+      val updated = JSONArray()
+      for (i in 0 until members.length()) {
+       val item = members.optJSONObject(i)
+       if (item != null && item.optString("public_id") != publicId) updated.put(item)
+      }
+      members = updated
+      render()
+      status.text = "تمت إزالة العضو من الوكالة بنجاح"
+      loadData(afterRemoval = true)
+     }
+    } catch (e: Exception) {
+     runOnUiThread { status.text = "تعذر إزالة العضو. حاول مرة أخرى." }
+    }
+   }
+  }
+ }
+
+ private fun cancelInvitation(invitationId: Long) {
+  if (invitationId <= 0) return
+  confirmDialog("إلغاء الدعوة", "هل تريد إلغاء هذه الدعوة؟", "إلغاء الدعوة", "رجوع", true) {
+   val tok = token() ?: run { status.text = "يرجى تسجيل الدخول"; return@confirmDialog }
+   worker.execute {
+    try {
+     val r = AuthApi.post("/api/agency/invitations/$invitationId/cancel", JSONObject(), tok)
+     if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر إلغاء الدعوة"))
+     runOnUiThread {
+      status.text = "تم إلغاء الدعوة"
+      loadData()
+     }
+    } catch (e: Exception) {
+     runOnUiThread { status.text = e.message ?: "تعذر إلغاء الدعوة" }
+    }
+   }
+  }
+ }
+}
