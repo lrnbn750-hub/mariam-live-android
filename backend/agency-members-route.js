@@ -85,4 +85,25 @@ module.exports = function registerAgencyMembershipRoutes(app, db, authenticateTo
       return res.status(500).json({ error: "تعذر معالجة الدعوة" });
     } finally { client.release(); }
   });
+  app.get("/api/agency/membership", authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        `SELECT a.agency_name, a.legal_name,
+                COALESCE(NULLIF(p.display_name, ''), a.legal_name) AS owner_name,
+                u.public_id AS owner_public_id, m.joined_at
+         FROM agency_members m
+         JOIN agency_applications a ON a.id = m.agency_application_id AND a.status = 'approved'
+         JOIN users u ON u.id = a.user_id
+         LEFT JOIN user_profiles p ON p.user_id = a.user_id
+         WHERE m.creator_user_id = $1
+         ORDER BY m.joined_at DESC LIMIT 1`,
+        [req.userId]
+      );
+      return res.json({ membership: result.rows[0] || null });
+    } catch (error) {
+      console.error("Agency membership:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل معلومات الوكالة" });
+    }
+  });
+
 };
