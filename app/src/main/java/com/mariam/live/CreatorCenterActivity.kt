@@ -37,8 +37,9 @@ class CreatorCenterActivity : Activity() {
  hero.addView(label("BAK LIVE  •  CREATOR STUDIO",10f,Color.rgb(230,207,242),true));hero.addView(label("لوحة أرباح صانع المحتوى",15f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(34)));hero.addView(label("$"+money(wallet.optLong("withdrawable_usd_cents")),38f,mint,true),LinearLayout.LayoutParams(-1,dp(58)));hero.addView(label("الرصيد المتاح للسحب",12f,Color.rgb(232,213,244),true));
  val line=View(this).apply{setBackgroundColor(Color.rgb(123,78,148))};hero.addView(line,LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(15);bottomMargin=dp(13)});hero.addView(label("إجمالي الأرباح المكتسبة  $"+money(wallet.optLong("lifetime_earned_usd_cents")),13f,Color.WHITE,true));content.addView(hero)
  renderAgencyMembershipCard()
- val stats=LinearLayout(this).apply{orientation=0};stats.addView(stat("💎","إجمالي الألماس المكتسب",String.format(java.util.Locale.US,"%,d",wallet.optLong("earned_diamonds"))),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(6)});stats.addView(stat("50%","حصة المذيع", "من قيمة الهدايا"),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(6)});content.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
- val split=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(14),dp(14),dp(14),dp(14));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)};split.addView(label("المذيع 50%",13f,mint,true),LinearLayout.LayoutParams(0,-2,1f));split.addView(label("المنصة 50%",13f,Color.rgb(222,191,240),true));content.addView(split,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+ val stats=LinearLayout(this).apply{orientation=0};stats.addView(stat("💎","إجمالي الألماس المكتسب",String.format(java.util.Locale.US,"%,d",wallet.optLong("earned_diamonds"))),LinearLayout.LayoutParams(-1,-2));content.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+ // Agency invitations are hidden while the user is already an active agency member.
+ if(agencyMembership.length()==0){
  // Live incoming agency invitations fetched from the backend.
  section("دعوات الوكالة","راجع الدعوات المرسلة إليك من الوكالات")
  if(invitationLoadError.isNotBlank()){
@@ -71,6 +72,7 @@ class CreatorCenterActivity : Activity() {
    }
  }
 
+ }
  section("أرباح الهدايا","آخر العمليات التي حققت لك ألماساً وأرباحاً")
  var found=0;for(i in 0 until history.length()){val t=history.optJSONObject(i)?:continue;if(t.optString("transaction_type")!="gift_received")continue;found++;val card=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=shape(intArrayOf(Color.rgb(42,31,55),Color.rgb(29,22,39)),Color.rgb(76,57,92),15)};val info=LinearLayout(this).apply{orientation=1};info.addView(label("هدية مستلمة",14f,Color.WHITE,true));info.addView(label(t.optString("created_at"),10f,muted));card.addView(info,LinearLayout.LayoutParams(0,-2,1f));card.addView(label("+"+String.format(java.util.Locale.US,"%,d",t.optLong("amount"))+" 💎",15f,mint,true));content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})}
  if(found==0){val empty=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(18),dp(24),dp(18),dp(24));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)};empty.addView(label("💎",30f,mint,true));empty.addView(label("لا توجد هدايا مكتسبة حتى الآن",13f,muted,true));content.addView(empty)}
