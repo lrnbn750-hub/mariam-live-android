@@ -31,13 +31,13 @@ class AgencyDashboardActivity: Activity() {
   val scroll=ScrollView(this);body=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(26))};scroll.addView(body);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f));setContentView(root)
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(107,47,158),Color.rgb(36,22,58))).apply{cornerRadius=dp(22).toFloat()}}
   hero.addView(t("AGENCY • PARTNER DASHBOARD",10f,Color.rgb(228,204,248),true));hero.addView(t("إدارة وكالتك وصُنّاع المحتوى",19f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)});body.addView(hero)
-  section("أرباح الوكالة","عمولة الوكالة 12% • الأرقام من الخادم")
+  section("أرباح الوكالة","12% من حصة المنصة • مستقلة عن أرباح المذيع")
   earningsBox=LinearLayout(this).apply{orientation=1}
   body.addView(earningsBox,LinearLayout.LayoutParams(-1,-2))
   earningsStatus=t("جارٍ تحميل الأرباح...",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(10),dp(10),dp(10))}
   body.addView(earningsStatus,LinearLayout.LayoutParams(-1,-2))
   body.addView(button("↻ تحديث الأرباح"){loadEarnings()},LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(5)})
-  section("أرباح الأعضاء","مستحقات كل عضو من الهدايا")
+  section("عمولة الوكالة حسب العضو","عمولة الوكالة الناتجة عن هدايا كل عضو • ليست أرباح المذيع")
   membersEarningsBox=LinearLayout(this).apply{orientation=1}
   body.addView(membersEarningsBox,LinearLayout.LayoutParams(-1,-2))
   section("سجل الأرباح","آخر عمليات العمولة المسجلة")
@@ -99,16 +99,16 @@ class AgencyDashboardActivity: Activity() {
   val total=o.optInt("total_cents",0);val available=o.optInt("available_cents",0);val paid=o.optInt("paid_cents",0)
   val today=o.optInt("today_cents",0);val week=o.optInt("last_7_days_cents",0);val month=o.optInt("month_cents",0)
   val row1=LinearLayout(this).apply{orientation=0}
-  row1.addView(earnCard("إجمالي الأرباح",money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row1.addView(earnCard("إجمالي عمولة الوكالة",money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
   row1.addView(earnCard("المتاح للسحب",money(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row1)
   val row2=LinearLayout(this).apply{orientation=0}
-  row2.addView(earnCard("تم دفعه",money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row2.addView(earnCard("أرباح اليوم",money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row2.addView(earnCard("عمولات مدفوعة",money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row2.addView(earnCard("عمولة اليوم",money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row2,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   val row3=LinearLayout(this).apply{orientation=0}
-  row3.addView(earnCard("آخر 7 أيام",money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row3.addView(earnCard("هذا الشهر",money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row3.addView(earnCard("عمولة آخر 7 أيام",money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row3.addView(earnCard("عمولة هذا الشهر",money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row3,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   membersEarningsBox.removeAllViews()
   if(m.length()==0)membersEarningsBox.addView(t("لا توجد بيانات أرباح أعضاء بعد",12f,muted).apply{setPadding(dp(12),dp(12),dp(12),dp(12))})
@@ -117,7 +117,7 @@ class AgencyDashboardActivity: Activity() {
    val totalMember=item.optInt("total_cents",0);val availMember=item.optInt("available_cents",0);val gifts=item.optInt("gifts_count",0)
    val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()}
    card.addView(t(name,14f,ink,true));card.addView(t("ID $id • هدايا: $gifts",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
-   card.addView(t("الإجمالي: $"+money(totalMember)+"   •   متاح: $"+money(availMember),13f,Color.rgb(150,235,180),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
+   card.addView(t("عمولة الوكالة: "+money(totalMember)+"   •   متاح: "+money(availMember),13f,Color.rgb(150,235,180),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
    membersEarningsBox.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
   }
   historyBox.removeAllViews()
