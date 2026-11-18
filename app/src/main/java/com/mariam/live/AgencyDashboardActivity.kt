@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 class AgencyDashboardActivity: Activity() {
  private val worker=Executors.newSingleThreadExecutor()
  private val bg=Color.rgb(12,10,20); private val panel=Color.rgb(28,22,42); private val ink=Color.WHITE; private val muted=Color.rgb(167,157,185)
- private lateinit var body:LinearLayout; private lateinit var input:EditText; private lateinit var send:TextView; private lateinit var status:TextView; private lateinit var invitesBox:LinearLayout; private lateinit var membersBox:LinearLayout; private lateinit var stats:LinearLayout; private lateinit var analyticsText:TextView; private lateinit var memberSearch:EditText; private lateinit var inviteSearch:EditText
+ private lateinit var body:LinearLayout; private lateinit var earningsBox:LinearLayout; private lateinit var earningsStatus:TextView; private lateinit var membersEarningsBox:LinearLayout; private lateinit var historyBox:LinearLayout; private lateinit var input:EditText; private lateinit var send:TextView; private lateinit var status:TextView; private lateinit var invitesBox:LinearLayout; private lateinit var membersBox:LinearLayout; private lateinit var stats:LinearLayout; private lateinit var analyticsText:TextView; private lateinit var memberSearch:EditText; private lateinit var inviteSearch:EditText
  private var invites=JSONArray(); private var members=JSONArray(); private var agencyInfo=JSONObject(); private var agencyName="وكالتك"
  private fun token()=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -31,6 +31,19 @@ class AgencyDashboardActivity: Activity() {
   val scroll=ScrollView(this);body=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(26))};scroll.addView(body);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f));setContentView(root)
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(107,47,158),Color.rgb(36,22,58))).apply{cornerRadius=dp(22).toFloat()}}
   hero.addView(t("AGENCY • PARTNER DASHBOARD",10f,Color.rgb(228,204,248),true));hero.addView(t("إدارة وكالتك وصُنّاع المحتوى",19f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)});body.addView(hero)
+  section("أرباح الوكالة","عمولة الوكالة 12% • الأرقام من الخادم")
+  earningsBox=LinearLayout(this).apply{orientation=1}
+  body.addView(earningsBox,LinearLayout.LayoutParams(-1,-2))
+  earningsStatus=t("جارٍ تحميل الأرباح...",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(10),dp(10),dp(10))}
+  body.addView(earningsStatus,LinearLayout.LayoutParams(-1,-2))
+  body.addView(button("↻ تحديث الأرباح"){loadEarnings()},LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(5)})
+  section("أرباح الأعضاء","مستحقات كل عضو من الهدايا")
+  membersEarningsBox=LinearLayout(this).apply{orientation=1}
+  body.addView(membersEarningsBox,LinearLayout.LayoutParams(-1,-2))
+  section("سجل الأرباح","آخر عمليات العمولة المسجلة")
+  historyBox=LinearLayout(this).apply{orientation=1}
+  body.addView(historyBox,LinearLayout.LayoutParams(-1,-2))
+
   renderAgencyDetails()
   section("ملخص الوكالة","بيانات حقيقية من السيرفر")
   stats=LinearLayout(this).apply{orientation=0}
@@ -54,8 +67,71 @@ class AgencyDashboardActivity: Activity() {
   memberSearch.addTextChangedListener(object:android.text.TextWatcher{override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){};override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){renderMembers()};override fun afterTextChanged(s:android.text.Editable?){}})
   body.addView(t("بيانات الدعوات والأعضاء من قاعدة البيانات. تقارير الألماس والأرباح ستُربط عند توفر مصدرها الحقيقي.",11f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(14),dp(14),dp(14),dp(14));background=card()},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
   loadData()
+  loadEarnings()
  }
 
+ private fun money(cents:Int):String="$"+"%.2f".format(java.util.Locale.US,cents/100.0)
+ private fun loadEarnings(){
+  val tok=token()?:run{if(::earningsStatus.isInitialized)earningsStatus.text="يرجى تسجيل الدخول";return}
+  if(::earningsStatus.isInitialized)earningsStatus.text="جارٍ تحميل تقرير الأرباح..."
+  worker.execute{try{
+   val overview=AuthApi.get("/api/agency/earnings",tok)
+   val perMember=AuthApi.get("/api/agency/earnings/members",tok)
+   val history=AuthApi.get("/api/agency/earnings/history?limit=30",tok)
+   if(overview.status !in 200..299)throw Exception(overview.body.optString("error","فشل تحميل الأرباح"))
+   if(perMember.status !in 200..299)throw Exception(perMember.body.optString("error","فشل تحميل أرباح الأعضاء"))
+   if(history.status !in 200..299)throw Exception(history.body.optString("error","فشل تحميل سجل الأرباح"))
+   val o=overview.body.optJSONObject("earnings")?:overview.body
+   val m=perMember.body.optJSONArray("members")?:JSONArray()
+   val h=history.body.optJSONArray("history")?:history.body.optJSONArray("earnings")?:JSONArray()
+   runOnUiThread{renderEarnings(o,m,h);earningsStatus.text="تم تحديث الأرباح من الخادم"}
+  }catch(e:Exception){runOnUiThread{earningsStatus.text=e.message?: "تعذر تحميل الأرباح. حاول تحديث التقرير."}}
+ }
+ private fun earnCard(label:String,value:String)=LinearLayout(this).apply{
+  orientation=1;setPadding(dp(13),dp(13),dp(13),dp(13));background=card()
+  addView(t(label,12f,muted,true))
+  addView(t(value,21f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
+ }
+ private fun renderEarnings(o:JSONObject,m:JSONArray,h:JSONArray){
+  if(!::earningsBox.isInitialized)return
+  earningsBox.removeAllViews()
+  val total=o.optInt("total_cents",0);val available=o.optInt("available_cents",0);val paid=o.optInt("paid_cents",0)
+  val today=o.optInt("today_cents",0);val week=o.optInt("last_7_days_cents",0);val month=o.optInt("month_cents",0)
+  val row1=LinearLayout(this).apply{orientation=0}
+  row1.addView(earnCard("إجمالي الأرباح","$"+money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row1.addView(earnCard("المتاح للسحب","$"+money(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  earningsBox.addView(row1)
+  val row2=LinearLayout(this).apply{orientation=0}
+  row2.addView(earnCard("تم دفعه","$"+money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row2.addView(earnCard("أرباح اليوم","$"+money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  earningsBox.addView(row2,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
+  val row3=LinearLayout(this).apply{orientation=0}
+  row3.addView(earnCard("آخر 7 أيام","$"+money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row3.addView(earnCard("هذا الشهر","$"+money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  earningsBox.addView(row3,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
+  membersEarningsBox.removeAllViews()
+  if(m.length()==0)membersEarningsBox.addView(t("لا توجد بيانات أرباح أعضاء بعد",12f,muted).apply{setPadding(dp(12),dp(12),dp(12),dp(12))})
+  for(i in 0 until m.length()){
+   val item=m.optJSONObject(i)?:continue;val id=item.optString("public_id","—");val name=item.optString("display_name").ifBlank{item.optString("username").ifBlank{"ID $id"}}
+   val totalMember=item.optInt("total_cents",0);val availMember=item.optInt("available_cents",0);val gifts=item.optInt("gifts_count",0)
+   val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()}
+   card.addView(t(name,14f,ink,true));card.addView(t("ID $id • هدايا: $gifts",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
+   card.addView(t("الإجمالي: $"+money(totalMember)+"   •   متاح: $"+money(availMember),13f,Color.rgb(150,235,180),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
+   membersEarningsBox.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
+  }
+  historyBox.removeAllViews()
+  if(h.length()==0)historyBox.addView(t("لا توجد عمليات مسجلة حتى الآن",12f,muted).apply{setPadding(dp(12),dp(12),dp(12),dp(12))})
+  for(i in 0 until h.length()){
+   val item=h.optJSONObject(i)?:continue
+   val name=item.optString("display_name").ifBlank{item.optString("public_id","عضو")}
+   val amount=item.optInt("amount_usd_cents",item.optInt("amount_cents",0))
+   val status=when(item.optString("status")){"available"->"متاح";"pending"->"قيد الانتظار";"paid"->"مدفوع";"reversed"->"معكوس";else->item.optString("status","—")}
+   val date=item.optString("created_at","").replace("T"," ").take(16)
+   val card=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()}
+   card.addView(t(name,13f,ink,true));card.addView(t("$"+"%.2f".format(java.util.Locale.US,amount/100.0)+" • $status • $date",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
+   historyBox.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
+  }
+ }
  private fun renderAgencyDetails(){
   if(!::body.isInitialized)return
   val keys=agencyInfo.keys().asSequence().toList()
