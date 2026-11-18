@@ -6,9 +6,11 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -23,6 +25,7 @@ import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.widget.EditText
@@ -37,7 +40,7 @@ import org.json.JSONObject
 import java.util.Locale
 import kotlin.concurrent.thread
 
-/* ───────────────────────── Vector icons (crisp at any density) ───────────────────────── */
+/* ═════════════════════════ Vector icons (sharp on every screen) ═════════════════════════ */
 
 private class IconView(ctx: Context, private val kind: String, private val tint: Int) : View(ctx) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -60,14 +63,35 @@ private class IconView(ctx: Context, private val kind: String, private val tint:
         c.translate((width - s) / 2f, (height - s) / 2f)
         c.scale(s / 24f, s / 24f)
         p.color = tint
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 1.9f
         when (kind) {
             "back" -> c.drawPath(Path().apply { moveTo(9f, 5f); lineTo(16f, 12f); lineTo(9f, 19f) }, p)
             "close" -> { c.drawLine(6f, 6f, 18f, 18f, p); c.drawLine(18f, 6f, 6f, 18f, p) }
             "check" -> c.drawPath(Path().apply { moveTo(5f, 12.5f); lineTo(10f, 17.5f); lineTo(19f, 7f) }, p)
+            "refresh" -> {
+                c.drawArc(RectF(4.5f, 4.5f, 19.5f, 19.5f), 20f, 300f, false, p)
+                c.drawPath(Path().apply { moveTo(18f, 3.5f); lineTo(18f, 7.5f); lineTo(14f, 7.5f) }, p)
+            }
             "diamond" -> {
                 c.drawPath(Path().apply {
                     moveTo(6f, 3f); lineTo(18f, 3f); lineTo(22f, 9f); lineTo(12f, 21f); lineTo(2f, 9f); close()
                 }, p)
+                c.drawLine(2f, 9f, 22f, 9f, p)
+                c.drawPath(Path().apply { moveTo(9.5f, 3f); lineTo(8f, 9f); lineTo(12f, 21f) }, p)
+                c.drawPath(Path().apply { moveTo(14.5f, 3f); lineTo(16f, 9f); lineTo(12f, 21f) }, p)
+            }
+            "diamondFill" -> {
+                val body = Path().apply {
+                    moveTo(6f, 3f); lineTo(18f, 3f); lineTo(22f, 9f); lineTo(12f, 21.5f); lineTo(2f, 9f); close()
+                }
+                p.style = Paint.Style.FILL
+                c.drawPath(body, p)
+                p.color = Color.argb(95, 255, 255, 255)
+                c.drawPath(Path().apply { moveTo(6f, 3f); lineTo(18f, 3f); lineTo(22f, 9f); lineTo(2f, 9f); close() }, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = 1.1f
+                p.color = Color.argb(190, 255, 255, 255)
                 c.drawLine(2f, 9f, 22f, 9f, p)
                 c.drawPath(Path().apply { moveTo(9.5f, 3f); lineTo(8f, 9f); lineTo(12f, 21f) }, p)
                 c.drawPath(Path().apply { moveTo(14.5f, 3f); lineTo(16f, 9f); lineTo(12f, 21f) }, p)
@@ -111,39 +135,60 @@ private class IconView(ctx: Context, private val kind: String, private val tint:
     }
 }
 
-/* Hero card with soft decorative circles */
-private class HeroLayout(ctx: Context) : LinearLayout(ctx) {
+/* Header backdrop: deep-violet → magenta gradient with glow circles and sparkles */
+private class HeaderBg(ctx: Context) : View(ctx) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val path = Path()
+    private val d = resources.displayMetrics.density
+    private val colors = intArrayOf(Color.parseColor("#22093F"), Color.parseColor("#5B21B6"), Color.parseColor("#B02FC9"))
 
-    init {
-        orientation = VERTICAL
-        setWillNotDraw(false)
-        clipToOutline = true
+    private fun star(c: Canvas, x: Float, y: Float, r: Float) {
+        path.reset()
+        path.moveTo(x, y - r); path.quadTo(x, y, x + r, y)
+        path.quadTo(x, y, x, y + r); path.quadTo(x, y, x - r, y)
+        path.quadTo(x, y, x, y - r)
+        c.drawPath(path, p)
     }
 
-    override fun dispatchDraw(canvas: Canvas) {
+    override fun onDraw(c: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
-        p.color = Color.argb(30, 255, 255, 255)
-        canvas.drawCircle(w * 0.96f, h * 0.02f, h * 0.55f, p)
-        p.color = Color.argb(20, 255, 255, 255)
-        canvas.drawCircle(w * 0.04f, h * 1.02f, h * 0.45f, p)
-        super.dispatchDraw(canvas)
+        p.shader = LinearGradient(0f, 0f, w, h, colors, floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, p)
+        p.shader = null
+        p.color = Color.argb(36, 255, 255, 255)
+        c.drawCircle(w * 0.92f, h * 0.10f, h * 0.30f, p)
+        p.color = Color.argb(24, 255, 190, 255)
+        c.drawCircle(w * 0.04f, h * 0.58f, h * 0.27f, p)
+        p.color = Color.argb(200, 255, 255, 255)
+        star(c, w * 0.16f, h * 0.14f, 6f * d)
+        star(c, w * 0.80f, h * 0.30f, 4.5f * d)
+        star(c, w * 0.34f, h * 0.40f, 3.5f * d)
+        p.color = Color.argb(150, 255, 224, 140)
+        star(c, w * 0.62f, h * 0.12f, 5f * d)
+        star(c, w * 0.90f, h * 0.52f, 3.5f * d)
     }
 }
 
-/* ───────────────────────────────────── Screen ───────────────────────────────────── */
+/* ═══════════════════════════════════════ Screen ═══════════════════════════════════════ */
 
 @Suppress("DEPRECATION")
 class CreatorCenterActivity : Activity() {
 
-    // Palette — clean white surface, violet brand, emerald for money
-    private val ink = Color.parseColor("#0F172A")
-    private val muted = Color.parseColor("#64748B")
-    private val hairline = Color.parseColor("#E9ECF3")
-    private val surface = Color.parseColor("#F7F8FC")
-    private val brand = Color.parseColor("#6D28D9")
-    private val brandSoft = Color.parseColor("#F1EAFE")
+    // Palette — white surface, violet/magenta brand, gold for diamonds & primary action
+    private val ink = Color.parseColor("#17112B")
+    private val muted = Color.parseColor("#6B6485")
+    private val hairline = Color.parseColor("#ECE8F6")
+    private val surface = Color.parseColor("#F8F6FD")
+    private val brand = Color.parseColor("#7C3AED")
+    private val pink = Color.parseColor("#C026D3")
+    private val brandSoft = Color.parseColor("#F3ECFF")
+    private val pinkSoft = Color.parseColor("#FCE8F8")
+    private val gold1 = Color.parseColor("#FFD76A")
+    private val gold2 = Color.parseColor("#F5A623")
+    private val goldInk = Color.parseColor("#4A2E00")
+    private val goldSoft = Color.parseColor("#FFF5DA")
+    private val goldText = Color.parseColor("#A96A00")
     private val green = Color.parseColor("#059669")
     private val greenSoft = Color.parseColor("#E6F7F0")
     private val danger = Color.parseColor("#E11D48")
@@ -155,7 +200,12 @@ class CreatorCenterActivity : Activity() {
     private var incomingInvitations = JSONArray()
     private var invitationLoadError = ""
     private var agencyMembership = JSONObject()
-    private lateinit var content: LinearLayout
+
+    private lateinit var scroll: ScrollView
+    private lateinit var content: LinearLayout   // scroll child: [top (on gradient), body (white sheet)]
+    private lateinit var top: LinearLayout
+    private lateinit var body: LinearLayout
+    private var giftAnchor: View? = null
 
     /* ─────────── helpers ─────────── */
 
@@ -170,6 +220,9 @@ class CreatorCenterActivity : Activity() {
             cornerRadius = dpf(r)
             if (stroke != Color.TRANSPARENT) setStroke(dp(sw), stroke)
         }
+
+    private fun grad(c1: Int, c2: Int, r: Int, o: GradientDrawable.Orientation = GradientDrawable.Orientation.LEFT_RIGHT) =
+        GradientDrawable(o, intArrayOf(c1, c2)).apply { cornerRadius = dpf(r) }
 
     private fun ripple(content: Drawable, r: Int, color: Int) =
         RippleDrawable(ColorStateList.valueOf(color), content, rect(Color.WHITE, r = r))
@@ -218,21 +271,28 @@ class CreatorCenterActivity : Activity() {
         isClickable = true
         if (primary) {
             setTextColor(Color.WHITE)
-            val g = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.parseColor("#7C3AED"), Color.parseColor("#5B21B6"))
-            ).apply { cornerRadius = dpf(14) }
-            background = ripple(g, 14, Color.argb(60, 255, 255, 255))
+            background = ripple(grad(brand, pink, 16), 16, Color.argb(60, 255, 255, 255))
         } else {
             setTextColor(brand)
-            background = ripple(rect(Color.WHITE, Color.parseColor("#D9D2EC"), 14), 14, brandSoft)
+            background = ripple(rect(Color.WHITE, Color.parseColor("#DCD0F5"), 16), 16, brandSoft)
         }
         setOnClickListener { click() }
     }
 
+    private fun goldButton(s: String, click: () -> Unit) = LinearLayout(this).apply {
+        gravity = Gravity.CENTER
+        minimumHeight = dp(54)
+        isClickable = true
+        background = ripple(grad(gold1, gold2, 18), 18, Color.argb(70, 255, 255, 255))
+        elevation = dpf(4)
+        setOnClickListener { click() }
+        addView(icon("upright", goldInk), sz(18))
+        addView(label(s, 16f, goldInk, 2), lp(s = 8))
+    }
+
     private fun field(hintText: String) = EditText(this).apply {
         hint = hintText
-        setHintTextColor(Color.parseColor("#94A3B8"))
+        setHintTextColor(Color.parseColor("#A29BB8"))
         setTextColor(ink)
         textSize = 15f
         setSingleLine()
@@ -268,10 +328,7 @@ class CreatorCenterActivity : Activity() {
         sheet { box, d ->
             box.gravity = Gravity.CENTER_HORIZONTAL
             box.addView(badge("alert", brand, brandSoft, 26, 20), sz(52))
-            box.addView(
-                label(msg, 15f, ink, 1).apply { gravity = Gravity.CENTER },
-                lp(t = 14)
-            )
+            box.addView(label(msg, 15f, ink, 1).apply { gravity = Gravity.CENTER }, lp(t = 14))
             box.addView(button("حسناً") { d.dismiss(); onOk?.invoke() }, lp(t = 18))
         }.show()
     }
@@ -282,80 +339,108 @@ class CreatorCenterActivity : Activity() {
         super.onCreate(savedInstanceState)
         token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", "").orEmpty()
 
-        window.statusBarColor = Color.WHITE
+        // Content draws under a transparent status bar; nav bar stays white
+        window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.WHITE
-        if (Build.VERSION.SDK_INT >= 23) {
-            var f = window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            if (Build.VERSION.SDK_INT >= 26) f = f or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            window.decorView.systemUiVisibility = f
-        }
+        var flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        if (Build.VERSION.SDK_INT >= 26) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility = flags
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        val root = FrameLayout(this).apply {
             setBackgroundColor(Color.WHITE)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setOnApplyWindowInsetsListener { v, ins ->
-                v.setPadding(0, ins.systemWindowInsetTop, 0, ins.systemWindowInsetBottom)
-                ins
-            }
         }
+        val bg = HeaderBg(this)
+        root.addView(bg, FrameLayout.LayoutParams(-1, dp(460)))
 
-        // Header
-        val header = LinearLayout(this).apply {
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        // Fixed top bar (sits on the gradient)
+        val topBar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
         }
         val back = FrameLayout(this).apply {
-            background = ripple(rect(surface, r = 14), 14, brandSoft)
+            background = ripple(rect(Color.argb(45, 255, 255, 255), Color.argb(70, 255, 255, 255), 14), 14, Color.argb(60, 255, 255, 255))
             isClickable = true
             setOnClickListener { finish() }
-            addView(icon("back", ink), FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
+            addView(icon("back", Color.WHITE), FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
         }
-        header.addView(back, sz(42))
-        header.addView(
-            label("مركز صُنّاع المحتوى", 18f, ink, 2).apply { gravity = Gravity.CENTER },
+        topBar.addView(back, sz(42))
+        topBar.addView(
+            label("مركز صُنّاع المحتوى", 18f, Color.WHITE, 2).apply { gravity = Gravity.CENTER },
             lp(0, -2, wt = 1f)
         )
-        header.addView(
-            label("BAK", 11f, brand, 2).apply {
-                setPadding(dp(10), dp(6), dp(10), dp(6))
-                background = rect(brandSoft, r = 10)
+        topBar.addView(
+            label("BAK", 11f, goldInk, 2).apply {
+                setPadding(dp(11), dp(6), dp(11), dp(6))
+                background = grad(gold1, gold2, 10)
                 letterSpacing = 0.08f
             },
             LinearLayout.LayoutParams(-2, -2)
         )
-        root.addView(header)
-        root.addView(View(this).apply { setBackgroundColor(hairline) }, LinearLayout.LayoutParams(-1, dp(1)))
+        column.addView(topBar)
 
-        // Body
-        val scroll = ScrollView(this).apply {
+        scroll = ScrollView(this).apply {
             isFillViewport = true
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(Color.TRANSPARENT)
         }
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(32))
-        }
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(content)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        column.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(column, FrameLayout.LayoutParams(-1, -1))
+
+        root.setOnApplyWindowInsetsListener { _, ins ->
+            val t = ins.systemWindowInsetTop
+            topBar.setPadding(dp(16), t + dp(8), dp(16), dp(8))
+            (bg.layoutParams as ViewGroup.LayoutParams).height = dp(460) + t
+            bg.requestLayout()
+            content.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
+            ins
+        }
+
         setContentView(root)
         load()
+    }
+
+    /* ─────────── layout skeleton ─────────── */
+
+    private fun reset() {
+        content.removeAllViews()
+        giftAnchor = null
+        top = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(20), dp(6), dp(20), dp(52))
+        }
+        val r = dpf(30)
+        body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(26), dp(18), dp(36))
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
+            }
+        }
+        content.addView(top, lp())
+        content.addView(body, lp(-1, -2, t = -28, wt = 1f))
     }
 
     /* ─────────── data ─────────── */
 
     private fun load() {
-        content.removeAllViews()
+        reset()
+        top.addView(View(this), lp(-1, dp(150)))
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(120), 0, 0)
+            setPadding(0, dp(40), 0, dp(40))
         }
         box.addView(ProgressBar(this).apply { indeterminateTintList = ColorStateList.valueOf(brand) }, sz(36))
         box.addView(label("جارٍ تحميل مركز الأرباح...", 14f, muted, 1), lp(t = 14))
-        content.addView(box)
+        body.addView(box)
 
         thread {
             try {
@@ -388,98 +473,128 @@ class CreatorCenterActivity : Activity() {
     }
 
     private fun showError(s: String) {
-        content.removeAllViews()
+        reset()
+        top.addView(View(this), lp(-1, dp(150)))
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(100), dp(8), 0)
+            setPadding(dp(8), dp(24), dp(8), dp(24))
         }
         box.addView(badge("alert", danger, dangerSoft, 30, 22), sz(60))
         box.addView(label("حدث خطأ", 17f, ink, 2), lp(t = 16))
         box.addView(label(s, 13.5f, muted).apply { gravity = Gravity.CENTER }, lp(t = 6))
         box.addView(button("إعادة المحاولة") { load() }, lp(t = 22))
-        content.addView(box)
+        body.addView(box)
     }
 
-    /* ─────────── UI ─────────── */
+    /* ─────────── UI pieces ─────────── */
 
-    private fun section(title: String, subtitle: String = "") {
-        content.addView(label(title, 17f, ink, 2), lp(t = 28))
-        if (subtitle.isNotBlank()) content.addView(label(subtitle, 12.5f, muted), lp(t = 3, b = 12))
+    private fun glassTile(title: String, value: String, kind: String, tint: Int) = LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        background = rect(Color.argb(40, 255, 255, 255), Color.argb(85, 255, 255, 255), 18)
+        addView(badge(kind, tint, Color.argb(45, 255, 255, 255), 20, 12), sz(38))
+        val col = LinearLayout(this@CreatorCenterActivity).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(label(title, 11.5f, Color.argb(215, 255, 255, 255), 1))
+        col.addView(label(value, 17f, Color.WHITE, 2).apply { textDirection = View.TEXT_DIRECTION_LTR }, lp(t = 2))
+        addView(col, lp(0, -2, s = 10, wt = 1f))
     }
 
-    private fun stat(kind: String, tint: Int, soft: Int, title: String, value: String): LinearLayout =
-        card(14).apply {
-            addView(badge(kind, tint, soft, 20, 12), sz(38))
-            addView(label(title, 12.5f, muted, 1), lp(t = 12))
-            addView(label(value, 20f, ink, 2).apply { textDirection = View.TEXT_DIRECTION_LTR }, lp(t = 4))
+    private fun action(kind: String, c1: Int, c2: Int, title: String, click: () -> Unit) =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            isClickable = true
+            setOnClickListener { click() }
+            addView(
+                FrameLayout(this@CreatorCenterActivity).apply {
+                    background = grad(c1, c2, 20, GradientDrawable.Orientation.TL_BR)
+                    elevation = dpf(3)
+                    addView(icon(kind, Color.WHITE), FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+                },
+                sz(58)
+            )
+            addView(label(title, 12.5f, ink, 1).apply { gravity = Gravity.CENTER }, lp(t = 10))
         }
+
+    private fun section(title: String, subtitle: String = ""): View {
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        row.addView(
+            View(this).apply { background = grad(brand, pink, 3, GradientDrawable.Orientation.TOP_BOTTOM) },
+            LinearLayout.LayoutParams(dp(4), dp(18))
+        )
+        row.addView(label(title, 17f, ink, 2), lp(s = 8))
+        body.addView(row, lp(t = 28))
+        if (subtitle.isNotBlank()) body.addView(label(subtitle, 12.5f, muted), lp(t = 4, b = 12))
+        return row
+    }
+
+    private fun scrollToGifts() {
+        val a = giftAnchor ?: return
+        var y = 0
+        var v: View = a
+        while (v !== content) {
+            y += v.top
+            v = v.parent as? View ?: break
+        }
+        scroll.smoothScrollTo(0, y - dp(12))
+    }
+
+    /* ─────────── render ─────────── */
 
     private fun render() {
-        content.removeAllViews()
+        reset()
 
-        // ── Hero: balance
-        val hero = HeroLayout(this).apply {
-            setPadding(dp(22), dp(22), dp(22), dp(22))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#7C3AED"), Color.parseColor("#5B21B6"), Color.parseColor("#3B1580"))
-            ).apply { cornerRadius = dpf(28) }
-            elevation = dpf(6)
-        }
-        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(badge("wallet", Color.WHITE, Color.argb(45, 255, 255, 255), 20, 12), sz(38))
-        top.addView(label("أرباح صانع المحتوى", 14f, Color.parseColor("#EDE4FF"), 1), lp(0, -2, s = 10, wt = 1f))
-        top.addView(
-            label("BAK LIVE", 10f, Color.WHITE, 2).apply {
-                setPadding(dp(10), dp(5), dp(10), dp(5))
-                background = rect(Color.argb(45, 255, 255, 255), r = 10)
-                letterSpacing = 0.1f
-            },
-            LinearLayout.LayoutParams(-2, -2)
-        )
-        hero.addView(top)
-        hero.addView(label("الرصيد المتاح للسحب", 12.5f, Color.parseColor("#D9C8F5"), 1), lp(t = 24))
-
+        // ── Header block (on the gradient)
         val available = wallet.optLong("withdrawable_usd_cents")
+        top.addView(
+            label("الرصيد المتاح للسحب", 13.5f, Color.argb(215, 255, 255, 255), 1).apply { gravity = Gravity.CENTER },
+            lp(t = 10)
+        )
         val txt = fmt(available)
         val dotAt = txt.indexOf('.')
         val amountText = SpannableString("$" + txt).apply {
-            if (dotAt >= 0) setSpan(RelativeSizeSpan(0.55f), dotAt + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (dotAt >= 0) setSpan(RelativeSizeSpan(0.52f), dotAt + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        hero.addView(
-            label(amountText, 42f, Color.WHITE, 2).apply { textDirection = View.TEXT_DIRECTION_LTR },
+        top.addView(
+            label(amountText, 48f, Color.WHITE, 2).apply {
+                gravity = Gravity.CENTER
+                textDirection = View.TEXT_DIRECTION_LTR
+                setShadowLayer(dpf(16), 0f, dpf(4), Color.argb(120, 30, 0, 80))
+            },
             lp(t = 4)
         )
 
-        val withdrawBtn = LinearLayout(this).apply {
-            gravity = Gravity.CENTER
-            minimumHeight = dp(52)
-            isClickable = true
-            background = ripple(rect(Color.WHITE, r = 16), 16, Color.argb(50, 109, 40, 217))
-            setOnClickListener { showWithdrawal() }
-            addView(icon("upright", brand), sz(18))
-            addView(label("طلب سحب الأرباح", 15f, brand, 2), lp(s = 8))
-        }
-        hero.addView(withdrawBtn, lp(t = 22))
-        content.addView(hero)
+        val tiles = LinearLayout(this)
+        tiles.addView(
+            glassTile("الألماس المكتسب", String.format(Locale.US, "%,d", wallet.optLong("earned_diamonds")), "diamondFill", gold1),
+            lp(0, -2, e = 6, wt = 1f)
+        )
+        tiles.addView(
+            glassTile("إجمالي الأرباح", "$" + fmt(wallet.optLong("lifetime_earned_usd_cents")), "trend", Color.parseColor("#7CF2C6")),
+            lp(0, -2, s = 6, wt = 1f)
+        )
+        top.addView(tiles, lp(t = 22))
+        top.addView(goldButton("طلب سحب الأرباح") { showWithdrawal() }, lp(t = 14))
+
+        // ── Quick actions
+        val actions = LinearLayout(this)
+        actions.addView(
+            action("upright", gold1, gold2, "سحب الأرباح") { showWithdrawal() },
+            lp(0, -2, wt = 1f)
+        )
+        actions.addView(
+            action("gift", Color.parseColor("#F472B6"), pink, "سجل الهدايا") { scrollToGifts() },
+            lp(0, -2, wt = 1f)
+        )
+        actions.addView(
+            action("refresh", Color.parseColor("#8B5CF6"), Color.parseColor("#5B21B6"), "تحديث") { load() },
+            lp(0, -2, wt = 1f)
+        )
+        body.addView(actions)
 
         // ── Agency membership
         renderAgencyMembershipCard()
-
-        // ── Stats
-        val stats = LinearLayout(this)
-        stats.addView(
-            stat("diamond", brand, brandSoft, "الألماس المكتسب",
-                String.format(Locale.US, "%,d", wallet.optLong("earned_diamonds"))),
-            lp(0, -2, e = 6, wt = 1f)
-        )
-        stats.addView(
-            stat("trend", green, greenSoft, "إجمالي الأرباح",
-                "$" + fmt(wallet.optLong("lifetime_earned_usd_cents"))),
-            lp(0, -2, s = 6, wt = 1f)
-        )
-        content.addView(stats, lp(t = 14))
 
         // ── Agency invitations (hidden for active members)
         if (agencyMembership.length() == 0) {
@@ -490,7 +605,7 @@ class CreatorCenterActivity : Activity() {
                 c.addView(label("تعذر تحميل الدعوات", 15f, ink, 2), lp(t = 12))
                 c.addView(label(invitationLoadError, 12.5f, muted).apply { gravity = Gravity.CENTER }, lp(t = 4))
                 c.addView(button("إعادة تحميل الدعوات", false) { load() }, lp(t = 14))
-                content.addView(c)
+                body.addView(c)
             } else if (incomingInvitations.length() == 0) {
                 val c = card(22).apply { gravity = Gravity.CENTER_HORIZONTAL }
                 c.addView(badge("building", brand, brandSoft, 26, 18), sz(52))
@@ -500,7 +615,7 @@ class CreatorCenterActivity : Activity() {
                         .apply { gravity = Gravity.CENTER },
                     lp(t = 4)
                 )
-                content.addView(c)
+                body.addView(c)
             } else {
                 for (i in 0 until incomingInvitations.length()) {
                     val invite = incomingInvitations.optJSONObject(i) ?: continue
@@ -518,17 +633,17 @@ class CreatorCenterActivity : Activity() {
                     head.addView(info, lp(0, -2, s = 12, wt = 1f))
                     c.addView(head)
 
-                    val actions = LinearLayout(this)
-                    actions.addView(button("قبول الدعوة") { respondInvitation(inviteId, "accept") }, lp(0, -2, e = 6, wt = 1f))
-                    actions.addView(button("رفض", false) { respondInvitation(inviteId, "reject") }, lp(0, -2, s = 6, wt = 1f))
-                    c.addView(actions, lp(t = 14))
-                    content.addView(c, lp(b = 10))
+                    val btns = LinearLayout(this)
+                    btns.addView(button("قبول الدعوة") { respondInvitation(inviteId, "accept") }, lp(0, -2, e = 6, wt = 1f))
+                    btns.addView(button("رفض", false) { respondInvitation(inviteId, "reject") }, lp(0, -2, s = 6, wt = 1f))
+                    c.addView(btns, lp(t = 14))
+                    body.addView(c, lp(b = 10))
                 }
             }
         }
 
         // ── Gift earnings
-        section("أرباح الهدايا", "آخر العمليات التي حققت لك ألماساً وأرباحاً")
+        giftAnchor = section("أرباح الهدايا", "آخر العمليات التي حققت لك ألماساً وأرباحاً")
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rect(Color.WHITE, hairline, 20)
@@ -549,7 +664,7 @@ class CreatorCenterActivity : Activity() {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(16), dp(14), dp(16), dp(14))
             }
-            row.addView(badge("gift", green, greenSoft, 22, 14), sz(42))
+            row.addView(badge("gift", pink, pinkSoft, 22, 14), sz(42))
             val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             info.addView(label("هدية مستلمة", 14.5f, ink, 2))
             info.addView(label(fmtDate(t.optString("created_at")), 11.5f, muted), lp(t = 3))
@@ -557,27 +672,27 @@ class CreatorCenterActivity : Activity() {
             val amt = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
+                setPadding(dp(10), dp(6), dp(10), dp(6))
+                background = rect(goldSoft, r = 20)
             }
-            amt.addView(label("+" + String.format(Locale.US, "%,d", t.optLong("amount")), 15.5f, green, 2))
-            amt.addView(icon("diamond", green), LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(5) })
+            amt.addView(label("+" + String.format(Locale.US, "%,d", t.optLong("amount")), 14.5f, goldText, 2))
+            amt.addView(icon("diamondFill", gold2), LinearLayout.LayoutParams(dp(15), dp(15)).apply { marginStart = dp(5) })
             row.addView(amt, LinearLayout.LayoutParams(-2, -2))
             list.addView(row)
         }
         if (found == 0) {
             val empty = card(24).apply { gravity = Gravity.CENTER_HORIZONTAL }
-            empty.addView(badge("diamond", brand, brandSoft, 26, 18), sz(52))
+            empty.addView(badge("diamondFill", gold2, goldSoft, 26, 18), sz(52))
             empty.addView(label("لا توجد هدايا مكتسبة حتى الآن", 14f, muted, 1), lp(t = 12))
-            content.addView(empty)
+            body.addView(empty)
         } else {
-            content.addView(list)
+            body.addView(list)
         }
 
-        // ── Footer
-        content.addView(button("تحديث البيانات", false) { load() }, lp(t = 26))
-        content.addView(
-            label("BAK LIVE  •  Creator Studio", 10.5f, Color.parseColor("#94A3B8"), 1)
+        body.addView(
+            label("BAK LIVE  •  Creator Studio", 10.5f, Color.parseColor("#A29BB8"), 1)
                 .apply { gravity = Gravity.CENTER; letterSpacing = 0.08f },
-            lp(t = 18)
+            lp(t = 28)
         )
     }
 
@@ -588,9 +703,16 @@ class CreatorCenterActivity : Activity() {
         val ownerId = agencyMembership.optString("owner_public_id").ifBlank { "—" }
         val joined = agencyMembership.optString("joined_at").takeIf { it.isNotBlank() && it != "null" }?.take(10) ?: "—"
 
-        val c = card(18)
+        val c = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#F4ECFF"), Color.parseColor("#FDEEFB"))
+            ).apply { cornerRadius = dpf(22); setStroke(dp(1), Color.parseColor("#E4D6FA")) }
+        }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        head.addView(badge("building", brand, brandSoft, 22, 14), sz(46))
+        head.addView(badge("building", Color.WHITE, brand, 22, 14), sz(46))
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         info.addView(label("عضوية الوكالة", 12f, muted, 1))
         info.addView(label(agencyName, 17f, ink, 2), lp(t = 2))
@@ -606,7 +728,7 @@ class CreatorCenterActivity : Activity() {
             LinearLayout.LayoutParams(-2, -2)
         )
         c.addView(head)
-        c.addView(View(this).apply { setBackgroundColor(hairline) }, lp(-1, dp(1), t = 16, b = 14))
+        c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#E4D6FA")) }, lp(-1, dp(1), t = 16, b = 14))
 
         fun infoRow(title: String, value: String, last: Boolean = false) {
             val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -617,7 +739,7 @@ class CreatorCenterActivity : Activity() {
         infoRow("صاحب الوكالة", ownerName)
         infoRow("ID الوكيل", ownerId)
         infoRow("تاريخ الانضمام", joined, true)
-        content.addView(c, lp(t = 14))
+        body.addView(c, lp(t = 26))
     }
 
     /* ─────────── withdrawal ─────────── */
@@ -633,7 +755,6 @@ class CreatorCenterActivity : Activity() {
         var selected = 0
 
         sheet { box, d ->
-            // Title row
             val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
             head.addView(label("طلب سحب", 19f, ink, 2), lp(0, -2, wt = 1f))
             head.addView(
@@ -647,19 +768,16 @@ class CreatorCenterActivity : Activity() {
             )
             box.addView(head)
 
-            // Available balance
             val avail = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(14), dp(12), dp(14), dp(12))
-                background = rect(greenSoft, r = 14)
+                setPadding(dp(14), dp(13), dp(14), dp(13))
+                background = grad(goldSoft, Color.parseColor("#FFEBC2"), 14)
             }
-            avail.addView(label("المتاح للسحب", 13f, green, 1), lp(0, -2, wt = 1f))
-            avail.addView(
-                label("$" + fmt(available), 17f, green, 2).apply { textDirection = View.TEXT_DIRECTION_LTR }
-            )
+            avail.addView(icon("diamondFill", gold2), sz(18))
+            avail.addView(label("المتاح للسحب", 13f, goldText, 1), lp(0, -2, s = 8, wt = 1f))
+            avail.addView(label("$" + fmt(available), 17f, goldText, 2).apply { textDirection = View.TEXT_DIRECTION_LTR })
             box.addView(avail, lp(t = 16))
 
-            // Amount
             val amountHead = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
             amountHead.addView(label("المبلغ (USD)", 13f, muted, 1), lp(0, -2, wt = 1f))
             val amount = field("مثال 10.50").apply {
@@ -675,14 +793,13 @@ class CreatorCenterActivity : Activity() {
             box.addView(amountHead, lp(t = 18, b = 8))
             box.addView(amount, lp())
 
-            // Method chips
             box.addView(label("طريقة الاستلام", 13f, muted, 1), lp(t = 18, b = 8))
             val chips = mutableListOf<TextView>()
             fun paint() {
                 chips.forEachIndexed { i, c ->
                     val on = i == selected
                     c.setTextColor(if (on) Color.WHITE else ink)
-                    c.background = if (on) rect(brand, r = 12) else rect(surface, hairline, 12)
+                    c.background = if (on) grad(brand, pink, 12) else rect(surface, hairline, 12)
                 }
             }
             val chipRow = LinearLayout(this)
@@ -699,7 +816,6 @@ class CreatorCenterActivity : Activity() {
             paint()
             box.addView(chipRow)
 
-            // Destination
             box.addView(label("رقم المحفظة أو عنوان الاستلام", 13f, muted, 1), lp(t = 18, b = 8))
             val destination = field("أدخل رقم المحفظة أو العنوان")
             box.addView(destination, lp())
@@ -707,10 +823,9 @@ class CreatorCenterActivity : Activity() {
             val err = label("", 12.5f, danger, 1).apply { visibility = View.GONE }
             box.addView(err, lp(t = 12))
 
-            // Actions
-            val actions = LinearLayout(this)
-            actions.addView(button("إلغاء", false) { d.dismiss() }, lp(0, -2, e = 6, wt = 1f))
-            actions.addView(
+            val btns = LinearLayout(this)
+            btns.addView(button("إلغاء", false) { d.dismiss() }, lp(0, -2, e = 6, wt = 1f))
+            btns.addView(
                 button("إرسال الطلب") {
                     val dollars = amount.text.toString().trim().replace(",", ".").toBigDecimalOrNull()
                     val cents = try { dollars?.movePointRight(2)?.longValueExact() } catch (_: Exception) { null }
@@ -730,7 +845,7 @@ class CreatorCenterActivity : Activity() {
                 },
                 lp(0, -2, s = 6, wt = 1f)
             )
-            box.addView(actions, lp(t = 22))
+            box.addView(btns, lp(t = 22))
         }.show()
     }
 
