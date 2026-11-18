@@ -40,7 +40,7 @@ class CreatorCenterActivity : Activity() {
  val split=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(14),dp(14),dp(14),dp(14));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)};split.addView(label("المذيع 50%",13f,mint,true),LinearLayout.LayoutParams(0,-2,1f));split.addView(label("المنصة 50%",13f,Color.rgb(222,191,240),true));content.addView(split,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
  // Agency invitations UI shell (backend integration is intentionally deferred).
  section("دعوات الوكالة","راجع الدعوات المرسلة إليك من الوكالات")
- val agencyInvite=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(16),dp(16),dp(16);background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)}
+ val agencyInvite=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(16),dp(16),dp(16));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)}
  agencyInvite.addView(label("🏢",26f,mint,true).apply{gravity=Gravity.CENTER})
  agencyInvite.addView(label("لا توجد دعوات وكالة حالياً",14f,Color.WHITE,true).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
  agencyInvite.addView(label("عند وصول دعوة، ستظهر تفاصيل الوكالة هنا ويمكنك قبولها أو رفضها.",12f,muted).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)})
