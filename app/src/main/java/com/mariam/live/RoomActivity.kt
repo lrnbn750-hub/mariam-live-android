@@ -22,6 +22,8 @@ import java.io.ByteArrayOutputStream
 import android.view.Gravity
 import android.view.MotionEvent
 import io.livekit.android.room.track.LocalAudioTrack
+import io.livekit.android.room.track.VideoTrack
+import io.livekit.android.renderer.TextureViewRenderer
 import io.livekit.android.room.track.Track
 import android.view.inputmethod.EditorInfo
 import android.view.View
@@ -46,6 +48,9 @@ class RoomActivity : Activity() {
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
+ private var canPublishVideo=false; private var cameraEnabled=false
+ private val cameraTracks=HashMap<String,VideoTrack>()
+ private val cameraRenderers=HashMap<String,TextureViewRenderer>()
  private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var hands=JSONArray()
@@ -83,6 +88,7 @@ class RoomActivity : Activity() {
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
  private lateinit var micControl:ImageView
+ private lateinit var cameraControl:ImageView
  private lateinit var musicButton:LinearLayout
  private var musicMixer:RoomMusicMixer?=null
  private lateinit var chatPanel:LinearLayout
@@ -667,7 +673,18 @@ class RoomActivity : Activity() {
     contentDescription="تشغيل أو إيقاف المايك"
     setOnClickListener{toggleMic();refreshMicControl()}
    }
-   composer.addView(micControl,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(6)})
+   composer.addView(micControl,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(5)})
+   cameraControl=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("camera",Color.WHITE,dp(18)))
+    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
+    scaleType=ImageView.ScaleType.CENTER_INSIDE
+    setPadding(dp(10),dp(10),dp(10),dp(10))
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(110,16,12,30));setStroke(dp(1),Color.argb(70,255,255,255))}
+    contentDescription="تشغيل الكاميرا"
+    visibility=View.GONE
+    setOnClickListener{toggleCamera()}
+   }
+   composer.addView(cameraControl,LinearLayout.LayoutParams(dp(42),dp(42)).apply{marginEnd=dp(6)})
    chatInput=EditText(this@RoomActivity).apply{
     hint="اكتب تعليقاً...";textSize=14f;maxLines=1;setSingleLine(true)
     imeOptions=EditorInfo.IME_ACTION_SEND
@@ -830,6 +847,7 @@ class RoomActivity : Activity() {
   window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
   chatIcon.visibility=View.GONE
   micControl.visibility=View.GONE
+  cameraControl.visibility=View.GONE
   roomGiftButton.visibility=View.GONE
   roomToolsButton.visibility=View.GONE
   controlsSpacer.visibility=View.GONE
@@ -849,6 +867,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=View.VISIBLE
+  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -1188,6 +1207,7 @@ class RoomActivity : Activity() {
     }
     mic.visibility=View.GONE
     if(::micControl.isInitialized)micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
+    if(::cameraControl.isInitialized)cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
@@ -1237,6 +1257,7 @@ class RoomActivity : Activity() {
  }
 
  private fun drawSeats(){
+  releaseCameraRenderers()
   grid.removeAllViews()
   speakerWaveViews.clear()
   for(row in 0..1){
@@ -1347,6 +1368,15 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     val liveVideoTrack=if(occupied && uid!=null)videoTrackFor(uid) else null
+     if(liveVideoTrack!=null){
+      avatar.visibility=View.GONE
+      val videoRenderer=TextureViewRenderer(this@RoomActivity)
+      room.initVideoRenderer(videoRenderer)
+      liveVideoTrack.addRenderer(videoRenderer)
+      cameraRenderers[uid!!]=videoRenderer
+      addView(videoRenderer,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -1578,6 +1608,9 @@ class RoomActivity : Activity() {
     }
     room.connect(r.body.optString("serverUrl"),r.body.optString("participantToken"))
     startSpeakerTracking()
+    canPublishVideo=r.body.optBoolean("canPublishVideo",false)
+    cameraEnabled=false
+    refreshCameraControl()
     microphoneEnabled=r.body.optBoolean("canPublish",false)
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     connected=true
@@ -1596,7 +1629,17 @@ class RoomActivity : Activity() {
   speakerEventsJob=scope.launch{
    try{
     room.events.collect{event->
-     if(event is RoomEvent.ActiveSpeakersChanged){
+     when(event){
+      is RoomEvent.TrackSubscribed->{
+       val identity=event.participant.identity?.value
+       val video=event.track as? VideoTrack
+       if(identity!=null && video!=null && event.publication.source==Track.Source.CAMERA){cameraTracks[identity]=video;drawSeats()}
+      }
+      is RoomEvent.TrackUnsubscribed->{
+       val identity=event.participant.identity?.value
+       if(identity!=null && event.track is VideoTrack){cameraTracks.remove(identity);drawSeats()}
+      }
+      is RoomEvent.ActiveSpeakersChanged->{
       val fresh=HashMap<String,Float>()
       for(participant in event.speakers){
        val identity=participant.identity?.value ?: continue
@@ -1606,8 +1649,7 @@ class RoomActivity : Activity() {
       }
       activeSpeakerLevels.clear()
       activeSpeakerLevels.putAll(fresh)
-      for((userId,wave) in speakerWaveViews){
-       wave.setLevel(activeSpeakerLevels[userId]?:0f)
+      for((userId,wave) in speakerWaveViews){wave.setLevel(activeSpeakerLevels[userId]?:0f)}
       }
      }
     }
@@ -2593,6 +2635,47 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
 
+ private fun videoTrackFor(userId:String):VideoTrack?{
+  cameraTracks[userId]?.let{return it}
+  if(!::room.isInitialized || !connected)return null
+  if(userId==currentUserId)return room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
+  val participant=room.remoteParticipants.values.firstOrNull{it.identity?.value==userId}?:return null
+  return participant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
+ }
+
+ private fun releaseCameraRenderers(){
+  for((userId,renderer) in cameraRenderers.toMap()){
+   val track=cameraTracks[userId] ?: if(userId==currentUserId) room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack else null
+   try{track?.removeRenderer(renderer)}catch(_:Exception){}
+   try{renderer.release()}catch(_:Exception){}
+  }
+  cameraRenderers.clear()
+ }
+
+ private fun refreshCameraControl(){
+  if(!::cameraControl.isInitialized)return
+  cameraControl.setImageDrawable(VectorIcon(if(cameraEnabled)"camera_off" else "camera",Color.WHITE,dp(18)))
+  cameraControl.setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
+  cameraControl.background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(if(cameraEnabled)Color.argb(215,235,64,90) else Color.argb(110,16,12,30));setStroke(dp(1),Color.argb(70,255,255,255))}
+  cameraControl.contentDescription=if(cameraEnabled)"إيقاف الكاميرا" else "تشغيل الكاميرا"
+ }
+
+ private fun toggleCamera(){
+  if(!connected || !isSeated || !canPublishVideo){Toast.makeText(this,"الكاميرا متاحة للأعضاء الجالسين فقط",Toast.LENGTH_SHORT).show();return}
+  if(!cameraEnabled && checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(Manifest.permission.CAMERA),4103);return}
+  scope.launch{
+   try{
+    val enabled=!cameraEnabled
+    room.localParticipant.setCameraEnabled(enabled)
+    cameraEnabled=enabled
+    if(enabled){val track=room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack;if(track!=null)cameraTracks[currentUserId]=track}
+    else cameraTracks.remove(currentUserId)
+    refreshCameraControl()
+    drawSeats()
+   }catch(e:Exception){Toast.makeText(this@RoomActivity,e.message?:"تعذر تشغيل الكاميرا",Toast.LENGTH_LONG).show()}
+  }
+ }
+
  private fun toggleMic(){
   if(!connected)return
   microphoneEnabled=!microphoneEnabled
@@ -2773,7 +2856,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    uploadRoomBackground(uri)
   }
  }
- @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}}
+ @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}else if(requestCode==4103){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)toggleCamera() else Toast.makeText(this,"يجب السماح باستخدام الكاميرا",Toast.LENGTH_SHORT).show()}}
  private fun shareRoom(){
   if(roomId.isBlank())return
   val roomName=intent.getStringExtra("room_name").orEmpty().ifBlank{"غرفة صوتية"}
@@ -2856,6 +2939,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   speakerEventsJob?.cancel()
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
+  releaseCameraRenderers()
+  cameraTracks.clear()
   seatRefreshJob?.cancel()
   giftPoll?.cancel()
   scope.cancel()
