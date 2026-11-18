@@ -31,6 +31,7 @@ class AgencyDashboardActivity: Activity() {
   val scroll=ScrollView(this);body=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(26))};scroll.addView(body);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f));setContentView(root)
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(107,47,158),Color.rgb(36,22,58))).apply{cornerRadius=dp(22).toFloat()}}
   hero.addView(t("AGENCY • PARTNER DASHBOARD",10f,Color.rgb(228,204,248),true));hero.addView(t("إدارة وكالتك وصُنّاع المحتوى",19f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)});body.addView(hero)
+  renderAgencyDetails()
   section("ملخص الوكالة","بيانات حقيقية من السيرفر")
   stats=LinearLayout(this).apply{orientation=0}
   stats.addView(statCard("الأعضاء","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
@@ -84,14 +85,14 @@ class AgencyDashboardActivity: Activity() {
   if(m.status !in 200..299)throw Exception(m.body.optString("error","فشل تحميل الأعضاء"))
   if(i.status !in 200..299)throw Exception(i.body.optString("error","فشل تحميل الدعوات"))
   val mm=m.body.optJSONArray("members")?:JSONArray();val ii=i.body.optJSONArray("invitations")?:JSONArray();val ag=m.body.optJSONObject("agency")
-  runOnUiThread{members=mm;invites=ii;agencyName=ag?.optString("agency_name")?.takeIf{it.isNotBlank()}?:agencyName;status.text="تم تحديث $agencyName";render()}
+  runOnUiThread{members=mm;invites=ii;agencyInfo=ag?:JSONObject();agencyName=ag?.optString("agency_name")?.takeIf{it.isNotBlank()}?:agencyName;status.text="تم تحديث $agencyName";render()}
  }catch(e:Exception){runOnUiThread{status.text="تعذر تحميل البيانات: ${e.message}";render()}}}
  }
  private fun sendInvitation(){val id=input.text.toString().trim();if(id.isBlank()||id.length>40){input.error="أدخل ID صحيح";return};val tok=token()?:run{status.text="يرجى تسجيل الدخول";return};send.isEnabled=false;status.text="جارٍ إرسال الدعوة..."
  worker.execute{try{val r=AuthApi.post("/api/agency/invitations",JSONObject().put("public_id",id),tok);if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إرسال الدعوة"));runOnUiThread{input.setText("");status.text="تم إرسال الدعوة إلى ID $id";send.isEnabled=true};loadData()}catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إرسال الدعوة";send.isEnabled=true}}}
  }
  private fun renderInvites(){if(!::invitesBox.isInitialized)return;invitesBox.removeAllViews();val q=if(::inviteSearch.isInitialized)inviteSearch.text.toString().trim().lowercase() else "";val filtered=(0 until invites.length()).mapNotNull{invites.optJSONObject(it)}.filter{o->val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val status=o.optString("status");val arabicStatus=when(status){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->status};name.lowercase().contains(q)||id.lowercase().contains(q)||status.lowercase().contains(q)||arabicStatus.lowercase().contains(q)};if(filtered.isEmpty()){invitesBox.addView(t(if(q.isNotBlank())"لا توجد دعوات مطابقة" else "لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))});return};for(o in filtered){val uid=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $uid"};val st=when(o.optString("status")){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->o.optString("status")};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $uid • $st",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});invitesBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}}
- private fun renderMembers(){if(!::membersBox.isInitialized)return;membersBox.removeAllViews();val query=if(::memberSearch.isInitialized)memberSearch.text.toString().trim().lowercase() else "";val filtered=(0 until members.length()).mapNotNull{members.optJSONObject(it)}.filter{ o-> val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};name.lowercase().contains(query)||id.lowercase().contains(query)};if(filtered.isEmpty()){membersBox.addView(t(if(query.isNotBlank())"لا توجد نتائج مطابقة" else "لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))});return};for(o in filtered){val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id",12f,Color.rgb(130,220,170),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});row.addView(t("عضو وكالة • اضغط لعرض الملف والتفاصيل",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)});row.setOnClickListener{showMemberDetails(o)};membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})}}
+ private fun renderMembers(){if(!::membersBox.isInitialized)return;membersBox.removeAllViews();val query=if(::memberSearch.isInitialized)memberSearch.text.toString().trim().lowercase() else "";val filtered=(0 until members.length()).mapNotNull{members.optJSONObject(it)}.filter{ o-> val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};name.lowercase().contains(query)||id.lowercase().contains(query)};if(filtered.isEmpty()){membersBox.addView(t(if(query.isNotBlank())"لا توجد نتائج مطابقة" else "لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))});return};for(o in filtered){val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id",12f,Color.rgb(130,220,170),true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});row.addView(t("عضو وكالة • اضغط لعرض الملف وإدارته",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6)});row.setOnClickListener{showMemberDetails(o)};membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})}}
  private fun showMemberDetails(member:JSONObject){
   val labels=mapOf("public_id" to "معرّف المستخدم","display_name" to "اسم المستخدم","username" to "اسم الحساب","name" to "الاسم","diamonds" to "الألماس","diamond_count" to "الألماس","total_diamonds" to "إجمالي الألماس","live_hours" to "ساعات البث","total_live_hours" to "إجمالي ساعات البث","joined_at" to "تاريخ الانضمام","created_at" to "تاريخ إنشاء الحساب","status" to "الحالة","avatar" to "الصورة الشخصية","level" to "المستوى")
   val box=LinearLayout(this).apply{orientation=1;setPadding(dp(4),dp(4),dp(4),dp(4))}
@@ -108,7 +109,32 @@ class AgencyDashboardActivity: Activity() {
    box.addView(line)
   }
   if(box.childCount==0)box.addView(t("لا توجد تفاصيل إضافية من السيرفر",13f,muted))
-  android.app.AlertDialog.Builder(this).setTitle(member.optString("display_name").ifBlank{"تفاصيل عضو الوكالة"}).setView(ScrollView(this).apply{addView(box)}).setPositiveButton("إغلاق",null).show()
+  android.app.AlertDialog.Builder(this).setTitle(member.optString("display_name").ifBlank{"تفاصيل عضو الوكالة"}).setView(ScrollView(this).apply{addView(box)}).setNegativeButton("إغلاق",null).setPositiveButton("إزالة من الوكالة"){_,_->confirmRemoveMember(member.optString("public_id"))}.show()
+ }
+ private fun confirmRemoveMember(publicId:String){
+  if(publicId.isBlank()||publicId=="—")return
+  android.app.AlertDialog.Builder(this).setTitle("إزالة عضو الوكالة").setMessage("هل تريد إزالة هذا المذيع من وكالتك؟ لن يتم حذف حسابه.").setNegativeButton("إلغاء",null).setPositiveButton("إزالة"){_,_->
+    val tok=token()?:run{status.text="يرجى تسجيل الدخول";return@setPositiveButton}
+    status.text="جارٍ إزالة العضو..."
+    worker.execute{try{
+      val r=AuthApi.delete("/api/agency/members/$publicId",tok)
+      if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إزالة العضو"))
+      runOnUiThread{status.text="تمت إزالة العضو من الوكالة";loadData()}
+    }catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إزالة العضو"}}
+  }
+ }.show()
+ }
+ private fun cancelInvitation(invitationId:Long){
+  if(invitationId<=0)return
+  android.app.AlertDialog.Builder(this).setTitle("إلغاء الدعوة").setMessage("هل تريد إلغاء هذه الدعوة؟").setNegativeButton("رجوع",null).setPositiveButton("إلغاء الدعوة"){_,_->
+   val tok=token()?:run{status.text="يرجى تسجيل الدخول";return@setPositiveButton}
+   worker.execute{try{
+    val r=AuthApi.post("/api/agency/invitations/$invitationId/cancel",JSONObject(),tok)
+    if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إلغاء الدعوة"))
+    runOnUiThread{status.text="تم إلغاء الدعوة";loadData()}
+   }catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إلغاء الدعوة"}}
+  }
+ }.show()
  }
  private fun render(){if(!::invitesBox.isInitialized||!::membersBox.isInitialized)return;invitesBox.removeAllViews();membersBox.removeAllViews()
   val pending=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="pending"}; val accepted=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="accepted"}; val rejected=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="rejected"}; val cancelled=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="cancelled"}; analyticsText.text="مقبولة: $accepted   •   مرفوضة: $rejected   •   ملغاة: $cancelled   •   إجمالي الدعوات: ${invites.length()}"
