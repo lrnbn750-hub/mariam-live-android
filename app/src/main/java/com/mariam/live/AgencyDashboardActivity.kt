@@ -88,7 +88,7 @@ class AgencyDashboardActivity : Activity() {
 
         sectionTitle("دعوة صانع محتوى", "أدخل المعرّف العام للمستخدم فقط")
         inviteInput = EditText(this).apply {
-            hint = "معرّف المستخدم (ID)"; singleLine = true; textSize = 15f
+            hint = "معرّف المستخدم (ID)"; setSingleLine(true); textSize = 15f
             setTextColor(ink); setHintTextColor(muted); gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(14), dp(10)); background = card(Color.rgb(36, 28, 52))
         }
@@ -124,7 +124,7 @@ class AgencyDashboardActivity : Activity() {
         if (!::inviteList.isInitialized) return
         inviteList.removeAllViews()
         if (pendingIds.isEmpty()) {
-            inviteList.addView(text("لا توجد دعوات حالياً", 12f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(12) })
+            inviteList.addView(text("لا توجد دعوات حالياً", 12f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(12)) })
             return
         }
         pendingIds.forEach { id ->
