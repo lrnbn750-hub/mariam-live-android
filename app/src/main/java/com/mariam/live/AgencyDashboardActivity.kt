@@ -86,6 +86,7 @@ class AgencyDashboardActivity: Activity() {
    val h=history.body.optJSONArray("history")?:history.body.optJSONArray("earnings")?:JSONArray()
    runOnUiThread{renderEarnings(o,m,h);earningsStatus.text="تم تحديث الأرباح من الخادم"}
   }catch(e:Exception){runOnUiThread{earningsStatus.text=e.message?: "تعذر تحميل الأرباح. حاول تحديث التقرير."}}
+  }
  }
  private fun earnCard(label:String,value:String)=LinearLayout(this).apply{
   orientation=1;setPadding(dp(13),dp(13),dp(13),dp(13));background=card()
