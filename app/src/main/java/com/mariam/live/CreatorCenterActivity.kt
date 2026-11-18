@@ -575,7 +575,6 @@ class CreatorCenterActivity : Activity() {
             lp(0, -2, s = 6, wt = 1f)
         )
         top.addView(tiles, lp(t = 22))
-        top.addView(goldButton("طلب سحب الأرباح") { showWithdrawal() }, lp(t = 14))
 
         // ── Quick actions
         val actions = LinearLayout(this)
