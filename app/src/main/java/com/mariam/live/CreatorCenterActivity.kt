@@ -76,7 +76,8 @@ class CreatorCenterActivity : Activity() {
  section("أرباح الهدايا","آخر العمليات التي حققت لك ألماساً وأرباحاً")
  var found=0;for(i in 0 until history.length()){val t=history.optJSONObject(i)?:continue;if(t.optString("transaction_type")!="gift_received")continue;found++;val card=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=shape(intArrayOf(Color.rgb(42,31,55),Color.rgb(29,22,39)),Color.rgb(76,57,92),15)};val info=LinearLayout(this).apply{orientation=1};info.addView(label("هدية مستلمة",14f,Color.WHITE,true));info.addView(label(t.optString("created_at"),10f,muted));card.addView(info,LinearLayout.LayoutParams(0,-2,1f));card.addView(label("+"+String.format(java.util.Locale.US,"%,d",t.optLong("amount"))+" 💎",15f,mint,true));content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})}
  if(found==0){val empty=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(18),dp(24),dp(18),dp(24));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)};empty.addView(label("💎",30f,mint,true));empty.addView(label("لا توجد هدايا مكتسبة حتى الآن",13f,muted,true));content.addView(empty)}
- section("السحب والأمان","تُتاح طلبات السحب بعد تفعيل إعدادات الأرباح وخدمة الدفع على الخادم.")
+ section("السحب والأمان","إدارة طلبات سحب أرباحك")
+ content.addView(button("طلب سحب الأرباح"){showWithdrawal()},LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(10)})
  content.addView(button("تحديث البيانات"){load()},LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(10)})
  }
  
@@ -97,6 +98,38 @@ class CreatorCenterActivity : Activity() {
   infoRow("تاريخ الانضمام",joined)
   card.addView(label("عضويتك مرتبطة بهذه الوكالة",11f,mint).apply{gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)})
   content.addView(card,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(14)})
+ }
+ private fun showWithdrawal(){
+  val available=wallet.optLong("withdrawable_usd_cents")
+  if(available<=0){android.app.AlertDialog.Builder(this).setMessage("لا يوجد رصيد قابل للسحب حالياً.").setPositiveButton("حسناً",null).show();return}
+  val box=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),0)}
+  box.addView(label("المتاح للسحب: $"+money(available),14f,bg,true))
+  val amount=EditText(this).apply{hint="المبلغ بالدولار (مثال 10.50)";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL}
+  val method=Spinner(this).apply{adapter=ArrayAdapter(this@CreatorCenterActivity,android.R.layout.simple_spinner_dropdown_item,listOf("زين كاش","آسيا حوالة","USDT"))}
+  val destination=EditText(this).apply{hint="رقم المحفظة أو عنوان الاستلام"}
+  box.addView(amount);box.addView(method);box.addView(destination)
+  android.app.AlertDialog.Builder(this).setTitle("طلب سحب").setView(box).setNegativeButton("إلغاء",null).setPositiveButton("إرسال الطلب"){_,_->
+   val dollars=amount.text.toString().trim().replace(",",".").toBigDecimalOrNull()
+   val cents=try{dollars?.movePointRight(2)?.longValueExact()}catch(_:Exception){null}
+   if(cents==null||cents<=0||cents>available||destination.text.toString().trim().isBlank()){
+    android.app.AlertDialog.Builder(this).setMessage("أدخل مبلغاً صحيحاً وعنوان استلام، ولا يتجاوز الرصيد المتاح.").setPositiveButton("حسناً",null).show()
+   }else{
+    val methods=listOf("zain_cash","asia_hawala","usdt")
+    val payload=JSONObject().put("amount_usd_cents",cents).put("method",methods[method.selectedItemPosition]).put("destination",destination.text.toString().trim())
+    submitWithdrawal(payload)
+   }
+  }.show()
+ }
+ private fun submitWithdrawal(payload:JSONObject){
+  thread{
+   try{
+    val r=AuthApi.post("/api/wallet/withdrawals",payload,token)
+    runOnUiThread{
+     val msg=if(r.status in 200..299)r.body.optString("message","تم إرسال طلب السحب للمراجعة") else r.body.optString("error","تعذر تنفيذ الطلب")
+     android.app.AlertDialog.Builder(this).setMessage(msg).setPositiveButton("حسناً"){_,_->load()}.show()
+    }
+   }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?: "تعذر الاتصال",Toast.LENGTH_LONG).show()}}
+  }
  }
  private fun respondInvitation(invitationId:Long,action:String){
    if(invitationId<=0)return
