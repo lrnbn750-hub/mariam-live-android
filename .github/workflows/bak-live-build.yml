@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - bak-live
+      - agency-system-ui
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
