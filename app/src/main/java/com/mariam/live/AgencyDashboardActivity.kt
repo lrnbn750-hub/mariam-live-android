@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 class AgencyDashboardActivity: Activity() {
  private val worker=Executors.newSingleThreadExecutor()
  private val bg=Color.rgb(12,10,20); private val panel=Color.rgb(28,22,42); private val ink=Color.WHITE; private val muted=Color.rgb(167,157,185)
- private lateinit var body:LinearLayout; private lateinit var input:EditText; private lateinit var send:TextView; private lateinit var status:TextView; private lateinit var invitesBox:LinearLayout; private lateinit var membersBox:LinearLayout; private lateinit var stats:LinearLayout
+ private lateinit var body:LinearLayout; private lateinit var input:EditText; private lateinit var send:TextView; private lateinit var status:TextView; private lateinit var invitesBox:LinearLayout; private lateinit var membersBox:LinearLayout; private lateinit var stats:LinearLayout; private lateinit var analyticsText:TextView
  private var invites=JSONArray(); private var members=JSONArray(); private var agencyName="وكالتك"
  private fun token()=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -36,6 +36,7 @@ class AgencyDashboardActivity: Activity() {
   stats.addView(statCard("الأعضاء","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
   stats.addView(statCard("دعوات معلّقة","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   body.addView(stats)
+  analyticsText=t("مقبولة: —   •   مرفوضة: —   •   ملغاة: —",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};body.addView(analyticsText,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   status=t("جارٍ تحميل البيانات...",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(10),dp(10),dp(10))};body.addView(status)
   section("دعوة صانع محتوى","أدخل ID المستخدم لإرسال دعوة حقيقية")
   input=EditText(this).apply{hint="معرّف المستخدم (ID)";setSingleLine();textSize=15f;setTextColor(ink);setHintTextColor(muted);setPadding(dp(14),dp(10),dp(14),dp(10));background=card()}
@@ -62,7 +63,7 @@ class AgencyDashboardActivity: Activity() {
  worker.execute{try{val r=AuthApi.post("/api/agency/invitations",JSONObject().put("public_id",id),tok);if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إرسال الدعوة"));runOnUiThread{input.setText("");status.text="تم إرسال الدعوة إلى ID $id";send.isEnabled=true};loadData()}catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إرسال الدعوة";send.isEnabled=true}}}
  }
  private fun render(){if(!::invitesBox.isInitialized||!::membersBox.isInitialized)return;invitesBox.removeAllViews();membersBox.removeAllViews()
-  val pending=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="pending"}
+  val pending=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="pending"}; val accepted=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="accepted"}; val rejected=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="rejected"}; val cancelled=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="cancelled"}; analyticsText.text="مقبولة: $accepted   •   مرفوضة: $rejected   •   ملغاة: $cancelled   •   إجمالي الدعوات: ${invites.length()}"
   (stats.getChildAt(0) as? LinearLayout)?.let{(it.getChildAt(1) as? TextView)?.text=members.length().toString()}
   (stats.getChildAt(1) as? LinearLayout)?.let{(it.getChildAt(1) as? TextView)?.text=pending.toString()}
   if(invites.length()==0)invitesBox.addView(t("لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))})
