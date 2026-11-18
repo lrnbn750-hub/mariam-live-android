@@ -33,7 +33,7 @@ class AgencyDashboardActivity: Activity() {
   stats.addView(statCard("الأعضاء","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
   stats.addView(statCard("دعوات معلّقة","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   body.addView(stats)
-  status=t("جارٍ تحميل البيانات...",12f,muted).apply{gravity=Gravity.CENTER;padding=dp(10)};body.addView(status)
+  status=t("جارٍ تحميل البيانات...",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(10),dp(10),dp(10),dp(10))};body.addView(status)
   section("دعوة صانع محتوى","أدخل ID المستخدم لإرسال دعوة حقيقية")
   input=EditText(this).apply{hint="معرّف المستخدم (ID)";setSingleLine();textSize=15f;setTextColor(ink);setHintTextColor(muted);setPadding(dp(14),dp(10),dp(14),dp(10));background=card()}
   body.addView(input,LinearLayout.LayoutParams(-1,dp(52)))
@@ -42,7 +42,7 @@ class AgencyDashboardActivity: Activity() {
   section("دعوات الوكالة","حالات الدعوات المحفوظة")
   section("أعضاء الوكالة","المستخدمون الذين قبلوا الدعوة")
   membersBox=LinearLayout(this).apply{orientation=1};body.addView(membersBox)
-  body.addView(t("بيانات الدعوات والأعضاء من قاعدة البيانات. تقارير الألماس والأرباح ستُربط عند توفر مصدرها الحقيقي.",11f,muted).apply{gravity=Gravity.CENTER;padding=dp(14);background=card()},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
+  body.addView(t("بيانات الدعوات والأعضاء من قاعدة البيانات. تقارير الألماس والأرباح ستُربط عند توفر مصدرها الحقيقي.",11f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(14),dp(14),dp(14),dp(14));background=card()},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
   loadData()
  }
  private fun statCard(title:String,value:String)=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(14));background=card();addView(t(title,12f,muted,true));addView(t(value,22f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})}
@@ -62,8 +62,8 @@ class AgencyDashboardActivity: Activity() {
   val pending=(0 until invites.length()).count{invites.optJSONObject(it)?.optString("status")=="pending"}
   (stats.getChildAt(0) as? LinearLayout)?.let{(it.getChildAt(1) as? TextView)?.text=members.length().toString()}
   (stats.getChildAt(1) as? LinearLayout)?.let{(it.getChildAt(1) as? TextView)?.text=pending.toString()}
-  if(invites.length()==0)invitesBox.addView(t("لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;padding=dp(12)})
-  for(n in 0 until invites.length()){val o=invites.optJSONObject(n)?:continue;val uid=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $uid"};val st=when(o.optString("status")){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->o.optString("status")};val row=LinearLayout(this).apply{orientation=1;padding=dp(12);background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $uid • $st",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});invitesBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
+  if(invites.length()==0)invitesBox.addView(t("لا توجد دعوات",12f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(12),dp(12),dp(12),dp(12))})
+  for(n in 0 until invites.length()){val o=invites.optJSONObject(n)?:continue;val uid=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $uid"};val st=when(o.optString("status")){"pending"->"بانتظار الرد";"accepted"->"مقبولة";"rejected"->"مرفوضة";"cancelled"->"ملغاة";else->o.optString("status")};val row=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $uid • $st",12f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});invitesBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
   if(members.length()==0)membersBox.addView(t("لا يوجد أعضاء منضمّون بعد",12f,muted).apply{gravity=Gravity.CENTER;padding=dp(12)})
   for(n in 0 until members.length()){val o=members.optJSONObject(n)?:continue;val id=o.optString("public_id","—");val name=o.optString("display_name").ifBlank{"ID $id"};val row=LinearLayout(this).apply{orientation=1;padding=dp(12);background=card()};row.addView(t(name,14f,ink,true));row.addView(t("ID $id • عضو فعلي",12f,Color.rgb(130,220,170)),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(4)});membersBox.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})}
  }
