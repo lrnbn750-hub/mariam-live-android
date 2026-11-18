@@ -91,25 +91,6 @@ class WalletActivity:Activity(){
  }
  private fun render(){
   content.removeAllViews()
-  // Earnings/withdrawal summary moved out of Wallet into Host Center.}
-  val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-  top.addView(label("رصيد الأرباح",13f,Color.rgb(232,213,245),true),LinearLayout.LayoutParams(0,dp(28),1f))
-  top.addView(label("BAK LIVE  •  WALLET",9f,Color.rgb(218,190,233),true))
-  hero.addView(top)
-  hero.addView(label("$"+money(wallet.optLong("withdrawable_usd_cents")),36f,mint,true),LinearLayout.LayoutParams(-1,dp(58)))
-  hero.addView(label("الرصيد المتاح للسحب",12f,Color.rgb(228,211,239),true))
-  val divider=View(this).apply{setBackgroundColor(Color.rgb(112,73,137))}
-  hero.addView(divider,LinearLayout.LayoutParams(-1,dp(1)).apply{topMargin=dp(16);bottomMargin=dp(13)})
-  val sub=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}
-  val reserved=LinearLayout(this).apply{orientation=1}
-  reserved.addView(label("المبلغ المحجوز",11f,Color.rgb(211,190,225)))
-  reserved.addView(label("$"+money(wallet.optLong("reserved_usd_cents")),16f,Color.WHITE,true))
-  val lifetime=LinearLayout(this).apply{orientation=1;gravity=Gravity.END}
-  lifetime.addView(label("إجمالي الأرباح",11f,Color.rgb(211,190,225)))
-  lifetime.addView(label("$"+money(wallet.optLong("lifetime_earned_usd_cents")),16f,Color.WHITE,true))
-  sub.addView(reserved,LinearLayout.LayoutParams(0,-2,1f));sub.addView(lifetime,LinearLayout.LayoutParams(0,-2,1f))
-  hero.addView(sub)
-
   val balances=LinearLayout(this).apply{orientation=0}
   balances.addView(smallBalance("عملات الشحن",String.format("%,d",wallet.optLong("recharge_coins")),"🪙",gold),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(6)})
   balances.addView(smallBalance("الألماس المكتسب",String.format("%,d",wallet.optLong("earned_diamonds")),"💎",Color.rgb(116,203,255)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(6)})
@@ -136,26 +117,6 @@ class WalletActivity:Activity(){
   }
   content.addView(label("تُضاف العملات بعد تأكيد الدفع من الخادم فقط.",11f,muted),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(5)})
  }
- private fun showWithdrawal(){
-  val available=wallet.optLong("withdrawable_usd_cents")
-  if(available<=0){AlertDialog.Builder(this).setMessage("لا يوجد رصيد قابل للسحب حالياً.").setPositiveButton("حسناً",null).show();return}
-  val box=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),0)}
-  box.addView(label("المتاح للسحب: $"+money(available),14f,ink,true))
-  val amount=EditText(this).apply{hint="المبلغ بالدولار (مثال 10.50)";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL}
-  val method=Spinner(this).apply{adapter=ArrayAdapter(this@WalletActivity,android.R.layout.simple_spinner_dropdown_item,listOf("زين كاش","آسيا حوالة","USDT"))}
-  val destination=EditText(this).apply{hint="رقم المحفظة أو عنوان الاستلام"}
-  box.addView(amount);box.addView(method);box.addView(destination)
-  AlertDialog.Builder(this).setTitle("طلب سحب").setView(box).setNegativeButton("إلغاء",null).setPositiveButton("إرسال الطلب"){_,_->
-   val dollars=amount.text.toString().trim().replace(",",".").toBigDecimalOrNull()
-   val cents=try{dollars?.movePointRight(2)?.longValueExact()}catch(_:Exception){null}
-   if(cents==null||cents<=0||cents>available)AlertDialog.Builder(this).setMessage("أدخل مبلغاً صحيحاً لا يتجاوز الرصيد المتاح.").setPositiveButton("حسناً",null).show()
-   else{
-    val methods=listOf("zain_cash","asia_hawala","usdt")
-    val payload=JSONObject().put("amount_usd_cents",cents).put("method",methods[method.selectedItemPosition]).put("destination",destination.text.toString().trim())
-    submit("/api/wallet/withdrawals",payload,"تم إرسال طلب السحب للمراجعة")
-   }
-  }.show()
- }
  private fun showHistory(){
   val lines=ArrayList<String>()
   for(i in 0 until history.length()){
@@ -166,16 +127,5 @@ class WalletActivity:Activity(){
   }
   if(lines.isEmpty())lines.add("لا توجد عمليات حتى الآن")
   AlertDialog.Builder(this).setTitle("سجل العمليات").setItems(lines.toTypedArray(),null).setPositiveButton("إغلاق",null).show()
- }
- private fun submit(path:String,payload:JSONObject,success:String){
-  thread{
-   try{
-    val r=AuthApi.post(path,payload,token)
-    runOnUiThread{
-     val msg=if(r.status in 200..299)r.body.optString("message",success) else r.body.optString("error","تعذر تنفيذ الطلب")
-     AlertDialog.Builder(this).setMessage(msg).setPositiveButton("حسناً"){_,_->loadWallet()}.show()
-    }
-   }catch(e:Exception){runOnUiThread{Toast.makeText(this,e.message?:"تعذر الاتصال",Toast.LENGTH_LONG).show()}}
-  }
  }
 }
