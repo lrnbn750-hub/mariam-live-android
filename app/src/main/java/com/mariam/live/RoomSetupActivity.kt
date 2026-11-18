@@ -14,6 +14,7 @@ import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.SweepGradient
@@ -24,13 +25,16 @@ import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
+import android.text.TextUtils
 import android.text.TextWatcher
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -118,12 +122,12 @@ private class SetupIconView(ctx: Context, private val kind: String, private val 
     }
 }
 
-/* Header backdrop — vertical gradient so it blends with a solid status bar */
-private class SetupHeaderBg(ctx: Context) : View(ctx) {
+/* Full-screen backdrop — deep violet gradient, soft colour glows and a few sparkles */
+private class SetupBackdrop(ctx: Context) : View(ctx) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
     private val d = resources.displayMetrics.density
-    private val colors = intArrayOf(Color.parseColor("#22093F"), Color.parseColor("#5B21B6"), Color.parseColor("#B02FC9"))
+    private val colors = intArrayOf(Color.parseColor("#0F0722"), Color.parseColor("#1C0B40"), Color.parseColor("#0D0720"))
 
     private fun star(c: Canvas, x: Float, y: Float, r: Float) {
         path.reset()
@@ -133,23 +137,33 @@ private class SetupHeaderBg(ctx: Context) : View(ctx) {
         c.drawPath(path, p)
     }
 
+    private fun glow(c: Canvas, cx: Float, cy: Float, r: Float, r8: Int, g8: Int, b8: Int, a: Int) {
+        p.shader = RadialGradient(
+            cx, cy, r,
+            intArrayOf(Color.argb(a, r8, g8, b8), Color.argb(0, r8, g8, b8)),
+            null, Shader.TileMode.CLAMP
+        )
+        c.drawCircle(cx, cy, r, p)
+        p.shader = null
+    }
+
     override fun onDraw(c: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
-        p.shader = LinearGradient(0f, 0f, 0f, h, colors, floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP)
+        if (w <= 0f || h <= 0f) return
+        p.shader = LinearGradient(0f, 0f, 0f, h, colors, floatArrayOf(0f, 0.38f, 1f), Shader.TileMode.CLAMP)
         c.drawRect(0f, 0f, w, h, p)
         p.shader = null
-        p.color = Color.argb(34, 255, 255, 255)
-        c.drawCircle(w * 0.96f, h * 0.16f, h * 0.30f, p)
-        p.color = Color.argb(24, 255, 190, 255)
-        c.drawCircle(w * 0.02f, h * 0.66f, h * 0.27f, p)
-        p.color = Color.argb(210, 255, 255, 255)
-        star(c, w * 0.13f, h * 0.20f, 6f * d)
-        star(c, w * 0.86f, h * 0.42f, 4.5f * d)
-        star(c, w * 0.26f, h * 0.55f, 3.5f * d)
-        p.color = Color.argb(160, 255, 224, 140)
-        star(c, w * 0.70f, h * 0.15f, 5f * d)
-        star(c, w * 0.93f, h * 0.66f, 3.5f * d)
+        glow(c, w * 0.92f, h * 0.10f, w * 0.95f, 124, 58, 237, 120)
+        glow(c, w * 0.02f, h * 0.38f, w * 0.80f, 192, 38, 211, 62)
+        glow(c, w * 0.80f, h * 0.88f, w * 0.70f, 245, 166, 35, 22)
+        p.color = Color.argb(190, 255, 255, 255)
+        star(c, w * 0.12f, h * 0.075f, 5.5f * d)
+        star(c, w * 0.88f, h * 0.20f, 4f * d)
+        star(c, w * 0.20f, h * 0.30f, 3f * d)
+        p.color = Color.argb(150, 255, 224, 140)
+        star(c, w * 0.66f, h * 0.06f, 4.5f * d)
+        star(c, w * 0.94f, h * 0.36f, 3f * d)
     }
 }
 
@@ -160,7 +174,7 @@ private class SetupRingView(ctx: Context, private val c1: Int, private val c2: I
     override fun onDraw(c: Canvas) {
         val w = width.toFloat()
         val cx = w / 2f
-        val sw = 4f * resources.displayMetrics.density
+        val sw = 3.5f * resources.displayMetrics.density
         p.strokeWidth = sw
         p.shader = SweepGradient(cx, cx, intArrayOf(c1, c2, c3, c1), null)
         c.drawCircle(cx, cx, cx - sw, p)
@@ -192,6 +206,123 @@ private class SetupSeatDots(ctx: Context, private val count: Int) : View(ctx) {
     }
 }
 
+/* Live stage preview — the numbered speaker seats; new seats pop in when the count changes */
+private class SetupStageView(ctx: Context) : View(ctx) {
+    private val d = resources.displayMetrics.density
+    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.2f * d }
+    private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+    private var count = 8
+    private var from = 8
+    private var pop = 1f
+    private var anim: ValueAnimator? = null
+
+    fun setSeats(n: Int) {
+        if (n == count) return
+        from = count
+        count = n
+        anim?.cancel()
+        anim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 460
+            interpolator = OvershootInterpolator(2.2f)
+            addUpdateListener { pop = it.animatedValue as Float; invalidate() }
+            start()
+        }
+        invalidate()
+    }
+
+    override fun onDetachedFromWindow() {
+        anim?.cancel()
+        super.onDetachedFromWindow()
+    }
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val rows = if (count <= 4) 1 else 2
+        val per = (count + rows - 1) / rows
+        val cellW = w / 4f
+        val cellH = h / 2f
+        val r = minOf(cellW * 0.36f, 23f * d)
+        for (i in 0 until count) {
+            val row = i / per
+            val inRow = if (row == rows - 1) count - per * (rows - 1) else per
+            val k = i - row * per
+            val startX = (w - inRow * cellW) / 2f
+            val cx = startX + cellW * (k + 0.5f)
+            val cy = if (rows == 1) h / 2f else cellH * (row + 0.5f)
+            val sc = if (i >= from) pop else 0.88f + 0.12f * pop
+            val rr = r * sc.coerceAtLeast(0f)
+            glowPaint.color = Color.argb(34, 217, 70, 239)
+            c.drawCircle(cx, cy, rr * 1.16f, glowPaint)
+            fill.color = Color.argb(30, 255, 255, 255)
+            c.drawCircle(cx, cy, rr, fill)
+            line.color = Color.argb(70, 255, 255, 255)
+            c.drawCircle(cx, cy, rr, line)
+            txt.color = Color.argb(170, 255, 255, 255)
+            txt.textSize = 13f * d * sc.coerceAtLeast(0f)
+            c.drawText("${i + 1}", cx, cy - (txt.ascent() + txt.descent()) / 2f, txt)
+        }
+    }
+}
+
+/* Primary action container with a slow light sweep across it */
+private class SetupShineLayout(ctx: Context, private val radiusPx: Float) : LinearLayout(ctx) {
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val clip = Path()
+    private var t = -1f
+    private var anim: ValueAnimator? = null
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        anim?.cancel()
+        anim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 3400
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                val f = it.animatedValue as Float
+                t = if (f < 0.42f) f / 0.42f else -1f
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        anim?.cancel()
+        anim = null
+        super.onDetachedFromWindow()
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (t < 0f || !isEnabled) return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        clip.reset()
+        clip.addRoundRect(RectF(0f, 0f, w, h), radiusPx, radiusPx, Path.Direction.CW)
+        val band = w * 0.34f
+        val x = -band + (w + band * 2f) * t
+        canvas.save()
+        canvas.clipPath(clip)
+        p.shader = LinearGradient(
+            x, 0f, x + band, h * 0.5f,
+            intArrayOf(Color.argb(0, 255, 255, 255), Color.argb(110, 255, 255, 255), Color.argb(0, 255, 255, 255)),
+            null, Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, w, h, p)
+        p.shader = null
+        canvas.restore()
+    }
+}
+
 /* ═══════════════════════════════════════ Screen ═══════════════════════════════════════ */
 
 @Suppress("DEPRECATION")
@@ -204,25 +335,31 @@ class RoomSetupActivity : Activity() {
     private lateinit var startButton: LinearLayout
     private lateinit var previewName: TextView
     private lateinit var previewSub: TextView
+    private lateinit var stage: SetupStageView
+    private lateinit var nameCheck: View
+    private var nameCheckShown = false
     private var profileAvatarUrl = ""
     private var profileAvatar: Bitmap? = null
     private var selectedCapacity = 8
 
     // Palette
-    private val ink = Color.parseColor("#17112B")
-    private val muted = Color.parseColor("#6B6485")
-    private val hairline = Color.parseColor("#ECE8F6")
-    private val surface = Color.parseColor("#F8F6FD")
+    private val ink = Color.parseColor("#F6F2FF")
+    private val muted = Color.parseColor("#A99FCB")
+    private val hairline = Color.argb(44, 255, 255, 255)
+    private val surface = Color.argb(18, 255, 255, 255)
     private val brand = Color.parseColor("#7C3AED")
+    private val brandLight = Color.parseColor("#B79CFF")
     private val pink = Color.parseColor("#C026D3")
-    private val brandSoft = Color.parseColor("#F3ECFF")
-    private val pinkSoft = Color.parseColor("#FCE8F8")
+    private val brandSoft = Color.argb(56, 139, 92, 246)
+    private val pinkSoft = Color.argb(48, 217, 70, 239)
+    private val hintColor = Color.parseColor("#7F75A3")
     private val gold1 = Color.parseColor("#FFD76A")
     private val gold2 = Color.parseColor("#F5A623")
     private val goldInk = Color.parseColor("#4A2E00")
     private val liveRed1 = Color.parseColor("#FF4D7D")
     private val liveRed2 = Color.parseColor("#F0143F")
-    private val statusBarColor = Color.parseColor("#22093F")
+    private val statusBarColor = Color.parseColor("#0F0722")
+    private val barColor = Color.parseColor("#0D0720")
 
     /* ─────────── helpers ─────────── */
 
@@ -269,24 +406,59 @@ class RoomSetupActivity : Activity() {
         addView(icon(kind, tint), FrameLayout.LayoutParams(dp(ic), dp(ic), Gravity.CENTER))
     }
 
-    private fun goldButton(s: String, kind: String, click: () -> Unit) = LinearLayout(this).apply {
-        gravity = Gravity.CENTER
-        minimumHeight = dp(56)
-        isClickable = true
-        background = ripple(grad(gold1, gold2, 18), 18, Color.argb(70, 255, 255, 255))
-        elevation = dpf(4)
-        setOnClickListener { click() }
-        addView(icon(kind, goldInk), sz(22))
-        addView(label(s, 16.5f, goldInk, 2), lp(s = 8))
+    /** Soft press feedback: shrinks on touch, springs back on release. Does not consume the touch. */
+    private fun View.pressable(scale: Float = 0.96f) {
+        setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN ->
+                    v.animate().scaleX(scale).scaleY(scale).setDuration(110)
+                        .setInterpolator(DecelerateInterpolator()).start()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(240)
+                        .setInterpolator(OvershootInterpolator(2.4f)).start()
+            }
+            false
+        }
+    }
+
+    private fun bounce(v: View) {
+        v.animate().cancel()
+        v.scaleX = 0.92f
+        v.scaleY = 0.92f
+        v.animate().scaleX(1f).scaleY(1f).setDuration(420)
+            .setInterpolator(OvershootInterpolator(3f)).start()
+    }
+
+    private fun goldButton(s: String, kind: String, click: () -> Unit): LinearLayout {
+        val r = 20
+        val face = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(Color.parseColor("#FFE9A6"), gold1, gold2)
+        ).apply { cornerRadius = dpf(r) }
+        return SetupShineLayout(this, dpf(r)).apply {
+            gravity = Gravity.CENTER
+            minimumHeight = dp(60)
+            isClickable = true
+            background = ripple(face, r, Color.argb(70, 255, 255, 255))
+            elevation = dpf(8)
+            if (Build.VERSION.SDK_INT >= 28) {
+                outlineSpotShadowColor = gold2
+                outlineAmbientShadowColor = gold2
+            }
+            pressable(0.97f)
+            setOnClickListener { click() }
+            addView(icon(kind, goldInk), sz(24))
+            addView(label(s, 17f, goldInk, 2), lp(-2, -2, s = 10))
+        }
     }
 
     private fun section(parent: LinearLayout, title: String, subtitle: String = "", top: Int = 26) {
         val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         row.addView(
-            View(this).apply { background = grad(brand, pink, 3, GradientDrawable.Orientation.TOP_BOTTOM) },
+            View(this).apply { background = grad(brandLight, pink, 3, GradientDrawable.Orientation.TOP_BOTTOM) },
             LinearLayout.LayoutParams(dp(4), dp(18))
         )
-        row.addView(label(title, 17f, ink, 2), lp(s = 8))
+        row.addView(label(title, 16.5f, ink, 2), lp(-2, -2, s = 8))
         parent.addView(row, lp(t = top))
         if (subtitle.isNotBlank()) parent.addView(label(subtitle, 12.5f, muted), lp(t = 4))
     }
@@ -326,6 +498,21 @@ class RoomSetupActivity : Activity() {
             previewName.alpha = 1f
         }
         previewSub.text = "بث صوتي مباشر  •  $selectedCapacity مقاعد"
+        if (::stage.isInitialized) stage.setSeats(selectedCapacity)
+        if (::nameCheck.isInitialized) {
+            val ok = name.length >= 2
+            if (ok != nameCheckShown) {
+                nameCheckShown = ok
+                nameCheck.animate().cancel()
+                nameCheck.animate()
+                    .alpha(if (ok) 1f else 0f)
+                    .scaleX(if (ok) 1f else 0.5f)
+                    .scaleY(if (ok) 1f else 0.5f)
+                    .setDuration(260)
+                    .setInterpolator(if (ok) OvershootInterpolator(2.6f) else DecelerateInterpolator())
+                    .start()
+            }
+        }
     }
 
     /* ─────────── seat selector ─────────── */
@@ -336,16 +523,21 @@ class RoomSetupActivity : Activity() {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(14), dp(8), dp(14))
+            setPadding(dp(8), dp(16), dp(8), dp(14))
             isClickable = true
+            if (Build.VERSION.SDK_INT >= 28) {
+                outlineSpotShadowColor = pink
+                outlineAmbientShadowColor = pink
+            }
+            pressable(0.95f)
         }
         val dots = SetupSeatDots(this, count)
-        box.addView(dots, lp(dp(46), dp(30)))
-        val num = label("$count", 20f, ink, 2).apply { gravity = Gravity.CENTER }
+        box.addView(dots, lp(dp(50), dp(32)))
+        val num = label("$count", 22f, ink, 2).apply { gravity = Gravity.CENTER }
         val cap = label("مقاعد", 11.5f, muted, 1).apply { gravity = Gravity.CENTER }
         box.addView(num, lp(t = 8))
         box.addView(cap, lp(t = 1))
-        box.setOnClickListener { selectedCapacity = count; onPick() }
+        box.setOnClickListener { selectedCapacity = count; onPick(); bounce(box) }
         return SeatCard(count, box, dots, num, cap)
     }
 
@@ -354,44 +546,52 @@ class RoomSetupActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = statusBarColor
-        window.navigationBarColor = Color.WHITE
-        window.decorView.systemUiVisibility =
-            if (Build.VERSION.SDK_INT >= 26) View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else 0
+        window.navigationBarColor = barColor
+        window.decorView.systemUiVisibility = 0
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null).orEmpty()
 
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(barColor)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        val bg = SetupHeaderBg(this)
-        root.addView(bg, FrameLayout.LayoutParams(-1, dp(420)))
+        root.addView(SetupBackdrop(this), FrameLayout.LayoutParams(-1, -1))
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         // ── Top bar
-        val topBar = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
-        }
+        val topBar = FrameLayout(this).apply { setPadding(dp(16), dp(6), dp(16), dp(6)) }
         topBar.addView(
             FrameLayout(this).apply {
-                background = ripple(rect(Color.argb(45, 255, 255, 255), Color.argb(70, 255, 255, 255), 14), 14, Color.argb(60, 255, 255, 255))
+                background = ripple(rect(Color.argb(30, 255, 255, 255), Color.argb(50, 255, 255, 255), 21), 21, Color.argb(60, 255, 255, 255))
                 isClickable = true
+                pressable(0.92f)
                 setOnClickListener { finish() }
                 addView(icon("close", Color.WHITE), FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
             },
-            sz(42)
+            FrameLayout.LayoutParams(dp(42), dp(42), Gravity.START or Gravity.CENTER_VERTICAL)
         )
-        topBar.addView(label("إعداد البث المباشر", 18f, Color.WHITE, 2).apply { gravity = Gravity.CENTER }, lp(0, -2, wt = 1f))
+        val titleCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+        }
+        titleCol.addView(label("إعداد البث المباشر", 17.5f, Color.WHITE, 2).apply { gravity = Gravity.CENTER })
+        val titleSub = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        titleSub.addView(
+            View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(liveRed1) } },
+            sz(6)
+        )
+        titleSub.addView(label("جهّز غرفتك قبل البث", 11.5f, muted, 1), lp(-2, -2, s = 6))
+        titleCol.addView(titleSub, lp(t = 2))
+        topBar.addView(titleCol, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         topBar.addView(
             label("BAK", 11f, goldInk, 2).apply {
                 setPadding(dp(11), dp(6), dp(11), dp(6))
                 background = grad(gold1, gold2, 10)
                 letterSpacing = 0.08f
             },
-            LinearLayout.LayoutParams(-2, -2)
+            FrameLayout.LayoutParams(-2, -2, Gravity.END or Gravity.CENTER_VERTICAL)
         )
-        column.addView(topBar)
+        column.addView(topBar, LinearLayout.LayoutParams(-1, -2))
 
         // ── Scroll
         val scroll = ScrollView(this).apply {
@@ -403,34 +603,57 @@ class RoomSetupActivity : Activity() {
         scroll.addView(content)
         column.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // ── Hero: live room card preview
-        val top = LinearLayout(this).apply {
+        // ── Hero: live room card preview (gradient hairline border + dark glass body)
+        val heroOuter = FrameLayout(this).apply {
+            setPadding(dp(1), dp(1), dp(1), dp(1))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.argb(210, 255, 215, 106), Color.argb(150, 192, 38, 211), Color.argb(110, 124, 58, 237))
+            ).apply { cornerRadius = dpf(30) }
+        }
+        val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(4), dp(24), dp(56))
+            clipChildren = false
+            setPadding(dp(18), dp(16), dp(18), dp(14))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.parseColor("#2C1360"), Color.parseColor("#170A36"))
+            ).apply { cornerRadius = dpf(29) }
         }
-        val avatarWrap = FrameLayout(this)
+        heroOuter.addView(hero, FrameLayout.LayoutParams(-1, -2))
+
+        val chip = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(5), dp(12), dp(5))
+            background = rect(Color.argb(30, 255, 255, 255), r = 20)
+        }
+        chip.addView(icon("eye", gold1), sz(14))
+        chip.addView(label("هكذا ستظهر غرفتك", 11.5f, muted, 1), lp(-2, -2, s = 6))
+        hero.addView(chip, LinearLayout.LayoutParams(-2, -2))
+
+        val avatarWrap = FrameLayout(this).apply { clipChildren = false }
         val glow = View(this).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(70, 255, 255, 255)) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(70, 217, 70, 239)) }
         }
-        avatarWrap.addView(glow, FrameLayout.LayoutParams(dp(128), dp(128), Gravity.CENTER))
+        avatarWrap.addView(glow, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.CENTER))
         val ring = SetupRingView(this, gold1, pink, brand)
-        avatarWrap.addView(ring, FrameLayout.LayoutParams(dp(132), dp(132), Gravity.CENTER))
+        avatarWrap.addView(ring, FrameLayout.LayoutParams(dp(124), dp(124), Gravity.CENTER))
         avatarPreview = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(surface) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#2C1360")) }
             outlineProvider = ViewOutlineProvider.BACKGROUND
             clipToOutline = true
             setImageBitmap(placeholderBitmap())
         }
-        avatarWrap.addView(avatarPreview, FrameLayout.LayoutParams(dp(110), dp(110), Gravity.CENTER))
+        avatarWrap.addView(avatarPreview, FrameLayout.LayoutParams(dp(102), dp(102), Gravity.CENTER))
 
         val live = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(4), dp(11), dp(4))
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(liveRed1, liveRed2)).apply {
                 cornerRadius = dpf(12)
-                setStroke(dp(2), Color.WHITE)
+                setStroke(dp(2), Color.parseColor("#2C1360"))
             }
             elevation = dpf(4)
         }
@@ -438,18 +661,26 @@ class RoomSetupActivity : Activity() {
             View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) } },
             sz(6)
         )
-        live.addView(label("LIVE", 10.5f, Color.WHITE, 2).apply { letterSpacing = 0.08f }, lp(s = 5))
-        avatarWrap.addView(live, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(0) })
-        top.addView(avatarWrap, LinearLayout.LayoutParams(dp(140), dp(140)))
+        live.addView(label("LIVE", 10.5f, Color.WHITE, 2).apply { letterSpacing = 0.08f }, lp(-2, -2, s = 5))
+        avatarWrap.addView(live, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        hero.addView(avatarWrap, lp(dp(140), dp(140), t = 6))
 
-        previewName = label("اسم غرفتك هنا", 22f, Color.WHITE, 2).apply { gravity = Gravity.CENTER }
-        top.addView(previewName, lp(t = 14))
+        previewName = label("اسم غرفتك هنا", 23f, Color.WHITE, 2).apply {
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        hero.addView(previewName, lp(t = 8, s = 8, e = 8))
         val subRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         subRow.addView(icon("mic", gold1), sz(15))
-        previewSub = label("", 13f, Color.argb(220, 255, 255, 255), 1)
-        subRow.addView(previewSub, lp(s = 6))
-        top.addView(subRow, lp(t = 6))
-        content.addView(top, lp())
+        previewSub = label("", 13f, Color.argb(225, 255, 255, 255), 1)
+        subRow.addView(previewSub, lp(-2, -2, s = 6))
+        hero.addView(subRow, lp(t = 6))
+
+        hero.addView(View(this).apply { setBackgroundColor(Color.argb(30, 255, 255, 255)) }, lp(-1, dp(1), t = 16))
+        stage = SetupStageView(this)
+        hero.addView(stage, lp(-1, dp(104), t = 8))
+        content.addView(heroOuter, lp(t = 6, s = 18, e = 18))
 
         // Animations: spinning ring + soft pulse
         animators.add(ObjectAnimator.ofFloat(ring, "rotation", 0f, 360f).apply {
@@ -470,40 +701,41 @@ class RoomSetupActivity : Activity() {
             start()
         })
 
-        // ── White sheet
-        val r = dpf(30)
+        // ── Settings body
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(28))
-            background = GradientDrawable().apply {
-                setColor(Color.WHITE)
-                cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
-            }
+            setPadding(dp(18), dp(4), dp(18), dp(28))
         }
-        content.addView(body, lp(-1, -2, t = -30, wt = 1f))
+        content.addView(body, lp(-1, -2, wt = 1f))
 
         // Room name
         section(body, "اسم الغرفة", "سيظهر في بطاقة البث بالصفحة الرئيسية", top = 20)
         val nameBox = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), 0, dp(14), 0)
-            minimumHeight = dp(56)
-            background = rect(surface, hairline, 16)
+            minimumHeight = dp(58)
+            background = rect(surface, hairline, 18)
         }
-        nameBox.addView(icon("edit", muted), sz(20))
+        nameBox.addView(icon("edit", brandLight), sz(20))
         titleInput = EditText(this).apply {
             setText(intent.getStringExtra("room_name").orEmpty())
             hint = "مثلاً: سهرة الأصدقاء"
-            textSize = 15.5f
-            setTextColor(ink)
-            setHintTextColor(Color.parseColor("#A29BB8"))
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setHintTextColor(hintColor)
+            highlightColor = Color.argb(90, 183, 156, 255)
             setSingleLine(true)
             background = null
             setPadding(dp(10), dp(14), dp(10), dp(14))
             textDirection = View.TEXT_DIRECTION_FIRST_STRONG
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            if (Build.VERSION.SDK_INT >= 29) {
+                textCursorDrawable = GradientDrawable().apply { setColor(gold1); setSize(dp(2), -1) }
+            }
             onFocusChangeListener = View.OnFocusChangeListener { _, f ->
-                nameBox.background = if (f) rect(Color.WHITE, brand, 16, 2) else rect(surface, hairline, 16)
+                nameBox.background =
+                    if (f) rect(Color.argb(34, 139, 92, 246), brandLight, 18, 2)
+                    else rect(surface, hairline, 18)
             }
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
@@ -512,6 +744,16 @@ class RoomSetupActivity : Activity() {
             })
         }
         nameBox.addView(titleInput, lp(0, -2, wt = 1f))
+        nameCheck = FrameLayout(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(gold1, gold2)).apply {
+                shape = GradientDrawable.OVAL
+            }
+            alpha = 0f
+            scaleX = 0.5f
+            scaleY = 0.5f
+            addView(icon("check", goldInk), FrameLayout.LayoutParams(dp(14), dp(14), Gravity.CENTER))
+        }
+        nameBox.addView(nameCheck, sz(24))
         body.addView(nameBox, lp(t = 14))
 
         // Seats
@@ -522,19 +764,19 @@ class RoomSetupActivity : Activity() {
             cards.forEach { c ->
                 val on = c.count == selectedCapacity
                 c.box.background =
-                    if (on) grad(brand, pink, 18, GradientDrawable.Orientation.TL_BR)
-                    else rect(Color.WHITE, hairline, 18, 1)
-                c.box.elevation = if (on) dpf(5) else 0f
-                c.dots.color = if (on) Color.WHITE else brand
+                    if (on) grad(brand, pink, 20, GradientDrawable.Orientation.TL_BR)
+                    else rect(surface, hairline, 20, 1)
+                c.box.elevation = if (on) dpf(6) else 0f
+                c.dots.color = if (on) Color.WHITE else brandLight
                 c.num.setTextColor(if (on) Color.WHITE else ink)
-                c.cap.setTextColor(if (on) Color.argb(220, 255, 255, 255) else muted)
+                c.cap.setTextColor(if (on) Color.argb(225, 255, 255, 255) else muted)
             }
             updatePreview()
         }
         listOf(4, 6, 8).forEachIndexed { i, count ->
             val c = seatCard(count) { paintSeats() }
             cards.add(c)
-            seatRow.addView(c.box, lp(0, -2, s = if (i == 0) 0 else 5, e = if (i == 2) 0 else 5, wt = 1f))
+            seatRow.addView(c.box, lp(0, -2, s = if (i == 0) 0 else 6, e = if (i == 2) 0 else 6, wt = 1f))
         }
         paintSeats()
         body.addView(seatRow, lp(t = 14))
@@ -545,10 +787,10 @@ class RoomSetupActivity : Activity() {
             setPadding(dp(14), dp(14), dp(14), dp(14))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#F4ECFF"), Color.parseColor("#FDEEFB"))
-            ).apply { cornerRadius = dpf(20); setStroke(dp(1), Color.parseColor("#E4D6FA")) }
+                intArrayOf(Color.argb(46, 124, 58, 237), Color.argb(34, 192, 38, 211))
+            ).apply { cornerRadius = dpf(20); setStroke(dp(1), Color.argb(64, 183, 156, 255)) }
         }
-        tip.addView(badge("eye", Color.WHITE, brand, 22, 14), sz(44))
+        tip.addView(badge("eye", gold1, brandSoft, 22, 14), sz(44))
         val tipText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         tipText.addView(label("ماذا سيظهر للمستخدمين؟", 14f, ink, 2))
         tipText.addView(
@@ -562,10 +804,9 @@ class RoomSetupActivity : Activity() {
         val prof = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rect(Color.WHITE, hairline, 18)
-            elevation = dpf(2)
+            background = rect(surface, hairline, 18)
         }
-        prof.addView(badge("users", brand, brandSoft, 22, 14), sz(42))
+        prof.addView(badge("users", brandLight, brandSoft, 22, 14), sz(42))
         val profText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         profText.addView(label("صورة الغرفة", 14.5f, ink, 2))
         profText.addView(label("تُستخدم صورة ملفك الشخصي تلقائياً", 12f, muted), lp(t = 3))
@@ -574,26 +815,26 @@ class RoomSetupActivity : Activity() {
             LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(10), dp(6), dp(12), dp(6))
-                background = rect(Color.parseColor("#E6F7F0"), r = 20)
-                addView(icon("check", Color.parseColor("#059669")), sz(14))
-                addView(label("تلقائي", 11.5f, Color.parseColor("#059669"), 2), lp(s = 4))
+                background = rect(Color.argb(44, 16, 185, 129), r = 20)
+                addView(icon("check", Color.parseColor("#34D399")), sz(14))
+                addView(label("تلقائي", 11.5f, Color.parseColor("#34D399"), 2), lp(-2, -2, s = 4))
             },
             LinearLayout.LayoutParams(-2, -2)
         )
         body.addView(prof, lp(t = 12))
 
         body.addView(
-            label("الخلفية اختيارية بالكامل، وسيتم استخدام تصميم الغرفة الافتراضي.", 11.5f, Color.parseColor("#A29BB8"), 1)
+            label("الخلفية اختيارية بالكامل، وسيتم استخدام تصميم الغرفة الافتراضي.", 11.5f, hintColor, 1)
                 .apply { gravity = Gravity.CENTER },
             lp(t = 20)
         )
 
         // ── Fixed bottom action bar
+        column.addView(View(this).apply { setBackgroundColor(Color.argb(26, 255, 255, 255)) }, LinearLayout.LayoutParams(-1, dp(1)))
         val bottomBar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(12))
-            setBackgroundColor(Color.WHITE)
-            elevation = dpf(10)
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            setBackgroundColor(barColor)
         }
         startButton = goldButton("ابدأ البث المباشر", "broadcast") { createAndStart(token) }
         bottomBar.addView(startButton, lp())
@@ -602,9 +843,7 @@ class RoomSetupActivity : Activity() {
 
         // Edge-to-edge safety (Android 15+)
         root.setOnApplyWindowInsetsListener { _, ins ->
-            topBar.setPadding(dp(16), ins.systemWindowInsetTop + dp(8), dp(16), dp(8))
-            (bg.layoutParams as ViewGroup.LayoutParams).height = dp(420) + ins.systemWindowInsetTop
-            bg.requestLayout()
+            topBar.setPadding(dp(16), ins.systemWindowInsetTop + dp(6), dp(16), dp(6))
             column.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
             ins
         }
@@ -612,6 +851,19 @@ class RoomSetupActivity : Activity() {
         setContentView(root)
         updatePreview()
         loadProfileAvatar(token)
+
+        // Entrance: hero first, then each settings block rises into place
+        val reveal = mutableListOf<View>(heroOuter)
+        for (i in 0 until body.childCount) reveal.add(body.getChildAt(i))
+        reveal.forEachIndexed { i, v ->
+            v.alpha = 0f
+            v.translationY = dpf(18)
+            v.animate().alpha(1f).translationY(0f)
+                .setStartDelay(50L + minOf(i, 8) * 45L)
+                .setDuration(400)
+                .setInterpolator(DecelerateInterpolator(1.6f))
+                .start()
+        }
     }
 
     /* ─────────── data ─────────── */
