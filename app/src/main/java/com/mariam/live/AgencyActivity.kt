@@ -42,6 +42,7 @@ class AgencyActivity : Activity() {
     private lateinit var submit: Button
     private lateinit var status: TextView
     private lateinit var dashboardButton: Button
+    private lateinit var agencyRoot: LinearLayout
 
     private val ink = Color.rgb(27, 35, 48)
     private val teal = Color.rgb(15, 157, 133)
@@ -54,7 +55,8 @@ class AgencyActivity : Activity() {
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
 
-        val root = LinearLayout(this).apply { orientation = 1; setBackgroundColor(Color.rgb(247,249,251)) }
+        val root = LinearLayout(this).apply { orientation = 1; setBackgroundColor(Color.rgb(247,249,251)); visibility = View.INVISIBLE }
+        agencyRoot = root
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18),dp(8),dp(18),dp(8)) }
         header.addView(TextView(this).apply {
             text = "‹"; textSize = 34f; setTextColor(ink); gravity = Gravity.CENTER
@@ -281,18 +283,24 @@ class AgencyActivity : Activity() {
             try {
                 val result=AuthApi.get("/api/agency/application",auth)
                 if(result.status in 200..299) {
-                    val app=result.body.optJSONObject("application") ?: return@execute
+                    val app=result.body.optJSONObject("application")
+                    val applicationStatus=app?.optString("status", "").orEmpty()
                     runOnUiThread {
-                        status.text=when(app.optString("status")) {
+                        if(applicationStatus == "approved") {
+                            startActivity(Intent(this@AgencyActivity, AgencyDashboardActivity::class.java))
+                            finish()
+                            return@runOnUiThread
+                        }
+                        agencyRoot.visibility = View.VISIBLE
+                        status.text=when(applicationStatus) {
                             "pending" -> "طلبك قيد مراجعة الإدارة"
-                            "approved" -> { dashboardButton.visibility = View.VISIBLE; "تمت الموافقة على وكالتك" }
-                            "rejected" -> "تم رفض الطلب: "+app.optString("review_note")
+                            "rejected" -> "تم رفض الطلب: "+(app?.optString("review_note") ?: "")
                             else -> ""
                         }
-                        if(app.optString("status")=="pending" || app.optString("status")=="approved") submit.isEnabled=false
+                        if(applicationStatus=="pending") submit.isEnabled=false
                     }
-                }
-            } catch (_:Exception) {}
+                } else runOnUiThread { agencyRoot.visibility = View.VISIBLE }
+            } catch (_:Exception) { runOnUiThread { agencyRoot.visibility = View.VISIBLE } }
         }
     }
 
