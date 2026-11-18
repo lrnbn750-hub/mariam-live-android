@@ -75,6 +75,7 @@ class CreatorCenterActivity : Activity() {
  if(found==0){val empty=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER;setPadding(dp(18),dp(24),dp(18),dp(24));background=shape(intArrayOf(panel,panel),Color.rgb(76,57,92),16)};empty.addView(label("💎",30f,mint,true));empty.addView(label("لا توجد هدايا مكتسبة حتى الآن",13f,muted,true));content.addView(empty)}
  section("السحب والأمان","تُتاح طلبات السحب بعد تفعيل إعدادات الأرباح وخدمة الدفع على الخادم.")
  content.addView(button("تحديث البيانات"){load()},LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(10)})
+ }
  private fun respondInvitation(invitationId:Long,action:String){
    if(invitationId<=0)return
    thread{
@@ -93,5 +94,4 @@ class CreatorCenterActivity : Activity() {
    }
  }
 
- }
 }
