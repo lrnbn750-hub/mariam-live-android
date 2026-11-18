@@ -597,8 +597,7 @@ class AgencyDashboardActivity : Activity() {
   return Pair(c, v)
  }
 
- private fun miniStat(label: String, color: Int): Pair<LinearLayout, TextView> {
-  val v = t("—", 18f, color, true).apply { gravity = Gravity.CENTER }
+ private fun miniStat(label: String, color: Int): Pair<LinearLayout, TextView> {  val v = t("—", 18f, color, true).apply { gravity = Gravity.CENTER }
   val c = ll().apply { gravity = Gravity.CENTER }
   c.addView(v)
   c.addView(t(label, 11f, muted).apply { gravity = Gravity.CENTER }, lp(-2, -2, top = 3))
@@ -1031,10 +1030,7 @@ class AgencyDashboardActivity : Activity() {
     try {
      val r = AuthApi.post("/api/agency/invitations/$invitationId/cancel", JSONObject(), tok)
      if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر إلغاء الدعوة"))
-     runOnUiThread {
-      status.text = "تم إلغاء الدعوة"
-      loadData()
-     }
+     runOnUiThread { status.text = "تم إلغاء الدعوة"; loadData() }
     } catch (e: Exception) {
      runOnUiThread { status.text = e.message ?: "تعذر إلغاء الدعوة" }
     }
