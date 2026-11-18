@@ -85,6 +85,44 @@ module.exports = function registerAgencyMembershipRoutes(app, db, authenticateTo
       return res.status(500).json({ error: "تعذر معالجة الدعوة" });
     } finally { client.release(); }
   });
+  // Agency owner can cancel only pending invitations belonging to their agency.
+  app.post("/api/agency/invitations/:id/cancel", authenticateToken, async (req, res) => {
+    const invitationId = Number(req.params.id);
+    if (!Number.isSafeInteger(invitationId) || invitationId < 1) return res.status(400).json({ error: "دعوة غير صالحة" });
+    try {
+      const agency = await db.query("SELECT id FROM agency_applications WHERE user_id=$1 AND status='approved' ORDER BY created_at DESC LIMIT 1", [req.userId]);
+      if (!agency.rows.length) return res.status(403).json({ error: "لا توجد وكالة معتمدة" });
+      const result = await db.query("UPDATE agency_invitations SET status='cancelled',responded_at=NOW() WHERE id=$1 AND agency_application_id=$2 AND status='pending' RETURNING id", [invitationId, agency.rows[0].id]);
+      if (!result.rows.length) return res.status(404).json({ error: "الدعوة غير موجودة أو لا يمكن إلغاؤها" });
+      return res.json({ success: true, cancelled: true });
+    } catch (error) {
+      console.error("Agency invitation cancel:", error.message);
+      return res.status(500).json({ error: "تعذر إلغاء الدعوة" });
+    }
+  });
+
+  // Agency owner can remove a creator from their own agency membership.
+  app.delete("/api/agency/members/:publicId", authenticateToken, async (req, res) => {
+    const publicId = String(req.params.publicId || "").trim();
+    if (!publicId || publicId.length > 40) return res.status(400).json({ error: "معرّف عضو غير صالح" });
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const agency = await client.query("SELECT id FROM agency_applications WHERE user_id=$1 AND status='approved' ORDER BY created_at DESC LIMIT 1 FOR UPDATE", [req.userId]);
+      if (!agency.rows.length) { await client.query("ROLLBACK"); return res.status(403).json({ error: "لا توجد وكالة معتمدة" }); }
+      const creator = await client.query("SELECT id FROM users WHERE public_id=$1 AND status='active' LIMIT 1", [publicId]);
+      if (!creator.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "المستخدم غير موجود" }); }
+      const removed = await client.query("DELETE FROM agency_members WHERE agency_application_id=$1 AND creator_user_id=$2 RETURNING creator_user_id", [agency.rows[0].id, creator.rows[0].id]);
+      if (!removed.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "هذا المستخدم ليس عضواً في وكالتك" }); }
+      await client.query("COMMIT");
+      return res.json({ success: true, removed: true, public_id: publicId });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Agency member removal:", error.message);
+      return res.status(500).json({ error: "تعذر إزالة عضو الوكالة" });
+    } finally { client.release(); }
+  });
+
   app.get("/api/agency/membership", authenticateToken, async (req, res) => {
     try {
       const result = await db.query(
