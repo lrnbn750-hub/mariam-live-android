@@ -25,6 +25,19 @@ module.exports = function registerAgencyMembershipRoutes(app, db, authenticateTo
     } finally { client.release(); }
   });
 
+  app.get("/api/agency/invitations/incoming", authenticateToken, async (req, res) => {
+    try {
+      const rows = await db.query(
+        "SELECT i.id,i.status,i.created_at,a.agency_name,a.id AS agency_application_id FROM agency_invitations i JOIN agency_applications a ON a.id=i.agency_application_id WHERE i.creator_user_id=$1 AND i.status='pending' ORDER BY i.created_at DESC LIMIT 100",
+        [req.userId]
+      );
+      return res.json({ invitations: rows.rows });
+    } catch (error) {
+      console.error("Agency incoming invitations:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل دعوات الوكالة" });
+    }
+  });
+
   app.get("/api/agency/invitations", authenticateToken, async (req, res) => {
     try {
       const agency = await db.query("SELECT id FROM agency_applications WHERE user_id=$1 AND status='approved' ORDER BY created_at DESC LIMIT 1", [req.userId]);
