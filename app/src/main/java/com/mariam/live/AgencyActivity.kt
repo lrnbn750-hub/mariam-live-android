@@ -41,6 +41,7 @@ class AgencyActivity : Activity() {
     private lateinit var consent: CheckBox
     private lateinit var submit: Button
     private lateinit var status: TextView
+    private lateinit var dashboardButton: Button
 
     private val ink = Color.rgb(27, 35, 48)
     private val teal = Color.rgb(15, 157, 133)
@@ -110,6 +111,12 @@ class AgencyActivity : Activity() {
         body.addView(consent, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(14); bottomMargin=dp(10) })
         status = TextView(this).apply { textSize=13f; setTextColor(teal); gravity=Gravity.RIGHT }
         body.addView(status)
+        dashboardButton = Button(this).apply {
+            text = "فتح لوحة الوكالة الخاصة"; isAllCaps = false; visibility = View.GONE
+            setTextColor(Color.WHITE); background = GradientDrawable().apply { cornerRadius=dp(15).toFloat(); setColor(Color.rgb(112, 57, 168)) }
+            setOnClickListener { startActivity(Intent(this@AgencyActivity, AgencyDashboardActivity::class.java)) }
+        }
+        body.addView(dashboardButton, LinearLayout.LayoutParams(-1,dp(52)).apply { topMargin=dp(8) })
         submit = Button(this).apply {
             text = "إرسال طلب الوكالة"; isAllCaps = false
             setTextColor(Color.WHITE); background = GradientDrawable().apply {
@@ -278,7 +285,7 @@ class AgencyActivity : Activity() {
                     runOnUiThread {
                         status.text=when(app.optString("status")) {
                             "pending" -> "طلبك قيد مراجعة الإدارة"
-                            "approved" -> "تمت الموافقة على وكالتك"
+                            "approved" -> { dashboardButton.visibility = View.VISIBLE; "تمت الموافقة على وكالتك" }
                             "rejected" -> "تم رفض الطلب: "+app.optString("review_note")
                             else -> ""
                         }
