@@ -13,7 +13,7 @@ class AgencyDashboardActivity: Activity() {
  private val worker=Executors.newSingleThreadExecutor()
  private val bg=Color.rgb(12,10,20); private val panel=Color.rgb(28,22,42); private val ink=Color.WHITE; private val muted=Color.rgb(167,157,185)
  private lateinit var body:LinearLayout; private lateinit var input:EditText; private lateinit var send:TextView; private lateinit var status:TextView; private lateinit var invitesBox:LinearLayout; private lateinit var membersBox:LinearLayout; private lateinit var stats:LinearLayout; private lateinit var analyticsText:TextView; private lateinit var memberSearch:EditText; private lateinit var inviteSearch:EditText
- private var invites=JSONArray(); private var members=JSONArray(); private var agencyName="وكالتك"
+ private var invites=JSONArray(); private var members=JSONArray(); private var agencyInfo=JSONObject(); private var agencyName="وكالتك"
  private fun token()=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private fun card()=GradientDrawable().apply{cornerRadius=dp(16).toFloat();setColor(panel);setStroke(dp(1),Color.rgb(58,43,76))}
@@ -54,7 +54,7 @@ class AgencyDashboardActivity: Activity() {
   body.addView(t("بيانات الدعوات والأعضاء من قاعدة البيانات. تقارير الألماس والأرباح ستُربط عند توفر مصدرها الحقيقي.",11f,muted).apply{gravity=Gravity.CENTER;setPadding(dp(14),dp(14),dp(14),dp(14));background=card()},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
   loadData()
  }
- private fun statCard(title:String,value:String)=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(14));background=card();addView(t(title,12f,muted,true));addView(t(value,22f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})}
+\n private fun renderAgencyDetails(){\n  if(!::body.isInitialized)return\n  val keys=agencyInfo.keys().asSequence().toList()\n  if(keys.isEmpty())return\n  section("بيانات الوكالة","معلومات الوكالة من استجابة السيرفر")\n  val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(14));background=card()}\n  for(key in keys){val raw=agencyInfo.opt(key);if(raw==null||raw==JSONObject.NULL)continue;val value=when(raw){is JSONObject,is JSONArray->raw.toString();else->raw.toString()};if(value.isBlank()||value=="null")continue\n   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}\n   row.addView(t(key.replace("_"," "),12f,muted),LinearLayout.LayoutParams(0,-2,1f))\n   row.addView(t(value,14f,ink,true))\n   panel.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})\n  }\n  if(panel.childCount>0)body.addView(panel,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})\n }\n private fun statCard(title:String,value:String)=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(14));background=card();addView(t(title,12f,muted,true));addView(t(value,22f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(7)})}
  private fun loadData(){val tok=token()?:run{status.text="يرجى تسجيل الدخول مجدداً";return};status.text="جارٍ تحديث البيانات..."
  worker.execute{try{
   val m=AuthApi.get("/api/agency/members",tok);val i=AuthApi.get("/api/agency/invitations",tok)
