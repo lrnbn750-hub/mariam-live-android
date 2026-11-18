@@ -1652,6 +1652,7 @@ class RoomActivity : Activity() {
       activeSpeakerLevels.putAll(fresh)
       for((userId,wave) in speakerWaveViews){wave.setLevel(activeSpeakerLevels[userId]?:0f)}
       }
+      else->{ /* Ignore unrelated LiveKit room events. */ }
      }
     }
    }catch(_:CancellationException){}
