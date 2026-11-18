@@ -62,7 +62,7 @@ object AuthApi {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+            Result(status, parseBody(text))
         } finally {
             connection.disconnect()
         }
@@ -84,7 +84,7 @@ object AuthApi {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+            Result(status, parseBody(text))
         } finally {
             connection.disconnect()
         }
@@ -102,7 +102,7 @@ object AuthApi {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+            Result(status, parseBody(text))
         } finally {
             connection.disconnect()
         }
@@ -122,7 +122,7 @@ object AuthApi {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            Result(status, if (text.isBlank()) JSONObject() else JSONObject(text))
+            Result(status, parseBody(text))
         } finally {
             connection.disconnect()
         }
