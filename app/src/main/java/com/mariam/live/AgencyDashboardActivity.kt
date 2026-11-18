@@ -70,7 +70,7 @@ class AgencyDashboardActivity: Activity() {
   loadEarnings()
  }
 
- private fun money(cents:Int):String="$"+"%.2f".format(java.util.Locale.US,cents/100.0)
+ private fun money(cents:Int):String="USD "+"%.2f".format(java.util.Locale.US,cents/100.0)
  private fun loadEarnings(){
   val tok=token()?:run{if(::earningsStatus.isInitialized)earningsStatus.text="يرجى تسجيل الدخول";return}
   if(::earningsStatus.isInitialized)earningsStatus.text="جارٍ تحميل تقرير الأرباح..."
@@ -98,16 +98,16 @@ class AgencyDashboardActivity: Activity() {
   val total=o.optInt("total_cents",0);val available=o.optInt("available_cents",0);val paid=o.optInt("paid_cents",0)
   val today=o.optInt("today_cents",0);val week=o.optInt("last_7_days_cents",0);val month=o.optInt("month_cents",0)
   val row1=LinearLayout(this).apply{orientation=0}
-  row1.addView(earnCard("إجمالي الأرباح","$"+money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row1.addView(earnCard("المتاح للسحب","$"+money(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row1.addView(earnCard("إجمالي الأرباح",money(total)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row1.addView(earnCard("المتاح للسحب",money(available)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row1)
   val row2=LinearLayout(this).apply{orientation=0}
-  row2.addView(earnCard("تم دفعه","$"+money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row2.addView(earnCard("أرباح اليوم","$"+money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row2.addView(earnCard("تم دفعه",money(paid)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row2.addView(earnCard("أرباح اليوم",money(today)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row2,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   val row3=LinearLayout(this).apply{orientation=0}
-  row3.addView(earnCard("آخر 7 أيام","$"+money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
-  row3.addView(earnCard("هذا الشهر","$"+money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
+  row3.addView(earnCard("آخر 7 أيام",money(week)),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
+  row3.addView(earnCard("هذا الشهر",money(month)),LinearLayout.LayoutParams(0,-2,1f).apply{marginStart=dp(5)})
   earningsBox.addView(row3,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
   membersEarningsBox.removeAllViews()
   if(m.length()==0)membersEarningsBox.addView(t("لا توجد بيانات أرباح أعضاء بعد",12f,muted).apply{setPadding(dp(12),dp(12),dp(12),dp(12))})
