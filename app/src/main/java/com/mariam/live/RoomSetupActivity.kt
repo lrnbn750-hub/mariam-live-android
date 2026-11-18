@@ -756,30 +756,7 @@ class RoomSetupActivity : Activity() {
         nameBox.addView(nameCheck, sz(24))
         body.addView(nameBox, lp(t = 14))
 
-        // Seats
-        section(body, "عدد مقاعد المتحدثين", "اختر عدد من يمكنهم التحدث معك على المنصة")
-        val seatRow = LinearLayout(this)
-        val cards = mutableListOf<SeatCard>()
-        fun paintSeats() {
-            cards.forEach { c ->
-                val on = c.count == selectedCapacity
-                c.box.background =
-                    if (on) grad(brand, pink, 20, GradientDrawable.Orientation.TL_BR)
-                    else rect(surface, hairline, 20, 1)
-                c.box.elevation = if (on) dpf(6) else 0f
-                c.dots.color = if (on) Color.WHITE else brandLight
-                c.num.setTextColor(if (on) Color.WHITE else ink)
-                c.cap.setTextColor(if (on) Color.argb(225, 255, 255, 255) else muted)
-            }
-            updatePreview()
-        }
-        listOf(4, 6, 8).forEachIndexed { i, count ->
-            val c = seatCard(count) { paintSeats() }
-            cards.add(c)
-            seatRow.addView(c.box, lp(0, -2, s = if (i == 0) 0 else 6, e = if (i == 2) 0 else 6, wt = 1f))
-        }
-        paintSeats()
-        body.addView(seatRow, lp(t = 14))
+        // Seat selection cards removed to simplify the setup screen.
 
         // Info tip
         val tip = LinearLayout(this).apply {
