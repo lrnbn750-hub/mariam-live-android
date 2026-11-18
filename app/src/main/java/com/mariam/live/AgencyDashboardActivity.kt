@@ -86,7 +86,7 @@ class AgencyDashboardActivity: Activity() {
   if(i.status !in 200..299)throw Exception(i.body.optString("error","فشل تحميل الدعوات"))
   val mm=m.body.optJSONArray("members")?:JSONArray();val ii=i.body.optJSONArray("invitations")?:JSONArray();val ag=m.body.optJSONObject("agency")
   runOnUiThread{members=mm;invites=ii;agencyInfo=ag?:JSONObject();agencyName=ag?.optString("agency_name")?.takeIf{it.isNotBlank()}?:agencyName;status.text="تم تحديث $agencyName";render()}
- }catch(e:Exception){runOnUiThread{status.text="تعذر تحميل البيانات: ${e.message}";render()}}}
+ }catch(e:Exception){runOnUiThread{status.text="تعذر تحديث بيانات الوكالة. حاول مرة أخرى.";render()}}}
  }
  private fun sendInvitation(){val id=input.text.toString().trim();if(id.isBlank()||id.length>40){input.error="أدخل ID صحيح";return};val tok=token()?:run{status.text="يرجى تسجيل الدخول";return};send.isEnabled=false;status.text="جارٍ إرسال الدعوة..."
  worker.execute{try{val r=AuthApi.post("/api/agency/invitations",JSONObject().put("public_id",id),tok);if(r.status !in 200..299)throw Exception(r.body.optString("error","تعذر إرسال الدعوة"));runOnUiThread{input.setText("");status.text="تم إرسال الدعوة إلى ID $id";send.isEnabled=true};loadData()}catch(e:Exception){runOnUiThread{status.text=e.message?: "تعذر إرسال الدعوة";send.isEnabled=true}}}
