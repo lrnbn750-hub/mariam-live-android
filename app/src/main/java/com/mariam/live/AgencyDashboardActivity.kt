@@ -31,6 +31,7 @@ class AgencyDashboardActivity: Activity() {
   val scroll=ScrollView(this);body=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(26))};scroll.addView(body);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f));setContentView(root)
   val hero=LinearLayout(this).apply{orientation=1;setPadding(dp(18),dp(18),dp(18),dp(18));background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(107,47,158),Color.rgb(36,22,58))).apply{cornerRadius=dp(22).toFloat()}}
   hero.addView(t("AGENCY • PARTNER DASHBOARD",10f,Color.rgb(228,204,248),true));hero.addView(t("إدارة وكالتك وصُنّاع المحتوى",19f,ink,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)});body.addView(hero)
+  body.addView(button("💰  مركز أرباح الوكالة"){ startActivity(Intent(this@AgencyDashboardActivity, AgencyEarningsActivity::class.java)) },LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(12)})
   section("ملخص الوكالة","بيانات حقيقية من السيرفر")
   stats=LinearLayout(this).apply{orientation=0}
   stats.addView(statCard("الأعضاء","—"),LinearLayout.LayoutParams(0,-2,1f).apply{marginEnd=dp(5)})
