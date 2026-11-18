@@ -11,7 +11,9 @@ module.exports = function registerAgencyMembershipRoutes(app, db, authenticateTo
       if (!creator.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "المستخدم غير موجود" }); }
       const creatorId = creator.rows[0].id;
       if (String(creatorId) === String(req.userId)) { await client.query("ROLLBACK"); return res.status(400).json({ error: "لا يمكنك دعوة نفسك" }); }
-      const existingMember = await client.query("SELECT 1 FROM agency_members WHERE creator_user_id=$1", [creatorId]);
+      // Lock the creator row so invitation and removal cannot race.
+      await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [creatorId]);
+      const existingMember = await client.query("SELECT agency_application_id FROM agency_members WHERE creator_user_id=$1 FOR UPDATE", [creatorId]);
       if (existingMember.rows.length) { await client.query("ROLLBACK"); return res.status(409).json({ error: "هذا المستخدم مرتبط بوكالة بالفعل" }); }
       const pending = await client.query("SELECT id FROM agency_invitations WHERE creator_user_id=$1 AND status='pending'", [creatorId]);
       if (pending.rows.length) { await client.query("ROLLBACK"); return res.status(409).json({ error: "لدى المستخدم دعوة قيد الانتظار بالفعل" }); }
@@ -112,8 +114,12 @@ module.exports = function registerAgencyMembershipRoutes(app, db, authenticateTo
       if (!agency.rows.length) { await client.query("ROLLBACK"); return res.status(403).json({ error: "لا توجد وكالة معتمدة" }); }
       const creator = await client.query("SELECT id FROM users WHERE public_id=$1 AND status='active' LIMIT 1", [publicId]);
       if (!creator.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "المستخدم غير موجود" }); }
+      // Serialize removal against invitations for the same creator.
+      await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [creator.rows[0].id]);
       const removed = await client.query("DELETE FROM agency_members WHERE agency_application_id=$1 AND creator_user_id=$2 RETURNING creator_user_id", [agency.rows[0].id, creator.rows[0].id]);
       if (!removed.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ error: "هذا المستخدم ليس عضواً في وكالتك" }); }
+      // Clear any stale pending invite; accepted invitation history is retained.
+      await client.query("UPDATE agency_invitations SET status='cancelled',responded_at=NOW() WHERE agency_application_id=$1 AND creator_user_id=$2 AND status='pending'", [agency.rows[0].id, creator.rows[0].id]);
       await client.query("COMMIT");
       return res.json({ success: true, removed: true, public_id: publicId });
     } catch (error) {
