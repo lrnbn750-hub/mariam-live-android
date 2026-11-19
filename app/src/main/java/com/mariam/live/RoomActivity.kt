@@ -1177,14 +1177,14 @@ class RoomActivity : Activity() {
      return@launch
     }
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
-    val previousRenderState=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId
+    val previousRenderState=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId+"|"+cameraSeatCount
     seats=r.body.optJSONArray("seats")?:JSONArray()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     roomMode=r.body.optString("roomMode","audio").lowercase().let{if(it=="camera")"camera" else "audio"}
     cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
     cameraSeatCount=r.body.optInt("cameraSeatCount",r.body.optInt("camera_seat_count",if(cameraSeats.length()>=4)cameraSeats.length() else 6)).coerceIn(4,6)
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
-    val renderStateChanged=previousRenderState!=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId
+    val renderStateChanged=previousRenderState!=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId+"|"+cameraSeatCount
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
@@ -1379,27 +1379,50 @@ class RoomActivity : Activity() {
  }
 
  private fun drawCameraSeats(){
-  // Four-camera broadcast layout: one large host/main camera on the right,
-  // with three square participant cameras stacked vertically on the left.
-  val valid=(0 until minOf(cameraSeats.length(),4)).mapNotNull{cameraSeats.optJSONObject(it)}
+  val activeCount=cameraSeatCount.coerceIn(4,6)
+  val valid=(0 until minOf(cameraSeats.length(),activeCount)).mapNotNull{cameraSeats.optJSONObject(it)}
   if(valid.isEmpty())return
   val selected=valid.firstOrNull{cameraSeatUser(it)==cameraMainUserId && cameraMainUserId.isNotBlank()}
    ?:valid.firstOrNull{cameraSeatUser(it).isNotBlank()}?:valid.first()
   val side=(resources.displayMetrics.widthPixels-dp(8)).coerceAtLeast(dp(240))
   val cell=side/3
   val board=FrameLayout(this).apply{clipChildren=true;clipToPadding=true}
-  val mainTile=buildCameraTile(selected,true,true)
-  board.addView(mainTile,FrameLayout.LayoutParams(cell*2,cell*3).apply{
-   leftMargin=cell
-   topMargin=0
-  })
-  val smallSeats=valid.filter{it!==selected}.take(3)
-  for(index in 0 until 3){
-   val seat=smallSeats.getOrNull(index) ?: continue
-   board.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{
-    leftMargin=0
-    topMargin=index*cell
+  if(activeCount==4){
+   // Four cameras: main tile on the right, three square tiles stacked on the left.
+   board.addView(buildCameraTile(selected,true,true),FrameLayout.LayoutParams(cell*2,cell*3).apply{
+    leftMargin=cell
+    topMargin=0
    })
+   val smallSeats=valid.filter{it!==selected}.take(3)
+   for(index in 0 until 3){
+    val seat=smallSeats.getOrNull(index) ?: continue
+    board.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{
+     leftMargin=0
+     topMargin=index*cell
+    })
+   }
+  }else{
+   // Six cameras: a 3x3 board. The main camera occupies a 2x2 block;
+   // the five remaining camera seats fill the other five cells.
+   board.addView(buildCameraTile(selected,true,true),FrameLayout.LayoutParams(cell*2,cell*2).apply{
+    leftMargin=0
+    topMargin=0
+   })
+   val smallSeats=valid.filter{it!==selected}.take(5)
+   val positions=listOf(
+    2 to 0, // top-right
+    2 to 1, // middle-right
+    0 to 2, // bottom-left
+    1 to 2, // bottom-middle
+    2 to 2  // bottom-right
+   )
+   smallSeats.forEachIndexed{index,seat->
+    val (column,row)=positions[index]
+    board.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{
+     leftMargin=column*cell
+     topMargin=row*cell
+    })
+   }
   }
   grid.addView(board,LinearLayout.LayoutParams(-1,cell*3).apply{
    setMargins(dp(2),dp(2),dp(2),dp(5))
