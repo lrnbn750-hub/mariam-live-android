@@ -155,7 +155,7 @@ class AgencyDashboardActivity : Activity() {
   setPadding(dp(10), dp(4), dp(10), dp(4)); background = shape(soft, 999)
  }
 
- private fun usdText(cents: Long): String = String.format(Locale.US, "$%,.2f", cents / 100.0)
+ private fun usdText(cents: Long): String = String.format(java.util.Locale.US, "\$%,.2f", cents / 100.0)
 
   private fun usdLine(cents: Long, z: Float = 20f, c: Int = ink): LinearLayout = hbox().apply {
    addView(t(usdText(cents), z, c, true))
