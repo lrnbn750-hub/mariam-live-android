@@ -868,7 +868,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=View.VISIBLE
-  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+  cameraControl.visibility=if((isSeated || (roomMode=="camera" && isOwner)) && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -891,7 +891,7 @@ class RoomActivity : Activity() {
   chatInput.visibility=View.GONE
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
-  micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
+  micControl.visibility=if(isSeated || (roomMode=="camera" && (isOwner || (0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()})))View.VISIBLE else View.GONE
   cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
@@ -1214,8 +1214,10 @@ class RoomActivity : Activity() {
      }
     }
     mic.visibility=View.GONE
-    if(::micControl.isInitialized)micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
-    if(::cameraControl.isInitialized)cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+    val hasCameraSeat=(0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
+    val canUseRoomMic=if(roomMode=="camera")hasCameraSeat||isOwner else isSeated||isOwner
+    if(::micControl.isInitialized)micControl.visibility=if(canUseRoomMic)View.VISIBLE else View.GONE
+    if(::cameraControl.isInitialized)cameraControl.visibility=if(canUseRoomMic && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
