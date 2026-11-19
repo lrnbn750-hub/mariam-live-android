@@ -1177,11 +1177,13 @@ class RoomActivity : Activity() {
      return@launch
     }
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
+    val previousRenderState=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId
     seats=r.body.optJSONArray("seats")?:JSONArray()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     roomMode=r.body.optString("roomMode","audio").lowercase().let{if(it=="camera")"camera" else "audio"}
     cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    val renderStateChanged=previousRenderState!=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
@@ -1219,7 +1221,7 @@ class RoomActivity : Activity() {
     if(::micControl.isInitialized)micControl.visibility=if(canUseRoomMic)View.VISIBLE else View.GONE
     if(::cameraControl.isInitialized)cameraControl.visibility=if(canUseRoomMic && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
-    drawSeats()
+    if(renderStateChanged)drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
@@ -1361,20 +1363,25 @@ class RoomActivity : Activity() {
 
  private fun drawCameraSeats(){
   val valid=(0 until cameraSeats.length()).mapNotNull{cameraSeats.optJSONObject(it)}
-  val occupied=valid.firstOrNull{cameraSeatUser(it)==cameraMainUserId && cameraMainUserId.isNotBlank()}
-   ?:valid.firstOrNull{cameraSeatUser(it).isNotBlank()}
-  val mainId=occupied?.let{cameraSeatUser(it)}.orEmpty()
-  val main=occupied?:valid.firstOrNull()
-  if(main!=null)grid.addView(buildCameraTile(main,mainId.isNotBlank(),true),LinearLayout.LayoutParams(-1,dp(205)).apply{bottomMargin=dp(7)})
-  val remaining=valid.filter{it!==main}
-  for(rowStart in remaining.indices step 3){
-   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER}
-   for(index in rowStart until minOf(rowStart+3,remaining.size)){
-    val seat=remaining[index]
-    row.addView(buildCameraTile(seat,false,false),LinearLayout.LayoutParams(0,dp(118),1f).apply{setMargins(dp(3),dp(3),dp(3),dp(3))})
-   }
-   grid.addView(row,LinearLayout.LayoutParams(-1,-2))
+  if(valid.isEmpty())return
+  val selected=valid.firstOrNull{cameraSeatUser(it)==cameraMainUserId && cameraMainUserId.isNotBlank()}
+   ?:valid.firstOrNull{cameraSeatUser(it).isNotBlank()}?:valid.first()
+  val side=(resources.displayMetrics.widthPixels-dp(12)).coerceAtLeast(dp(240))
+  val cell=side/3
+  val square=FrameLayout(this).apply{clipChildren=true;clipToPadding=true}
+  val squareParams=LinearLayout.LayoutParams(-1,side).apply{setMargins(dp(2),dp(2),dp(2),dp(5))}
+  val slots=listOf(0,3,6,7,8)
+  val others=valid.filter{it!==selected}
+  val positions=listOf(0,3,6,7,8)
+  val mainTile=buildCameraTile(selected,true,true)
+  square.addView(mainTile,FrameLayout.LayoutParams(cell*2,cell*2).apply{leftMargin=cell;topMargin=0})
+  for(i in others.indices){
+   val seat=others[i]
+   val pos=positions.getOrNull(i)?:continue
+   val x=pos%3;val y=pos/3
+   square.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{leftMargin=x*cell;topMargin=y*cell})
   }
+  grid.addView(square,squareParams)
  }
 
  private fun buildCameraTile(seat:JSONObject,isMain:Boolean,large:Boolean):View{
