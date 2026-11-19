@@ -7,6 +7,7 @@ on:
     branches:
       - bak-live
       - agency-system-ui
+      - feature/bak-live-camera-room-switch
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
