@@ -1362,28 +1362,32 @@ class RoomActivity : Activity() {
  }
 
  private fun drawCameraSeats(){
-  val valid=(0 until cameraSeats.length()).mapNotNull{cameraSeats.optJSONObject(it)}
+  // Four-camera broadcast layout: one large host/main camera on the right,
+  // with three square participant cameras stacked vertically on the left.
+  val valid=(0 until minOf(cameraSeats.length(),4)).mapNotNull{cameraSeats.optJSONObject(it)}
   if(valid.isEmpty())return
   val selected=valid.firstOrNull{cameraSeatUser(it)==cameraMainUserId && cameraMainUserId.isNotBlank()}
    ?:valid.firstOrNull{cameraSeatUser(it).isNotBlank()}?:valid.first()
-  val side=(resources.displayMetrics.widthPixels-dp(12)).coerceAtLeast(dp(240))
+  val side=(resources.displayMetrics.widthPixels-dp(8)).coerceAtLeast(dp(240))
   val cell=side/3
-  val square=FrameLayout(this).apply{clipChildren=true;clipToPadding=true}
-  val squareParams=LinearLayout.LayoutParams(-1,side).apply{setMargins(dp(2),dp(2),dp(2),dp(5))}
-  val slots=listOf(0,3,6,7,8)
-  val others=valid.filter{it!==selected}
-  val positions=listOf(0,3,6,7,8)
+  val board=FrameLayout(this).apply{clipChildren=true;clipToPadding=true}
   val mainTile=buildCameraTile(selected,true,true)
-  square.addView(mainTile,FrameLayout.LayoutParams(cell*2,cell*2).apply{leftMargin=cell;topMargin=0})
-  for(i in others.indices){
-   val seat=others[i]
-   val pos=positions.getOrNull(i)?:continue
-   val x=pos%3;val y=pos/3
-   square.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{leftMargin=x*cell;topMargin=y*cell})
+  board.addView(mainTile,FrameLayout.LayoutParams(cell*2,cell*3).apply{
+   leftMargin=cell
+   topMargin=0
+  })
+  val smallSeats=valid.filter{it!==selected}.take(3)
+  for(index in 0 until 3){
+   val seat=smallSeats.getOrNull(index) ?: continue
+   board.addView(buildCameraTile(seat,false,false),FrameLayout.LayoutParams(cell,cell).apply{
+    leftMargin=0
+    topMargin=index*cell
+   })
   }
-  grid.addView(square,squareParams)
+  grid.addView(board,LinearLayout.LayoutParams(-1,cell*3).apply{
+   setMargins(dp(2),dp(2),dp(2),dp(5))
+  })
  }
-
  private fun buildCameraTile(seat:JSONObject,isMain:Boolean,large:Boolean):View{
   val number=seat.optInt("seat_number",1)
   val uid=cameraSeatUser(seat)
