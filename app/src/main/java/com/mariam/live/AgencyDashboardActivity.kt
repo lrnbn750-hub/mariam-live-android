@@ -155,13 +155,11 @@ class AgencyDashboardActivity : Activity() {
   setPadding(dp(10), dp(4), dp(10), dp(4)); background = shape(soft, 999)
  }
 
- private fun coinLine(v: Long, z: Float = 20f, c: Int = ink, diamond: Int = brand): LinearLayout {
-  val s = (z * 0.9f).toInt()
-  return hbox().apply {
-   addView(ico(Ic.DIAMOND, diamond, s), LinearLayout.LayoutParams(dp(s), dp(s)).apply { marginEnd = dp(5) })
-   addView(t(fmt(v), z, c, true))
+ private fun usdText(cents: Long): String = String.format(Locale.US, "$%,.2f", cents / 100.0)
+
+  private fun usdLine(cents: Long, z: Float = 20f, c: Int = ink): LinearLayout = hbox().apply {
+   addView(t(usdText(cents), z, c, true))
   }
- }
 
  private fun button(label: String, kind: Int = 0, icon: Int = -1, action: () -> Unit): LinearLayout {
   val fg = when (kind) { 0 -> Color.WHITE; 2 -> red; else -> brand }
@@ -329,7 +327,7 @@ class AgencyDashboardActivity : Activity() {
   hero.addView(t("إجمالي أرباح الوكالة", 12.5f, Color.argb(210, 255, 255, 255)), lp().apply { topMargin = dp(20) })
   val totalRow = hbox()
   heroTotal = t("—", 34f, Color.WHITE, true)
-  totalRow.addView(ico(Ic.DIAMOND, Color.WHITE, 26), LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(8) })
+  totalRow.addView(ico(Ic.WALLET, Color.WHITE, 26), LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(8) })
   totalRow.addView(heroTotal)
   hero.addView(totalRow, lp().apply { topMargin = dp(4) })
   heroAvail = t("—", 16f, Color.WHITE, true)
@@ -366,7 +364,7 @@ class AgencyDashboardActivity : Activity() {
   body.addView(status, lp().apply { topMargin = dp(10) })
 
   // Earnings
-  earningsAnchor = section("أرباح الوكالة", "12% من حصة المنصة • مستقلة عن أرباح المذيع", Ic.WALLET, iconButton(Ic.REFRESH, "تحديث الأرباح") { loadEarnings() })
+  earningsAnchor = section("أرباح الوكالة", "12% من إجمالي قيمة الهدايا بالدولار • مستقلة عن أرباح المذيع", Ic.WALLET, iconButton(Ic.REFRESH, "تحديث الأرباح") { loadEarnings() })
   earningsBox = vbox()
   body.addView(earningsBox)
   earningsStatus = statusLine("جارٍ تحميل الأرباح...")
@@ -412,7 +410,7 @@ class AgencyDashboardActivity : Activity() {
   // Footnote
   val note = hbox().apply { setPadding(dp(14), dp(14), dp(14), dp(14)); background = shape(fieldBg, 16) }
   note.addView(ico(Ic.INFO, muted, 20), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(10) })
-  note.addView(t("بيانات الدعوات والأعضاء من قاعدة البيانات. تقارير الألماس والأرباح ستُربط عند توفر مصدرها الحقيقي.", 11.5f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+  note.addView(t("عمولة الوكالة تُسجّل بالدولار وتُعرض هنا بالدولار، ولا تُضاف إلى رصيد كوينز أو ماسات المذيع.", 11.5f, muted), LinearLayout.LayoutParams(0, -2, 1f))
   body.addView(note, lp().apply { topMargin = dp(24) })
 
   loadData()
@@ -454,7 +452,7 @@ class AgencyDashboardActivity : Activity() {
 
  private fun earnCard(label: String, value: Long, icon: Int, tint: Int, soft: Int) = cardView(12).apply {
   addView(badge(icon, tint, soft, 34, 18), LinearLayout.LayoutParams(dp(34), dp(34)))
-  addView(coinLine(value, 15f, ink, tint), lp().apply { topMargin = dp(10) })
+  addView(usdLine(value, 15f, ink), lp().apply { topMargin = dp(10) })
   addView(t(label, 11.5f, muted), lp().apply { topMargin = dp(3) })
  }
 
@@ -477,9 +475,9 @@ class AgencyDashboardActivity : Activity() {
     if (overview.status !in 200..299) throw Exception(overview.body.optString("error", "فشل تحميل الأرباح"))
     if (perMember.status !in 200..299) throw Exception(perMember.body.optString("error", "فشل تحميل أرباح الأعضاء"))
     if (history.status !in 200..299) throw Exception(history.body.optString("error", "فشل تحميل سجل الأرباح"))
-    val o = overview.body.optJSONObject("coin_earnings") ?: JSONObject()
+    val o = overview.body.optJSONObject("earnings") ?: JSONObject()
     val m = perMember.body.optJSONArray("members") ?: JSONArray()
-    val h = history.body.optJSONArray("coin_history") ?: JSONArray()
+    val h = history.body.optJSONArray("history") ?: JSONArray()
     runOnUiThread { renderEarnings(o, m, h); earningsStatus.text = "تم تحديث الأرباح من الخادم" }
    } catch (e: Exception) {
     runOnUiThread { earningsStatus.text = e.message ?: "تعذر تحميل الأرباح. حاول تحديث التقرير." }
@@ -489,9 +487,9 @@ class AgencyDashboardActivity : Activity() {
 
  private fun renderEarnings(o: JSONObject, m: JSONArray, h: JSONArray) {
   if (!::earningsBox.isInitialized) return
-  val total = o.optLong("total_coins", 0); val available = o.optLong("available_coins", 0); val paid = o.optLong("paid_coins", 0)
-  val today = o.optLong("today_coins", 0); val week = o.optLong("last_7_days_coins", 0); val month = o.optLong("month_coins", 0)
-  heroTotal.text = fmt(total); heroAvail.text = fmt(available); heroPaid.text = fmt(paid)
+  val total = o.optLong("total_cents", 0); val available = o.optLong("available_cents", 0); val paid = o.optLong("paid_cents", 0)
+  val today = o.optLong("today_cents", 0); val week = o.optLong("last_7_days_cents", 0); val month = o.optLong("month_cents", 0)
+  heroTotal.text = usdText(total); heroAvail.text = usdText(available); heroPaid.text = usdText(paid)
 
   earningsBox.removeAllViews()
   val row = hbox()
@@ -506,7 +504,7 @@ class AgencyDashboardActivity : Activity() {
    val item = m.optJSONObject(i) ?: continue
    val id = item.optString("public_id", "—")
    val name = item.optString("display_name").ifBlank { item.optString("username").ifBlank { "ID $id" } }
-   val totalMember = item.optLong("total_coins", 0); val availMember = item.optLong("available_coins", 0); val gifts = item.optLong("coin_gifts_count", 0)
+   val totalMember = item.optLong("total_cents", 0); val availMember = item.optLong("available_cents", 0); val gifts = item.optLong("gifts_count", 0)
    val r = cardView(12).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
    r.addView(initials(name, 44), LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(12) })
    val col = vbox()
@@ -514,8 +512,8 @@ class AgencyDashboardActivity : Activity() {
    col.addView(t("ID $id • هدايا: $gifts", 11.5f, muted), lp().apply { topMargin = dp(3) })
    r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
    val end = vbox().apply { gravity = Gravity.END }
-   end.addView(coinLine(totalMember, 14f, green, green))
-   end.addView(t("متاح: ${fmt(availMember)}", 11f, muted), lp().apply { topMargin = dp(3) })
+   end.addView(usdLine(totalMember, 14f, green))
+   end.addView(t("متاح: ${usdText(availMember)}", 11f, muted), lp().apply { topMargin = dp(3) })
    r.addView(end)
    membersEarningsBox.addView(r, lp().apply { bottomMargin = dp(8) })
   }
@@ -525,7 +523,7 @@ class AgencyDashboardActivity : Activity() {
   for (i in 0 until h.length()) {
    val item = h.optJSONObject(i) ?: continue
    val name = item.optString("display_name").ifBlank { item.optString("public_id", "عضو") }
-   val amount = item.optLong("amount_coins", 0)
+   val amount = item.optLong("amount_usd_cents", 0)
    val st = item.optString("status")
    val (fg, sf) = toneOf(st)
    val date = item.optString("created_at", "").replace("T", " ").take(16)
@@ -538,7 +536,7 @@ class AgencyDashboardActivity : Activity() {
    meta.addView(t(date, 11f, muted), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
    col.addView(meta, lp().apply { topMargin = dp(5) })
    r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
-   r.addView(coinLine(amount, 14f, ink, brand))
+   r.addView(usdLine(amount, 14f, ink))
    historyBox.addView(r, lp().apply { bottomMargin = dp(7) })
   }
  }
