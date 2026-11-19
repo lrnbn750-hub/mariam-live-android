@@ -48,7 +48,7 @@ class RoomActivity : Activity() {
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
- private var canPublishVideo=false; private var cameraEnabled=false
+ private var canPublishVideo=false; private var cameraEnabled=false; private var changingRoomMode=false
  private var roomMode="audio"; private var cameraSeats=JSONArray(); private var cameraMainUserId=""; private var cameraSeatCount=6
  private val cameraTracks=HashMap<String,VideoTrack>()
  private val cameraRenderers=HashMap<String,TextureViewRenderer>()
@@ -1306,31 +1306,56 @@ class RoomActivity : Activity() {
  }
 
  private fun changeRoomMode(mode:String,cameraCount:Int=6){
-  if(!connected || !isOwner)return
-  scope.launch{
-   try{
-    val payload=JSONObject().put("mode",mode).put("camera_seat_count",if(mode=="camera")cameraCount else 0)
-    val result=withContext(Dispatchers.IO){AuthApi.put("/api/voice-rooms/$roomId/mode",payload,authToken)}
-    if(result.status !in 200..299){
-     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تغيير وضع الغرفة"),Toast.LENGTH_LONG).show()
-     return@launch
+   if(!connected || !isOwner || changingRoomMode)return
+   val targetMode=if(mode=="camera")"camera" else "audio"
+   if(roomMode==targetMode && (targetMode!="camera" || cameraSeatCount==cameraCount))return
+   changingRoomMode=true
+   if(::cameraControl.isInitialized)cameraControl.isEnabled=false
+   scope.launch{
+    val localCameraWasEnabled=cameraEnabled
+    try{
+     // Stop the local camera before changing the shared room mode. Never swallow
+     // LiveKit errors or report a successful audio transition while video remains published.
+     if(targetMode=="audio" && (cameraEnabled ||
+       room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track!=null)){
+      val localTrack=room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
+      room.localParticipant.setCameraEnabled(false)
+      cameraEnabled=false
+      val renderer=cameraRenderers.remove(currentUserId)
+      try{if(renderer!=null)localTrack?.removeRenderer(renderer)}catch(_:Exception){}
+      try{renderer?.release()}catch(_:Exception){}
+      cameraTracks.remove(currentUserId)
+      refreshCameraControl()
+      drawSeats()
+     }
+     val payload=JSONObject().put("mode",targetMode)
+      .put("camera_seat_count",if(targetMode=="camera")cameraCount else 0)
+     val result=withContext(Dispatchers.IO){
+      AuthApi.put("/api/voice-rooms/$roomId/mode",payload,authToken)
+     }
+     if(result.status !in 200..299){
+      throw Exception(result.body.optString("error","تعذر تغيير وضع الغرفة"))
+     }
+     roomMode=targetMode
+     if(targetMode=="camera")cameraSeatCount=cameraCount
+     loadSeats()
+     Toast.makeText(this@RoomActivity,
+      if(targetMode=="camera")"تم تحويل الغرفة إلى وضع الكاميرا" else "تمت العودة إلى الغرفة الصوتية",
+      Toast.LENGTH_SHORT).show()
+    }catch(e:Exception){
+     if(localCameraWasEnabled && targetMode=="audio"){
+      cameraEnabled=false
+      cameraTracks.remove(currentUserId)
+      refreshCameraControl()
+     }
+     Toast.makeText(this@RoomActivity,e.message?: "تعذر تغيير وضع الغرفة",Toast.LENGTH_LONG).show()
+    }finally{
+     changingRoomMode=false
+     if(::cameraControl.isInitialized)cameraControl.isEnabled=true
     }
-    if(mode=="audio" && cameraEnabled){
-     try{room.localParticipant.setCameraEnabled(false)}catch(_:Exception){}
-     cameraEnabled=false
-     cameraTracks.remove(currentUserId)
-     refreshCameraControl()
-    }
-    roomMode=mode
-    if(mode=="camera")cameraSeatCount=cameraCount
-    loadSeats()
-    Toast.makeText(this@RoomActivity,if(mode=="camera")"تم تحويل الغرفة إلى وضع الكاميرا" else "تمت العودة إلى الغرفة الصوتية",Toast.LENGTH_SHORT).show()
-   }catch(e:Exception){
-    Toast.makeText(this@RoomActivity,e.message?: "تعذر تغيير وضع الغرفة",Toast.LENGTH_LONG).show()
    }
   }
- }
-
+ 
  private fun cameraSeatUser(seat:JSONObject):String=
   seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
 
