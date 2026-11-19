@@ -1336,8 +1336,18 @@ class RoomActivity : Activity() {
      if(result.status !in 200..299){
       throw Exception(result.body.optString("error","تعذر تغيير وضع الغرفة"))
      }
+     // Apply the confirmed mode locally and redraw immediately. loadSeats() is
+     // asynchronous; its render-state comparison can otherwise miss this change
+     // because roomMode was already updated before the GET response arrives.
      roomMode=targetMode
      if(targetMode=="camera")cameraSeatCount=cameraCount
+     canPublishVideo=if(targetMode=="camera"){
+      val hasCameraSeat=(0 until cameraSeats.length()).any{
+       cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()
+      }
+      isOwner||hasCameraSeat
+     }else isOwner||isSeated
+     drawSeats()
      loadSeats()
      Toast.makeText(this@RoomActivity,
       if(targetMode=="camera")"تم تحويل الغرفة إلى وضع الكاميرا" else "تمت العودة إلى الغرفة الصوتية",
