@@ -49,7 +49,7 @@ class RoomActivity : Activity() {
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
  private var canPublishVideo=false; private var cameraEnabled=false
- private var roomMode="audio"; private var cameraSeats=JSONArray(); private var cameraMainUserId=""
+ private var roomMode="audio"; private var cameraSeats=JSONArray(); private var cameraMainUserId=""; private var cameraSeatCount=6
  private val cameraTracks=HashMap<String,VideoTrack>()
  private val cameraRenderers=HashMap<String,TextureViewRenderer>()
  private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
@@ -1182,6 +1182,7 @@ class RoomActivity : Activity() {
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     roomMode=r.body.optString("roomMode","audio").lowercase().let{if(it=="camera")"camera" else "audio"}
     cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
+    cameraSeatCount=r.body.optInt("cameraSeatCount",r.body.optInt("camera_seat_count",if(cameraSeats.length()>=4)cameraSeats.length() else 6)).coerceIn(4,6)
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     val renderStateChanged=previousRenderState!=seats.toString()+"|"+roomMode+"|"+cameraSeats.toString()+"|"+cameraMainUserId
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
@@ -1276,25 +1277,40 @@ class RoomActivity : Activity() {
    setPadding(dp(10),dp(5),dp(10),dp(5))
    background=GradientDrawable().apply{setColor(Color.argb(145,18,15,32));cornerRadius=dp(14).toFloat();setStroke(dp(1),Color.argb(65,255,255,255))}
   }
-  bar.addView(label(if(roomMode=="camera")"غرفة كاميرا • 6 مقاعد" else "غرفة صوتية • 8 مقاعد",13f,Color.WHITE,true),
+  bar.addView(label(if(roomMode=="camera")"غرفة كاميرا • $cameraSeatCount مقاعد" else "غرفة صوتية • 8 مقاعد",13f,Color.WHITE,true),
    LinearLayout.LayoutParams(0,dp(34),1f))
   if(isOwner){
-   val target=if(roomMode=="camera")"العودة للصوت" else "تشغيل الكاميرا"
+   val target=if(roomMode=="camera")"تغيير نوع البث" else "تغيير نوع البث"
    bar.addView(label(target,12f,Color.WHITE,true).apply{
     setPadding(dp(14),0,dp(14),0)
     background=GradientDrawable().apply{setColor(Color.rgb(110,75,185));cornerRadius=dp(18).toFloat()}
     isClickable=true
-    setOnClickListener{changeRoomMode(if(roomMode=="camera")"audio" else "camera")}
+    setOnClickListener{showBroadcastModePicker()}
    },LinearLayout.LayoutParams(-2,dp(34)))
   }
   grid.addView(bar,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
  }
 
- private fun changeRoomMode(mode:String){
+ private fun showBroadcastModePicker(){
+  if(!isOwner)return
+  val options=arrayOf("بث صوتي • 8 مقاعد","بث كاميرا • 4 مقاعد","بث كاميرا • 6 مقاعد")
+  AlertDialog.Builder(this)
+   .setTitle("اختيار نوع البث")
+   .setItems(options){_,which->
+    when(which){
+     0->changeRoomMode("audio",0)
+     1->changeRoomMode("camera",4)
+     2->changeRoomMode("camera",6)
+    }
+   }.show()
+ }
+
+ private fun changeRoomMode(mode:String,cameraCount:Int=6){
   if(!connected || !isOwner)return
   scope.launch{
    try{
-    val result=withContext(Dispatchers.IO){AuthApi.put("/api/voice-rooms/$roomId/mode",JSONObject().put("mode",mode),authToken)}
+    val payload=JSONObject().put("mode",mode).put("camera_seat_count",if(mode=="camera")cameraCount else 0)
+    val result=withContext(Dispatchers.IO){AuthApi.put("/api/voice-rooms/$roomId/mode",payload,authToken)}
     if(result.status !in 200..299){
      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تغيير وضع الغرفة"),Toast.LENGTH_LONG).show()
      return@launch
@@ -1306,6 +1322,7 @@ class RoomActivity : Activity() {
      refreshCameraControl()
     }
     roomMode=mode
+    if(mode=="camera")cameraSeatCount=cameraCount
     loadSeats()
     Toast.makeText(this@RoomActivity,if(mode=="camera")"تم تحويل الغرفة إلى وضع الكاميرا" else "تمت العودة إلى الغرفة الصوتية",Toast.LENGTH_SHORT).show()
    }catch(e:Exception){
@@ -1408,6 +1425,7 @@ class RoomActivity : Activity() {
    if(track!=null){
     val renderer=TextureViewRenderer(this)
     room.initVideoRenderer(renderer)
+    renderer.setMirror(uid==currentUserId)
     track.addRenderer(renderer)
     cameraRenderers[uid]=renderer
     tile.addView(renderer,FrameLayout.LayoutParams(-1,-1))
