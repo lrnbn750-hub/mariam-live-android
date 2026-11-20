@@ -3495,6 +3495,30 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
      typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
     }
+    fun avatarUrl(item:JSONObject):String{
+     val nested=item.optJSONObject("owner")?:item.optJSONObject("user")?:item.optJSONObject("profile")
+     return item.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
+      ?:item.optString("owner_avatar_url").takeIf{it.isNotBlank()&&it!="null"}
+      ?:nested?.optString("avatar_url")?.takeIf{it.isNotBlank()&&it!="null"}
+      ?: ""
+    }
+    fun makeAvatar(item:JSONObject,size:Int,strokeColor:Int=Color.TRANSPARENT):FrameLayout{
+     val frame=FrameLayout(this@RoomActivity).apply{
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(107,82,127));if(strokeColor!=Color.TRANSPARENT)setStroke(px(3),strokeColor)}
+      clipChildren=true;clipToPadding=true
+     }
+     val photo=ImageView(this@RoomActivity).apply{
+      scaleType=ImageView.ScaleType.CENTER_CROP
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.TRANSPARENT)}
+      clipToOutline=true
+      tag=avatarUrl(item)
+      setImageDrawable(VectorIcon("user",Color.WHITE,dp(24)))
+     }
+     frame.addView(photo,FrameLayout.LayoutParams(-1,-1))
+     val url=avatarUrl(item)
+     if(url.isNotBlank())loadAvatarInto(photo,url)
+     return frame
+    }
     val root=LinearLayout(this@RoomActivity).apply{
      orientation=LinearLayout.VERTICAL
      layoutDirection=View.LAYOUT_DIRECTION_RTL
@@ -3538,9 +3562,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      if(item!=null){
       val medal=text(if(index==0)"🥇" else if(index==1)"🥈" else "🥉",25f,Color.BLACK,true)
       card.addView(medal,LinearLayout.LayoutParams(-1,px(32)))
-      val avatar=text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")}.trim().take(1).ifBlank{"؟"},25f,Color.WHITE,true).apply{
-       background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(107,82,127));setStroke(px(3),if(index==0)0xFFF2B600.toInt() else if(index==1)0xFF9DB4E8.toInt() else 0xFFD9915E.toInt())}
-      }
+      val avatar=makeAvatar(item,if(index==0)76 else 64,if(index==0)0xFFF2B600.toInt() else if(index==1)0xFF9DB4E8.toInt() else 0xFFD9915E.toInt())
       card.addView(avatar,LinearLayout.LayoutParams(px(if(index==0)76 else 64),px(if(index==0)76 else 64)).apply{gravity=Gravity.CENTER})
       card.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")},13f,Color.rgb(31,31,31),true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LinearLayout.LayoutParams(-1,px(30)))
       card.addView(text("🔥 "+String.format("%,d",item.optLong("trend_points")),13f,Color.rgb(31,31,31),true),LinearLayout.LayoutParams(-1,px(26)))
@@ -3568,9 +3590,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       background=android.util.TypedValue().let{GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=px(12).toFloat()}}
      }
      row.addView(text((index+1).toString(),16f,Color.GRAY),LinearLayout.LayoutParams(px(34),px(48)))
-     row.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")}.trim().take(1).ifBlank{"؟"},20f,Color.WHITE,true).apply{
-      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(107,82,127))}
-     },LinearLayout.LayoutParams(px(48),px(48)))
+     row.addView(makeAvatar(item,48),LinearLayout.LayoutParams(px(48),px(48)))
      row.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")},15f,Color.rgb(31,31,31),true).apply{
       gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
      },LinearLayout.LayoutParams(0,px(48),1f).apply{marginStart=px(10);marginEnd=px(10)})
