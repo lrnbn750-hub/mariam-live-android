@@ -278,10 +278,45 @@ class RoomActivity : Activity() {
   }
   val trendChip=label("🔥 0",12f,Color.rgb(255,220,130),true).apply{
    setPadding(dp(10),dp(5),dp(10),dp(5))
-   background=GradientDrawable().apply{setColor(Color.argb(145,30,20,12));cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.argb(150,255,190,70))}
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+    intArrayOf(Color.rgb(76,31,12),Color.rgb(35,20,18),Color.rgb(76,31,12))).apply{
+    cornerRadius=dp(18).toFloat()
+    setStroke(dp(1),Color.rgb(255,174,48))
+   }
+   elevation=dp(3).toFloat()
    isClickable=true
+   isFocusable=true
    contentDescription="نقاط ترند الغرفة، اضغط لعرض البثوث الرائجة"
    setOnClickListener{showTrendingRooms()}
+   // A continuous flame-like pulse makes both the fire and score visibly alive.
+   android.animation.ValueAnimator.ofFloat(0.96f,1.07f).apply{
+    duration=720L
+    repeatCount=android.animation.ValueAnimator.INFINITE
+    repeatMode=android.animation.ValueAnimator.REVERSE
+    interpolator=android.view.animation.AccelerateDecelerateInterpolator()
+    addUpdateListener{anim->
+     val pulse=anim.animatedValue as Float
+     scaleX=pulse
+     scaleY=pulse
+     alpha=0.88f+(pulse-0.96f)*1.5f
+    }
+    start()
+   }
+   android.animation.ValueAnimator.ofArgb(Color.rgb(255,135,30),Color.rgb(255,205,65)).apply{
+    duration=900L
+    repeatCount=android.animation.ValueAnimator.INFINITE
+    repeatMode=android.animation.ValueAnimator.REVERSE
+    addUpdateListener{anim->
+     val glow=anim.animatedValue as Int
+     background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+      intArrayOf(Color.rgb(76,31,12),Color.rgb(35,20,18),Color.rgb(76,31,12))).apply{
+      cornerRadius=dp(18).toFloat()
+      setStroke(dp(2),glow)
+     }
+     setTextColor(glow)
+    }
+    start()
+   }
   }
   trendButton=trendChip
   // Keep member count and room trend on one row so neither is clipped by the 80dp header.
