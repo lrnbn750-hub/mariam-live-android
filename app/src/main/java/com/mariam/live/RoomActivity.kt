@@ -1247,7 +1247,7 @@ class RoomActivity : Activity() {
      }
     }
     mic.visibility=View.GONE
-    if(::micControl.isInitialized)micControl.visibility=if(isSeated && microphoneEnabled)View.VISIBLE else View.GONE
+    if(::micControl.isInitialized){micControl.visibility=if(isSeated)View.VISIBLE else View.GONE;refreshMicControl()}
     if(::cameraControl.isInitialized)cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     if(seatsNeedRedraw){
