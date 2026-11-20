@@ -53,7 +53,8 @@ class RoomActivity : Activity() {
  private val cameraRenderers=HashMap<String,TextureViewRenderer>()
  private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
- private var seats=JSONArray(); private var hands=JSONArray()
+ private var seats=JSONArray(); private var cameraSeats=JSONArray(); private var hands=JSONArray()
+ private var roomMode="audio"; private var cameraSeatCount=0; private var cameraMainUserId=""
  private val bg=Color.rgb(241,243,238); private val purple=Color.rgb(83,126,94); private val gold=Color.rgb(83,126,94); private val mutedText=Color.rgb(103,111,101)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
@@ -1201,18 +1202,22 @@ class RoomActivity : Activity() {
     }
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
     seats=r.body.optJSONArray("seats")?:JSONArray()
+    cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
+    roomMode=r.body.optString("roomMode","audio").lowercase()
+    cameraSeatCount=r.body.optInt("cameraSeatCount",if(cameraSeats.length()>0)cameraSeats.length() else 0)
+    cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
-    isSeated=(0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
+    isSeated=if(roomMode=="camera") (0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()} else (0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
     // Owner identity comes from the room record, never from seat 1.
     // This keeps the creator's profile visible even after they leave the room or seat.
     val roomOwner=r.body.optJSONObject("owner")
     updatePremiumOwnerHeader(roomOwner)
     val ownerSeat=seats.optJSONObject(0)
     val ownerSeatUser=ownerSeat?.optString("user_id").orEmpty()
-    if(isOwner && !ownerSeatSetupDone){
+    if(roomMode=="audio" && isOwner && !ownerSeatSetupDone){
      ownerSeatSetupDone=true
      if(ownerSeatUser.isBlank() || ownerSeatUser=="null"){
       val claim=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/seats/1/claim",JSONObject(),authToken)}
@@ -1231,8 +1236,8 @@ class RoomActivity : Activity() {
      }
     }
     mic.visibility=View.GONE
-    if(::micControl.isInitialized)micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
-    if(::cameraControl.isInitialized)cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+    if(::micControl.isInitialized)micControl.visibility=if(isSeated && microphoneEnabled)View.VISIBLE else View.GONE
+    if(::cameraControl.isInitialized)cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
     drawSeats()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
@@ -1285,17 +1290,24 @@ class RoomActivity : Activity() {
   releaseCameraRenderers()
   grid.removeAllViews()
   speakerWaveViews.clear()
-  for(row in 0..1){
+  val cameraMode=roomMode=="camera"
+  val visibleSeats=if(cameraMode)cameraSeats else seats
+  val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else 8
+  val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else 4
+  val rows=(visibleCount+columns-1)/columns
+  for(row in 0 until rows){
    val line=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
     gravity=Gravity.CENTER
    }
-   for(col in 0..3){
-    val i=row*4+col
-    val seat=seats.optJSONObject(i)?:JSONObject()
+   for(col in 0 until columns){
+    val i=row*columns+col
+    if(i>=visibleCount) continue
+    val seat=visibleSeats.optJSONObject(i)?:JSONObject()
+    val seatNumber=seat.optInt("seat_number",i+1)
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
-    val isHost=i==0
+    val isHost=if(cameraMode)false else i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
      ?:if(occupied)"متحدث" else "مقعد فارغ"
     val tile=LinearLayout(this).apply{
@@ -1319,7 +1331,7 @@ class RoomActivity : Activity() {
      elevation=dp(2).toFloat()
     }
     // Caption: golden crown chip for the host, small seat number for the others.
-    val seatCaption=label(if(isHost)"♛ المضيف" else "${i+1}",if(isHost)9f else 10f,
+    val seatCaption=label(if(isHost)"♛ المضيف" else "$seatNumber",if(isHost)9f else 10f,
      if(isHost)Color.rgb(60,38,4) else Color.argb(190,235,240,248),true).apply{
      includeFontPadding=false
      maxLines=1
@@ -1448,11 +1460,11 @@ class RoomActivity : Activity() {
     if(occupied){
      tile.setOnClickListener{openSeatProfile(uid!!,seat,name,avatarUrl)}
      tile.setOnLongClickListener{
-      seatClick(seat,i+1,uid,name)
+      seatClick(seat,seatNumber,uid,name)
       true
      }
     }else{
-     tile.setOnClickListener{claimSeat(i+1)}
+     tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else claimSeat(seatNumber)}
     }
     line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{
      setMargins(dp(3),dp(3),dp(3),dp(3))
@@ -1564,6 +1576,7 @@ class RoomActivity : Activity() {
   }
  }
  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
+  if(roomMode=="camera"){cameraSeatClick(s,n,uid,name);return}
   if(uid==null){claimSeat(n);return}
   if(uid==currentUserId){
    showActionSheet("إدارة مقعدك",listOf(if(microphoneEnabled)"كتم صوت المايك" else "تشغيل المايك","مغادرة المقعد")){which->
@@ -1601,6 +1614,59 @@ class RoomActivity : Activity() {
    }catch(_:Exception){
     Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
    }
+  }
+ }
+ private fun cameraSeatClick(s:JSONObject,n:Int,uid:String?,name:String){
+  if(uid==null){claimCameraSeat(n);return}
+  val muted=s.optBoolean("is_muted",false)
+  val isOpen=s.optBoolean("is_open",true)
+  if(uid==currentUserId){
+   showActionSheet("إدارة مقعد الكاميرا",listOf(if(microphoneEnabled)"كتم صوت المايك" else "تشغيل المايك","إيقاف الكاميرا ومغادرة المقعد")){which->
+    if(which==0)toggleMic() else leaveCameraSeat(n)
+   }
+   return
+  }
+  if(!isOwner){Toast.makeText(this,"هذا المقعد مشغول",Toast.LENGTH_SHORT).show();return}
+  showActionSheet(name,listOf(if(muted)"إلغاء كتم المايك" else "كتم المايك", "إزالة من مقعد الكاميرا", if(isOpen)"إغلاق المقعد" else "فتح المقعد", "تعيين كاميرته رئيسية")){which->
+   scope.launch{
+    try{
+     val result=withContext(Dispatchers.IO){when(which){
+      0->AuthApi.post("/api/voice-rooms/$roomId/camera-seats/$n/mute",JSONObject().put("muted",!muted),authToken)
+      1->AuthApi.delete("/api/voice-rooms/$roomId/camera-seats/$n",authToken)
+      2->AuthApi.put("/api/voice-rooms/$roomId/camera-seats/$n/open",JSONObject().put("isOpen",!isOpen),authToken)
+      else->AuthApi.put("/api/voice-rooms/$roomId/camera-main",JSONObject().put("userId",uid),authToken)
+     }}
+     if(result.status in 200..299){loadSeats();Toast.makeText(this@RoomActivity,"تم تحديث مقعد الكاميرا",Toast.LENGTH_SHORT).show()}
+     else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تنفيذ العملية"),Toast.LENGTH_SHORT).show()
+    }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+   }
+  }
+ }
+ private fun claimCameraSeat(n:Int){
+  if(!connected){Toast.makeText(this,"انتظر اتصال الغرفة ثم حاول مجدداً",Toast.LENGTH_SHORT).show();return}
+  scope.launch{
+   try{
+    val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/camera-seats/$n/claim",JSONObject(),authToken)}
+    if(r.status in 200..299){
+     try{room.disconnect()}catch(_:Exception){}
+     connected=false;isSeated=true;cameraEnabled=false
+     connect()
+     Toast.makeText(this@RoomActivity,"تم حجز مقعد الكاميرا $n",Toast.LENGTH_SHORT).show()
+    }else Toast.makeText(this@RoomActivity,r.body.optString("error","تعذر حجز مقعد الكاميرا"),Toast.LENGTH_SHORT).show()
+   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+  }
+ }
+ private fun leaveCameraSeat(n:Int){
+  scope.launch{
+   try{
+    if(cameraEnabled){try{room.localParticipant.setCameraEnabled(false)}catch(_:Exception){};cameraEnabled=false}
+    val result=withContext(Dispatchers.IO){AuthApi.delete("/api/voice-rooms/$roomId/camera-seats/$n",authToken)}
+    if(result.status in 200..299){
+     try{room.disconnect()}catch(_:Exception){}
+     connected=false;isSeated=false;canPublishVideo=false
+     loadSeats();connect()
+    }else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر مغادرة مقعد الكاميرا"),Toast.LENGTH_SHORT).show()
+   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
   }
  }
  private fun claimSeat(n:Int){
