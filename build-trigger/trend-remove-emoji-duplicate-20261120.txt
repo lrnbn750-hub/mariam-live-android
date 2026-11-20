@@ -1,0 +1,1 @@
+Trigger Android build for integrated trend icon and score fix.
