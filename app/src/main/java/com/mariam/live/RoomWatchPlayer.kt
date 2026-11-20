@@ -136,6 +136,14 @@ class RoomWatchPlayer(
             if (stroke != Color.TRANSPARENT) setStroke(dp(1), stroke)
         }
 
+    private val accentA = Color.rgb(255, 75, 90)
+    private val accentB = Color.rgb(255, 64, 129)
+
+    private fun accentGradient(radius: Int) =
+        GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(accentA, accentB)).apply {
+            cornerRadius = dp(radius).toFloat()
+        }
+
     private fun toast(msg: String) {
         if (!released && !activity.isFinishing) Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
     }
@@ -390,7 +398,6 @@ class RoomWatchPlayer(
     private fun ensureWindow(): LinearLayout {
         panelWindow?.let { return it }
         val (vw, vh) = videoSize()
-
         val dock = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -400,7 +407,7 @@ class RoomWatchPlayer(
 
         val box = FrameLayout(activity).apply {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(Color.BLACK, 16, Color.argb(80, 255, 255, 255))
+            background = rounded(Color.BLACK, 18, Color.argb(70, 255, 255, 255))
             clipToOutline = true
         }
 
@@ -420,9 +427,14 @@ class RoomWatchPlayer(
 
         val empty = TextView(activity).apply {
             gravity = Gravity.CENTER
-            textSize = 12f
-            setTextColor(Color.argb(200, 255, 255, 255))
+            textSize = 12.5f
+            setTextColor(Color.argb(215, 255, 255, 255))
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setPadding(dp(14), 0, dp(14), 0)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(44, 24, 82), Color.rgb(14, 10, 30), Color.rgb(8, 26, 48))
+            )
         }
         emptyView = empty
         box.addView(empty, FrameLayout.LayoutParams(-1, -1))
@@ -432,9 +444,12 @@ class RoomWatchPlayer(
         shield.setOnClickListener { toggleControls() }
         box.addView(shield, FrameLayout.LayoutParams(-1, -1))
 
-        val track = FrameLayout(activity).apply { setBackgroundColor(Color.argb(70, 255, 255, 255)) }
+        val track = FrameLayout(activity).apply { setBackgroundColor(Color.argb(64, 255, 255, 255)) }
         val fillView = View(activity).apply {
-            setBackgroundColor(Color.rgb(255, 75, 90))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(accentA, accentB)
+            )
             pivotX = 0f
             scaleX = 0f
         }
@@ -449,17 +464,18 @@ class RoomWatchPlayer(
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.argb(190, 0, 0, 0), Color.TRANSPARENT)
+                intArrayOf(Color.argb(205, 8, 4, 20), Color.TRANSPARENT)
             )
-            setPadding(dp(6), dp(5), dp(10), dp(14))
+            setPadding(dp(7), dp(6), dp(12), dp(16))
         }
         val closeBtn = glyphButton(WatchGlyph.CLOSE) { onClosePressed() }
         val titleTv = TextView(activity).apply {
-            textSize = 11.5f
+            textSize = 12f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
+            setShadowLayer(4f, 0f, 1f, Color.argb(170, 0, 0, 0))
             gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
         }
         top.addView(closeBtn, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
@@ -473,19 +489,19 @@ class RoomWatchPlayer(
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = GradientDrawable(
                 GradientDrawable.Orientation.BOTTOM_TOP,
-                intArrayOf(Color.argb(190, 0, 0, 0), Color.TRANSPARENT)
+                intArrayOf(Color.argb(205, 8, 4, 20), Color.TRANSPARENT)
             )
-            setPadding(dp(8), dp(14), dp(8), dp(9))
+            setPadding(dp(8), dp(16), dp(8), dp(10))
         }
         val center = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
         val backB = glyphButton(WatchGlyph.BACK) { ownerSeek(-10) }
-        val playB = glyphButton(WatchGlyph.PLAY) { ownerToggle() }
+        val playB = glyphButton(WatchGlyph.PLAY, accent = true) { ownerToggle() }
         val fwdB = glyphButton(WatchGlyph.FWD) { ownerSeek(10) }
-        center.addView(backB, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(12) })
-        center.addView(playB, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(12) })
+        center.addView(backB, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
+        center.addView(playB, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(14) })
         center.addView(fwdB, LinearLayout.LayoutParams(dp(34), dp(34)))
         bottom.addView(center, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         val searchB = glyphButton(WatchGlyph.SEARCH) { showSearch() }
@@ -516,7 +532,13 @@ class RoomWatchPlayer(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(Color.argb(80, 16, 12, 30), 14, Color.argb(50, 255, 255, 255))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(120, 46, 35, 78), Color.argb(105, 16, 12, 32))
+            ).apply {
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.argb(60, 255, 255, 255))
+            }
             setPadding(dp(6), 0, dp(10), 0)
         }
         val icon = WatchGlyph(activity, volumeGlyphKind()).apply {
@@ -551,7 +573,7 @@ class RoomWatchPlayer(
 
         val pct = TextView(activity).apply {
             textSize = 11f
-            setTextColor(Color.argb(210, 255, 255, 255))
+            setTextColor(Color.argb(230, 255, 255, 255))
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
             text = "$volume%"
@@ -595,11 +617,21 @@ class RoomWatchPlayer(
         prefs.edit().putInt(PREF_VOLUME, volume).putInt(PREF_VOLUME_LAST, lastVolume).apply()
     }
 
-    private fun glyphButton(kind: Int, onClick: () -> Unit): WatchGlyph =
+    private fun glyphButton(kind: Int, accent: Boolean = false, onClick: () -> Unit): WatchGlyph =
         WatchGlyph(activity, kind).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.argb(120, 0, 0, 0))
+            background = if (accent) {
+                GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(accentA, accentB)).apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(dp(1), Color.argb(120, 255, 255, 255))
+                }
+            } else {
+                GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.argb(150, 46, 35, 78), Color.argb(140, 10, 8, 22))
+                ).apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(dp(1), Color.argb(80, 255, 255, 255))
+                }
             }
             setOnClickListener {
                 onClick()
@@ -764,7 +796,6 @@ class RoomWatchPlayer(
     // =====================================================================
     // Owner controls
     // =====================================================================
-
     private fun ownerToggle() {
         if (!isOwner) return
         web?.evaluateJavascript("ownerToggle()", null)
@@ -963,11 +994,11 @@ class RoomWatchPlayer(
             setPadding(dp(16), dp(10), dp(16), dp(14))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(31, 24, 54), Color.rgb(14, 12, 26))
+                intArrayOf(Color.rgb(40, 29, 70), Color.rgb(20, 15, 38), Color.rgb(12, 10, 24))
             ).apply {
-                val r = dp(26).toFloat()
+                val r = dp(30).toFloat()
                 cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
-                setStroke(dp(1), Color.argb(46, 255, 255, 255))
+                setStroke(dp(1), Color.argb(64, 255, 255, 255))
             }
         }
         root.addView(View(activity).apply {
@@ -981,7 +1012,13 @@ class RoomWatchPlayer(
         val searchCard = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = rounded(Color.argb(40, 255, 255, 255), 15)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(64, 255, 255, 255), Color.argb(30, 255, 255, 255))
+            ).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.argb(60, 255, 255, 255))
+            }
             setPadding(dp(8), dp(5), dp(8), dp(5))
         }
         val input = EditText(activity).apply {
@@ -998,7 +1035,7 @@ class RoomWatchPlayer(
         searchCard.addView(input, LinearLayout.LayoutParams(0, dp(46), 1f))
         val goBtn = tv("بحث", 13f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(accent, 12)
+            background = accentGradient(14)
             setPadding(dp(18), 0, dp(18), 0)
         }
         searchCard.addView(goBtn, LinearLayout.LayoutParams(-2, dp(42)))
@@ -1025,7 +1062,13 @@ class RoomWatchPlayer(
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
-                background = rounded(Color.argb(34, 255, 255, 255), 13, Color.argb(48, 255, 255, 255))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.argb(50, 255, 255, 255), Color.argb(22, 255, 255, 255))
+                ).apply {
+                    cornerRadius = dp(16).toFloat()
+                    setStroke(dp(1), Color.argb(50, 255, 255, 255))
+                }
                 setPadding(dp(8), dp(8), dp(8), dp(8))
                 isClickable = true
                 setOnClickListener {
@@ -1152,8 +1195,7 @@ private class WatchGlyph(context: Context, var kind: Int) : View(context) {
         style = Paint.Style.FILL
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textAlign = Paint.Align.CENTER
+        color = Color.WHITE        textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.BOLD)
     }
     private val path = Path()
