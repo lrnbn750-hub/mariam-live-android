@@ -275,7 +275,6 @@ class RoomActivity : Activity() {
    addView(memberAvatars,LinearLayout.LayoutParams(dp(63),dp(26)))
    setOnClickListener{showRoomMembers()}
   }
-  headerActions.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)).apply{topMargin=dp(3)})
   val trendChip=label("🔥 0",12f,Color.rgb(255,220,130),true).apply{
    setPadding(dp(10),dp(5),dp(10),dp(5))
    background=GradientDrawable().apply{setColor(Color.argb(145,30,20,12));cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.argb(150,255,190,70))}
@@ -284,7 +283,15 @@ class RoomActivity : Activity() {
    setOnClickListener{showTrendingRooms()}
   }
   trendButton=trendChip
-  headerActions.addView(trendChip,LinearLayout.LayoutParams(-2,dp(32)).apply{topMargin=dp(4)})
+  // Keep member count and room trend on one row so neither is clipped by the 80dp header.
+  val roomStatsRow=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+  }
+  roomStatsRow.addView(membersButton,LinearLayout.LayoutParams(-2,dp(34)).apply{marginEnd=dp(5)})
+  roomStatsRow.addView(trendChip,LinearLayout.LayoutParams(-2,dp(32)))
+  headerActions.addView(roomStatsRow,LinearLayout.LayoutParams(-2,dp(36)).apply{topMargin=dp(2)})
 
   top.addView(headerActions,LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
   top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f))
@@ -1990,6 +1997,7 @@ class RoomActivity : Activity() {
     loadSeats()
     startRoomMembershipWatch()
     startRoomGiftWatch()
+    loadTrendScore()
     startTrendHeartbeat()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
