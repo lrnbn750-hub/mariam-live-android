@@ -336,7 +336,26 @@ class RoomActivity : Activity() {
   if(roomId.isBlank()||authToken.isBlank()){status.text="بيانات الدخول أو الغرفة غير متوفرة";return}
   room=LiveKit.create(applicationContext);loadIdentity()
   watchLayer?.let{layer->watchPlayer=RoomWatchPlayer(this,layer,{grid},roomId,authToken,{isOwner}).also{it.start()}}
-  if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect() else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
+  // Ensure membership before LiveKit connection, including direct Activity entry points.
+  scope.launch{
+   try{
+    val joined=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/join",JSONObject(),authToken)
+    }
+    if(joined.status !in 200..299){
+     val reason=joined.body.optString("error","تعذر دخول الغرفة")
+     status.text=reason
+     Toast.makeText(this@RoomActivity,reason,Toast.LENGTH_LONG).show()
+     return@launch
+    }
+    if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect()
+    else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO),4102)
+   }catch(e:Exception){
+    val reason=e.message?:"تعذر الاتصال بالخادم"
+    status.text=reason
+    Toast.makeText(this@RoomActivity,reason,Toast.LENGTH_LONG).show()
+   }
+  }
  }
 
  override fun onResume(){
