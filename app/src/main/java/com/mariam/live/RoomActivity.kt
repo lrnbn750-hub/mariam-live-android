@@ -223,8 +223,19 @@ class RoomActivity : Activity() {
    gravity=Gravity.CENTER_VERTICAL
    layoutDirection=View.LAYOUT_DIRECTION_LTR
   }
-  top.addView(glassCircleButton(R.drawable.ic_room_share,"مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
-  top.addView(glassCircleButton(R.drawable.ic_room_exit,"خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
+  val headerActions=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   gravity=Gravity.CENTER_HORIZONTAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+  }
+  val headerActionRow=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+  }
+  headerActionRow.addView(glassCircleButton(R.drawable.ic_room_share,"مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
+  headerActionRow.addView(glassCircleButton(R.drawable.ic_room_exit,"خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)))
+  headerActions.addView(headerActionRow,LinearLayout.LayoutParams(-2,dp(38)))
   membersButton=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR
    setPadding(dp(10),dp(4),dp(10),dp(4))
@@ -257,9 +268,10 @@ class RoomActivity : Activity() {
    addView(memberAvatars,LinearLayout.LayoutParams(dp(63),dp(26)))
    setOnClickListener{showRoomMembers()}
   }
-  top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)))
-  top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f).apply{marginStart=dp(8)})
-  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(46)))
+  headerActions.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)).apply{topMargin=dp(3)})
+  top.addView(headerActions,LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
+  top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f))
+  roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(80)))
   // مكان مخصص لمشغل يوتيوب فوق المقاعد: ارتفاعه 0 ويُفتح فقط أثناء المشاهدة (يديره RoomWatchPlayer).
   val watchHost=FrameLayout(this).apply{isClickable=false;isFocusable=false}
   watchLayer=watchHost
