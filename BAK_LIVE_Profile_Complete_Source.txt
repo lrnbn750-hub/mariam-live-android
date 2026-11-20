@@ -1,0 +1,1256 @@
+# BAK LIVE — Complete Profile Page Source Bundle
+# Branch: feature/bak-live-wealth-level-redesign
+# Repository: https://github.com/lrnbn750-hub/mariam-live-android
+# This is a reference bundle for AI-assisted redesign. Preserve API/data logic and resource IDs unless deliberately migrated.
+
+
+
+/// FILE: app/src/main/java/com/mariam/live/ProfileActivity.kt
+///
+package com.mariam.live
+
+import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Bundle
+import android.util.Base64
+import android.util.Log
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.GridLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.view.WindowCompat
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.net.URL
+import java.util.Locale
+import java.util.concurrent.Executors
+
+/**
+ * Fully native Kotlin profile screen. The previous HTML/WebView and floating-avatar
+ * overlay are intentionally removed; all profile layout, scrolling and avatar UI
+ * are now part of the Android view hierarchy.
+ */
+class ProfileActivity : Activity() {
+    private val executor = Executors.newSingleThreadExecutor()
+    private val photoPickerCode = 7421
+    private lateinit var page: LinearLayout
+    private lateinit var header: ProfileHeaderView
+    private lateinit var avatar: ImageView
+    private lateinit var coinValue: TextView
+    private lateinit var diamondValue: TextView
+    private lateinit var visitorValue: TextView
+    private lateinit var friendValue: TextView
+    private var profileData = JSONObject()
+    private var publicId = ""
+    private var userId = ""
+
+    private val ink = Color.rgb(20, 24, 34)
+    private val muted = Color.rgb(143, 151, 164)
+    private val border = Color.rgb(238, 240, 244)
+    private val white = Color.WHITE
+    private val pageBg = Color.rgb(255, 255, 255)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
+        window.statusBarColor = white
+        window.navigationBarColor = white
+        window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        buildNativePage()
+        loadProfileData()
+    }
+
+    private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()
+    private fun rounded(fill: Int, radius: Float, stroke: Int = border): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = dp(radius).toFloat()
+            if (stroke != Color.TRANSPARENT) setStroke(dp(1f), stroke)
+        }
+
+    private fun text(value: String, size: Float, color: Int = ink, bold: Boolean = false): TextView =
+        TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(color)
+            gravity = Gravity.CENTER_VERTICAL
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+            includeFontPadding = true
+        }
+
+    private fun buildNativePage() {
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(pageBg)
+            isFillViewport = true
+            clipToPadding = false
+        }
+        page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(pageBg)
+            setPadding(dp(14f), dp(6f), dp(14f), dp(24f))
+        }
+        scroll.addView(page, ViewGroup.LayoutParams(-1, -2))
+        setContentView(scroll)
+
+        header = ProfileHeaderView(this)
+        header.layoutParams = LinearLayout.LayoutParams(-1, -2)
+        header.setBackgroundColor(pageBg)
+        val slot = header.findViewById<FrameLayout>(R.id.profileHeaderAvatarSlot)
+        slot.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(222, 190, 103), Color.rgb(38, 165, 119), Color.rgb(222, 190, 103))
+        ).apply { shape = GradientDrawable.OVAL }
+        avatar = header.avatarView
+        avatar.layoutParams = FrameLayout.LayoutParams(dp(78f), dp(78f), Gravity.CENTER)
+        avatar.background = rounded(Color.rgb(235, 239, 240), 50f, Color.TRANSPARENT)
+        avatar.clipToOutline = true
+        header.editAvatarView.setOnClickListener { pickPhoto() }
+        header.copyView.setOnClickListener { copyId() }
+        header.settingsView.setOnClickListener { openAction("settings") }
+        header.supportView.setOnClickListener { openAction("music") }
+        header.fansCell.setOnClickListener { openFollowList("followers") }
+        header.followingCell.setOnClickListener { openFollowList("following") }
+        page.addView(header)
+
+        val walletRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            setPadding(0, dp(10f), 0, dp(12f))
+        }
+        val coins = walletCard("20", "عملات الشحن", "Ⓑ", Color.rgb(255, 239, 193))
+        val diamonds = walletCard("0", "الألماس المكتسب", "◆", Color.rgb(216, 244, 255))
+        coinValue = coins.second
+        diamondValue = diamonds.second
+        walletRow.addView(diamonds.first, LinearLayout.LayoutParams(0, dp(112f), 1f).apply { marginEnd = dp(8f) })
+        walletRow.addView(coins.first, LinearLayout.LayoutParams(0, dp(126f), 1f).apply { marginStart = dp(8f) })
+        page.addView(walletRow)
+
+        val shortcutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 22f)
+            setPadding(dp(8f), dp(10f), dp(8f), dp(10f))
+        }
+        val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        rowOne.addView(shortcut("العائلة", R.drawable.ic_profile_family_color) { openAction("family") }, weighted())
+        rowOne.addView(shortcut("VIP", R.drawable.ic_profile_vip_color) { openAction("vip") }, weighted())
+        rowOne.addView(shortcut("المتجر", R.drawable.ic_profile_store_color) { openAction("store") }, weighted())
+        rowOne.addView(shortcut("مظهري", R.drawable.ic_profile_appearance_color) { openAction("look") }, weighted())
+        val rowTwo = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(0, dp(4f), 0, 0)
+        }
+        rowTwo.addView(shortcut("مركز الوكالة", R.drawable.ic_profile_agency_color) { openAction("agency") }, weighted())
+        rowTwo.addView(shortcut("مركز المضيف", R.drawable.ic_profile_creator_color) { openAction("host") }, weighted())
+        rowTwo.addView(View(this), weighted())
+        rowTwo.addView(View(this), weighted())
+        shortcutCard.addView(rowOne)
+        shortcutCard.addView(rowTwo)
+        page.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f) })
+
+        val settingsTitle = text("إعدادات وخدمات الحساب", 18f, ink, true).apply {
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(0, dp(28f), dp(4f), dp(12f))
+        }
+        page.addView(settingsTitle)
+        val services = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 26f)
+            clipToOutline = true
+        }
+        serviceRow(services, "أنشر", R.drawable.ic_profile_publish) { openAction("post") }
+        serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color) { openAction("help") }
+        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color) { openAction("privacy") }
+        serviceRow(services, "المستوى", R.drawable.ic_profile_level_color) { openAction("level") }
+        page.addView(services, LinearLayout.LayoutParams(-1, -2))
+    }
+
+    private fun weighted() = LinearLayout.LayoutParams(0, -2, 1f)
+
+    private fun walletCard(amount: String, label: String, symbol: String, tint: Int): Pair<View, TextView> {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(white, 22f)
+            setPadding(dp(10f), dp(10f), dp(10f), dp(8f))
+            elevation = dp(2f).toFloat()
+        }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+        }
+        val icon = TextView(this).apply {
+            text = symbol
+            textSize = 25f
+            setTextColor(if (tint == Color.rgb(255, 239, 193)) Color.rgb(178, 128, 24) else Color.rgb(48, 164, 210))
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply { setColor(tint); cornerRadius = dp(18f).toFloat() }
+        }
+        top.addView(icon, LinearLayout.LayoutParams(dp(48f), dp(48f)))
+        val value = text(amount, 23f, ink, true).apply { gravity = Gravity.CENTER }
+        top.addView(value, LinearLayout.LayoutParams(0, dp(64f), 1f))
+        box.addView(top)
+        box.addView(text(label, 14f, muted).apply {
+            gravity = Gravity.RIGHT
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(0, dp(6f), dp(2f), 0)
+        })
+        box.setOnClickListener { openAction(if (label.contains("ألماس")) "diamonds" else "coins") }
+        return box to value
+    }
+
+    private fun shortcut(label: String, iconRes: Int, action: () -> Unit): View {
+        val item = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(3f), dp(3f), dp(3f), dp(4f))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            background = rounded(
+                when (label) {
+                    "العائلة" -> Color.rgb(242, 237, 255)
+                    "VIP" -> Color.rgb(27, 31, 48)
+                    "المتجر" -> Color.rgb(255, 238, 244)
+                    "مظهري" -> Color.rgb(232, 244, 255)
+                    "مركز الوكالة" -> Color.rgb(228, 248, 243)
+                    else -> Color.rgb(246, 235, 255)
+                }, 16f, Color.TRANSPARENT
+            )
+            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
+        }
+        item.addView(icon, LinearLayout.LayoutParams(dp(58f), dp(58f)))
+        item.addView(text(label, 13f, if (label == "VIP") Color.rgb(151, 116, 37) else ink, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7f), 0, 0)
+        })
+        return item
+    }
+
+    private fun serviceRow(parent: LinearLayout, label: String, iconRes: Int, action: () -> Unit) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14f), dp(9f), dp(14f), dp(9f))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            background = rounded(Color.rgb(246, 248, 251), 16f, Color.TRANSPARENT)
+            setPadding(dp(10f), dp(10f), dp(10f), dp(10f))
+        }
+        row.addView(icon, LinearLayout.LayoutParams(dp(40f), dp(40f)))
+        row.addView(text(label, 17f, ink, true).apply {
+            gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            textDirection = View.TEXT_DIRECTION_RTL
+        }, LinearLayout.LayoutParams(0, dp(42f), 1f).apply { marginStart = dp(12f) })
+        row.addView(text("‹", 24f, Color.rgb(177, 185, 195)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(22f), dp(42f)))
+        parent.addView(row, LinearLayout.LayoutParams(-1, -2))
+        val divider = View(this).apply { setBackgroundColor(border) }
+        parent.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)))
+    }
+
+    private fun loadProfileData() {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        if (token.isNullOrBlank()) { finish(); return }
+        executor.execute {
+            try {
+                val me = AuthApi.get("/api/auth/me", token)
+                if (me.status !in 200..299) throw Exception(me.body.optString("error", "تعذر تحميل الحساب"))
+                val account = me.body.optJSONObject("user") ?: throw Exception("بيانات الحساب غير مكتملة")
+                userId = account.optString("id")
+                publicId = account.optString("public_id")
+                if (userId.isBlank() || userId == "null") throw Exception("معرّف المستخدم غير متوفر")
+                val details = AuthApi.get("/api/users/$userId", token)
+                if (details.status !in 200..299) throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
+                val user = details.body.optJSONObject("user") ?: JSONObject()
+                val data = JSONObject()
+                    .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
+                    .put("id", publicId)
+                    .put("level", 1)
+                    .put("avatarUrl", user.optString("avatar_url"))
+                    .put("visitors", JSONObject.NULL)
+                    .put("friends", 0)
+                    .put("followers", 0)
+                    .put("fans", 0)
+                    .put("diamonds", 0)
+                    .put("coins", 0)
+                try {
+                    val level = AuthApi.get("/api/levels/me", token)
+                    if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
+                } catch (_: Exception) {}
+                try {
+                    val follows = AuthApi.get("/api/follows/me", token)
+                    if (follows.status in 200..299) {
+                        data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
+                        data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
+                    }
+                } catch (_: Exception) {}
+                try {
+                    val wallet = AuthApi.get("/api/wallet", token)
+                    if (wallet.status in 200..299) {
+                        val w = wallet.body.optJSONObject("wallet") ?: wallet.body
+                        data.put("coins", w.optLong("recharge_coins", 0L))
+                        data.put("diamonds", w.optLong("earned_diamonds", 0L))
+                    }
+                } catch (_: Exception) {}
+                profileData = data
+                runOnUiThread { bindProfile(data, token) }
+            } catch (e: Exception) {
+                Log.e("BAKProfileNative", "Profile load failed", e)
+                runOnUiThread { Toast.makeText(this, e.message ?: "تعذر تحميل بيانات الملف الشخصي", Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    private fun bindProfile(data: JSONObject, token: String) {
+        header.setUserName(data.optString("name"))
+        header.setUserIdText(publicId)
+        header.setLevel(data.optInt("level", 1))
+        header.setFansCount(data.optInt("fans", 0).toString())
+        header.setFollowingCount(data.optInt("followers", 0).toString())
+        coinValue.text = data.optLong("coins", 0).toString()
+        diamondValue.text = data.optLong("diamonds", 0).toString()
+        val avatarUrl = normalizeAvatar(data.optString("avatarUrl"))
+        if (avatarUrl.isNotBlank()) loadAvatar(avatarUrl, token)
+    }
+
+    private fun normalizeAvatar(value: String): String {
+        if (value.isBlank() || value == "null") return ""
+        return if (value.startsWith("http://") || value.startsWith("https://")) value
+        else "https://nokiraq.duckdns.org/" + value.trimStart('/')
+    }
+
+    private fun loadAvatar(url: String, token: String) {
+        executor.execute {
+            try {
+                val connection = (URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 15000; readTimeout = 20000; instanceFollowRedirects = true
+                    setRequestProperty("Accept", "image/*")
+                    if (token.isNotBlank()) setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("User-Agent", "BAK-LIVE-Android")
+                }
+                val bitmap = try {
+                    val status = connection.responseCode
+                    if (status !in 200..299) throw Exception("Avatar HTTP $status")
+                    val mime = connection.contentType?.substringBefore(';')?.trim().orEmpty()
+                    if (!mime.startsWith("image/")) throw Exception("Avatar response is not image: $mime")
+                    val bytes = connection.inputStream.use { it.readBytes() }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: throw Exception("Unsupported avatar image")
+                } finally { connection.disconnect() }
+                runOnUiThread { if (!isFinishing) avatar.setImageBitmap(bitmap) }
+            } catch (e: Exception) {
+                Log.e("BAKProfileNative", "Avatar load failed: $url", e)
+            }
+        }
+    }
+
+    private fun copyId() {
+        if (publicId.isBlank()) return
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("BAK ID", publicId))
+        Toast.makeText(this, "تم نسخ المعرّف", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openAction(action: String) {
+        when (action) {
+            "settings", "privacy" -> startActivity(Intent(this, AccountSecurityActivity::class.java))
+            "music" -> Toast.makeText(this, "الموسيقى", Toast.LENGTH_SHORT).show()
+            "level" -> startActivity(Intent(this, LevelActivity::class.java))
+            "diamonds", "coins" -> startActivity(Intent(this, WalletActivity::class.java))
+            "look", "store" -> startActivity(Intent(this, InventoryActivity::class.java))
+            "vip" -> startActivity(Intent(this, VipActivity::class.java))
+            "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
+            "agency" -> showInfo("مركز الوكالة")
+            "family" -> showInfo("العائلة")
+            "help" -> showInfo("المساعدة والدعم")
+            "post" -> showInfo("أنشر")
+        }
+    }
+
+    private fun showInfo(title: String) {
+        android.app.AlertDialog.Builder(this).setTitle(title)
+            .setMessage("هذه الخدمة ستتوفر ضمن تطبيق BAK LIVE.")
+            .setPositiveButton("حسناً", null).show()
+    }
+
+    private fun openFollowList(type: String) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        val title = if (type == "followers") "المعجبون" else "أتابعهم"
+        val dialog = android.app.AlertDialog.Builder(this).setTitle(title)
+            .setMessage("جارٍ تحميل القائمة...").setNegativeButton("إغلاق", null).create()
+        dialog.show()
+        executor.execute {
+            try {
+                val result = AuthApi.get("/api/follows/me", token)
+                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر تحميل القائمة"))
+                val list = result.body.optJSONArray(type) ?: org.json.JSONArray()
+                val names = ArrayList<String>()
+                for (i in 0 until list.length()) {
+                    val item = list.optJSONObject(i) ?: continue
+                    names.add(item.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: item.optString("username", "مستخدم"))
+                }
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    dialog.dismiss()
+                    android.app.AlertDialog.Builder(this).setTitle("$title (${names.size})")
+                        .setMessage(if (names.isEmpty()) "لا توجد حسابات في هذه القائمة بعد" else names.joinToString("\n"))
+                        .setPositiveButton("حسناً", null).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread { dialog.dismiss(); Toast.makeText(this, e.message ?: "تعذر تحميل القائمة", Toast.LENGTH_SHORT).show() }
+            }
+        }
+    }
+
+    private fun pickPhoto() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        startActivityForResult(intent, photoPickerCode)
+    }
+
+    @Deprecated("Deprecated in Android")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == photoPickerCode && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            uploadPhoto(uri)
+        }
+    }
+
+    private fun uploadPhoto(uri: Uri) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        Toast.makeText(this, "جارٍ رفع الصورة...", Toast.LENGTH_SHORT).show()
+        executor.execute {
+            try {
+                val source = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw Exception("تعذر قراءة الصورة")
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(source, 0, source.size, bounds)
+                var sample = 1
+                while (bounds.outWidth / sample > 1200 || bounds.outHeight / sample > 1200) sample *= 2
+                val bitmap = BitmapFactory.decodeByteArray(source, 0, source.size,
+                    BitmapFactory.Options().apply { inSampleSize = sample }) ?: throw Exception("صيغة الصورة غير مدعومة")
+                val scaled = if (bitmap.width > 900 || bitmap.height > 900) {
+                    val ratio = minOf(900f / bitmap.width, 900f / bitmap.height)
+                    Bitmap.createScaledBitmap(bitmap, (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                        (bitmap.height * ratio).toInt().coerceAtLeast(1), true)
+                } else bitmap
+                val output = ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG, 82, output)
+                val bytes = output.toByteArray()
+                if (bytes.size > 1536 * 1024) throw Exception("الصورة كبيرة، اختر صورة أصغر")
+                val result = AuthApi.post("/api/profile/avatar",
+                    JSONObject().put("avatar_base64", Base64.encodeToString(bytes, Base64.NO_WRAP)), token)
+                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر رفع الصورة"))
+                val url = normalizeAvatar(result.body.optString("avatar_url"))
+                profileData.put("avatarUrl", url)
+                runOnUiThread {
+                    loadAvatar(url, token)
+                    Toast.makeText(this, "تم تحديث الصورة الشخصية", Toast.LENGTH_SHORT).show()
+                }
+                if (scaled !== bitmap) scaled.recycle()
+                if (bitmap !== scaled) bitmap.recycle()
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this, e.message ?: "تعذر رفع الصورة", Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
+    }
+}
+
+
+
+/// FILE: app/src/main/java/com/mariam/live/ProfileHeaderView.kt
+///
+package com.mariam.live
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+
+/**
+ * Dedicated profile header. Layout direction is fixed LTR for stable avatar placement;
+ * Arabic text views keep their own RTL content direction.
+ */
+class ProfileHeaderView(context: Context) : LinearLayout(context) {
+    val avatarView: ImageView
+    val editAvatarView: ImageView
+    val nameView: TextView
+    val userIdView: TextView
+    val levelBadgeView: LevelBadgeView
+    val levelView: LevelBadgeView
+    val copyView: ImageView
+    val fansCountView: TextView
+    val followingCountView: TextView
+    val fansCell: View
+    val followingCell: View
+    val settingsView: TextView
+    val supportView: TextView
+
+    init {
+        orientation = VERTICAL
+        layoutDirection = View.LAYOUT_DIRECTION_LTR
+        LayoutInflater.from(context).inflate(R.layout.view_profile_header, this, true)
+        avatarView = findViewById(R.id.profileHeaderAvatar)
+        editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
+        nameView = findViewById(R.id.profileHeaderName)
+        userIdView = findViewById(R.id.profileHeaderUserId)
+        levelBadgeView = findViewById(R.id.profileLevelBadge)
+        levelView = levelBadgeView
+        copyView = findViewById(R.id.profileHeaderCopy)
+        fansCountView = findViewById(R.id.profileHeaderFansCount)
+        followingCountView = findViewById(R.id.profileHeaderFollowingCount)
+        fansCell = findViewById(R.id.profileHeaderFansCell)
+        followingCell = findViewById(R.id.profileHeaderFollowingCell)
+        settingsView = findViewById(R.id.profileHeaderSettings)
+        supportView = findViewById(R.id.profileHeaderSupport)
+    }
+
+    /** Accepts the raw public ID only. The ID: prefix is provided by the XML label. */
+    fun setUserIdText(rawUserId: String) {
+        userIdView.text = rawUserId.replace(Regex("^ID\\s*:?\\s*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "غير متوفر" }
+    }
+
+    fun setUserName(name: String) {
+        nameView.text = name.ifBlank { "مستخدم BAK LIVE" }
+    }
+
+    fun setLevel(level: Int) {
+        levelBadgeView.level = level
+    }
+
+    fun setLevelText(level: Int) {
+        setLevel(level)
+    }
+
+    fun setFansCount(value: String) { fansCountView.text = value }
+    fun setFollowingCount(value: String) { followingCountView.text = value }
+}
+
+
+/// FILE: app/src/main/java/com/mariam/live/LevelBadgeView.kt
+///
+package com.mariam.live
+
+import android.animation.ValueAnimator
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import android.graphics.Shader
+import android.graphics.Typeface
+import android.util.AttributeSet
+import android.view.View
+import android.view.animation.LinearInterpolator
+import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.sin
+
+/**
+ * BAK LIVE level badge, levels 1..100. Pure Canvas drawing: no images, no libraries, crisp at any density.
+ *
+ * 10 tiers x 10 levels. Each tier has its own palette + emblem
+ * (Steel, Emerald, Aqua, Sapphire, Amethyst, Rose, Flame, Gold, Platinum, Royal).
+ * Inside a tier the badge "levels up" visually: sub-level 4+ gets a thicker rim, 6+ a soft glow,
+ * 9 a glitter spark; the last tier (91-100) also gets a sun-burst emblem, sparkles and a shimmer sweep.
+ *
+ * UI only: set [level] from the value you already load from your API.
+ *
+ *   levelBadge.level = user.level          // 1..100, clamped
+ */
+class LevelBadgeView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
+
+    private class Tier(
+        val pillA: Int, val pillB: Int, val stroke: Int,
+        val ringA: Int, val ringB: Int, val innerA: Int, val innerB: Int,
+        val glyph: Int, val text: Int, val glow: Int, val shape: Int, val textShadow: Int
+    )
+
+    private val d = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val numPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val path = Path()
+    private val glyphPath = Path()
+    private val rect = RectF()
+
+    private var levelValue = 1
+    private var tierIdx = 0
+    private var sub = 0
+    private var labelW = 0f
+    private var numW = 0f
+    private var shimmerPhase = 0.55f
+    private var animator: ValueAnimator? = null
+
+    // geometry (dp)
+    private val emblemR = 11f * d
+    private val pillH = 16f * d
+    private val extraX = 4f * d
+    private val extraY = 3f * d
+    private val textGap = 3f * d
+    private val padEnd = 8f * d
+    private val labelToNum = 2f * d
+
+    /** Sweeping shine for levels 81..100. Set false to keep the badge fully static. */
+    var shimmerEnabled: Boolean = true
+        set(value) { field = value; updateAnimator(); invalidate() }
+
+    /** 1..100 (values outside are clamped). */
+    var level: Int
+        get() = levelValue
+        set(value) {
+            levelValue = value.coerceIn(1, 100)
+            tierIdx = (levelValue - 1) / 10
+            sub = (levelValue - 1) % 10
+            contentDescription = "Level $levelValue"
+            measureTexts()
+            requestLayout()
+            updateAnimator()
+            invalidate()
+        }
+
+    init {
+        labelPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
+        labelPaint.textSize = 8f * d
+        numPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
+        numPaint.textSize = 12f * d
+        level = 1
+    }
+
+    private fun measureTexts() {
+        labelW = labelPaint.measureText("LV")
+        numW = numPaint.measureText(levelValue.toString())
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val w = extraX + emblemR * 2f + textGap + labelW + labelToNum + numW + padEnd + extraX
+        val h = emblemR * 2f + extraY * 2f
+        setMeasuredDimension(
+            resolveSize(ceil(w).toInt(), widthMeasureSpec),
+            resolveSize(ceil(h).toInt(), heightMeasureSpec)
+        )
+    }
+
+    // ------------------------------------------------------------------ animation
+    private fun updateAnimator() {
+        val shouldRun = shimmerEnabled && levelValue >= 81 && isAttachedToWindow && visibility == VISIBLE
+        if (shouldRun) {
+            if (animator == null) {
+                animator = ValueAnimator.ofFloat(0f, 1.7f).apply {
+                    duration = 2800L
+                    repeatCount = ValueAnimator.INFINITE
+                    interpolator = LinearInterpolator()
+                    addUpdateListener {
+                        shimmerPhase = (it.animatedValue as Float).coerceAtMost(1f)
+                        invalidate()
+                    }
+                    start()
+                }
+            }
+        } else {
+            animator?.cancel()
+            animator = null
+        }
+    }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); updateAnimator() }
+    override fun onDetachedFromWindow() { animator?.cancel(); animator = null; super.onDetachedFromWindow() }
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility); updateAnimator()
+    }
+
+    // ------------------------------------------------------------------ drawing
+    private fun withAlpha(color: Int, a: Int): Int = (color and 0x00FFFFFF) or (a.coerceIn(0, 255) shl 24)
+
+    private fun buildGlyph(ops: FloatArray, cx: Float, cy: Float, s: Float, out: Path) {
+        out.reset()
+        var i = 0
+        while (i < ops.size) {
+            when (ops[i].toInt()) {
+                0 -> { out.moveTo(cx + ops[i + 1] * s, cy + ops[i + 2] * s); i += 3 }
+                1 -> { out.lineTo(cx + ops[i + 1] * s, cy + ops[i + 2] * s); i += 3 }
+                2 -> {
+                    out.quadTo(cx + ops[i + 1] * s, cy + ops[i + 2] * s, cx + ops[i + 3] * s, cy + ops[i + 4] * s)
+                    i += 5
+                }
+                else -> { out.close(); i += 1 }
+            }
+        }
+    }
+
+    private fun drawSparkle(c: Canvas, x: Float, y: Float, r: Float, color: Int) {
+        buildGlyph(G_SPARKLE, x, y, r, glyphPath)
+        paint.shader = null
+        paint.style = Paint.Style.FILL
+        paint.color = color
+        c.drawPath(glyphPath, paint)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val t = TIERS[tierIdx]
+        val cx = extraX + emblemR
+        val cy = height / 2f
+        val pillL = cx
+        val pillR = width - extraX
+        val pillT = cy - pillH / 2f
+        val pillB = cy + pillH / 2f
+        val rad = pillH / 2f
+        val isRoyal = tierIdx == 9
+
+        // 1) soft glow (no blur filters -> works with hardware acceleration on every API)
+        val glowLayers = when {
+            sub >= 8 -> 3
+            sub >= 5 -> 2
+            isRoyal -> 2
+            else -> 0
+        }
+        paint.shader = null
+        paint.style = Paint.Style.STROKE
+        for (k in glowLayers downTo 1) {
+            paint.strokeWidth = k * 1.7f * d
+            paint.color = withAlpha(t.glow, 95 / k)
+            val e = k * 0.85f * d
+            rect.set(pillL - e, pillT - e, pillR + e, pillB + e)
+            canvas.drawRoundRect(rect, rad + e, rad + e, paint)
+        }
+
+        // 2) sun-burst rays behind the emblem (tier 10 only)
+        if (t.shape == 6) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.3f * d
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = withAlpha(t.glow, 210)
+            for (i in 0 until 12) {
+                val a = Math.toRadians(i * 30.0)
+                val r1 = emblemR + 0.6f * d
+                val r2 = emblemR + (if (i % 2 == 0) 3.0f else 2.0f) * d
+                canvas.drawLine(
+                    cx + (cos(a) * r1).toFloat(), cy + (sin(a) * r1).toFloat(),
+                    cx + (cos(a) * r2).toFloat(), cy + (sin(a) * r2).toFloat(), paint
+                )
+            }
+            paint.strokeCap = Paint.Cap.BUTT
+        }
+
+        // 3) pill body
+        rect.set(pillL, pillT, pillR, pillB)
+        paint.style = Paint.Style.FILL
+        paint.shader = LinearGradient(pillL, 0f, pillR, 0f, t.pillA, t.pillB, Shader.TileMode.CLAMP)
+        canvas.drawRoundRect(rect, rad, rad, paint)
+        // depth: darker bottom edge
+        paint.shader = LinearGradient(0f, pillT, 0f, pillB, 0x00000000, 0x30000000, Shader.TileMode.CLAMP)
+        canvas.drawRoundRect(rect, rad, rad, paint)
+
+        // gloss + shimmer, clipped to the pill
+        canvas.save()
+        path.reset()
+        path.addRoundRect(rect, rad, rad, Path.Direction.CW)
+        canvas.clipPath(path)
+        paint.shader = LinearGradient(0f, pillT, 0f, cy, 0x66FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        canvas.drawRect(pillL, pillT, pillR, cy, paint)
+        if (shimmerEnabled && levelValue >= 81) {
+            val bw = 14f * d
+            val sx = pillL - bw + (pillR - pillL + 2f * bw) * shimmerPhase
+            paint.shader = LinearGradient(
+                sx - bw, pillT, sx + bw, pillB,
+                intArrayOf(0x00FFFFFF, 0x77FFFFFF, 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(pillL, pillT, pillR, pillB, paint)
+        }
+        canvas.restore()
+
+        // rim
+        paint.shader = null
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = (if (sub >= 3) 1.5f else 1.0f) * d
+        paint.color = t.stroke
+        rect.set(pillL + paint.strokeWidth / 2f, pillT + paint.strokeWidth / 2f, pillR - paint.strokeWidth / 2f, pillB - paint.strokeWidth / 2f)
+        canvas.drawRoundRect(rect, rad, rad, paint)
+
+        // 4) text "LV" + number
+        val baseY = cy - (numPaint.fontMetrics.ascent + numPaint.fontMetrics.descent) / 2f
+        val tx = cx + emblemR + textGap
+        val nx = tx + labelW + labelToNum
+        val sdy = 0.6f * d
+        labelPaint.color = t.textShadow; canvas.drawText("LV", tx, baseY + sdy, labelPaint)
+        numPaint.shader = null
+        numPaint.color = t.textShadow; canvas.drawText(levelValue.toString(), nx, baseY + sdy, numPaint)
+        labelPaint.color = withAlpha(t.text, 215); canvas.drawText("LV", tx, baseY, labelPaint)
+        if (isRoyal) {
+            numPaint.shader = LinearGradient(0f, cy - 6f * d, 0f, cy + 6f * d, 0xFFFFF3C0.toInt(), 0xFFFFC94D.toInt(), Shader.TileMode.CLAMP)
+        } else {
+            numPaint.color = t.text
+        }
+        canvas.drawText(levelValue.toString(), nx, baseY, numPaint)
+        numPaint.shader = null
+
+        // 5) emblem: metallic ring + inner disc + glyph
+        paint.style = Paint.Style.FILL
+        paint.shader = LinearGradient(cx - emblemR, cy - emblemR, cx + emblemR, cy + emblemR, t.ringA, t.ringB, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, emblemR, paint)
+        val innerR = emblemR - 2f * d
+        paint.shader = LinearGradient(0f, cy - emblemR, 0f, cy + emblemR, t.innerA, t.innerB, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, innerR, paint)
+        canvas.save()
+        path.reset()
+        path.addCircle(cx, cy, innerR, Path.Direction.CW)
+        canvas.clipPath(path)
+        paint.shader = LinearGradient(0f, cy - emblemR, 0f, cy, 0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        canvas.drawRect(cx - emblemR, cy - emblemR, cx + emblemR, cy, paint)
+        canvas.restore()
+        paint.shader = null
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 0.8f * d
+        paint.color = 0x66FFFFFF
+        canvas.drawCircle(cx, cy, emblemR - 0.4f * d, paint)
+
+        val ops: FloatArray
+        val gs: Float
+        when (t.shape) {
+            0 -> { ops = G_STAR; gs = 0.58f * emblemR }
+            1, 5 -> { ops = G_GEM; gs = 0.50f * emblemR }
+            2 -> { ops = G_SHIELD; gs = 0.50f * emblemR }
+            3 -> { ops = G_BOLT; gs = 0.52f * emblemR }
+            else -> { ops = G_CROWN; gs = 0.52f * emblemR }
+        }
+        buildGlyph(ops, cx, cy, gs, glyphPath)
+        paint.style = Paint.Style.FILL
+        paint.color = t.glyph
+        canvas.drawPath(glyphPath, paint)
+        if (t.shape == 1 || t.shape == 5) {
+            buildGlyph(G_GEM_FACETS, cx, cy, gs, glyphPath)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 0.7f * d
+            paint.color = withAlpha(t.innerA, 170)
+            canvas.drawPath(glyphPath, paint)
+        }
+
+        // 6) sparkles
+        if (t.shape == 5) drawSparkle(canvas, cx + emblemR * 0.45f, cy - emblemR * 0.45f, emblemR * 0.30f, 0xFFFFFFFF.toInt())
+        if (sub == 9 || isRoyal) {
+            drawSparkle(canvas, pillR - 7f * d, pillT + 1.5f * d, 3f * d, if (isRoyal) 0xFFFFF0B0.toInt() else 0xEBFFFFFF.toInt())
+        }
+        if (isRoyal) {
+            drawSparkle(canvas, cx + emblemR * 0.75f, cy - emblemR * 0.85f, 2.4f * d, 0xFFFFF0B0.toInt())
+            if (levelValue == 100) drawSparkle(canvas, cx - emblemR * 0.7f, cy + emblemR * 0.85f, 2f * d, 0xFFFFF0B0.toInt())
+        }
+    }
+
+    companion object {
+        private val TIERS = arrayOf(
+        Tier(0xFF7C8BA1.toInt(), 0xFF46546B.toInt(), 0xFFB9C6D8.toInt(), 0xFFF1F5FA.toInt(), 0xFF8895AA.toInt(), 0xFF5B6980.toInt(), 0xFF39445A.toInt(), 0xFFF4F8FF.toInt(), 0xFFFFFFFF.toInt(), 0xFF9FB2CC.toInt(), 0, 0x5A000000.toInt()), // Steel
+        Tier(0xFF35D58A.toInt(), 0xFF0F7A55.toInt(), 0xFF8FF7C2.toInt(), 0xFFE9FFF3.toInt(), 0xFF2BAA78.toInt(), 0xFF14946A.toInt(), 0xFF0A5E44.toInt(), 0xFFEFFFF7.toInt(), 0xFFFFFFFF.toInt(), 0xFF3EE6A0.toInt(), 0, 0x5A000000.toInt()), // Emerald
+        Tier(0xFF26E0D0.toInt(), 0xFF0A7F95.toInt(), 0xFF9BFBF2.toInt(), 0xFFEAFFFD.toInt(), 0xFF1BB3C1.toInt(), 0xFF0E9FB0.toInt(), 0xFF065F73.toInt(), 0xFFF0FFFE.toInt(), 0xFFFFFFFF.toInt(), 0xFF38F0E0.toInt(), 1, 0x5A000000.toInt()), // Aqua
+        Tier(0xFF4C9AFF.toInt(), 0xFF1B3CC0.toInt(), 0xFFA9CCFF.toInt(), 0xFFEEF5FF.toInt(), 0xFF3E78E0.toInt(), 0xFF2D63D8.toInt(), 0xFF14288F.toInt(), 0xFFF2F7FF.toInt(), 0xFFFFFFFF.toInt(), 0xFF5FA2FF.toInt(), 1, 0x5A000000.toInt()), // Sapphire
+        Tier(0xFFA66BFF.toInt(), 0xFF5A1FB8.toInt(), 0xFFD6BAFF.toInt(), 0xFFF6EEFF.toInt(), 0xFF8B52E6.toInt(), 0xFF7A3FD6.toInt(), 0xFF431590.toInt(), 0xFFFAF4FF.toInt(), 0xFFFFFFFF.toInt(), 0xFFB07BFF.toInt(), 2, 0x5A000000.toInt()), // Amethyst
+        Tier(0xFFFF5CAD.toInt(), 0xFFB01270.toInt(), 0xFFFFBBDD.toInt(), 0xFFFFF0F8.toInt(), 0xFFE6469A.toInt(), 0xFFD12D88.toInt(), 0xFF85104F.toInt(), 0xFFFFF4FA.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF7BBF.toInt(), 2, 0x5A000000.toInt()), // Rose
+        Tier(0xFFFF9A45.toInt(), 0xFFD4202B.toInt(), 0xFFFFCFA3.toInt(), 0xFFFFF3E8.toInt(), 0xFFF2722F.toInt(), 0xFFE8501F.toInt(), 0xFFA3141C.toInt(), 0xFFFFF6EC.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF8A4A.toInt(), 3, 0x5A000000.toInt()), // Flame
+        Tier(0xFFFFE08A.toInt(), 0xFFC8870A.toInt(), 0xFFFFF3C2.toInt(), 0xFFFFFBE8.toInt(), 0xFFE9A91C.toInt(), 0xFFE3A317.toInt(), 0xFF9A6205.toInt(), 0xFFFFF9E0.toInt(), 0xFF4B2E00.toInt(), 0xFFFFD25C.toInt(), 4, 0x80FFFFFF.toInt()), // Gold
+        Tier(0xFFF7FCFF.toInt(), 0xFF9CC2E8.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xFF8DB6E0.toInt(), 0xFF7FA9D8.toInt(), 0xFF4F78AE.toInt(), 0xFFFFFFFF.toInt(), 0xFF12304D.toInt(), 0xFFBFE3FF.toInt(), 5, 0x99FFFFFF.toInt()), // Platinum
+        Tier(0xFF34175C.toInt(), 0xFF0C0615.toInt(), 0xFFFFD76A.toInt(), 0xFFFFF2B8.toInt(), 0xFFD9A62B.toInt(), 0xFF4A1E80.toInt(), 0xFF12071F.toInt(), 0xFFFFE17A.toInt(), 0xFFFFE28A.toInt(), 0xFFFFC94D.toInt(), 6, 0x99000000.toInt()), // Royal
+        )
+        private val G_STAR = floatArrayOf(0f, 0f, -1f, 1f, 0.247f, -0.34f, 1f, 0.951f, -0.309f, 1f, 0.399f, 0.13f, 1f, 0.588f, 0.809f, 1f, 0f, 0.42f, 1f, -0.588f, 0.809f, 1f, -0.399f, 0.13f, 1f, -0.951f, -0.309f, 1f, -0.247f, -0.34f, 3f)
+        private val G_GEM = floatArrayOf(0f, -0.95f, -0.35f, 1f, -0.55f, -0.9f, 1f, 0.55f, -0.9f, 1f, 0.95f, -0.35f, 1f, 0f, 0.95f, 3f)
+        private val G_GEM_FACETS = floatArrayOf(0f, -0.95f, -0.35f, 1f, 0.95f, -0.35f, 0f, -0.4f, -0.9f, 1f, -0.2f, -0.35f, 1f, 0f, 0.95f, 0f, 0.4f, -0.9f, 1f, 0.2f, -0.35f, 1f, 0f, 0.95f)
+        private val G_SHIELD = floatArrayOf(0f, 0f, -1f, 1f, 0.85f, -0.65f, 1f, 0.85f, 0.1f, 2f, 0.85f, 0.65f, 0f, 1f, 2f, -0.85f, 0.65f, -0.85f, 0.1f, 1f, -0.85f, -0.65f, 3f)
+        private val G_BOLT = floatArrayOf(0f, 0.25f, -1f, 1f, -0.6f, 0.15f, 1f, -0.05f, 0.15f, 1f, -0.3f, 1f, 1f, 0.65f, -0.2f, 1f, 0.05f, -0.2f, 3f)
+        private val G_CROWN = floatArrayOf(0f, -0.95f, 0.75f, 1f, -0.95f, -0.55f, 1f, -0.45f, 0f, 1f, 0f, -0.85f, 1f, 0.45f, 0f, 1f, 0.95f, -0.55f, 1f, 0.95f, 0.75f, 3f)
+        private val G_SPARKLE = floatArrayOf(0f, 0f, -1f, 2f, 0.12f, -0.12f, 1f, 0f, 2f, 0.12f, 0.12f, 0f, 1f, 2f, -0.12f, 0.12f, -1f, 0f, 2f, -0.12f, -0.12f, 0f, -1f, 3f)
+    }
+}
+
+
+
+/// FILE: app/src/main/res/layout/view_profile_header.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileHeaderRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingTop="10dp">
+
+    <LinearLayout
+        android:id="@+id/profileHeaderTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <TextView
+            android:id="@+id/profileHeaderSupport"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:gravity="center"
+            android:text="♫"
+            android:textColor="#161B27"
+            android:textSize="22sp"
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الموسيقى" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/profileHeaderSettings"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:gravity="center"
+            android:text="⚙"
+            android:textColor="#161B27"
+            android:textSize="23sp"
+            android:background="@drawable/profile_header_icon_button"
+            android:contentDescription="الإعدادات" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderIdentityRow"
+        android:layout_width="match_parent"
+        android:layout_height="108dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:layout_marginTop="14dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <LinearLayout
+            android:id="@+id/profileIdentityGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="right|center_vertical"
+            android:layoutDirection="ltr"
+            android:layout_marginEnd="16dp">
+
+            <TextView
+                android:id="@+id/profileHeaderName"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:layoutDirection="rtl"
+                android:gravity="right|center_vertical"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:text="جارٍ تحميل الاسم..."
+                android:textColor="#12161F"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/profileHeaderIdRow"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layoutDirection="ltr">
+
+                <ImageView
+                    android:id="@+id/profileHeaderCopy"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_profile_copy"
+                    android:contentDescription="نسخ رقم الحساب"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="ID:"
+                    android:textColor="#5B6475"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/profileHeaderUserId"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:text="..."
+                    android:textColor="#5B6475"
+                    android:textDirection="ltr"
+                    android:textSize="13sp"
+                    android:singleLine="true" />
+
+                <com.mariam.live.LevelBadgeView
+                    android:id="@+id/profileLevelBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/profileHeaderAvatarSlot"
+            android:layout_width="92dp"
+            android:layout_height="92dp">
+
+            <ImageView
+                android:id="@+id/profileHeaderAvatar"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:background="@drawable/profile_header_avatar_circle"
+                android:clipToOutline="true"
+                android:contentDescription="الصورة الشخصية" />
+
+            <ImageView
+                android:id="@+id/profileHeaderEditAvatar"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="bottom|start"
+                android:background="@drawable/profile_header_edit_badge"
+                android:padding="5dp"
+                android:src="@drawable/ic_profile_edit"
+                android:tint="#FFFFFF"
+                android:contentDescription="تعديل الصورة الشخصية" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/profileHeaderStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layoutDirection="ltr"
+        android:background="@drawable/profile_header_stats_background">
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFansCell"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المعجبون" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout
+            android:id="@+id/profileHeaderFollowingCell"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:id="@+id/profileHeaderFollowingCount" android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="المتابعون" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="0" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الأصدقاء" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="30dp" android:background="#EDF0F4" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center" android:text="—" android:textColor="#12161F" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="الزوار" android:textColor="#8A93A3" android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
+
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_agency_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillColor="#42C7D5" android:pathData="M7,52c0,-10 6,-16 15,-16s15,6 15,16v4H7z"/>
+    <path android:fillColor="#238EBE" android:pathData="M29,54c0,-12 7,-19 17,-19s15,7 15,19v2H29z"/>
+    <path android:fillColor="#B8F1F1" android:pathData="M22,8a11,11 0,1 0,0 22a11,11 0,0 0,0 -22z"/>
+    <path android:fillColor="#FFD1A5" android:pathData="M46,12a9,9 0,1 0,0 18a9,9 0,0 0,0 -18z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M20,13a6,6 0,0 1,4 2l-3,4 -5,-1zM44,16a5,5 0,0 1,4 1l-2,4 -4,-1z" android:fillAlpha="0.8"/>
+    <path android:fillColor="#D8F7F4" android:pathData="M9,49c1,-7 5,-11 12,-12 5,1 9,4 11,9 -5,0 -8,3 -10,8H9z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_appearance_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#A6EAF5" android:pathData="M20,12L29,8h6l9,4 10,8 -7,10 -6,-4v25H23V26l-6,4 -7,-10z"/>
+ <path android:fillColor="#36BBD4" android:pathData="M20,12L29,8h6l9,4 10,8 -7,10 -6,-4v25H23V26l-6,4 -7,-10z"/>
+ <path android:fillColor="#168FAE" android:pathData="M23,26l9,5 9,-5v25H23z"/>
+ <path android:fillColor="#D8FAFF" android:pathData="M29,9h6l4,7 -7,6 -7,-6z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M18,19l5,-4 4,4 -6,7zM46,19l-5,-4 -4,4 6,7z" android:fillAlpha="0.8"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_copy.xml
+<?xml version="1.0" encoding="utf-8"?><vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="12dp" android:height="12dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#647377" android:pathData="M16,1H4C2.9,1 2,1.9 2,3v14h2V3h12V1zM20,5H8C6.9,5 6,5.9 6,7v14c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V7c0,-1.1 -0.9,-2 -2,-2zM20,21H8V7h12v14z"/></vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_creator_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#F45E9C" android:pathData="M25,8a7,7 0,0 1,14 0v22a7,7 0,0 1,-14 0z"/>
+ <path android:fillColor="#FFB4D1" android:pathData="M29,8a3,3 0,0 1,6 0v17a3,3 0,0 1,-6 0z"/>
+ <path android:fillColor="#D83D82" android:pathData="M15,27h5v4a12,12 0,0 0,24 0v-4h5v4a17,17 0,0 1,-15 17v7h9v5H21v-5h8v-7a17,17 0,0 1,-14 -17z"/>
+ <path android:fillColor="#FFD3E5" android:pathData="M10,17l4,2 -4,2 -2,4 -2,-4 -4,-2 4,-2 2,-4zM53,9l3,2 -3,2 -2,3 -2,-3 -3,-2 3,-2 2,-3z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_edit.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFFFF" android:pathData="M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34a0.9959,0.9959 0,0 0,-1.41 0l-1.83,1.83 3.75,3.75 1.83,-1.83z"/></vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_family_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#8B5BE8" android:pathData="M8,52c0,-12 8,-19 18,-19s18,7 18,19v4H8z"/>
+ <path android:fillColor="#F06EB5" android:pathData="M28,54c0,-13 7,-21 17,-21s15,8 15,21v2H28z"/>
+ <path android:fillColor="#45C7D9" android:pathData="M2,54c0,-9 5,-15 13,-15 5,0 9,3 11,8 -4,2 -6,5 -7,9H2z"/>
+ <path android:fillColor="#FFD4A8" android:pathData="M26,8a10,10 0,1 0,0 20a10,10 0,0 0,0 -20z"/>
+ <path android:fillColor="#FFC2D8" android:pathData="M47,13a8,8 0,1 0,0 16a8,8 0,0 0,0 -16z"/>
+ <path android:fillColor="#BDEFF4" android:pathData="M14,25a7,7 0,1 0,0 14a7,7 0,0 0,0 -14z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_help_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#38BDAA" android:pathData="M8,30a24,24 0,0 1,48 0v15a7,7 0,0 1,-7 7h-6V34h8v-4a19,19 0,0 0,-38 0v4h8v18h-6a7,7 0,0 1,-7 -7z"/>
+ <path android:fillColor="#8DE7D8" android:pathData="M18,35h8v14h-8zM38,35h8v14h-8z"/>
+ <path android:fillColor="#258F85" android:pathData="M24,48h16v5H24z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M32,14a3,3 0,0 1,3 3v2a3,3 0,0 1,-6 0v-2a3,3 0,0 1,3 -3z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_level_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#E49A22" android:pathData="M32,5l8,17 19,3 -14,13 4,19 -17,-9 -17,9 4,-19L5,25l19,-3z"/>
+ <path android:fillColor="#FFD45A" android:pathData="M32,8l7,15 16,2 -12,11 3,16 -14,-8 -14,8 3,-16 -12,-11 16,-2z"/>
+ <path android:fillColor="#FFF3B5" android:pathData="M32,15l4,10 11,2 -8,7 2,11 -9,-5 -9,5 2,-11 -8,-7 11,-2z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_publish.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFFFF" android:pathData="M5,3h14v18H5zM8,7h8v1.5H8zM8,11h8v1.5H8zM8,15h5v1.5H8zM16,14l4,4h-2.5v3h-3v-3H12z"/></vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_security_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#4C9FE8" android:pathData="M32,5L55,14v16c0,15 -10,25 -23,30C19,55 9,45 9,30V14z"/>
+ <path android:fillColor="#8DD3FF" android:pathData="M32,11l17,7v12c0,11 -7,19 -17,24C22,49 15,41 15,30V18z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M27,33l-6,-6 4,-4 6,6 11,-11 4,4 -15,15z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_store_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#E95DAD" android:pathData="M13,25h38v28H13z"/>
+ <path android:fillColor="#FF9BD3" android:pathData="M9,21l7,-10h32l7,10v7H9z"/>
+ <path android:fillColor="#C93491" android:pathData="M27,25h10v28H27z"/>
+ <path android:fillColor="#FFD5EC" android:pathData="M16,31h11v10H16zM37,31h11v10H37z"/>
+ <path android:fillColor="#FFE17A" android:pathData="M32,7c-4,0 -7,3 -7,7s3,7 7,7 7,-3 7,-7 -3,-7 -7,-7z"/>
+ <path android:fillColor="#FFF4C2" android:pathData="M32,10l1.4,2.8 3.1,0.5 -2.2,2.2 0.5,3.1 -2.8,-1.5 -2.8,1.5 0.5,-3.1 -2.2,-2.2 3.1,-0.5z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/ic_profile_vip_color.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+ <path android:fillColor="#D88B19" android:pathData="M10,22l12,9 10,-19 10,19 12,-9 -5,30H15z"/>
+ <path android:fillColor="#FFC83D" android:pathData="M8,18l14,10 10,-18 10,18 14,-10 -5,29H13z"/>
+ <path android:fillColor="#FFF0A5" android:pathData="M32,10l5,10 -5,8 -5,-8z"/>
+ <path android:fillColor="#FFE07A" android:pathData="M13,47h38v7H13z"/>
+ <path android:fillColor="#FFFFFF" android:pathData="M19,22l5,4 -2,14zM45,22l-5,4 2,14z" android:fillAlpha="0.75"/>
+ <path android:fillColor="#FF9C36" android:pathData="M8,15a4,4 0,1 0,0.1 0zM56,15a4,4 0,1 0,0.1 0zM32,5a4,4 0,1 0,0.1 0z"/>
+</vector>
+
+
+/// FILE: app/src/main/res/drawable/profile_header_avatar_circle.xml
+<?xml version="1.0" encoding="utf-8"?><shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#E5EBEA"/></shape>
+
+
+/// FILE: app/src/main/res/drawable/profile_header_background.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#FFFFFF" />
+</shape>
+
+
+
+/// FILE: app/src/main/res/drawable/profile_header_edit_badge.xml
+<?xml version="1.0" encoding="utf-8"?><shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#28BE91"/><stroke android:width="1dp" android:color="#FFFFFF"/></shape>
+
+
+/// FILE: app/src/main/res/drawable/profile_header_icon_button.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#F6F8FB"/>
+    <stroke android:width="1dp" android:color="#EDF0F4"/>
+    <corners android:radius="14dp"/>
+</shape>
+
+
+/// FILE: app/src/main/res/drawable/profile_header_level_badge.xml
+<?xml version="1.0" encoding="utf-8"?><shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#F4E5B8"/><corners android:radius="9dp"/></shape>
+
+
+/// FILE: app/src/main/res/drawable/profile_header_stats_background.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#FFFFFF"/>
+    <stroke android:width="1dp" android:color="#EDF0F4"/>
+    <corners android:radius="20dp"/>
+</shape>

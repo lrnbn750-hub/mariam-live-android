@@ -1,0 +1,35 @@
+name: Mariam Live - Server Access Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY" || { echo "Missing repository secret MARIAM_SERVER_SSH_KEY"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Verify restricted server account
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 '
+            set -eu
+            printf "USER="; id -un
+            printf "HOST="; hostname
+            test -d /opt/mariam-live
+            test -d /opt/mariam-live/backend
+            printf "PROJECT_DIRECTORY=OK\n"
+            printf "SERVER_ACCESS=OK\n"
+          '

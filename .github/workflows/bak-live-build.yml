@@ -1,0 +1,64 @@
+name: BAK LIVE Android Build
+# Build BAK LIVE debug APK for test installation.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bak-live
+      - agency-system-ui
+      - feature/bak-live-camera-modes-on-build465
+      - branding/bak-live-package
+      - feature/live-room-chat-bubbles
+      - feature/chat-bubble-wardrobe
+      - feature/bak-live-gift-system
+      - feature/bak-live-room-ui-inspired
+      - feature/bak-live-room-controls-reference
+      - feature/bak-live-svga-gifts-from-working-43581935436
+      - fix/bak-live-audit-2026-11
+      - feature/bak-live-wealth-level-redesign
+      - feature/bak-live-youtube-watch-together-original
+      - fix/vip-display-youtube-base
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build BAK LIVE debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Validate Android project
+        run: |
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          grep -q 'applicationId = "com.bak.live"' app/build.gradle.kts
+          grep -q 'android:label="BAK LIVE"' app/src/main/AndroidManifest.xml
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BAK-LIVE-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

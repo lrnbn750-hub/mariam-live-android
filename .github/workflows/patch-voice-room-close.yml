@@ -1,0 +1,141 @@
+name: Patch voice room close lifecycle on server
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/patch-voice-room-close.yml
+    branches:
+      - feature/mariam-live-development
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mariam-live-development
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MARIAM_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Patch backend close endpoint safely
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mariam-live/backend
+          FILE=src/routes/voice-rooms.js
+          test -f "$FILE"
+          cp -a "$FILE" "$FILE.backup-close-room-$(date +%Y%m%d%H%M%S)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("src/routes/voice-rooms.js")
+          s=p.read_text()
+          start=s.index('  // Close room (owner only)')
+          end=s.index('\n  });', start)+len('\n  });')
+          replacement = r'''  // Close room (owner only): mark it closed, remove all memberships/seats,
+  // and ask LiveKit to delete the room so every participant is disconnected.
+  app.delete("/api/voice-rooms/:roomId", authenticateToken, async (req, res) => {
+    const roomId = req.params.roomId;
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [roomId]);
+      const roomResult = await client.query(
+        "SELECT id, owner_id, status FROM voice_rooms WHERE id=$1 FOR UPDATE",
+        [roomId]
+      );
+      if (!roomResult.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Room not found" });
+      }
+      const room = roomResult.rows[0];
+      if (String(room.owner_id) !== String(req.userId)) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "Only the room owner can close this room" });
+      }
+      if (room.status === "closed") {
+        await client.query("COMMIT");
+        return res.json({ message: "Room already closed", roomId, livekitClosed: true });
+      }
+      await client.query(
+        "UPDATE voice_rooms SET status='closed' WHERE id=$1",
+        [roomId]
+      );
+      await client.query("DELETE FROM room_members WHERE room_id=$1", [roomId]);
+      await client.query(
+        "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
+        [roomId]
+      );
+      await client.query("DELETE FROM voice_room_hand_raises WHERE room_id=$1", [roomId]);
+      await client.query("COMMIT");
+
+      let livekitClosed = false;
+      try {
+        const { RoomServiceClient } = require("livekit-server-sdk");
+        const livekitUrl = process.env.LIVEKIT_URL || "wss://voicenokiraq.duckdns.org";
+        const apiKey = process.env.LIVEKIT_API_KEY;
+        const apiSecret = process.env.LIVEKIT_API_SECRET;
+        if (apiKey && apiSecret) {
+          const service = new RoomServiceClient(livekitUrl, apiKey, apiSecret);
+          await service.deleteRoom(roomId);
+          livekitClosed = true;
+        } else {
+          console.error("LiveKit room deletion skipped: server API credentials are missing");
+        }
+      } catch (livekitError) {
+        // Database closure is authoritative. Members are removed immediately;
+        // Android clients detect the closed room on their next membership poll.
+        console.error("LiveKit room deletion failed:", livekitError.message);
+      }
+      return res.json({
+        message: "Room closed successfully",
+        roomId,
+        livekitClosed,
+        notice: "تم إغلاق البث بواسطة صاحب الغرفة"
+      });
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      console.error("Close room:", error.message);
+      return res.status(500).json({ error: "Could not close room" });
+    } finally {
+      client.release();
+    }
+  });'''
+          s=s[:start]+replacement+s[end:]
+          p.write_text(s)
+          PY
+          node --check "$FILE"
+          echo "PATCHED_FILE=$FILE"
+          echo "BACKUP_CREATED=yes"
+          echo "===== SERVICE DISCOVERY ====="
+          ps -eo user,pid,ppid,args | grep -E '[n]ode|[p]m2' || true
+          ss -ltnp 2>/dev/null | grep ':3000' || true
+          pm2 list || true
+          systemctl list-units --all --type=service --no-pager | grep -Ei 'mariam|node|pm2' || true
+          REMOTE
+      - name: Publish server patch result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cat > server-close-patch-result.txt <<'EOF'
+          Server-side room close endpoint patched on the production host.
+          The endpoint marks the room closed, removes all memberships, clears seats and hand raises,
+          and attempts LiveKit RoomServiceClient.deleteRoom(roomId).
+          The remote patch runs node --check and creates a timestamped backup before editing.
+          Restart must be performed only after inspecting the discovered service manager.
+          EOF
+          git add server-close-patch-result.txt
+          git commit -m "Record server room close lifecycle patch" || true
+          git push origin HEAD:feature/mariam-live-development

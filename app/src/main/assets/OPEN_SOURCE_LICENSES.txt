@@ -1,0 +1,13 @@
+BAK LIVE — Open Source Asset Attribution
+
+Animated Noto Emoji
+- Source project: Google Fonts — Noto Emoji Animation
+- Original animation collection: https://googlefonts.github.io/noto-emoji-animation/
+- Collection mirror/conversion repository used to obtain the JSON files: https://github.com/quarrel/noto-emoji-dotlottie
+- License for the animated Noto Emoji assets: Creative Commons Attribution 4.0 International (CC BY 4.0)
+- License text: https://creativecommons.org/licenses/by/4.0/
+- The animations are served from the BAK LIVE backend under /gifts/ and are not embedded wholesale in the Android application.
+
+Repository tooling/code in quarrel/noto-emoji-dotlottie is separately identified by that repository's LICENSE as MIT licensed, Copyright (c) 2025 Quarrel. This MIT notice applies to that repository's code, not as a replacement for the CC BY 4.0 license on the animations.
+
+BAK LIVE uses selected animation files. Any modifications or adaptations made by BAK LIVE should be identified as such when required by CC BY 4.0.
