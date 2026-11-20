@@ -3084,9 +3084,14 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  }
 
  private fun videoTrackFor(userId:String):VideoTrack?{
-  cameraTracks[userId]?.let{return it}
   if(!::room.isInitialized || !connected)return null
-  if(userId==currentUserId)return room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
+  // A locally disabled camera must immediately reveal the profile avatar.
+  // LiveKit may keep the last camera publication object briefly after disable.
+  if(userId==currentUserId){
+   if(!cameraEnabled)return null
+   return room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
+  }
+  cameraTracks[userId]?.let{return it}
   val participant=room.remoteParticipants.values.firstOrNull{it.identity?.value==userId}?:return null
   return participant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
  }
