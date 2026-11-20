@@ -2953,25 +2953,42 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     Toast.makeText(this,"تغيير وضع الغرفة متاح لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
     return
    }
-   val targetMode=if(roomMode=="camera")"audio" else "camera"
-   val targetLabel=if(targetMode=="camera")"غرفة كاميرا" else "غرفة صوتية"
+   if(roomMode=="camera"){
+    confirmRoomModeSwitch("audio",null)
+    return
+   }
    showChoiceSheet(
-    "تغيير نوع الغرفة",
-    "هل تريد تحويل الغرفة الحالية إلى $targetLabel؟ سيتم تحديث وضع البث لجميع الموجودين.",
+    "اختيار عدد مقاعد الكاميرا",
+    "اختر عدد المقاعد التي تريد إتاحتها في الغرفة قبل التحويل.",
     listOf(
-     SheetOption("تأكيد التحويل",0){applyRoomModeSwitch(targetMode)},
+     SheetOption("4 مقاعد كاميرا",0){confirmRoomModeSwitch("camera",4)},
+     SheetOption("6 مقاعد كاميرا",0){confirmRoomModeSwitch("camera",6)},
      SheetOption("إلغاء",2){}
     )
    )
   }
 
-  private fun applyRoomModeSwitch(targetMode:String){
+  private fun confirmRoomModeSwitch(targetMode:String,selectedCameraSeatCount:Int?){
+   val targetLabel=if(targetMode=="camera")"غرفة كاميرا بـ $selectedCameraSeatCount مقاعد" else "غرفة صوتية"
+   showChoiceSheet(
+    "تأكيد تغيير نوع الغرفة",
+    "هل تريد تحويل الغرفة الحالية إلى $targetLabel؟ سيتم تحديث وضع البث لجميع الموجودين.",
+    listOf(
+     SheetOption("تأكيد التحويل",0){applyRoomModeSwitch(targetMode,selectedCameraSeatCount)},
+     SheetOption("رجوع",2){confirmRoomModeSwitch()}
+    )
+   )
+  }
+
+  private fun applyRoomModeSwitch(targetMode:String,selectedCameraSeatCount:Int?){
    if(!isOwner || !connected)return
    scope.launch{
     try{
      val payload=JSONObject().put("mode",targetMode)
      if(targetMode=="camera"){
-      payload.put("camera_seat_count",if(cameraSeatCount==4 || cameraSeatCount==6)cameraSeatCount else 6)
+      val count=selectedCameraSeatCount?.takeIf{it==4 || it==6}
+       ?: throw Exception("اختر 4 أو 6 مقاعد للكاميرا")
+      payload.put("camera_seat_count",count)
      }
      val response=withContext(Dispatchers.IO){
       AuthApi.put("/api/voice-rooms/$roomId/mode",payload,authToken)
