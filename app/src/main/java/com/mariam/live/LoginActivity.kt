@@ -177,7 +177,7 @@ class LoginActivity : Activity() {
                     if (result.status in 200..299) {
                         saveSession(result.body)
                         runOnUiThread {
-                            startActivity(Intent(this, MalakWelcomeActivity::class.java))
+                            startActivity(Intent(this, HomeActivity::class.java))
                             finish()
                         }
                     } else {
