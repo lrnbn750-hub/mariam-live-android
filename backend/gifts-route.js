@@ -154,6 +154,11 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
          VALUES($1,'gift_received',$2,'diamonds','completed',$3,$4,$5)`,
         [recipientId,diamonds.toString(),eventKey+":recipient",req.userId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity,creator_earnings_usd_cents:creatorCents.toString(),platform_share_usd_cents:platformCents.toString()})]
       );
+      await client.query(`INSERT INTO voice_room_daily_trends(room_id,trend_date,points,gift_coins)
+        VALUES($1,(NOW() AT TIME ZONE 'Asia/Baghdad')::date,$2,$3)
+        ON CONFLICT(room_id,trend_date) DO UPDATE SET points=voice_room_daily_trends.points+$2,
+        gift_coins=voice_room_daily_trends.gift_coins+$3,updated_at=NOW()`,
+        [roomId,(totalCoins*10n).toString(),totalCoins.toString()]);
       await client.query("COMMIT");
       return res.status(201).json({ message: "تم إرسال الهدية", event: event.rows[0], total_coins: totalCoins.toString(), diamonds_awarded: diamonds.toString() });
     } catch (error) {
