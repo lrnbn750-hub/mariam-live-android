@@ -3468,6 +3468,38 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }catch(_:Exception){}
   }
  }
+ private fun openTrendingRoom(targetRoomId:String){
+  if(switchingRoom||leaving||targetRoomId.isBlank()||targetRoomId==roomId)return
+  switchingRoom=true
+  scope.launch{
+   try{
+    // Leave the current room completely before opening the selected trend room.
+    stopRoomMusic(restoreMic=false)
+    if(connected){
+     room.disconnect()
+     connected=false
+    }
+    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+    val left=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
+    }
+    if(left.status !in 200..299)throw Exception(left.body.optString("error","تعذر مغادرة البث الحالي"))
+    val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+    if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+    val next=Intent(this@RoomActivity,RoomActivity::class.java)
+     .putExtra("room_id",targetRoomId)
+    startActivity(next)
+    finish()
+   }catch(e:Exception){
+    switchingRoom=false
+    Toast.makeText(this@RoomActivity,e.message?:"تعذر الانتقال إلى البث المحدد",Toast.LENGTH_LONG).show()
+    if(!isFinishing&&!isDestroyed&&!connected){
+     try{connect()}catch(_:Exception){}
+    }
+   }
+  }
+ }
+
  private fun showTrendingRooms(){
   // Use native Android views here: RoomActivity extends android.app.Activity,
   // and ComposeView requires lifecycle/saved-state owners that this Activity does not provide.
@@ -3569,7 +3601,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       card.setOnClickListener{
        val selectedId=item.optString("id")
        dialog.dismiss()
-       if(selectedId.isNotBlank()&&selectedId!=roomId)startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selectedId))
+       if(selectedId.isNotBlank()&&selectedId!=roomId)openTrendingRoom(selectedId)
       }
      }else{
       card.addView(text("—",20f,Color.GRAY),LinearLayout.LayoutParams(-1,px(70)))
@@ -3598,7 +3630,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      row.setOnClickListener{
       val selectedId=item.optString("id")
       dialog.dismiss()
-      if(selectedId.isNotBlank()&&selectedId!=roomId)startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selectedId))
+      if(selectedId.isNotBlank()&&selectedId!=roomId)openTrendingRoom(selectedId)
      }
      content.addView(row,LinearLayout.LayoutParams(-1,px(62)).apply{bottomMargin=px(4)})
     }
