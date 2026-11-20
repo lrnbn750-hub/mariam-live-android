@@ -149,7 +149,7 @@ class ProfileActivity : Activity() {
             gravity = Gravity.CENTER
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(255, 247, 224), Color.rgb(247, 210, 125))).apply {
-                cornerRadii = floatArrayOf(dp(24f), dp(24f), dp(24f), dp(24f), 0f, 0f, 0f, 0f)
+                cornerRadii = floatArrayOf(dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), 0f, 0f, 0f, 0f)
                 setStroke(dp(1f), 0x88E6B450.toInt())
             }
             setPadding(dp(6f), dp(4f), dp(6f), 0)
