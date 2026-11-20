@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.voice_room_trend_message_minutes (
   room_id uuid NOT NULL REFERENCES public.voice_rooms(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   minute_bucket bigint NOT NULL,
+  message_count smallint NOT NULL DEFAULT 0 CHECK (message_count BETWEEN 0 AND 10),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(room_id,user_id,minute_bucket)
 );
