@@ -1,0 +1,1 @@
+Trigger Android build for animated blue trend title bars.
