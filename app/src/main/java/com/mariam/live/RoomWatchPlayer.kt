@@ -71,8 +71,8 @@ class RoomWatchPlayer(
         const val HEARTBEAT_MS = 5000L
         /** مقدار تصغير المقاعد أثناء المشاهدة (1.0 = بدون تصغير). */
         const val SEAT_SCALE = 0.8f
-        /** أقصى ارتفاع للفيديو بالـ dp. */
-        const val MAX_VIDEO_DP = 190
+        /** ارتفاع أكبر ليستغل الفيديو عرض المساحة المتاحة بنسبة 16:9. */
+        const val MAX_VIDEO_DP = 240
         const val VOLUME_ROW_DP = 32
         const val VOLUME_GAP_DP = 4
         const val PREF_VOLUME = "watch_volume"
@@ -375,7 +375,7 @@ class RoomWatchPlayer(
 
     /** مقاس الفيديو 16:9 بحد أقصى للارتفاع حتى لا تضيق الدردشة على الشاشات الصغيرة. */
     private fun videoSize(): Pair<Int, Int> {
-        val maxH = minOf(dp(MAX_VIDEO_DP), (activity.resources.displayMetrics.heightPixels * 0.23f).toInt())
+        val maxH = minOf(dp(MAX_VIDEO_DP), (activity.resources.displayMetrics.heightPixels * 0.30f).toInt())
         val availW = availWidth().coerceAtLeast(dp(220))
         var w = availW
         var h = w * 9 / 16
