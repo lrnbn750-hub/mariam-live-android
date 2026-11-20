@@ -46,6 +46,7 @@ class RoomActivity : Activity() {
  private lateinit var ownerAvatarView:ImageView
  private lateinit var ownerNameView:TextView
  private lateinit var ownerIdView:TextView
+ private lateinit var trendScoreView:TextView
  private var ownerProfileRequested=false
  private var roomOwnerUserId=""
  private var currentUserLevel=1
@@ -360,6 +361,27 @@ class RoomActivity : Activity() {
     setOnClickListener{toggleOwnerFollow(this)}
    }
    ownerFollowButton=follow
+   // Live room trend badge: the score is supplied by the server in trend_points.
+   val trendBadge=LinearLayout(this).apply{
+    orientation=LinearLayout.HORIZONTAL
+    gravity=Gravity.CENTER
+    layoutDirection=View.LAYOUT_DIRECTION_LTR
+    setPadding(dp(9),dp(4),dp(9),dp(4))
+    background=GradientDrawable().apply{
+     setColor(Color.argb(218,35,29,24))
+     cornerRadius=dp(15).toFloat()
+     setStroke(dp(1),Color.rgb(239,170,54))
+    }
+    addView(label("🔥",15f,Color.WHITE,true),LinearLayout.LayoutParams(-2,dp(22)).apply{marginEnd=dp(4)})
+    trendScoreView=label("0",12f,Color.rgb(255,220,145),true).apply{
+     gravity=Gravity.CENTER
+     includeFontPadding=false
+     minWidth=dp(18)
+     contentDescription="نقاط ترند الغرفة"
+    }
+    addView(trendScoreView,LinearLayout.LayoutParams(-2,dp(22)))
+   }
+   card.addView(trendBadge,LinearLayout.LayoutParams(-2,dp(30)).apply{marginEnd=dp(7)})
    card.addView(details,LinearLayout.LayoutParams(0,-1,1f))
    card.addView(avatarFrame,LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginStart=dp(7)})
    card.addView(follow,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginStart=dp(5)})
@@ -815,6 +837,10 @@ class RoomActivity : Activity() {
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
     seats=r.body.optJSONArray("seats")?:JSONArray()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
+    // The server is authoritative; refresh this value with the room snapshot.
+    if(::trendScoreView.isInitialized){
+     trendScoreView.text=r.body.optLong("trend_points",0L).coerceAtLeast(0L).toString()
+    }
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
