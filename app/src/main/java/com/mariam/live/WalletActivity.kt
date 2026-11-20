@@ -100,13 +100,13 @@ class WalletActivity : Activity() {
     }
 
     private fun LinearLayout.addIc(
-        k: Ic, size: Int, tint: Int = Color.WHITE, mod: (LinearLayout.LayoutParams) -> Unit = {}
+        k: WalletIc, size: Int, tint: Int = Color.WHITE, mod: (LinearLayout.LayoutParams) -> Unit = {}
     ) {
         val v = ImageView(context).apply { setImageDrawable(IconDrawable(k, tint)) }
         addView(v, lp(dp(size), dp(size)).also(mod))
     }
 
-    private fun circleBtn(k: Ic, tint: Int, size: Int, click: () -> Unit): FrameLayout =
+    private fun circleBtn(k: WalletIc, tint: Int, size: Int, click: () -> Unit): FrameLayout =
         FrameLayout(this).apply {
             background = rr(soft, size / 2, softStroke, 1)
             isClickable = true
@@ -118,7 +118,7 @@ class WalletActivity : Activity() {
             )
         }
 
-    private fun pillButton(text: String, ic: Ic?, primary: Boolean, click: () -> Unit): LinearLayout {
+    private fun pillButton(text: String, ic: WalletIc?, primary: Boolean, click: () -> Unit): LinearLayout {
         val tint = if (primary) darkText else textMain
         val b = LinearLayout(this).apply {
             orientation = 0; gravity = Gravity.CENTER
@@ -155,12 +155,12 @@ class WalletActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(8), dp(16), dp(8))
         }
-        header.addView(circleBtn(Ic.BACK, textMain, 44) { finish() }, lp(dp(44), dp(44)))
+        header.addView(circleBtn(WalletIc.BACK, textMain, 44) { finish() }, lp(dp(44), dp(44)))
         header.addView(
             label("المحفظة", 20f, textMain, true).apply { gravity = Gravity.CENTER },
             lp(0, -2).also { it.weight = 1f }
         )
-        header.addView(circleBtn(Ic.HELP, 0xFF7B3FE4.toInt(), 44) { showHelp() }, lp(dp(44), dp(44)))
+        header.addView(circleBtn(WalletIc.HELP, 0xFF7B3FE4.toInt(), 44) { showHelp() }, lp(dp(44), dp(44)))
         root.addView(header)
 
         scroll = ScrollView(this).apply {
@@ -236,7 +236,7 @@ class WalletActivity : Activity() {
         }
         val chip = FrameLayout(this).apply { background = oval(0x22E5484D) }
         chip.addView(
-            ImageView(this).apply { setImageDrawable(IconDrawable(Ic.WARN, red)) },
+            ImageView(this).apply { setImageDrawable(IconDrawable(WalletIc.WARN, red)) },
             FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER)
         )
         box.addView(chip, lp(dp(84), dp(84)))
@@ -262,13 +262,13 @@ class WalletActivity : Activity() {
 
         val actions = LinearLayout(this).apply { orientation = 0 }
         actions.addView(
-            pillButton("اشحن الآن", Ic.WALLET, true) {
+            pillButton("اشحن الآن", WalletIc.WALLET, true) {
                 anchor?.let { a -> scroll.post { scroll.smoothScrollTo(0, a.top - dp(8)) } }
             },
             lp(0, -2).apply { weight = 1f; marginEnd = dp(6) }
         )
         actions.addView(
-            pillButton("سجل العمليات", Ic.HISTORY, false) { showHistory() },
+            pillButton("سجل العمليات", WalletIc.HISTORY, false) { showHistory() },
             lp(0, -2).apply { weight = 1f; marginStart = dp(6) }
         )
         content.addView(actions, lp(-1, -2).apply { topMargin = dp(16) })
@@ -308,7 +308,7 @@ class WalletActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
             background = rr(soft, 14, softStroke, 1)
         }
-        foot.addIc(Ic.SHIELD, 20, mint) { it.marginEnd = dp(10) }
+        foot.addIc(WalletIc.SHIELD, 20, mint) { it.marginEnd = dp(10) }
         foot.addView(label("تُضاف العملات بعد تأكيد الدفع من الخادم فقط.", 11.5f, muted))
         content.addView(foot, lp(-1, -2).apply { topMargin = dp(4) })
 
@@ -332,12 +332,12 @@ class WalletActivity : Activity() {
             background = HeroDrawable(dp(26).toFloat(), dp(1).toFloat())
         }
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addIc(Ic.WALLET, 16, 0xCCFFFFFF.toInt()) { it.marginEnd = dp(6) }
+        top.addIc(WalletIc.WALLET, 16, 0xCCFFFFFF.toInt()) { it.marginEnd = dp(6) }
         top.addView(label("رصيدك الحالي", 12f, 0xCCFFFFFF.toInt()))
         h.addView(top)
 
         val bal = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        bal.addIc(Ic.COIN, 44)
+        bal.addIc(WalletIc.COIN, 44)
         bal.addView(
             label(fmt(wallet.optLong("recharge_coins")), 38f, Color.WHITE, true),
             lp(-2, -2).apply { marginStart = dp(12) }
@@ -349,7 +349,7 @@ class WalletActivity : Activity() {
             lp(-1, dp(1)).apply { topMargin = dp(16); bottomMargin = dp(14) })
 
         val dia = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        dia.addIc(Ic.GEM, 28) { it.marginEnd = dp(12) }
+        dia.addIc(WalletIc.GEM, 28) { it.marginEnd = dp(12) }
         val col = LinearLayout(this).apply { orientation = 1 }
         col.addView(label("الألماس المكتسب", 11.5f, 0xCCFFFFFF.toInt()))
         col.addView(
@@ -381,7 +381,7 @@ class WalletActivity : Activity() {
             setPadding(dp(16), dp(28), dp(16), dp(28))
             background = rr(panel, 20, stroke, 1)
         }
-        empty.addIc(Ic.COIN, 46)
+        empty.addIc(WalletIc.COIN, 46)
         empty.addView(
             label("لا توجد باقات متاحة حالياً", 13f, muted),
             lp(-2, -2).apply { topMargin = dp(12) }
@@ -478,7 +478,7 @@ class WalletActivity : Activity() {
         )
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         head.addView(label(title, 19f, textMain, true), lp(0, -2).apply { weight = 1f })
-        head.addView(circleBtn(Ic.CLOSE, textMain, 36) { d.dismiss() }, lp(dp(36), dp(36)))
+        head.addView(circleBtn(WalletIc.CLOSE, textMain, 36) { d.dismiss() }, lp(dp(36), dp(36)))
         box.addView(head, lp(-1, -2).apply { bottomMargin = dp(14) })
         build(box, d)
         d.setContentView(box)
@@ -493,7 +493,7 @@ class WalletActivity : Activity() {
 
     private fun showHelp() {
         sheet("عن المحفظة") { box, d ->
-            fun item(k: Ic, tint: Int, t: String, desc: String) {
+            fun item(k: WalletIc, tint: Int, t: String, desc: String) {
                 val row = LinearLayout(this).apply {
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(dp(12), dp(12), dp(12), dp(12))
@@ -512,10 +512,10 @@ class WalletActivity : Activity() {
                 row.addView(col, lp(0, -2).apply { weight = 1f })
                 box.addView(row, lp(-1, -2).apply { bottomMargin = dp(10) })
             }
-            item(Ic.COIN, gold, "عملات الشحن", "تُستخدم لإرسال الهدايا داخل التطبيق.")
-            item(Ic.GEM, textMain, "الألماس", "هو ما تكسبه من الهدايا.")
-            item(Ic.WALLET, mint, "الأرباح القابلة للسحب", "رصيد منفصل بالدولار.")
-            item(Ic.SHIELD, pink, "المبالغ المحجوزة", "مرتبطة بطلبات السحب قيد المراجعة.")
+            item(WalletIc.COIN, gold, "عملات الشحن", "تُستخدم لإرسال الهدايا داخل التطبيق.")
+            item(WalletIc.GEM, textMain, "الألماس", "هو ما تكسبه من الهدايا.")
+            item(WalletIc.WALLET, mint, "الأرباح القابلة للسحب", "رصيد منفصل بالدولار.")
+            item(WalletIc.SHIELD, pink, "المبالغ المحجوزة", "مرتبطة بطلبات السحب قيد المراجعة.")
             box.addView(pillButton("فهمت", null, true) { d.dismiss() }, lp(-1, -2).apply { topMargin = dp(8) })
         }
     }
@@ -534,7 +534,7 @@ class WalletActivity : Activity() {
                     orientation = 1; gravity = Gravity.CENTER
                     setPadding(0, dp(36), 0, dp(36))
                 }
-                e.addIc(Ic.HISTORY, 44, muted)
+                e.addIc(WalletIc.HISTORY, 44, muted)
                 e.addView(
                     label("لا توجد عمليات حتى الآن", 13f, muted),
                     lp(-2, -2).apply { topMargin = dp(12) }
@@ -597,7 +597,7 @@ class WalletActivity : Activity() {
         }
         val chip = FrameLayout(this).apply { background = oval(Color.argb(40, Color.red(accent), Color.green(accent), Color.blue(accent))) }
         chip.addView(
-            ImageView(this).apply { setImageDrawable(IconDrawable(if (out) Ic.UP else Ic.DOWN, accent)) },
+            ImageView(this).apply { setImageDrawable(IconDrawable(if (out) WalletIc.UP else WalletIc.DOWN, accent)) },
             FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER)
         )
         row.addView(chip, lp(dp(42), dp(42)).apply { marginEnd = dp(12) })
@@ -628,7 +628,7 @@ class WalletActivity : Activity() {
 
 // ═════════════════════ Drawables (no XML / no image assets needed) ═════════════════════
 
-private enum class Ic { COIN, GEM, HISTORY, HELP, BACK, WALLET, SHIELD, UP, DOWN, CLOSE, WARN, STAR }
+private enum class WalletIc { COIN, GEM, HISTORY, HELP, BACK, WALLET, SHIELD, UP, DOWN, CLOSE, WARN, STAR }
 
 private abstract class Dr : Drawable() {
     override fun setAlpha(alpha: Int) {}
@@ -637,7 +637,7 @@ private abstract class Dr : Drawable() {
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 }
 
-private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHITE) : Dr() {
+private class IconDrawable(private val k: WalletIc, private val tint: Int = Color.WHITE) : Dr() {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private fun line(w: Float = 2f) {
@@ -668,7 +668,7 @@ private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHIT
         c.translate(b.left + (b.width() - s) / 2f, b.top + (b.height() - s) / 2f)
         c.scale(s / 24f, s / 24f)
         when (k) {
-            Ic.COIN -> {
+            WalletIc.COIN -> {
                 p.style = Paint.Style.FILL
                 p.shader = RadialGradient(
                     9f, 8f, 17f,
@@ -681,7 +681,7 @@ private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHIT
                 solid(0x99B8780C.toInt())
                 c.drawPath(star(12f, 12.3f, 4.8f, 2.1f), p)
             }
-            Ic.GEM -> {
+            WalletIc.GEM -> {
                 val g = Path().apply {
                     moveTo(6f, 3f); lineTo(18f, 3f); lineTo(23f, 9f); lineTo(12f, 22f); lineTo(1f, 9f); close()
                 }
@@ -702,27 +702,27 @@ private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHIT
                 }
                 c.drawPath(f, p)
             }
-            Ic.HISTORY -> {
+            WalletIc.HISTORY -> {
                 line(); c.drawCircle(12f, 12f, 9f, p)
                 val h = Path().apply { moveTo(12f, 7f); lineTo(12f, 12f); lineTo(15.5f, 14f) }
                 c.drawPath(h, p)
             }
-            Ic.HELP -> {
+            WalletIc.HELP -> {
                 line(); c.drawCircle(12f, 12f, 9.5f, p)
                 solid(tint); p.textSize = 14f; p.typeface = Typeface.DEFAULT_BOLD; p.textAlign = Paint.Align.CENTER
                 c.drawText("?", 12f, 17.2f, p)
             }
-            Ic.BACK -> {
+            WalletIc.BACK -> {
                 line(2.4f)
                 c.drawPath(Path().apply { moveTo(9f, 5f); lineTo(16f, 12f); lineTo(9f, 19f) }, p)
             }
-            Ic.WALLET -> {
+            WalletIc.WALLET -> {
                 line(1.9f)
                 c.drawRoundRect(RectF(3f, 6f, 21f, 20f), 3.5f, 3.5f, p)
                 c.drawPath(Path().apply { moveTo(3.5f, 9.5f); lineTo(3.5f, 5f); lineTo(17f, 4f); lineTo(17f, 6f) }, p)
                 solid(tint); c.drawCircle(16.5f, 13f, 1.5f, p)
             }
-            Ic.SHIELD -> {
+            WalletIc.SHIELD -> {
                 line(1.9f)
                 val sh = Path().apply {
                     moveTo(12f, 2f); lineTo(20f, 5.5f); lineTo(20f, 12f)
@@ -732,27 +732,27 @@ private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHIT
                 c.drawPath(sh, p)
                 c.drawPath(Path().apply { moveTo(8.5f, 12f); lineTo(11f, 14.5f); lineTo(15.5f, 9.5f) }, p)
             }
-            Ic.UP -> {
+            WalletIc.UP -> {
                 line(2.2f)
                 c.drawLine(12f, 19f, 12f, 5f, p)
                 c.drawPath(Path().apply { moveTo(6f, 11f); lineTo(12f, 5f); lineTo(18f, 11f) }, p)
             }
-            Ic.DOWN -> {
+            WalletIc.DOWN -> {
                 line(2.2f)
                 c.drawLine(12f, 5f, 12f, 19f, p)
                 c.drawPath(Path().apply { moveTo(6f, 13f); lineTo(12f, 19f); lineTo(18f, 13f) }, p)
             }
-            Ic.CLOSE -> {
+            WalletIc.CLOSE -> {
                 line(2.4f)
                 c.drawLine(6f, 6f, 18f, 18f, p); c.drawLine(18f, 6f, 6f, 18f, p)
             }
-            Ic.WARN -> {
+            WalletIc.WARN -> {
                 line(2f)
                 c.drawPath(Path().apply { moveTo(12f, 3f); lineTo(22f, 20f); lineTo(2f, 20f); close() }, p)
                 c.drawLine(12f, 9.5f, 12f, 14f, p)
                 solid(tint); c.drawCircle(12f, 17f, 1.2f, p)
             }
-            Ic.STAR -> {
+            WalletIc.STAR -> {
                 solid(tint); c.drawPath(star(12f, 12.5f, 10f, 4.4f), p)
             }
         }
@@ -762,7 +762,7 @@ private class IconDrawable(private val k: Ic, private val tint: Int = Color.WHIT
 
 private class CoinPile(private val tier: Int) : Dr() {
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val coin = IconDrawable(Ic.COIN)
+    private val coin = IconDrawable(WalletIc.COIN)
 
     override fun draw(c: Canvas) {
         val b = bounds
