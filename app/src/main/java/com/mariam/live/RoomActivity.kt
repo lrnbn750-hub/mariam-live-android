@@ -3561,7 +3561,43 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      }
     }
     val header=FrameLayout(this@RoomActivity).apply{
-     addView(text("قائمة المستخدمين المشهورين",17f,Color.rgb(31,31,31),true),FrameLayout.LayoutParams(-1,px(44),Gravity.CENTER))
+     val titleRow=LinearLayout(this@RoomActivity).apply{
+      orientation=LinearLayout.HORIZONTAL
+      gravity=Gravity.CENTER
+      layoutDirection=View.LAYOUT_DIRECTION_LTR
+     }
+     titleRow.addView(text("قائمة المستخدمين المشهورين",17f,Color.rgb(31,31,31),true),
+      LinearLayout.LayoutParams(-2,px(44)))
+     val bars=LinearLayout(this@RoomActivity).apply{
+      orientation=LinearLayout.HORIZONTAL
+      gravity=Gravity.CENTER
+      layoutDirection=View.LAYOUT_DIRECTION_LTR
+      setPadding(px(7),0,px(2),0)
+     }
+     val blue=Color.rgb(30,190,205)
+     repeat(3){index->
+      val bar=View(this@RoomActivity).apply{
+       background=GradientDrawable().apply{
+        setColor(blue)
+        cornerRadius=px(3).toFloat()
+       }
+       pivotY=px(9).toFloat()
+      }
+      bars.addView(bar,LinearLayout.LayoutParams(px(3),px(17)).apply{
+       marginStart=px(3)
+      })
+      bar.animate().cancel()
+      android.animation.ObjectAnimator.ofFloat(bar,"scaleY",0.35f,1.0f,0.35f).apply{
+       duration=650L
+       startDelay=index*150L
+       repeatCount=android.animation.ValueAnimator.INFINITE
+       repeatMode=android.animation.ValueAnimator.RESTART
+       interpolator=android.view.animation.AccelerateDecelerateInterpolator()
+       start()
+      }
+     }
+     titleRow.addView(bars,LinearLayout.LayoutParams(-2,px(44)))
+     addView(titleRow,FrameLayout.LayoutParams(-2,px(44),Gravity.CENTER))
      addView(text("✕",22f,Color.DKGRAY,true).apply{
       isClickable=true
       setOnClickListener{dialog.dismiss()}
