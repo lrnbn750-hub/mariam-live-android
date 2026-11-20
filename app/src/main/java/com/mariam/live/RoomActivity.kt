@@ -1,5 +1,21 @@
 package com.mariam.live
 
+
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.platform.setContent
+import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.draw.clip as composeClip
+import androidx.compose.foundation.background as composeBackground
+import androidx.compose.foundation.layout.fillMaxWidth as composeFillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight as composeFillMaxHeight
+import androidx.compose.foundation.shape.CircleShape as ComposeCircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text as ComposeText
+import androidx.compose.ui.Alignment as ComposeAlignment
+import androidx.compose.ui.graphics.Color as ComposeColor
+import com.bak.live.ui.trend.TrendRankingSheet
+import com.bak.live.ui.trend.TrendUiUser
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
@@ -3471,24 +3487,71 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   scope.launch{
    try{
     val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/trending",authToken)}
-    if(response.status !in 200..299){Toast.makeText(this@RoomActivity,"تعذر تحميل بثوث الترند",Toast.LENGTH_SHORT).show();return@launch}
+    if(response.status !in 200..299){
+     Toast.makeText(this@RoomActivity,"تعذر تحميل بثوث الترند",Toast.LENGTH_SHORT).show()
+     return@launch
+    }
     val rooms=response.body.optJSONArray("rooms")?:JSONArray()
-    val entries=ArrayList<JSONObject>()
-    val labels=ArrayList<String>()
+    val trendUsers=ArrayList<TrendUiUser>()
     for(i in 0 until rooms.length()){
      val item=rooms.optJSONObject(i)?:continue
-     entries.add(item)
-     labels.add("🔥 ${item.optLong("trend_points")}  •  ${item.optString("name")}  •  ${item.optString("owner_name")}")
+     val targetRoomId=item.optString("id")
+     if(targetRoomId.isBlank())continue
+     val ownerName=item.optString("owner_name").ifBlank{item.optString("name").ifBlank{"مستخدم"}}
+     trendUsers.add(TrendUiUser(
+      id=targetRoomId,
+      name=ownerName,
+      scoreText=String.format("%,d",item.optLong("trend_points")),
+      rankLabel=(trendUsers.size+1).toString()
+     ))
     }
-    if(entries.isEmpty()){showActionSheet("بثوث الترند",listOf("لا توجد بثوث نشطة حالياً")){};return@launch}
-    showActionSheet("🔥 بثوث الترند اليوم",labels){index->
-     val selected=entries.getOrNull(index)?:return@showActionSheet
-     val target=selected.optString("id")
-     if(target.isBlank() || target==roomId)return@showActionSheet
-     val intent=Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",target)
-     startActivity(intent)
+    if(trendUsers.isEmpty()){
+     Toast.makeText(this@RoomActivity,"لا توجد بثوث نشطة حالياً",Toast.LENGTH_SHORT).show()
+     return@launch
     }
-   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+    val dialog=android.app.Dialog(this@RoomActivity)
+    val composeView=ComposeView(this@RoomActivity).apply{
+     setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+     setContent{
+      MaterialTheme{
+       TrendRankingSheet(
+        topUsers=trendUsers.take(3),
+        restUsers=trendUsers.drop(3),
+        currentUser=null,
+        avatar={user,avatarModifier->
+         androidx.compose.foundation.layout.Box(
+          modifier=avatarModifier.composeClip(ComposeCircleShape).composeBackground(ComposeColor(0xFF6B527F)),
+          contentAlignment=ComposeAlignment.Center
+         ){
+          ComposeText(
+           text=user.name.trim().take(1).ifBlank{"؟"},
+           color=ComposeColor.White,
+           fontWeight=androidx.compose.ui.text.font.FontWeight.Bold
+          )
+         }
+        },
+        onClose={dialog.dismiss()},
+        onUserClick={selected->
+         dialog.dismiss()
+         if(selected.id.isNotBlank()&&selected.id!=roomId){
+          startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selected.id))
+         }
+        },
+        modifier=ComposeModifier.composeFillMaxWidth().composeFillMaxHeight(0.68f)
+       )
+      }
+     }
+    }
+    dialog.setContentView(composeView)
+    dialog.setCanceledOnTouchOutside(true)
+    dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+    dialog.window?.setDimAmount(0.52f)
+    dialog.show()
+    dialog.window?.setLayout(-1,(resources.displayMetrics.heightPixels*0.68f).toInt())
+    dialog.window?.setGravity(Gravity.BOTTOM)
+   }catch(e:Exception){
+    Toast.makeText(this@RoomActivity,"تعذر تحميل الترند: ${e.message?: "خطأ"}",Toast.LENGTH_SHORT).show()
+   }
   }
  }
 
