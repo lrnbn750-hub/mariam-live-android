@@ -23,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -134,7 +135,89 @@ class ProfileActivity : Activity() {
             setPadding(0, 0, 0, dp(28f))
         }
         scroll.addView(page, ViewGroup.LayoutParams(-1, -2))
-        setContentView(scroll)
+
+        // Keep the same bottom navigation visible on both Home and Profile.
+        val root = FrameLayout(this)
+        root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        val navWrap = FrameLayout(this).apply {
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            clipChildren = false
+        }
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(255, 247, 224), Color.rgb(247, 210, 125))).apply {
+                cornerRadii = floatArrayOf(dp(24f), dp(24f), dp(24f), dp(24f), 0f, 0f, 0f, 0f)
+                setStroke(dp(1f), 0x88E6B450.toInt())
+            }
+            setPadding(dp(6f), dp(4f), dp(6f), 0)
+            elevation = dp(8f).toFloat()
+        }
+        fun navItem(kind: String, title: String, selected: Boolean, action: () -> Unit) =
+            FrameLayout(this).apply {
+                isClickable = true
+                isFocusable = true
+                contentDescription = title
+                val column = LinearLayout(this@ProfileActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    addView(HomeActivity.NavIcon(this@ProfileActivity, kind, selected),
+                        LinearLayout.LayoutParams(dp(30f), dp(30f)))
+                    addView(TextView(this@ProfileActivity).apply {
+                        text = title
+                        textSize = 10.5f
+                        gravity = Gravity.CENTER
+                        setSingleLine(true)
+                        setTextColor(if (selected) Color.rgb(150, 88, 10) else Color.rgb(160, 124, 66))
+                        typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    }, LinearLayout.LayoutParams(-1, dp(16f)))
+                }
+                addView(column, FrameLayout.LayoutParams(-1, -1))
+                setOnClickListener { action() }
+            }
+        bar.addView(navItem("home", "الرئيسية", false) {
+            startActivity(Intent(this@ProfileActivity, HomeActivity::class.java))
+            finish()
+        }, LinearLayout.LayoutParams(0, -1, 1f))
+        bar.addView(navItem("discover", "اكتشف", false) {
+            startActivity(Intent(this@ProfileActivity, HomeActivity::class.java).putExtra("open_discover", true))
+            finish()
+        }, LinearLayout.LayoutParams(0, -1, 1f))
+        val createSlot = FrameLayout(this)
+        val createButton = TextView(this).apply {
+            text = "+"
+            textSize = 34f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(255, 218, 110), Color.rgb(214, 142, 30))).apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp(2f), Color.WHITE)
+            }
+            elevation = dp(9f).toFloat()
+            setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
+        }
+        createSlot.addView(createButton, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.CENTER))
+        bar.addView(createSlot, LinearLayout.LayoutParams(0, -1, 1.25f))
+        bar.addView(navItem("messages", "رسائلي", false) {
+            startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
+        }, LinearLayout.LayoutParams(0, -1, 1f))
+        bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
+        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(62f), Gravity.BOTTOM))
+        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(86f), Gravity.BOTTOM))
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
+            val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
+            view.layoutParams = view.layoutParams.apply { height = dp(86f) + bottomInset }
+            bar.layoutParams = bar.layoutParams.apply { height = dp(62f) + bottomInset }
+            bar.setPadding(dp(6f), dp(4f), dp(6f), bottomInset)
+            page.setPadding(0, 0, 0, dp(110f) + bottomInset)
+            insets
+        }
+        setContentView(root)
+        androidx.core.view.ViewCompat.requestApplyInsets(navWrap)
 
         // ---- Hero header (avatar, name, ID, level, stats) -------------------------------
         header = ProfileHeaderView(this)
