@@ -2927,6 +2927,11 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    if(microphoneEnabled)"إيقاف صوتك مع البقاء داخل المقعد" else "السماح للآخرين بسماعك",
    "mic",Color.rgb(64,224,255)){toggleMic()}
   if(isOwner)addTool("موسيقى الغرفة","اختيار وتشغيل موسيقى يسمعها أعضاء الغرفة","music",Color.rgb(244,201,105)){showMusicOptions()}
+  if(isOwner)addTool(
+   if(roomMode=="camera")"التحويل إلى غرفة صوتية" else "التحويل إلى غرفة كاميرا",
+   if(roomMode=="camera")"تغيير الغرفة من كاميرا إلى صوت فقط" else "تفعيل وضع الكاميرا ومقاعد البث",
+   "camera",Color.rgb(111,198,232)
+  ){confirmRoomModeSwitch()}
   addTool("مشاهدة جماعية","ابحث عن فيديو YouTube وشاهده مع أعضاء الغرفة","play",Color.rgb(255,75,90)){
    watchPlayer?.open()
   }
@@ -2942,6 +2947,60 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   root.addView(close,LinearLayout.LayoutParams(-1,dp(43)).apply{topMargin=dp(3)})
   presentSheet(dialog,root)
  }
+
+  private fun confirmRoomModeSwitch(){
+   if(!isOwner || !connected){
+    Toast.makeText(this,"تغيير وضع الغرفة متاح لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
+    return
+   }
+   val targetMode=if(roomMode=="camera")"audio" else "camera"
+   val targetLabel=if(targetMode=="camera")"غرفة كاميرا" else "غرفة صوتية"
+   showChoiceSheet(
+    "تغيير نوع الغرفة",
+    "هل تريد تحويل الغرفة الحالية إلى $targetLabel؟ سيتم تحديث وضع البث لجميع الموجودين.",
+    listOf(
+     SheetOption("تأكيد التحويل",0){applyRoomModeSwitch(targetMode)},
+     SheetOption("إلغاء",2){}
+    )
+   )
+  }
+
+  private fun applyRoomModeSwitch(targetMode:String){
+   if(!isOwner || !connected)return
+   scope.launch{
+    try{
+     val payload=JSONObject().put("mode",targetMode)
+     if(targetMode=="camera"){
+      payload.put("camera_seat_count",if(cameraSeatCount==4 || cameraSeatCount==6)cameraSeatCount else 6)
+     }
+     val response=withContext(Dispatchers.IO){
+      AuthApi.put("/api/voice-rooms/$roomId/mode",payload,authToken)
+     }
+     if(response.status !in 200..299){
+      throw Exception(response.body.optString("error","تعذر تغيير وضع الغرفة"))
+     }
+
+     stopRoomMusic(restoreMic=false)
+     if(cameraEnabled){
+      try{room.localParticipant.setCameraEnabled(false)}catch(_:Exception){}
+     }
+     try{room.disconnect()}catch(_:Exception){}
+     connected=false
+     cameraEnabled=false
+     canPublishVideo=false
+     lastSeatRenderSignature=""
+     if(targetMode=="audio")ownerSeatSetupDone=false
+     connect()
+     Toast.makeText(
+      this@RoomActivity,
+      if(targetMode=="camera")"تم تحويل الغرفة إلى وضع الكاميرا" else "تم تحويل الغرفة إلى الوضع الصوتي",
+      Toast.LENGTH_LONG
+     ).show()
+    }catch(e:Exception){
+     Toast.makeText(this@RoomActivity,e.message?:"تعذر تغيير وضع الغرفة",Toast.LENGTH_LONG).show()
+    }
+   }
+  }
 
   private fun openRoomBackgroundEditor(){
   if(!isOwner){Toast.makeText(this,"تغيير الخلفية متاح لصاحب الغرفة فقط",Toast.LENGTH_SHORT).show();return}
