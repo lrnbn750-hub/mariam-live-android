@@ -276,49 +276,50 @@ class RoomActivity : Activity() {
    addView(memberAvatars,LinearLayout.LayoutParams(dp(63),dp(26)))
    setOnClickListener{showRoomMembers()}
   }
-  val trendChip=label("🔥 0",12f,Color.rgb(255,220,130),true).apply{
-   setPadding(dp(10),dp(5),dp(10),dp(5))
+  val trendChip=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(10),dp(4),dp(10),dp(4))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-    intArrayOf(Color.rgb(76,31,12),Color.rgb(35,20,18),Color.rgb(76,31,12))).apply{
+    intArrayOf(Color.rgb(43,24,20),Color.rgb(20,22,34),Color.rgb(43,24,20))).apply{
     cornerRadius=dp(18).toFloat()
-    setStroke(dp(1),Color.rgb(255,174,48))
+    setStroke(dp(1),Color.rgb(177,112,57))
    }
    elevation=dp(3).toFloat()
    isClickable=true
    isFocusable=true
    contentDescription="نقاط ترند الغرفة، اضغط لعرض البثوث الرائجة"
    setOnClickListener{showTrendingRooms()}
-   // A continuous flame-like pulse makes both the fire and score visibly alive.
-   android.animation.ValueAnimator.ofFloat(0.96f,1.07f).apply{
-    duration=720L
+   val flame=ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("flame",Color.rgb(255,157,48),dp(28)))
+    scaleType=ImageView.ScaleType.FIT_CENTER
+    contentDescription="مؤشر الترند المتحرك"
+   }
+   addView(flame,LinearLayout.LayoutParams(dp(23),dp(25)).apply{marginEnd=dp(5)})
+   flame.animate().rotationBy(7f).setDuration(430).withEndAction{
+    if(isAttachedToWindow)flame.animate().rotationBy(-14f).setDuration(620).withEndAction{
+     if(isAttachedToWindow)flame.animate().rotationBy(7f).setDuration(430).start()
+    }.start()
+   }.start()
+   android.animation.ValueAnimator.ofFloat(0.88f,1.12f).apply{
+    duration=620L
     repeatCount=android.animation.ValueAnimator.INFINITE
     repeatMode=android.animation.ValueAnimator.REVERSE
-    interpolator=android.view.animation.AccelerateDecelerateInterpolator()
     addUpdateListener{anim->
      val pulse=anim.animatedValue as Float
-     scaleX=pulse
-     scaleY=pulse
-     alpha=0.88f+(pulse-0.96f)*1.5f
+     flame.scaleX=pulse
+     flame.scaleY=pulse
+     flame.alpha=0.82f+(pulse-0.88f)*0.75f
     }
     start()
    }
-   android.animation.ValueAnimator.ofArgb(Color.rgb(255,135,30),Color.rgb(255,205,65)).apply{
-    duration=900L
-    repeatCount=android.animation.ValueAnimator.INFINITE
-    repeatMode=android.animation.ValueAnimator.REVERSE
-    addUpdateListener{anim->
-     val glow=anim.animatedValue as Int
-     background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-      intArrayOf(Color.rgb(76,31,12),Color.rgb(35,20,18),Color.rgb(76,31,12))).apply{
-      cornerRadius=dp(18).toFloat()
-      setStroke(dp(2),glow)
-     }
-     setTextColor(glow)
-    }
-    start()
+   trendButton=label("0",12f,Color.rgb(255,214,139),true).apply{
+    includeFontPadding=false
+    gravity=Gravity.CENTER
    }
+   addView(trendButton,LinearLayout.LayoutParams(-2,dp(24)))
   }
-  trendButton=trendChip
   // Keep member count and room trend on one row so neither is clipped by the 80dp header.
   val roomStatsRow=LinearLayout(this).apply{
    orientation=LinearLayout.HORIZONTAL
@@ -3784,6 +3785,33 @@ private class VectorIcon(private val kind:String,private val color:Int,private v
  private val p=Paint(3).apply{this.color=color;style=Paint.Style.STROKE;strokeWidth=size*.09f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
  override fun draw(c:Canvas){val b=bounds;val save=c.save();c.translate(b.left.toFloat(),b.top.toFloat());c.scale(b.width().toFloat()/size,b.height().toFloat()/size);val m=size/2f
  when(kind){
+ "flame"->{
+  val outer=Path().apply{
+   moveTo(m,2f)
+   cubicTo(m-2f,8f,5f,11f,6f,18f)
+   cubicTo(7f,27f,12f,31f,m,31f)
+   cubicTo(24f,31f,29f,25f,27f,17f)
+   cubicTo(26f,12f,22f,8f,21f,4f)
+   cubicTo(19f,10f,17f,12f,m,14f)
+   cubicTo(m+1f,9f,m+1f,5f,m,2f)
+   close()
+  }
+  val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+   style=Paint.Style.FILL
+   shader=LinearGradient(0f,2f,0f,31f,Color.rgb(255,205,72),Color.rgb(238,75,24),Shader.TileMode.CLAMP)
+  }
+  c.drawPath(outer,fill)
+  val inner=Path().apply{
+   moveTo(m,18f)
+   cubicTo(m-2f,21f,12f,23f,13f,27f)
+   cubicTo(15f,30f,21f,29f,22f,25f)
+   cubicTo(23f,22f,20f,19f,19f,16f)
+   cubicTo(17f,20f,15f,21f,m,18f)
+   close()
+  }
+  fill.shader=LinearGradient(0f,17f,0f,30f,Color.rgb(255,245,166),Color.rgb(255,164,42),Shader.TileMode.CLAMP)
+  c.drawPath(inner,fill)
+ }
  "user"->{
   c.drawCircle(m,9f,5f,p)
   val body=Path().apply{moveTo(m-10f,27f);lineTo(m-10f,24f);quadTo(m-10f,17f,m,17f);quadTo(m+10f,17f,m+10f,24f);lineTo(m+10f,27f)}
