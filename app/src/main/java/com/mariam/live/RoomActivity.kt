@@ -309,8 +309,8 @@ class RoomActivity : Activity() {
    scaleType=ImageView.ScaleType.FIT_CENTER
    contentDescription="مؤشر الترند المتحرك"
   }
-  flameBadge.addView(flame,FrameLayout.LayoutParams(dp(18),dp(20),Gravity.CENTER))
-  trendChip.addView(flameBadge,LinearLayout.LayoutParams(dp(28),dp(28)).apply{marginEnd=dp(7)})
+  flameBadge.addView(flame,FrameLayout.LayoutParams(dp(21),dp(24),Gravity.CENTER))
+  trendChip.addView(flameBadge,LinearLayout.LayoutParams(dp(30),dp(30)).apply{marginEnd=dp(7)})
   val trendTexts=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
   trendTexts.addView(label("ترند",9f,Color.argb(225,255,255,255),false).apply{includeFontPadding=false},LinearLayout.LayoutParams(-2,dp(11)))
   trendButton=label("0",13f,Color.WHITE,true).apply{
@@ -777,7 +777,6 @@ class RoomActivity : Activity() {
    roomComposer=composer
    micControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("mic",Color.WHITE,dp(18)))
-    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
     setPadding(dp(11),dp(11),dp(11),dp(11))
     background=ctrlBg()
@@ -787,7 +786,6 @@ class RoomActivity : Activity() {
    composer.addView(micControl,LinearLayout.LayoutParams(dp(44),dp(44)).apply{marginEnd=dp(6)})
    cameraControl=ImageView(this@RoomActivity).apply{
     setImageDrawable(VectorIcon("camera",Color.WHITE,dp(18)))
-    setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
     scaleType=ImageView.ScaleType.CENTER_INSIDE
     setPadding(dp(11),dp(11),dp(11),dp(11))
     background=ctrlBg()
@@ -999,8 +997,7 @@ class RoomActivity : Activity() {
   scope.launch{
    try{
     val result=withContext(Dispatchers.IO){
-     AuthApi.get("/api/voice-rooms/$roomId/messages",authToken)
-    }
+     AuthApi.get("/api/voice-rooms/$roomId/messages",authToken)    }
     if(result.status !in 200..299){
      if(chatMessages.childCount==0){
       chatMessages.addView(label(result.body.optString("error","تعذر تحميل الرسائل"),13f,Color.rgb(100,116,104)))
@@ -1999,8 +1996,7 @@ class RoomActivity : Activity() {
   scope.launch {
    try {
     val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/token",JSONObject(),authToken)}
-    if(r.status !in 200..299){
-     val detail=r.body.optString("stage")
+    if(r.status !in 200..299){     val detail=r.body.optString("stage")
      val code=r.body.optString("code")
      val reason=r.body.optString("error","تعذر إصدار رمز الصوت")
      throw Exception(reason + if(detail.isNotBlank()) " ($detail/$code)" else " (HTTP ${r.status})")
@@ -2954,7 +2950,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
   if(isOwner)addTool("خلفية الغرفة","تغيير الصورة والخلفية الظاهرة للجميع","image",Color.rgb(111,198,232)){openRoomBackgroundEditor()}
   addTool("الأعضاء","عرض المستمعين والمتحدثين وملفاتهم الشخصية","users",Color.rgb(255,120,180)){loadRoomMembers();showRoomMembers()}
-  if(isOwner)addTool("المحظورون","إدارة قيود التعليقات والطرد وإلغائها","users",Color.rgb(239,132,132)){showRoomModerationList()}
+  if(isOwner)addTool("المحظورون","إدارة قيود التعليقات والطرد وإلغائها","ban",Color.rgb(255,92,110)){showRoomModerationList()}
   val columns=4
   var rowLayout:LinearLayout?=null
   tools.forEachIndexed{i,t->
@@ -2969,11 +2965,12 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     setOnClickListener{dialog.dismiss();t.action()}
    }
    val box=FrameLayout(this).apply{
-    background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.argb(90,r,g,b),Color.argb(28,r,g,b))).apply{
-     cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.argb(130,r,g,b))
+    background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(t.accent,Color.rgb((r*0.45f+95*0.55f).toInt(),(g*0.45f+45*0.55f).toInt(),(b*0.45f+175*0.55f).toInt()))).apply{
+     cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.argb(90,255,255,255))
     }
+    elevation=dp(3).toFloat()
     addView(ImageView(this@RoomActivity).apply{
-     setImageDrawable(VectorIcon(t.icon,t.accent,dp(24)))
+     setImageDrawable(VectorIcon(t.icon,Color.WHITE,dp(28)))
      scaleType=ImageView.ScaleType.CENTER
     },FrameLayout.LayoutParams(-1,-1))
    }
@@ -2998,8 +2995,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   private fun confirmRoomModeSwitch(){
    if(!isOwner || !connected){
     Toast.makeText(this,"تغيير وضع الغرفة متاح لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
-    return
-   }
+    return   }
    if(roomMode=="camera"){
     confirmRoomModeSwitch("audio",null)
     return
@@ -3180,7 +3176,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun refreshCameraControl(){
   if(!::cameraControl.isInitialized)return
   cameraControl.setImageDrawable(VectorIcon(if(cameraEnabled)"camera_off" else "camera",Color.WHITE,dp(18)))
-  cameraControl.setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
   cameraControl.background=if(cameraEnabled)ctrlBg(danger=true) else ctrlBg()
   cameraControl.contentDescription=if(cameraEnabled)"إيقاف الكاميرا" else "تشغيل الكاميرا"
  }
@@ -3223,7 +3218,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun refreshMicControl(){
   if(!::micControl.isInitialized)return
   micControl.setImageDrawable(VectorIcon(if(microphoneEnabled)"mic" else "mic_off",Color.WHITE,dp(18)))
-  micControl.setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
   micControl.background=if(microphoneEnabled)ctrlBg() else ctrlBg(danger=true)
   micControl.contentDescription=if(microphoneEnabled)"إيقاف المايك" else "تشغيل المايك"
  }
@@ -3764,83 +3758,167 @@ private class CircularAudioWaveView(context:android.content.Context):View(contex
 }
 
 /** أيقونات Vector مخصصة مرسومة على Canvas بدون رموز Emoji. */
-private class VectorIcon(private val kind:String,private val color:Int,private val size:Int):Drawable(){
- private val p=Paint(3).apply{this.color=color;style=Paint.Style.STROKE;strokeWidth=size*.09f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
- override fun draw(c:Canvas){val b=bounds;val save=c.save();c.translate(b.left.toFloat(),b.top.toFloat());c.scale(b.width().toFloat()/size,b.height().toFloat()/size);val m=size/2f
- when(kind){
- "flame"->{
-  val glow=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;color=Color.argb(55,255,120,40)}
-  c.drawCircle(m,20f,13f,glow)
-  val outer=Path().apply{
-   moveTo(m,1.5f)
-   cubicTo(m+3f,7f,m+10f,11f,m+10f,19.5f)
-   cubicTo(m+10f,26.5f,m+5f,31f,m,31f)
-   cubicTo(m-5f,31f,m-10f,26.5f,m-10f,19.5f)
-   cubicTo(m-10f,15f,m-7f,12f,m-5f,9f)
-   cubicTo(m-4f,12.5f,m-2.5f,14f,m-1f,14.5f)
-   cubicTo(m-2f,10f,m-1f,5f,m,1.5f)
-   close()
+private class VectorIcon(private val kind:String,private val tint:Int,private val size:Int):Drawable(){
+ // All glyphs are drawn on a 32x32 grid and scaled to the drawable bounds.
+ private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=tint;style=Paint.Style.STROKE;strokeWidth=2.6f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
+ private val f=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=tint;style=Paint.Style.FILL}
+ private val s=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.argb(105,Color.red(tint),Color.green(tint),Color.blue(tint));style=Paint.Style.FILL}
+ override fun draw(c:Canvas){
+  val b=bounds
+  if(b.width()<=0||b.height()<=0)return
+  val save=c.save()
+  c.translate(b.left.toFloat(),b.top.toFloat())
+  c.scale(b.width().toFloat()/32f,b.height().toFloat()/32f)
+  val m=16f
+  fun rr(l:Float,t:Float,r:Float,bt:Float,rad:Float)=Path().apply{addRoundRect(RectF(l,t,r,bt),rad,rad,Path.Direction.CW)}
+  fun oval(cx:Float,cy:Float,r:Float)=Path().apply{addCircle(cx,cy,r,Path.Direction.CW)}
+  val pw=Paint(p).apply{strokeWidth=3.4f}
+  when(kind){
+   "flame"->{
+    val glow=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;color=Color.argb(55,255,120,40)}
+    c.drawCircle(m,20f,13f,glow)
+    val outer=Path().apply{
+     moveTo(m,1.5f)
+     cubicTo(m+3f,7f,m+10f,11f,m+10f,19.5f)
+     cubicTo(m+10f,26.5f,m+5f,31f,m,31f)
+     cubicTo(m-5f,31f,m-10f,26.5f,m-10f,19.5f)
+     cubicTo(m-10f,15f,m-7f,12f,m-5f,9f)
+     cubicTo(m-4f,12.5f,m-2.5f,14f,m-1f,14.5f)
+     cubicTo(m-2f,10f,m-1f,5f,m,1.5f)
+     close()
+    }
+    val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{
+     style=Paint.Style.FILL
+     shader=LinearGradient(0f,1.5f,0f,31f,intArrayOf(Color.rgb(255,196,60),Color.rgb(255,96,40),Color.rgb(214,32,70)),floatArrayOf(0f,0.5f,1f),Shader.TileMode.CLAMP)
+    }
+    c.drawPath(outer,fill)
+    val mid=Path().apply{
+     moveTo(m,12f)
+     cubicTo(m+2f,15f,m+6.5f,18f,m+6.5f,23f)
+     cubicTo(m+6.5f,27.5f,m+3.5f,30f,m,30f)
+     cubicTo(m-3.5f,30f,m-6.5f,27.5f,m-6.5f,23f)
+     cubicTo(m-6.5f,19f,m-3f,17f,m,12f)
+     close()
+    }
+    fill.shader=LinearGradient(0f,12f,0f,30f,Color.rgb(255,226,110),Color.rgb(255,140,40),Shader.TileMode.CLAMP)
+    c.drawPath(mid,fill)
+    val core=Path().apply{
+     moveTo(m,19f)
+     cubicTo(m+1.8f,21.5f,m+3.6f,23f,m+3.6f,25.5f)
+     cubicTo(m+3.6f,28f,m+2f,29.5f,m,29.5f)
+     cubicTo(m-2f,29.5f,m-3.6f,28f,m-3.6f,25.5f)
+     cubicTo(m-3.6f,23f,m-1.8f,21.5f,m,19f)
+     close()
+    }
+    fill.shader=LinearGradient(0f,19f,0f,29.5f,Color.rgb(255,255,225),Color.rgb(255,226,120),Shader.TileMode.CLAMP)
+    c.drawPath(core,fill)
+   }
+   "crown"->{
+    val crown=Path().apply{moveTo(4f,25f);lineTo(3f,10f);lineTo(10f,16f);lineTo(m,5f);lineTo(22f,16f);lineTo(29f,10f);lineTo(28f,25f);close()}
+    val cf=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,5f,0f,26f,Color.rgb(255,236,150),Color.rgb(240,160,50),Shader.TileMode.CLAMP)}
+    c.drawPath(crown,cf)
+    cf.shader=null;cf.color=Color.rgb(255,248,210)
+    c.drawCircle(m,9.5f,1.6f,cf);c.drawCircle(5f,12.5f,1.3f,cf);c.drawCircle(27f,12.5f,1.3f,cf)
+   }
+   "user"->{
+    c.drawCircle(m,10.5f,5.5f,f)
+    c.drawPath(Path().apply{moveTo(5f,28f);quadTo(5f,18.5f,m,18.5f);quadTo(27f,18.5f,27f,28f);close()},f)
+   }
+   "users"->{
+    c.drawCircle(22.5f,10.5f,3.8f,s)
+    c.drawPath(Path().apply{moveTo(16.5f,26.5f);quadTo(16.5f,18f,22.5f,18f);quadTo(29f,18f,29f,26.5f);close()},s)
+    c.drawCircle(12.5f,10f,4.8f,f)
+    c.drawPath(Path().apply{moveTo(3f,27f);quadTo(3f,17.5f,12.5f,17.5f);quadTo(22f,17.5f,22f,27f);close()},f)
+   }
+   "mic"->{
+    c.drawRoundRect(RectF(11f,2.5f,21f,18.5f),5f,5f,f)
+    c.drawArc(RectF(6.5f,8f,25.5f,25f),0f,180f,false,p)
+    c.drawLine(m,25f,m,29f,p);c.drawLine(11f,29.5f,21f,29.5f,p)
+   }
+   "mic_off"->{
+    c.drawRoundRect(RectF(11f,2.5f,21f,18.5f),5f,5f,s)
+    c.drawArc(RectF(6.5f,8f,25.5f,25f),0f,180f,false,p)
+    c.drawLine(m,25f,m,29f,p);c.drawLine(11f,29.5f,21f,29.5f,p)
+    c.drawLine(5f,4f,27f,28.5f,pw)
+   }
+   "camera"->{
+    val body=rr(2.5f,9f,29.5f,27f,5.5f).apply{op(rr(10.5f,5f,21.5f,11f,2.5f),Path.Op.UNION);op(oval(m,18f,6.3f),Path.Op.DIFFERENCE)}
+    c.drawPath(body,f);c.drawCircle(m,18f,3.4f,f)
+   }
+   "camera_off"->{
+    val body=rr(2.5f,9f,29.5f,27f,5.5f).apply{op(rr(10.5f,5f,21.5f,11f,2.5f),Path.Op.UNION);op(oval(m,18f,6.3f),Path.Op.DIFFERENCE)}
+    c.drawPath(body,s);c.drawCircle(m,18f,3.4f,s)
+    c.drawLine(5f,4f,27f,29f,pw)
+   }
+   "grid"->{
+    c.drawRoundRect(RectF(4.5f,4.5f,15f,15f),3.2f,3.2f,f)
+    c.drawRoundRect(RectF(17f,4.5f,27.5f,15f),3.2f,3.2f,s)
+    c.drawRoundRect(RectF(4.5f,17f,15f,27.5f),3.2f,3.2f,s)
+    c.drawRoundRect(RectF(17f,17f,27.5f,27.5f),3.2f,3.2f,f)
+   }
+   "share"->{
+    c.drawLine(7f,16f,25f,7f,p);c.drawLine(7f,16f,25f,25f,p)
+    c.drawCircle(7f,16f,4f,f);c.drawCircle(25f,7f,4f,f);c.drawCircle(25f,25f,4f,f)
+   }
+   "leave"->{
+    c.drawPath(Path().apply{moveTo(13f,5f);lineTo(7f,5f);quadTo(4.5f,5f,4.5f,7.5f);lineTo(4.5f,24.5f);quadTo(4.5f,27f,7f,27f);lineTo(13f,27f)},p)
+    c.drawLine(12f,16f,23f,16f,p)
+    c.drawPath(Path().apply{moveTo(21.5f,9.5f);lineTo(29.5f,16f);lineTo(21.5f,22.5f);close()},f)
+   }
+   "gift"->{
+    val box=Path().apply{addPath(rr(5f,14.5f,27f,28.5f,3f));addPath(rr(3f,9.5f,29f,15.5f,2.5f))}
+    box.op(Path().apply{addRect(14.4f,9f,17.6f,29f,Path.Direction.CW)},Path.Op.DIFFERENCE)
+    c.drawPath(box,f)
+    c.drawPath(Path().apply{moveTo(m,9.5f);quadTo(9f,0.5f,8.5f,5.5f);quadTo(8.5f,9.5f,m,9.5f)},p)
+    c.drawPath(Path().apply{moveTo(m,9.5f);quadTo(23f,0.5f,23.5f,5.5f);quadTo(23.5f,9.5f,m,9.5f)},p)
+   }
+   "music"->{
+    c.drawPath(Path().apply{moveTo(12f,6f);lineTo(27f,3f);lineTo(27f,10f);lineTo(12f,13f);close()},f)
+    c.drawRoundRect(RectF(10.5f,6f,13.5f,23.5f),1.5f,1.5f,f)
+    c.drawRoundRect(RectF(24.5f,3f,27.5f,20.5f),1.5f,1.5f,f)
+    c.drawOval(RectF(4.5f,20.5f,13.5f,28f),f)
+    c.drawOval(RectF(18.5f,17.5f,27.5f,25f),f)
+   }
+   "play"->{
+    val tv=rr(2.5f,6.5f,29.5f,25.5f,6.5f)
+    tv.op(Path().apply{moveTo(13f,11f);lineTo(22.5f,16f);lineTo(13f,21f);close()},Path.Op.DIFFERENCE)
+    c.drawPath(tv,f)
+    c.drawRoundRect(RectF(10f,27.5f,22f,29.5f),1f,1f,s)
+   }
+   "image"->{
+    c.drawRoundRect(RectF(3.5f,5f,28.5f,27f),5.5f,5.5f,p)
+    c.drawCircle(21.5f,12f,2.8f,f)
+    c.drawPath(Path().apply{moveTo(6f,25f);lineTo(12f,16.5f);lineTo(17f,22f);lineTo(20.5f,18.5f);lineTo(26f,25f);close()},f)
+   }
+   "chat"->{
+    val bub=rr(3f,4.5f,29f,23f,7f).apply{op(Path().apply{moveTo(9f,21f);lineTo(8f,29.5f);lineTo(17f,22.5f);close()},Path.Op.UNION)}
+    for(x in listOf(10f,16f,22f))bub.op(oval(x,13.7f,1.8f),Path.Op.DIFFERENCE)
+    c.drawPath(bub,f)
+   }
+   "pause"->{c.drawRoundRect(RectF(9f,6f,14f,26f),2f,2f,f);c.drawRoundRect(RectF(18f,6f,23f,26f),2f,2f,f)}
+   "volume-2"->{
+    c.drawPath(Path().apply{moveTo(4f,12f);lineTo(10f,12f);lineTo(17f,6f);lineTo(17f,26f);lineTo(10f,20f);lineTo(4f,20f);close()},f)
+    c.drawArc(RectF(12f,10f,24f,22f),-50f,100f,false,p)
+    c.drawArc(RectF(10f,5f,28f,27f),-50f,100f,false,p)
+   }
+   "square"->{c.drawRoundRect(RectF(8f,8f,24f,24f),3.5f,3.5f,f)}
+   "plus"->{c.drawLine(m,6f,m,26f,pw);c.drawLine(6f,m,26f,m,pw)}
+   "close"->{c.drawLine(8f,8f,24f,24f,pw);c.drawLine(24f,8f,8f,24f,pw)}
+   "ban"->{c.drawCircle(m,m,11f,pw);c.drawLine(8.3f,8.3f,23.7f,23.7f,pw)}
+   "hand"->{
+    c.drawRoundRect(RectF(8f,14f,24f,29f),5f,5f,f)
+    for((i,x) in listOf(8f,12.5f,17f,21.5f).withIndex())c.drawRoundRect(RectF(x,if(i==1||i==2)4f else 7f,x+3f,17f),1.5f,1.5f,f)
+   }
+   else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
   }
-  val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-   style=Paint.Style.FILL
-   shader=LinearGradient(0f,1.5f,0f,31f,intArrayOf(Color.rgb(255,196,60),Color.rgb(255,96,40),Color.rgb(214,32,70)),floatArrayOf(0f,0.5f,1f),Shader.TileMode.CLAMP)
-  }
-  c.drawPath(outer,fill)
-  val mid=Path().apply{
-   moveTo(m,12f)
-   cubicTo(m+2f,15f,m+6.5f,18f,m+6.5f,23f)
-   cubicTo(m+6.5f,27.5f,m+3.5f,30f,m,30f)
-   cubicTo(m-3.5f,30f,m-6.5f,27.5f,m-6.5f,23f)
-   cubicTo(m-6.5f,19f,m-3f,17f,m,12f)
-   close()
-  }
-  fill.shader=LinearGradient(0f,12f,0f,30f,Color.rgb(255,226,110),Color.rgb(255,140,40),Shader.TileMode.CLAMP)
-  c.drawPath(mid,fill)
-  val core=Path().apply{
-   moveTo(m,19f)
-   cubicTo(m+1.8f,21.5f,m+3.6f,23f,m+3.6f,25.5f)
-   cubicTo(m+3.6f,28f,m+2f,29.5f,m,29.5f)
-   cubicTo(m-2f,29.5f,m-3.6f,28f,m-3.6f,25.5f)
-   cubicTo(m-3.6f,23f,m-1.8f,21.5f,m,19f)
-   close()
-  }
-  fill.shader=LinearGradient(0f,19f,0f,29.5f,Color.rgb(255,255,225),Color.rgb(255,226,120),Shader.TileMode.CLAMP)
-  c.drawPath(core,fill)
+  c.restoreToCount(save)
  }
- "user"->{
-  c.drawCircle(m,9f,5f,p)
-  val body=Path().apply{moveTo(m-10f,27f);lineTo(m-10f,24f);quadTo(m-10f,17f,m,17f);quadTo(m+10f,17f,m+10f,24f);lineTo(m+10f,27f)}
-  c.drawPath(body,p)
- }
- "mic"->{c.drawRoundRect(m-4f,2f,m+4f,17f,5f,5f,p);c.drawArc(RectF(m-10f,8f,m+10f,26f),0f,180f,false,p);c.drawLine(m,26f,m,30f,p);c.drawLine(m-6f,30f,m+6f,30f,p)}
- "mic_off"->{c.drawRoundRect(m-4f,2f,m+4f,17f,5f,5f,p);c.drawArc(RectF(m-10f,8f,m+10f,26f),0f,180f,false,p);c.drawLine(m,26f,m,30f,p);c.drawLine(m-6f,30f,m+6f,30f,p);c.drawLine(5f,4f,27f,28f,p)}
- "hand"->{val q=Path().apply{moveTo(10f,27f);lineTo(7f,19f);lineTo(7f,15f);lineTo(11f,18f);lineTo(11f,7f);quadTo(15f,4f,16f,8f);lineTo(16f,16f);lineTo(19f,10f);quadTo(23f,9f,22f,14f);lineTo(22f,18f);lineTo(25f,14f);quadTo(29f,14f,27f,20f);lineTo(24f,27f);close()};c.drawPath(q,p)}
- "chat"->{c.drawRoundRect(3f,5f,29f,23f,5f,5f,p);c.drawLine(9f,23f,7f,29f,p);for(x in listOf(10f,16f,22f))c.drawCircle(x,14f,1f,p)}
- "share"->{c.drawLine(7f,16f,25f,7f,p);c.drawLine(7f,16f,25f,25f,p);c.drawCircle(6f,16f,3f,p);c.drawCircle(26f,6f,3f,p);c.drawCircle(26f,26f,3f,p)}
- "gift"->{c.drawRect(4f,13f,28f,28f,p);c.drawRect(2f,10f,30f,15f,p);c.drawLine(16f,10f,16f,28f,p);c.drawOval(RectF(6f,3f,16f,12f),p);c.drawOval(RectF(16f,3f,26f,12f),p)}
- "music"->{c.drawLine(12f,7f,12f,23f,p);c.drawLine(12f,7f,25f,4f,p);c.drawLine(25f,4f,25f,20f,p);c.drawOval(RectF(5f,21f,13f,28f),p);c.drawOval(RectF(18f,18f,26f,25f),p)}
- "leave"->{val q=Path().apply{moveTo(8f,5f);lineTo(4f,5f);lineTo(4f,27f);lineTo(8f,27f);moveTo(16f,10f);lineTo(27f,16f);lineTo(16f,22f);moveTo(27f,16f);lineTo(10f,16f)};c.drawPath(q,p)}
- "image"->{c.drawRoundRect(4f,5f,28f,27f,4f,4f,p);c.drawCircle(11f,12f,2.5f,p);val q=Path().apply{moveTo(5f,24f);lineTo(13f,16f);lineTo(18f,21f);lineTo(22f,17f);lineTo(27f,22f)};c.drawPath(q,p)}
- "users"->{c.drawCircle(12f,10f,4.5f,p);val a=Path().apply{moveTo(4f,26f);quadTo(4f,17f,12f,17f);quadTo(20f,17f,20f,26f)};c.drawPath(a,p);c.drawCircle(22f,11f,3.5f,p);val leg=Path().apply{moveTo(22f,17f);quadTo(28f,17f,28f,24f)};c.drawPath(leg,p)}
- "play"->{val q=Path().apply{moveTo(10f,6f);lineTo(26f,16f);lineTo(10f,26f);close()};c.drawPath(q,p)}
- "pause"->{c.drawLine(11f,7f,11f,25f,p);c.drawLine(21f,7f,21f,25f,p)}
- "volume-2"->{val q=Path().apply{moveTo(5f,12f);lineTo(11f,12f);lineTo(17f,6f);lineTo(17f,26f);lineTo(11f,20f);lineTo(5f,20f);close()};c.drawPath(q,p);c.drawArc(RectF(15f,10f,23f,22f),-60f,120f,false,p);c.drawArc(RectF(15f,6f,29f,26f),-60f,120f,false,p)}
- "square"->{c.drawRoundRect(8f,8f,24f,24f,3f,3f,p)}
- "plus"->{c.drawLine(m,7f,m,25f,p);c.drawLine(7f,m,25f,m,p)}
- "close"->{c.drawLine(7f,7f,25f,25f,p);c.drawLine(25f,7f,7f,25f,p)}
- "grid"->{c.drawRoundRect(5f,5f,14f,14f,3f,3f,p);c.drawRoundRect(18f,5f,27f,14f,3f,3f,p);c.drawRoundRect(5f,18f,14f,27f,3f,3f,p);c.drawRoundRect(18f,18f,27f,27f,3f,3f,p)}
- "camera"->{c.drawRoundRect(3f,9f,29f,26f,5f,5f,p);c.drawCircle(m,17.5f,4.5f,p);c.drawLine(10f,9f,12f,5f,p);c.drawLine(12f,5f,20f,5f,p);c.drawLine(20f,5f,22f,9f,p)}
- "camera_off"->{c.drawRoundRect(3f,9f,29f,26f,5f,5f,p);c.drawCircle(m,17.5f,4.5f,p);c.drawLine(10f,9f,12f,5f,p);c.drawLine(12f,5f,20f,5f,p);c.drawLine(20f,5f,22f,9f,p);c.drawLine(5f,4f,27f,28f,p)}
- "crown"->{
-  val crown=Path().apply{moveTo(4f,25f);lineTo(3f,10f);lineTo(10f,16f);lineTo(m,5f);lineTo(22f,16f);lineTo(29f,10f);lineTo(28f,25f);close()}
-  val cf=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL;shader=LinearGradient(0f,5f,0f,26f,Color.rgb(255,236,150),Color.rgb(240,160,50),Shader.TileMode.CLAMP)}
-  c.drawPath(crown,cf)
-  cf.shader=null;cf.color=Color.rgb(255,248,210)
-  c.drawCircle(m,9.5f,1.6f,cf);c.drawCircle(5f,12.5f,1.3f,cf);c.drawCircle(27f,12.5f,1.3f,cf)
- }
- else->{c.drawArc(RectF(5f,5f,27f,27f),30f,290f,false,p);c.drawLine(21f,5f,28f,6f,p);c.drawLine(28f,6f,27f,13f,p)}
- };c.restoreToCount(save)}
- override fun setAlpha(a:Int){p.alpha=a};override fun setColorFilter(f:ColorFilter?){p.colorFilter=f};override fun getOpacity()=PixelFormat.TRANSLUCENT;override fun getIntrinsicWidth()=size;override fun getIntrinsicHeight()=size
+ override fun setAlpha(a:Int){p.alpha=a;f.alpha=a;s.alpha=a*105/255}
+ override fun setColorFilter(cf:ColorFilter?){p.colorFilter=cf;f.colorFilter=cf;s.colorFilter=cf}
+ @Deprecated("Deprecated in Android")
+ override fun getOpacity()=PixelFormat.TRANSLUCENT
+ override fun getIntrinsicWidth()=size
+ override fun getIntrinsicHeight()=size
 }
 
 
