@@ -796,7 +796,8 @@ class RoomActivity : Activity() {
       super.onDraw(canvas)
       val d=resources.displayMetrics.density
       canvas.save();canvas.scale(d,d)
-      val w=width/d;val h=height/d;val cx=w/2f;val cy=h/2f      val bob=kotlin.math.sin(phase*6.2831853f).toFloat()*1.1f
+      val w=width/d;val h=height/d;val cx=w/2f;val cy=h/2f
+      val bob=kotlin.math.sin(phase*6.2831853f).toFloat()*1.1f
       canvas.save();canvas.translate(cx,cy+bob)
       val glow=paint(android.graphics.Color.argb((35+20*kotlin.math.sin(phase*6.2831853f)).toInt(),255,93,174))
       glow.setShadowLayer(8f,0f,2f,android.graphics.Color.argb(100,255,80,170))
@@ -1993,7 +1994,8 @@ class RoomActivity : Activity() {
   val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val send=TextView(this).apply{text="إرسال";textSize=15f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD;background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,64,129),Color.rgb(150,80,240))).apply{cornerRadius=dp(22).toFloat()}}
   footer.addView(send,LinearLayout.LayoutParams(dp(92),dp(44)).apply{marginEnd=dp(8)})
-  val qtyBox=LinearLayout(this).apply{gravity=Gravity.CENTER;background=GradientDrawable().apply{setColor(Color.argb(40,255,255,255));cornerRadius=dp(22).toFloat();setStroke(dp(1),Color.argb(90,255,255,255))}}  val minus=TextView(this).apply{text="−";textSize=21f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
+  val qtyBox=LinearLayout(this).apply{gravity=Gravity.CENTER;background=GradientDrawable().apply{setColor(Color.argb(40,255,255,255));cornerRadius=dp(22).toFloat();setStroke(dp(1),Color.argb(90,255,255,255))}}
+  val minus=TextView(this).apply{text="−";textSize=21f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
   val qtyText=TextView(this).apply{text="1";textSize=15f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD}
   val plus=TextView(this).apply{text="+";textSize=20f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)}
   qtyBox.addView(minus,LinearLayout.LayoutParams(dp(34),dp(42)));qtyBox.addView(qtyText,LinearLayout.LayoutParams(dp(28),dp(42)));qtyBox.addView(plus,LinearLayout.LayoutParams(dp(34),dp(42)))
@@ -3190,7 +3192,8 @@ private class ChatBubbleGifDrawable(
  override fun getIntrinsicWidth()=movie?.width()?:-1
  override fun getIntrinsicHeight()=movie?.height()?:-1
  override fun setVisible(visible:Boolean,restart:Boolean):Boolean{
-  if(visible&&restart)startedAt=android.os.SystemClock.uptimeMillis()  if(!visible)unscheduleSelf(frame)
+  if(visible&&restart)startedAt=android.os.SystemClock.uptimeMillis()
+  if(!visible)unscheduleSelf(frame)
   return super.setVisible(visible,restart)
  }
 }

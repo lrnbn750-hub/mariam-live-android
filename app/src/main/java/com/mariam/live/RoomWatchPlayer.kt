@@ -1195,7 +1195,8 @@ private class WatchGlyph(context: Context, var kind: Int) : View(context) {
         style = Paint.Style.FILL
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE        textAlign = Paint.Align.CENTER
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.BOLD)
     }
     private val path = Path()
