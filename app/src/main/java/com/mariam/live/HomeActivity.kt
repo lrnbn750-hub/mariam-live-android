@@ -39,7 +39,6 @@ class HomeActivity : Activity() {
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
     private lateinit var tabsRow: LinearLayout
-    private lateinit var chipsRow: LinearLayout
     private var messagesBadge: TextView? = null
     private var tabMode = 0    // 0 شائع | 1 استكشف | 2 المميزات
     private var chipMode = 0   // 0 الكل | 1 الأكثر مشاهدة | 2 الأكثر تفاعلاً
@@ -47,7 +46,6 @@ class HomeActivity : Activity() {
     private var pendingRoomName = ""
     private val roomImagePicker = 7314
     private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف", 3 to "الألعاب")
-    private val chipsData = listOf(0 to "◉", 1 to "👑", 2 to "🔥")
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -115,21 +113,6 @@ class HomeActivity : Activity() {
         column.addView(tabsRow,LinearLayout.LayoutParams(-1,dp(46)))
         buildTabs()
 
-        // ───────────── الفلاتر (Chips) ─────────────
-        chipsRow=LinearLayout(this).apply{
-            orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
-            gravity=Gravity.CENTER_VERTICAL
-            setPadding(dp(8),0,dp(8),0)
-        }
-        val chipsScroll=HorizontalScrollView(this).apply{
-            layoutDirection=View.LAYOUT_DIRECTION_RTL
-            isHorizontalScrollBarEnabled=false
-            setBackgroundColor(pageBg)
-            addView(chipsRow,FrameLayout.LayoutParams(-2,-1))
-        }
-        column.addView(chipsScroll,LinearLayout.LayoutParams(-1,dp(46)))
-        buildChips()
-
         // ───────────── المحتوى القابل للتمرير ─────────────
         val content=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL
@@ -176,7 +159,6 @@ class HomeActivity : Activity() {
         }
         // الترتيب (من اليمين): الرئيسية - اكتشف - [زر الإنشاء] - رسائلي - حسابي
         bar.addView(navItem("home","الرئيسية",true){
-            searchQuery="";tabMode=0;chipMode=0;buildTabs();buildChips();loadRooms()
         },LinearLayout.LayoutParams(0,-1,1f))
         bar.addView(navItem("discover","اكتشف",false){
             searchQuery="";tabMode=1;buildTabs();loadRooms()
@@ -271,24 +253,6 @@ class HomeActivity : Activity() {
                 visibility=if(selected)View.VISIBLE else View.INVISIBLE
             },LinearLayout.LayoutParams(dp(22),dp(3)).apply{topMargin=dp(3)})
             tabsRow.addView(col,LinearLayout.LayoutParams(0,-1,1f))
-        }
-    }
-
-    private fun buildChips(){
-        chipsRow.removeAllViews()
-        chipsData.forEach{(mode,title)->
-            val selected=mode==chipMode
-            val chip=TextView(this).apply{
-                text=title;textSize=if(mode==0)19f else 16f;gravity=Gravity.CENTER
-                contentDescription=when(mode){0->"كل الغرف";1->"الأكثر مشاهدة";else->"الأكثر تفاعلاً"}
-                setTextColor(if(selected)Color.rgb(196,128,16) else Color.rgb(176,150,104))
-                typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                background=shape(if(selected)Color.rgb(255,233,180) else Color.rgb(250,243,228),18)
-                setPadding(dp(16),0,dp(16),0)
-                isClickable=true
-                setOnClickListener{chipMode=mode;buildChips();buildCards()}
-            }
-            chipsRow.addView(chip,LinearLayout.LayoutParams(-2,dp(34)).apply{setMargins(dp(4),0,dp(4),0)})
         }
     }
 
