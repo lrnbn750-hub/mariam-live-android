@@ -57,6 +57,7 @@ class RoomActivity : Activity() {
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var cameraSeats=JSONArray(); private var hands=JSONArray()
  private var roomMode="audio"; private var cameraSeatCount=0; private var cameraMainUserId=""
+ private var lastSeatRenderSignature=""
  private val bg=Color.rgb(241,243,238); private val purple=Color.rgb(83,126,94); private val gold=Color.rgb(83,126,94); private val mutedText=Color.rgb(103,111,101)
  private lateinit var status:TextView; private lateinit var grid:LinearLayout
  private lateinit var roomPage:LinearLayout
@@ -1209,6 +1210,14 @@ class RoomActivity : Activity() {
     cameraSeatCount=r.body.optInt("cameraSeatCount",if(cameraSeats.length()>0)cameraSeats.length() else 0)
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
     hands=r.body.optJSONArray("handRaises")?:JSONArray()
+    // The seat endpoint is polled every 5 seconds. Avoid rebuilding the video
+    // hierarchy when nothing visual changed; rebuilding TextureViews causes
+    // the camera preview to blink like it is refreshing.
+    val seatRenderSignature=listOf(
+     roomMode,cameraSeatCount,cameraMainUserId,
+     seats.toString(),cameraSeats.toString()
+    ).joinToString("|")
+    val seatsNeedRedraw=seatRenderSignature!=lastSeatRenderSignature
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
     if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
@@ -1241,7 +1250,10 @@ class RoomActivity : Activity() {
     if(::micControl.isInitialized)micControl.visibility=if(isSeated && microphoneEnabled)View.VISIBLE else View.GONE
     if(::cameraControl.isInitialized)cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
     musicButton.visibility=if(isOwner && connected)View.VISIBLE else View.GONE
-    drawSeats()
+    if(seatsNeedRedraw){
+     lastSeatRenderSignature=seatRenderSignature
+     drawSeats()
+    }
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
