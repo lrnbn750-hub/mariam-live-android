@@ -72,6 +72,9 @@ class AgencyDashboardActivity : Activity() {
  private lateinit var earningsBox: LinearLayout
  private lateinit var membersEarningsBox: LinearLayout
  private lateinit var historyBox: LinearLayout
+ private lateinit var withdrawalsBox: LinearLayout
+ private lateinit var withdrawalsStatus: TextView
+ private var withdrawalAvailableCents: Long = 0L
  private lateinit var agencyBox: LinearLayout
  private lateinit var invitesBox: LinearLayout
  private lateinit var membersBox: LinearLayout
@@ -370,6 +373,13 @@ class AgencyDashboardActivity : Activity() {
   earningsStatus = statusLine("جارٍ تحميل الأرباح...")
   body.addView(earningsStatus, lp().apply { topMargin = dp(10) })
 
+  section("سحب أرباح الوكالة", "اطلب تحويل الرصيد المتاح إلى وسيلة الدفع التي تختارها", Ic.WALLET, iconButton(Ic.REFRESH, "تحديث طلبات السحب") { loadWithdrawals() })
+  withdrawalsBox = vbox()
+  body.addView(withdrawalsBox)
+  withdrawalsStatus = statusLine("جارٍ تحميل رصيد السحب...")
+  body.addView(withdrawalsStatus, lp().apply { topMargin = dp(8) })
+  body.addView(button("طلب سحب الأرباح", 0, Ic.WALLET) { openWithdrawalDialog() }, lp().apply { topMargin = dp(10) })
+
   section("عمولة الوكالة حسب العضو", "عمولة الوكالة الناتجة عن هدايا كل عضو • ليست أرباح المذيع", Ic.GIFT)
   membersEarningsBox = vbox()
   body.addView(membersEarningsBox)
@@ -415,6 +425,7 @@ class AgencyDashboardActivity : Activity() {
 
   loadData()
   loadEarnings()
+  loadWithdrawals()
  }
 
  // ───────────── Reusable cards ─────────────
@@ -538,6 +549,154 @@ class AgencyDashboardActivity : Activity() {
    r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
    r.addView(usdLine(amount, 14f, ink))
    historyBox.addView(r, lp().apply { bottomMargin = dp(7) })
+  }
+ }
+
+
+ // ───────────── Agency withdrawals ─────────────
+ private fun loadWithdrawals() {
+  val tok = token() ?: run {
+   if (::withdrawalsStatus.isInitialized) withdrawalsStatus.text = "يرجى تسجيل الدخول مجدداً"
+   return
+  }
+  if (::withdrawalsStatus.isInitialized) withdrawalsStatus.text = "جارٍ تحديث رصيد السحب والطلبات..."
+  worker.execute {
+   try {
+    val r = AuthApi.get("/api/agency/withdrawals?limit=30&offset=0", tok)
+    if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر تحميل طلبات السحب"))
+    val root = r.body
+    val balances = root.optJSONObject("balances") ?: root.optJSONObject("earnings") ?: root
+    val rows = root.optJSONArray("withdrawals") ?: root.optJSONArray("history") ?: JSONArray()
+    val available = balances.optLong("available_cents", root.optLong("available_cents", 0L))
+    val reserved = balances.optLong("reserved_cents", root.optLong("reserved_cents", 0L))
+    runOnUiThread {
+     withdrawalAvailableCents = available
+     renderWithdrawals(rows, available, reserved)
+     withdrawalsStatus.text = "تم تحديث بيانات السحب من الخادم"
+    }
+   } catch (e: Exception) {
+    runOnUiThread {
+     if (::withdrawalsStatus.isInitialized) withdrawalsStatus.text = e.message ?: "تعذر تحميل طلبات السحب"
+    }
+   }
+  }
+ }
+
+ private fun withdrawalStatusLabel(value: String): String = when (value) {
+  "pending" -> "قيد المراجعة"
+  "approved" -> "تمت الموافقة — بانتظار التحويل"
+  "rejected" -> "مرفوض"
+  "paid" -> "تم الدفع"
+  else -> value.ifBlank { "غير معروف" }
+ }
+
+ private fun withdrawalMethodLabel(value: String): String = when (value) {
+  "zain_cash" -> "زين كاش"
+  "asia_hawala" -> "آسيا حوالة"
+  "usdt" -> "USDT"
+  else -> value
+ }
+
+ private fun renderWithdrawals(rows: JSONArray, available: Long, reserved: Long) {
+  if (!::withdrawalsBox.isInitialized) return
+  withdrawalsBox.removeAllViews()
+  val summary = hbox()
+  summary.addView(earnCard("الرصيد المتاح للسحب", available, Ic.WALLET, green, greenSoft),
+   LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(5) })
+  summary.addView(earnCard("الرصيد المحجوز", reserved, Ic.CLOCK, amber, amberSoft),
+   LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5) })
+  withdrawalsBox.addView(summary)
+  if (rows.length() == 0) {
+   withdrawalsBox.addView(empty(Ic.WALLET, "لا توجد طلبات سحب حتى الآن"), lp().apply { topMargin = dp(8) })
+   return
+  }
+  for (i in 0 until rows.length()) {
+   val item = rows.optJSONObject(i) ?: continue
+   val amount = item.optLong("amount_usd_cents", 0L)
+   val method = withdrawalMethodLabel(item.optString("method"))
+   val state = item.optString("status")
+   val (fg, soft) = toneOf(state)
+   val destination = item.optString("destination")
+   val date = item.optString("created_at").replace("T", " ").take(16)
+   val card = cardView(13)
+   val top = hbox()
+   val col = vbox()
+   col.addView(t("طلب سحب #${item.optString("id", "—")}", 13f, muted, true))
+   col.addView(t("$method • $date", 11.5f, muted), lp().apply { topMargin = dp(4) })
+   top.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
+   top.addView(usdLine(amount, 17f, ink))
+   card.addView(top)
+   card.addView(chip(withdrawalStatusLabel(state), fg, soft), lp().apply { topMargin = dp(10) })
+   if (destination.isNotBlank()) card.addView(t("وجهة التحويل: $destination", 12f, muted), lp().apply { topMargin = dp(8) })
+   val note = item.optString("admin_note")
+   if (note.isNotBlank()) card.addView(t("ملاحظة الإدارة: $note", 12f, red), lp().apply { topMargin = dp(6) })
+   val reference = item.optString("payment_reference")
+   if (reference.isNotBlank()) card.addView(t("مرجع الدفع: $reference", 11.5f, green), lp().apply { topMargin = dp(6) })
+   withdrawalsBox.addView(card, lp().apply { topMargin = dp(8) })
+  }
+ }
+
+ private fun openWithdrawalDialog() {
+  if (withdrawalAvailableCents <= 0L) {
+   withdrawalsStatus.text = "لا يوجد رصيد متاح للسحب حالياً"
+   return
+  }
+  sheet { box, dialog ->
+   box.addView(t("طلب سحب أرباح الوكالة", 19f, ink, true), lp())
+   box.addView(t("المتاح حالياً: ${usdText(withdrawalAvailableCents)}", 13f, green, true), lp().apply { topMargin = dp(7); bottomMargin = dp(14) })
+   box.addView(t("المبلغ بالدولار", 12.5f, muted, true), lp())
+   val amount = EditText(this).apply {
+    hint = "مثال: 25.00"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+    textSize = 16f; setTextColor(ink); background = shape(fieldBg, 12, line); setPadding(dp(13), dp(12), dp(13), dp(12))
+   }
+   box.addView(amount, lp(h = dp(52)).apply { topMargin = dp(6); bottomMargin = dp(12) })
+   box.addView(t("طريقة الاستلام", 12.5f, muted, true), lp())
+   val methods = listOf("زين كاش", "آسيا حوالة", "USDT")
+   val methodKeys = listOf("zain_cash", "asia_hawala", "usdt")
+   val spinner = android.widget.Spinner(this)
+   spinner.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, methods)
+   box.addView(spinner, lp(h = dp(50)).apply { topMargin = dp(5); bottomMargin = dp(12) })
+   box.addView(t("رقم المحفظة أو عنوان الاستلام", 12.5f, muted, true), lp())
+   val destination = EditText(this).apply {
+    hint = "أدخل بيانات الاستلام"; textSize = 15f; setTextColor(ink)
+    background = shape(fieldBg, 12, line); setPadding(dp(13), dp(12), dp(13), dp(12))
+   }
+   box.addView(destination, lp(h = dp(52)).apply { topMargin = dp(6); bottomMargin = dp(16) })
+   val row = hbox()
+   row.addView(button("إلغاء", 1) { dialog.dismiss() }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(5) })
+   row.addView(button("إرسال الطلب", 0, Ic.SEND) {
+    val cents = try { amount.text.toString().trim().toBigDecimal().movePointRight(2).longValueExact() } catch (_: Exception) { 0L }
+    val dest = destination.text.toString().trim()
+    if (cents <= 0L || cents > withdrawalAvailableCents) {
+     amount.error = "أدخل مبلغاً صحيحاً لا يتجاوز الرصيد المتاح"
+     return@button
+    }
+    if (dest.length !in 3..300) {
+     destination.error = "أدخل بيانات استلام صحيحة"
+     return@button
+    }
+    dialog.dismiss()
+    withdrawalsStatus.text = "جارٍ إرسال طلب السحب..."
+    val tok = token() ?: run { withdrawalsStatus.text = "يرجى تسجيل الدخول مجدداً"; return@button }
+    worker.execute {
+     try {
+      val payload = JSONObject()
+       .put("amount_usd_cents", cents)
+       .put("method", methodKeys[spinner.selectedItemPosition])
+       .put("destination", dest)
+      val result = AuthApi.post("/api/agency/withdrawals", payload, tok)
+      if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر إرسال طلب السحب"))
+      runOnUiThread {
+       withdrawalsStatus.text = "تم إرسال طلب السحب بنجاح، وهو الآن قيد المراجعة"
+       loadWithdrawals()
+       loadEarnings()
+      }
+     } catch (e: Exception) {
+      runOnUiThread { withdrawalsStatus.text = e.message ?: "تعذر إرسال طلب السحب" }
+     }
+    }
+   }, LinearLayout.LayoutParams(0, -2, 1.3f).apply { marginStart = dp(5) })
+   box.addView(row)
   }
  }
 
