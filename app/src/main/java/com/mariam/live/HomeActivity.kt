@@ -47,7 +47,7 @@ class HomeActivity : Activity() {
     private var pendingRoomName = ""
     private val roomImagePicker = 7314
     private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف", 3 to "الألعاب")
-    private val chipsData = listOf(0 to "الكل", 1 to "👑 الأكثر مشاهدة", 2 to "🔥 الأكثر تفاعلاً")
+    private val chipsData = listOf(0 to "◉", 1 to "👑", 2 to "🔥")
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -279,7 +279,8 @@ class HomeActivity : Activity() {
         chipsData.forEach{(mode,title)->
             val selected=mode==chipMode
             val chip=TextView(this).apply{
-                text=title;textSize=12.5f;gravity=Gravity.CENTER
+                text=title;textSize=if(mode==0)19f else 16f;gravity=Gravity.CENTER
+                contentDescription=when(mode){0->"كل الغرف";1->"الأكثر مشاهدة";else->"الأكثر تفاعلاً"}
                 setTextColor(if(selected)Color.rgb(196,128,16) else Color.rgb(176,150,104))
                 typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 background=shape(if(selected)Color.rgb(255,233,180) else Color.rgb(250,243,228),18)
@@ -610,7 +611,7 @@ class HomeActivity : Activity() {
     }
 
     /** الزر المركزي الذهبي البارز: ميكروفون + علامة (+) */
-    private class CreateRoomButton(context:android.content.Context):View(context){
+    internal class CreateRoomButton(context:android.content.Context):View(context){
         private val d=resources.displayMetrics.density
         private val ring=Paint(Paint.ANTI_ALIAS_FLAG)
         private val inner=Paint(Paint.ANTI_ALIAS_FLAG)
