@@ -30,7 +30,9 @@ class AdminActivity : Activity() {
     private lateinit var usersBox: LinearLayout
     private lateinit var auditBox: LinearLayout
     private lateinit var agenciesBox: LinearLayout
+    private lateinit var withdrawalsBox: LinearLayout
     private var agencyStatus = "pending"
+    private var withdrawalStatus = "pending"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +100,25 @@ class AdminActivity : Activity() {
         val refreshAgencies = actionButton("تحديث طلبات الوكالات")
         page.addView(refreshAgencies, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
         refreshAgencies.setOnClickListener { loadAgencies() }
+
+        page.addView(title("طلبات سحب أرباح الوكالات", 18).apply { setPadding(0, dp(24), 0, dp(10)) })
+        val withdrawalFilter = android.widget.Spinner(this)
+        val withdrawalLabels = listOf("قيد المراجعة", "مقبولة", "مرفوضة", "مدفوعة", "كل الطلبات")
+        val withdrawalKeys = listOf("pending", "approved", "rejected", "paid", "all")
+        withdrawalFilter.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, withdrawalLabels)
+        page.addView(withdrawalFilter, LinearLayout.LayoutParams(-1, dp(48)))
+        withdrawalsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        page.addView(withdrawalsBox)
+        val refreshWithdrawals = actionButton("تحديث طلبات السحب")
+        page.addView(refreshWithdrawals, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
+        refreshWithdrawals.setOnClickListener { loadAgencyWithdrawals() }
+        withdrawalFilter.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                withdrawalStatus = withdrawalKeys[position]
+                loadAgencyWithdrawals()
+            }
+        }
 
         page.addView(title("سجل العمليات الإدارية", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
         val auditButton = actionButton("عرض آخر العمليات")
@@ -356,6 +377,84 @@ class AdminActivity : Activity() {
             }
     }
 
+    private fun loadAgencyWithdrawals() {
+        val token = tokenOrClose() ?: return
+        withdrawalsBox.removeAllViews()
+        withdrawalsBox.addView(line("جارٍ تحميل طلبات السحب…", 14, false, muted))
+        executor.execute {
+            try {
+                val path = "/api/admin/v2/agency-withdrawals?status=" + URLEncoder.encode(withdrawalStatus, "UTF-8") + "&limit=50&offset=0"
+                val response = AuthApi.get(path, token)
+                if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل طلبات السحب"))
+                val array = response.body.optJSONArray("withdrawals") ?: response.body.optJSONArray("items")
+                val rows = ArrayList<JSONObject>()
+                if (array != null) for (i in 0 until array.length()) rows.add(array.optJSONObject(i) ?: continue)
+                runOnUiThread {
+                    withdrawalsBox.removeAllViews()
+                    if (rows.isEmpty()) withdrawalsBox.addView(line("لا توجد طلبات سحب ضمن هذا التصنيف", 14, false, muted))
+                    rows.forEach { item ->
+                        val id = item.optString("id")
+                        val status = item.optString("status")
+                        val cents = item.optLong("amount_usd_cents", 0L)
+                        val amount = String.format(java.util.Locale.US, "%.2f", cents / 100.0)
+                        val method = when (item.optString("method").lowercase()) {
+                            "zain_cash", "zaincash" -> "زين كاش"
+                            "asia_hawala", "asia_hawala_wallet", "asiahawala" -> "آسيا حوالة"
+                            "usdt" -> "USDT"
+                            else -> item.optString("method", "غير محدد")
+                        }
+                        val state = when (status) { "pending" -> "قيد المراجعة"; "approved" -> "مقبول — بانتظار الدفع"; "rejected" -> "مرفوض"; "paid" -> "مدفوع"; else -> status }
+                        val card = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(14), dp(12)); background = rounded(Color.WHITE) }
+                        card.addView(line("طلب سحب #$id • $state", 15, true))
+                        card.addView(line("الوكالة: " + item.optString("agency_name", "—"), 14, true))
+                        card.addView(line("المالك: " + item.optString("username", "—") + " • ID: " + item.optString("public_id", "—"), 12, false, muted))
+                        card.addView(line("المبلغ: $" + amount + " USD", 16, true, Color.rgb(32, 126, 105)))
+                        card.addView(line("طريقة الاستلام: $method", 13, false, muted))
+                        card.addView(line("بيانات الاستلام: " + item.optString("destination", "—"), 13, false, muted))
+                        card.addView(line("تاريخ الطلب: " + item.optString("created_at", "—"), 12, false, muted))
+                        if (item.optString("admin_note").isNotBlank()) card.addView(line("ملاحظة الإدارة: " + item.optString("admin_note"), 12, false, muted))
+                        if (item.optString("payment_reference").isNotBlank()) card.addView(line("مرجع الدفع: " + item.optString("payment_reference"), 12, false, muted))
+                        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                        fun addAction(label: String, action: String) {
+                            val button = actionButton(label)
+                            actions.addView(button, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(5) })
+                            button.setOnClickListener { askWithdrawalAction(id, action, label) }
+                        }
+                        when (status) { "pending" -> { addAction("موافقة", "approve"); addAction("رفض", "reject") }; "approved" -> addAction("تسجيل الدفع", "paid") }
+                        if (actions.childCount > 0) card.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+                        withdrawalsBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                    }
+                }
+            } catch (e: Exception) { runOnUiThread { withdrawalsBox.removeAllViews(); withdrawalsBox.addView(line(e.message ?: "تعذر تحميل طلبات السحب", 14, false, Color.RED)) } }
+        }
+    }
+
+    private fun askWithdrawalAction(id: String, action: String, label: String) {
+        val reason = EditText(this).apply { hint = if (action == "reject") "سبب الرفض (إلزامي)" else "ملاحظة الإدارة"; minLines = 2 }
+        val reference = if (action == "paid") EditText(this).apply { hint = "رقم مرجع التحويل / الإيصال (إلزامي)"; isSingleLine = true } else null
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0); addView(reason); if (reference != null) addView(reference) }
+        val dialog = android.app.AlertDialog.Builder(this).setTitle("$label — طلب #$id").setView(content).setNegativeButton("إلغاء", null).setPositiveButton("تأكيد", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(-1).setOnClickListener {
+                val why = reason.text.toString().trim()
+                val ref = reference?.text?.toString()?.trim().orEmpty()
+                if (action == "reject" && why.isBlank()) { reason.error = "سبب الرفض مطلوب"; return@setOnClickListener }
+                if (action == "paid" && ref.length !in 3..200) { reference?.error = "أدخل رقم مرجع صحيحاً"; return@setOnClickListener }
+                val token = tokenOrClose() ?: return@setOnClickListener
+                val payload = JSONObject().put("reason", why)
+                if (action == "paid") payload.put("payment_reference", ref)
+                dialog.getButton(-1).isEnabled = false
+                executor.execute {
+                    try {
+                        val response = AuthApi.post("/api/admin/v2/agency-withdrawals/$id/$action", payload, token)
+                        if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تنفيذ الإجراء"))
+                        runOnUiThread { dialog.dismiss(); Toast.makeText(this, "تم $label وتسجيل العملية", Toast.LENGTH_LONG).show(); loadAgencyWithdrawals() }
+                    } catch (e: Exception) { runOnUiThread { dialog.getButton(-1).isEnabled = true; Toast.makeText(this, e.message ?: "تعذر تنفيذ الإجراء", Toast.LENGTH_LONG).show() } }
+                }
+            }
+        }
+        dialog.show()
+    }
     private fun loadAudit() {
         val token = tokenOrClose() ?: return
         auditBox.removeAllViews()
