@@ -550,7 +550,7 @@ class HomeActivity : Activity() {
     }
 
     /** أيقونات القائمة السفلية الذهبية: home / discover / messages / profile */
-    private class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
+    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
         private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
         private val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.4f;strokeJoin=Paint.Join.ROUND;strokeCap=Paint.Cap.ROUND}
         private val detail=Paint(Paint.ANTI_ALIAS_FLAG)
