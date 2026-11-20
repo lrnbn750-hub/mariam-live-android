@@ -73,7 +73,7 @@ class HomeActivity : Activity() {
                 intArrayOf(Color.rgb(255,240,200),Color.rgb(255,250,235)))
         }
         val appTitle=TextView(this).apply{
-            text="مريم لايف";textSize=22f;gravity=Gravity.CENTER
+            text="BAK LIVE";textSize=22f;gravity=Gravity.CENTER
             typeface=Typeface.create("sans-serif",Typeface.BOLD_ITALIC)
             setTextColor(Color.rgb(196,128,16))
             setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),0x88FFFFFF.toInt())
@@ -103,7 +103,7 @@ class HomeActivity : Activity() {
             }
         }
         header.addView(returnRoomButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.LEFT or Gravity.CENTER_VERTICAL).apply{leftMargin=dp(64)})
-        column.addView(header,LinearLayout.LayoutParams(-1,dp(60)))
+        column.addView(header,LinearLayout.LayoutParams(-1,dp(84)))
 
         // ───────────── التبويبات ─────────────
         tabsRow=LinearLayout(this).apply{
