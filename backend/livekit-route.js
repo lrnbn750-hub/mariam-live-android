@@ -91,7 +91,11 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       );
       const minuteBucket = Math.floor(Date.now() / 60000);
       const credited = await db.query(
-        "INSERT INTO voice_room_trend_message_minutes(room_id,user_id,minute_bucket) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING room_id",
+        `INSERT INTO voice_room_trend_message_minutes(room_id,user_id,minute_bucket,message_count)
+         VALUES($1,$2,$3,1)
+         ON CONFLICT(room_id,user_id,minute_bucket) DO UPDATE SET message_count=voice_room_trend_message_minutes.message_count+1
+         WHERE voice_room_trend_message_minutes.message_count<10
+         RETURNING room_id`,
         [roomId, req.userId, minuteBucket]
       );
       if (credited.rows.length) {
