@@ -3496,7 +3496,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       val item=rooms.optJSONObject(i)?:continue
       if(item.optString("id")==roomId){
        trendPoints=item.optLong("trend_points")
-       trendButton?.text="🔥 "+String.format("%,d",trendPoints)
+       trendButton?.text=String.format("%,d",trendPoints)
        break
       }
      }
