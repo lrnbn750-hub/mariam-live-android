@@ -3,7 +3,6 @@ package com.mariam.live
 
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.Modifier as ComposeModifier
 import androidx.compose.ui.draw.clip as composeClip
 import androidx.compose.foundation.background as composeBackground
