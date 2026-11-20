@@ -186,21 +186,32 @@ class ProfileActivity : Activity() {
             finish()
         }, LinearLayout.LayoutParams(0, -1, 1f))
         val createSlot = FrameLayout(this)
-        val createButton = TextView(this).apply {
-            text = "+"
-            textSize = 34f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(255, 218, 110), Color.rgb(214, 142, 30))).apply {
+        val halo = View(this).apply {
+            background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setStroke(dp(2f), Color.WHITE)
+                setColor(0x66FFF1C4)
             }
-            elevation = dp(9f).toFloat()
+        }
+        createSlot.addView(halo, FrameLayout.LayoutParams(dp(76f), dp(76f), Gravity.CENTER))
+        val createButton = HomeActivity.CreateRoomButton(this).apply {
+            contentDescription = "إنشاء غرفة"
+            isClickable = true
+            elevation = dp(8f).toFloat()
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
         createSlot.addView(createButton, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.CENTER))
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.055f).apply {
+            duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE; start()
+        }
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_Y, 1f, 1.055f).apply {
+            duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE; start()
+        }
+        android.animation.ObjectAnimator.ofFloat(halo, View.ALPHA, 0.5f, 1f).apply {
+            duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE; start()
+        }
         bar.addView(createSlot, LinearLayout.LayoutParams(0, -1, 1.25f))
         bar.addView(navItem("messages", "رسائلي", false) {
             startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
