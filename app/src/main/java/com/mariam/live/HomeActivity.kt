@@ -79,6 +79,7 @@ class HomeActivity : Activity() {
             setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),0x88FFFFFF.toInt())
         }
         header.addView(appTitle,FrameLayout.LayoutParams(-2,-1,Gravity.RIGHT or Gravity.CENTER_VERTICAL).apply{rightMargin=dp(16)})
+        appTitle.translationY=dp(18).toFloat()
         val goldLine=View(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(0x00E0A030,0xFFE0A030.toInt(),0x00E0A030))
@@ -92,6 +93,7 @@ class HomeActivity : Activity() {
         }
         val searchButton=headerIcon("search","بحث عن غرفة").apply{setOnClickListener{showSearchDialog()}}
         header.addView(searchButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.LEFT or Gravity.CENTER_VERTICAL).apply{leftMargin=dp(12)})
+        searchButton.translationY=dp(18).toFloat()
         val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
         val returnRoomButton=headerIcon("mic","العودة إلى غرفتك").apply{
             tag="return_room_button"
@@ -103,7 +105,8 @@ class HomeActivity : Activity() {
             }
         }
         header.addView(returnRoomButton,FrameLayout.LayoutParams(dp(46),dp(46),Gravity.LEFT or Gravity.CENTER_VERTICAL).apply{leftMargin=dp(64)})
-        column.addView(header,LinearLayout.LayoutParams(-1,dp(84)))
+        returnRoomButton.translationY=dp(18).toFloat()
+        column.addView(header,LinearLayout.LayoutParams(-1,dp(104)))
 
         // ───────────── التبويبات ─────────────
         tabsRow=LinearLayout(this).apply{
