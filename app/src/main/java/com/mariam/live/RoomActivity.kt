@@ -112,6 +112,9 @@ class RoomActivity : Activity() {
  private var roomMembers=JSONArray()
  private val giftRepository=GiftRepository()
  private var giftPoll:Job?=null
+ private var trendHeartbeatJob:Job?=null
+ private var trendButton:TextView?=null
+ private var trendPoints=0L
  private var lastGiftEventId=0L
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
@@ -273,6 +276,16 @@ class RoomActivity : Activity() {
    setOnClickListener{showRoomMembers()}
   }
   headerActions.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)).apply{topMargin=dp(3)})
+  val trendChip=label("🔥 0",12f,Color.rgb(255,220,130),true).apply{
+   setPadding(dp(10),dp(5),dp(10),dp(5))
+   background=GradientDrawable().apply{setColor(Color.argb(145,30,20,12));cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.argb(150,255,190,70))}
+   isClickable=true
+   contentDescription="نقاط ترند الغرفة، اضغط لعرض البثوث الرائجة"
+   setOnClickListener{showTrendingRooms()}
+  }
+  trendButton=trendChip
+  headerActions.addView(trendChip,LinearLayout.LayoutParams(-2,dp(32)).apply{topMargin=dp(4)})
+
   top.addView(headerActions,LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(8)})
   top.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(46),1f))
   roomPage.addView(top,LinearLayout.LayoutParams(-1,dp(80)))
@@ -1977,6 +1990,7 @@ class RoomActivity : Activity() {
     loadSeats()
     startRoomMembershipWatch()
     startRoomGiftWatch()
+    startTrendHeartbeat()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
     stopService(service)
@@ -2261,6 +2275,7 @@ class RoomActivity : Activity() {
  }
  /** Poll the authenticated room gift feed and animate only newly committed events. */
  private fun startRoomGiftWatch(){
+  trendHeartbeatJob?.cancel()
   giftPoll?.cancel()
   giftFeedInitialized=false
   lastGiftEventId=0L
@@ -3411,6 +3426,64 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  }
 
  override fun onBackPressed(){leaveRoom()}
+
+ private fun startTrendHeartbeat(){
+  trendHeartbeatJob?.cancel()
+  trendHeartbeatJob=scope.launch{
+   while(isActive && connected && !leaving){
+    try{
+     val response=withContext(Dispatchers.IO){
+      AuthApi.post("/api/voice-rooms/$roomId/trend/heartbeat",JSONObject(),authToken)
+     }
+     if(response.status in 200..299 && response.body.optBoolean("credited"))loadTrendScore()
+    }catch(_:CancellationException){break}catch(_:Exception){}
+    delay(60000)
+   }
+  }
+ }
+ private fun loadTrendScore(){
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/trending",authToken)}
+    if(response.status in 200..299){
+     val rooms=response.body.optJSONArray("rooms")?:JSONArray()
+     for(i in 0 until rooms.length()){
+      val item=rooms.optJSONObject(i)?:continue
+      if(item.optString("id")==roomId){
+       trendPoints=item.optLong("trend_points")
+       trendButton?.text="🔥 "+String.format("%,d",trendPoints)
+       break
+      }
+     }
+    }
+   }catch(_:Exception){}
+  }
+ }
+ private fun showTrendingRooms(){
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/trending",authToken)}
+    if(response.status !in 200..299){Toast.makeText(this@RoomActivity,"تعذر تحميل بثوث الترند",Toast.LENGTH_SHORT).show();return@launch}
+    val rooms=response.body.optJSONArray("rooms")?:JSONArray()
+    val entries=ArrayList<JSONObject>()
+    val labels=ArrayList<String>()
+    for(i in 0 until rooms.length()){
+     val item=rooms.optJSONObject(i)?:continue
+     entries.add(item)
+     labels.add("🔥 ${item.optLong("trend_points")}  •  ${item.optString("name")}  •  ${item.optString("owner_name")}")
+    }
+    if(entries.isEmpty()){showActionSheet("بثوث الترند",listOf("لا توجد بثوث نشطة حالياً")){};return@launch}
+    showActionSheet("🔥 بثوث الترند اليوم",labels){index->
+     val selected=entries.getOrNull(index)?:return@showActionSheet
+     val target=selected.optString("id")
+     if(target.isBlank() || target==roomId)return@showActionSheet
+     val intent=Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",target)
+     startActivity(intent)
+    }
+   }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+  }
+ }
+
  override fun onDestroy(){try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
   watchPlayer?.release();watchPlayer=null
