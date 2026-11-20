@@ -280,7 +280,7 @@ class RoomActivity : Activity() {
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER
    layoutDirection=View.LAYOUT_DIRECTION_LTR
-   setPadding(dp(10),dp(4),dp(10),dp(4))
+   setPadding(dp(7),dp(3),dp(7),dp(3))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
     intArrayOf(Color.rgb(43,24,20),Color.rgb(20,22,34),Color.rgb(43,24,20))).apply{
     cornerRadius=dp(18).toFloat()
@@ -296,7 +296,7 @@ class RoomActivity : Activity() {
     scaleType=ImageView.ScaleType.FIT_CENTER
     contentDescription="مؤشر الترند المتحرك"
    }
-   addView(flame,LinearLayout.LayoutParams(dp(23),dp(25)).apply{marginEnd=dp(5)})
+   addView(flame,LinearLayout.LayoutParams(dp(18),dp(21)).apply{marginEnd=dp(1)})
    flame.animate().rotationBy(7f).setDuration(430).withEndAction{
     if(isAttachedToWindow)flame.animate().rotationBy(-14f).setDuration(620).withEndAction{
      if(isAttachedToWindow)flame.animate().rotationBy(7f).setDuration(430).start()
