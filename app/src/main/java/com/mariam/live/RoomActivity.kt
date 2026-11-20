@@ -104,6 +104,7 @@ class RoomActivity : Activity() {
  private lateinit var controlsSpacer:View
  private var composerExpanded=false
  private lateinit var membersButton:LinearLayout
+ private lateinit var memberAvatars:LinearLayout
  private var roomMembers=JSONArray()
  private val giftRepository=GiftRepository()
  private var giftPoll:Job?=null
@@ -238,11 +239,22 @@ class RoomActivity : Activity() {
     gravity=Gravity.CENTER
     includeFontPadding=false
    },LinearLayout.LayoutParams(-2,dp(22)).apply{marginEnd=dp(5)})
-   addView(ImageView(this@RoomActivity).apply{
-    setImageDrawable(VectorIcon("user",Color.rgb(255,150,200),dp(18)))
-    contentDescription="عدد الموجودين"
-    scaleType=ImageView.ScaleType.CENTER
-   },LinearLayout.LayoutParams(dp(20),dp(22)))
+   memberAvatars=LinearLayout(this@RoomActivity).apply{
+    orientation=LinearLayout.HORIZONTAL
+    gravity=Gravity.CENTER_VERTICAL
+    layoutDirection=View.LAYOUT_DIRECTION_LTR
+   }
+   repeat(3){index->
+    val thumb=ImageView(this@RoomActivity).apply{
+     scaleType=ImageView.ScaleType.CENTER_CROP
+     clipToOutline=true
+     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(92,72,120));setStroke(dp(1),Color.WHITE)}
+     setImageDrawable(VectorIcon("user",Color.rgb(255,190,220),dp(13)))
+     contentDescription="صورة مصغرة لمشاهد الغرفة ${index+1}"
+    }
+    memberAvatars.addView(thumb,LinearLayout.LayoutParams(dp(25),dp(25)).apply{if(index>0)marginStart=dp(-6)})
+   }
+   addView(memberAvatars,LinearLayout.LayoutParams(dp(63),dp(26)))
    setOnClickListener{showRoomMembers()}
   }
   top.addView(membersButton,LinearLayout.LayoutParams(-2,dp(36)))
@@ -2143,6 +2155,19 @@ class RoomActivity : Activity() {
     if(::membersButton.isInitialized){
      val count=fresh.length()
      (membersButton.getChildAt(0) as? TextView)?.text=count.toString()
+     if(::memberAvatars.isInitialized){
+      for(index in 0 until memberAvatars.childCount){
+       val thumb=memberAvatars.getChildAt(index) as? ImageView ?: continue
+       val member=fresh.optJSONObject(index)
+       val nested=member?.optJSONObject("user")?:member?.optJSONObject("profile")
+       val avatarUrl=member?.optString("avatar_url")?.takeIf{!it.isNullOrBlank()&&it!="null"}
+        ?:nested?.optString("avatar_url")?.takeIf{!it.isNullOrBlank()&&it!="null"}
+       thumb.setImageDrawable(VectorIcon("user",Color.rgb(255,190,220),dp(13)))
+       thumb.tag=avatarUrl.orEmpty()
+       if(!avatarUrl.isNullOrBlank())loadAvatarInto(thumb,avatarUrl)
+       thumb.visibility=if(member!=null)View.VISIBLE else View.INVISIBLE
+      }
+     }
     }
    }catch(_:Exception){}
   }
