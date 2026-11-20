@@ -1,20 +1,6 @@
 package com.mariam.live
 
 
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.Modifier as ComposeModifier
-import androidx.compose.ui.draw.clip as composeClip
-import androidx.compose.foundation.background as composeBackground
-import androidx.compose.foundation.layout.fillMaxWidth as composeFillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight as composeFillMaxHeight
-import androidx.compose.foundation.shape.CircleShape as ComposeCircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text as ComposeText
-import androidx.compose.ui.Alignment as ComposeAlignment
-import androidx.compose.ui.graphics.Color as ComposeColor
-import com.bak.live.ui.trend.TrendRankingSheet
-import com.bak.live.ui.trend.TrendUiUser
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
@@ -3483,6 +3469,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
  private fun showTrendingRooms(){
+  // Use native Android views here: RoomActivity extends android.app.Activity,
+  // and ComposeView requires lifecycle/saved-state owners that this Activity does not provide.
   scope.launch{
    try{
     val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/trending",authToken)}
@@ -3491,65 +3479,121 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      return@launch
     }
     val rooms=response.body.optJSONArray("rooms")?:JSONArray()
-    val trendUsers=ArrayList<TrendUiUser>()
+    val items=ArrayList<JSONObject>()
     for(i in 0 until rooms.length()){
      val item=rooms.optJSONObject(i)?:continue
-     val targetRoomId=item.optString("id")
-     if(targetRoomId.isBlank())continue
-     val ownerName=item.optString("owner_name").ifBlank{item.optString("name").ifBlank{"مستخدم"}}
-     trendUsers.add(TrendUiUser(
-      id=targetRoomId,
-      name=ownerName,
-      scoreText=String.format("%,d",item.optLong("trend_points")),
-      rankLabel=(trendUsers.size+1).toString()
-     ))
+     if(item.optString("id").isNotBlank())items.add(item)
     }
-    if(trendUsers.isEmpty()){
+    if(items.isEmpty()){
      Toast.makeText(this@RoomActivity,"لا توجد بثوث نشطة حالياً",Toast.LENGTH_SHORT).show()
      return@launch
     }
     val dialog=android.app.Dialog(this@RoomActivity)
-    val composeView=ComposeView(this@RoomActivity).apply{
-     setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-     setContent{
-      MaterialTheme{
-       TrendRankingSheet(
-        topUsers=trendUsers.take(3),
-        restUsers=trendUsers.drop(3),
-        currentUser=null,
-        avatar={user,avatarModifier->
-         androidx.compose.foundation.layout.Box(
-          modifier=avatarModifier.composeClip(ComposeCircleShape).composeBackground(ComposeColor(0xFF6B527F)),
-          contentAlignment=ComposeAlignment.Center
-         ){
-          ComposeText(
-           text=user.name.trim().take(1).ifBlank{"؟"},
-           color=ComposeColor.White,
-           fontWeight=androidx.compose.ui.text.font.FontWeight.Bold
-          )
-         }
-        },
-        onClose={dialog.dismiss()},
-        onUserClick={selected->
-         dialog.dismiss()
-         if(selected.id.isNotBlank()&&selected.id!=roomId){
-          startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selected.id))
-         }
-        },
-        modifier=ComposeModifier.composeFillMaxWidth().composeFillMaxHeight(0.68f)
-       )
-      }
+    val density=resources.displayMetrics.density
+    fun px(value:Int)=(value*density).toInt()
+    fun text(value:String,size:Float,color:Int,bold:Boolean=false)=TextView(this@RoomActivity).apply{
+     text=value;textSize=size;setTextColor(color);gravity=Gravity.CENTER
+     typeface=android.graphics.Typeface.create("sans-serif",if(bold)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+    }
+    val root=LinearLayout(this@RoomActivity).apply{
+     orientation=LinearLayout.VERTICAL
+     layoutDirection=View.LAYOUT_DIRECTION_RTL
+     setPadding(px(16),px(12),px(16),px(16))
+     background=GradientDrawable().apply{
+      setColor(Color.WHITE)
+      cornerRadii=floatArrayOf(px(24).toFloat(),px(24).toFloat(),px(24).toFloat(),px(24).toFloat(),0f,0f,0f,0f)
      }
     }
-    dialog.setContentView(composeView)
+    val header=FrameLayout(this@RoomActivity).apply{
+     addView(text("قائمة المستخدمين المشهورين",17f,Color.rgb(31,31,31),true),FrameLayout.LayoutParams(-1,px(44),Gravity.CENTER))
+     addView(text("✕",22f,Color.DKGRAY,true).apply{
+      isClickable=true
+      setOnClickListener{dialog.dismiss()}
+     },FrameLayout.LayoutParams(px(42),px(44),Gravity.START or Gravity.CENTER_VERTICAL))
+    }
+    root.addView(header,LinearLayout.LayoutParams(-1,px(46)))
+    root.addView(text("❔  القواعد",13f,Color.GRAY).apply{
+     gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL
+     setPadding(px(4),px(4),px(4),px(8))
+    },LinearLayout.LayoutParams(-1,px(34)))
+    val scroll=ScrollView(this@RoomActivity).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER}
+    val content=LinearLayout(this@RoomActivity).apply{orientation=LinearLayout.VERTICAL}
+    val podium=LinearLayout(this@RoomActivity).apply{
+     orientation=LinearLayout.HORIZONTAL
+     gravity=Gravity.BOTTOM
+     layoutDirection=View.LAYOUT_DIRECTION_RTL
+    }
+    val podiumIndexes=listOf(1,0,2)
+    val heights=listOf(174,202,174)
+    for((slot,index) in podiumIndexes.withIndex()){
+     val item=items.getOrNull(index)
+     val card=LinearLayout(this@RoomActivity).apply{
+      orientation=LinearLayout.VERTICAL
+      gravity=Gravity.CENTER
+      setPadding(px(5),px(10),px(5),px(10))
+      background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+       when(index){0->intArrayOf(0xFFFFE98A.toInt(),0xFFFFF8DC.toInt());1->intArrayOf(0xFFDDE6FF.toInt(),0xFFF4F7FF.toInt());else->intArrayOf(0xFFFFDDD2.toInt(),0xFFFFF3EE.toInt())}
+      ).apply{cornerRadius=px(14).toFloat()}
+     }
+     if(item!=null){
+      val medal=text(if(index==0)"🥇" else if(index==1)"🥈" else "🥉",25f,Color.BLACK,true)
+      card.addView(medal,LinearLayout.LayoutParams(-1,px(32)))
+      val avatar=text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")}.trim().take(1).ifBlank{"؟"},25f,Color.WHITE,true).apply{
+       background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(107,82,127));setStroke(px(3),if(index==0)0xFFF2B600.toInt() else if(index==1)0xFF9DB4E8.toInt() else 0xFFD9915E.toInt())}
+      }
+      card.addView(avatar,LinearLayout.LayoutParams(px(if(index==0)76 else 64),px(if(index==0)76 else 64)).apply{gravity=Gravity.CENTER})
+      card.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")},13f,Color.rgb(31,31,31),true).apply{maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LinearLayout.LayoutParams(-1,px(30)))
+      card.addView(text("🔥 "+String.format("%,d",item.optLong("trend_points")),13f,Color.rgb(31,31,31),true),LinearLayout.LayoutParams(-1,px(26)))
+      card.setOnClickListener{
+       val selectedId=item.optString("id")
+       dialog.dismiss()
+       if(selectedId.isNotBlank()&&selectedId!=roomId)startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selectedId))
+      }
+     }else{
+      card.addView(text("—",20f,Color.GRAY),LinearLayout.LayoutParams(-1,px(70)))
+     }
+     podium.addView(card,LinearLayout.LayoutParams(0,px(heights[slot]),if(index==0)1.15f else 1f).apply{
+      if(slot>0)marginStart=px(6)
+     })
+    }
+    content.addView(podium,LinearLayout.LayoutParams(-1,px(220)).apply{bottomMargin=px(8)})
+    for(index in 3 until items.size){
+     val item=items[index]
+     val row=LinearLayout(this@RoomActivity).apply{
+      orientation=LinearLayout.HORIZONTAL
+      gravity=Gravity.CENTER_VERTICAL
+      layoutDirection=View.LAYOUT_DIRECTION_RTL
+      setPadding(px(8),px(8),px(8),px(8))
+      isClickable=true
+      background=android.util.TypedValue().let{GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=px(12).toFloat()}}
+     }
+     row.addView(text((index+1).toString(),16f,Color.GRAY),LinearLayout.LayoutParams(px(34),px(48)))
+     row.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")}.trim().take(1).ifBlank{"؟"},20f,Color.WHITE,true).apply{
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(107,82,127))}
+     },LinearLayout.LayoutParams(px(48),px(48)))
+     row.addView(text(item.optString("owner_name").ifBlank{item.optString("name","مستخدم")},15f,Color.rgb(31,31,31),true).apply{
+      gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
+     },LinearLayout.LayoutParams(0,px(48),1f).apply{marginStart=px(10);marginEnd=px(10)})
+     row.addView(text("🔥 "+String.format("%,d",item.optLong("trend_points")),14f,Color.rgb(31,31,31),true),LinearLayout.LayoutParams(-2,px(48)))
+     row.setOnClickListener{
+      val selectedId=item.optString("id")
+      dialog.dismiss()
+      if(selectedId.isNotBlank()&&selectedId!=roomId)startActivity(Intent(this@RoomActivity,RoomActivity::class.java).putExtra("room_id",selectedId))
+     }
+     content.addView(row,LinearLayout.LayoutParams(-1,px(62)).apply{bottomMargin=px(4)})
+    }
+    scroll.addView(content)
+    root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+    dialog.setContentView(root)
     dialog.setCanceledOnTouchOutside(true)
-    dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+    dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
     dialog.window?.setDimAmount(0.52f)
     dialog.show()
     dialog.window?.setLayout(-1,(resources.displayMetrics.heightPixels*0.68f).toInt())
     dialog.window?.setGravity(Gravity.BOTTOM)
    }catch(e:Exception){
-    Toast.makeText(this@RoomActivity,"تعذر تحميل الترند: ${e.message?: "خطأ"}",Toast.LENGTH_SHORT).show()
+    android.util.Log.e("BAK_TREND","Failed to open trend ranking",e)
+    Toast.makeText(this@RoomActivity,"تعذر تحميل الترند، حاول مرة أخرى",Toast.LENGTH_SHORT).show()
    }
   }
  }
