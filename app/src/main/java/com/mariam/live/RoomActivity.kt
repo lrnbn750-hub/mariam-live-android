@@ -24,6 +24,7 @@ import android.view.MotionEvent
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.VideoTrack
 import io.livekit.android.renderer.TextureViewRenderer
+import livekit.org.webrtc.RendererCommon
 import io.livekit.android.room.track.Track
 import android.view.inputmethod.EditorInfo
 import android.view.View
@@ -51,6 +52,7 @@ class RoomActivity : Activity() {
  private var canPublishVideo=false; private var cameraEnabled=false
  private val cameraTracks=HashMap<String,VideoTrack>()
  private val cameraRenderers=HashMap<String,TextureViewRenderer>()
+ private val cameraRendererTracks=HashMap<String,VideoTrack>()
  private var handRaised=false; private var isOwner=false; private var ownerSeatSetupDone=false
  private var roomId=""; private var authToken=""; private var currentUserId=""
  private var seats=JSONArray(); private var cameraSeats=JSONArray(); private var hands=JSONArray()
@@ -1409,10 +1411,7 @@ class RoomActivity : Activity() {
      val liveVideoTrack=if(occupied && uid!=null)videoTrackFor(uid) else null
      if(liveVideoTrack!=null){
       avatar.visibility=View.GONE
-      val videoRenderer=TextureViewRenderer(this@RoomActivity)
-      room.initVideoRenderer(videoRenderer)
-      liveVideoTrack.addRenderer(videoRenderer)
-      cameraRenderers[uid!!]=videoRenderer
+      val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
       addView(videoRenderer,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
      }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
@@ -1625,10 +1624,7 @@ class RoomActivity : Activity() {
   val liveVideoTrack=if(occupied && uid!=null)videoTrackFor(uid) else null
   if(liveVideoTrack!=null){
    stage.visibility=View.GONE
-   val videoRenderer=TextureViewRenderer(this)
-   room.initVideoRenderer(videoRenderer)
-   liveVideoTrack.addRenderer(videoRenderer)
-   cameraRenderers[uid!!]=videoRenderer
+   val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
    tile.addView(videoRenderer,0,FrameLayout.LayoutParams(-1,-1))
   }
 
@@ -2988,13 +2984,39 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   return participant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack
  }
 
+ // Reuse one TextureView/EGL renderer per participant across seat redraws.
+ private fun obtainCameraRenderer(userId:String,track:VideoTrack):TextureViewRenderer{
+  var renderer=cameraRenderers[userId]
+  if(renderer==null){
+   renderer=TextureViewRenderer(this)
+   room.initVideoRenderer(renderer)
+   renderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+   cameraRenderers[userId]=renderer
+  }
+  val previous=cameraRendererTracks[userId]
+  if(previous!==track){
+   try{previous?.removeRenderer(renderer)}catch(_:Exception){}
+   track.addRenderer(renderer)
+   cameraRendererTracks[userId]=track
+  }
+  renderer.setMirror(userId==currentUserId)
+  return renderer
+ }
+
  private fun releaseCameraRenderers(){
+  for(renderer in cameraRenderers.values.toList()){
+   (renderer.parent as? android.view.ViewGroup)?.removeView(renderer)
+  }
+ }
+
+ private fun disposeCameraRenderers(){
   for((userId,renderer) in cameraRenderers.toMap()){
-   val track=cameraTracks[userId] ?: if(userId==currentUserId) room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? VideoTrack else null
-   try{track?.removeRenderer(renderer)}catch(_:Exception){}
+   try{cameraRendererTracks[userId]?.removeRenderer(renderer)}catch(_:Exception){}
    try{renderer.release()}catch(_:Exception){}
   }
-  cameraRenderers.clear() }
+  cameraRenderers.clear()
+  cameraRendererTracks.clear()
+ }
 
  private fun refreshCameraControl(){
   if(!::cameraControl.isInitialized)return
@@ -3283,7 +3305,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   speakerEventsJob?.cancel()
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
-  releaseCameraRenderers()
+  disposeCameraRenderers()
   cameraTracks.clear()
   seatRefreshJob?.cancel()
   giftPoll?.cancel()
