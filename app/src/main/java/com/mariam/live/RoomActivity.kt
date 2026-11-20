@@ -997,7 +997,8 @@ class RoomActivity : Activity() {
       background=when{
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
-      }      elevation=dp(2).toFloat()
+      }
+      elevation=dp(2).toFloat()
      }
      val content=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.VERTICAL
@@ -1626,8 +1627,6 @@ class RoomActivity : Activity() {
    stage.visibility=View.GONE
    val videoRenderer=TextureViewRenderer(this)
    room.initVideoRenderer(videoRenderer)
-   // Fill the tile like BIGO (crop instead of letterbox). If your LiveKit version lacks this call, remove this line.
-   videoRenderer.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FILL)
    liveVideoTrack.addRenderer(videoRenderer)
    cameraRenderers[uid!!]=videoRenderer
    tile.addView(videoRenderer,0,FrameLayout.LayoutParams(-1,-1))
