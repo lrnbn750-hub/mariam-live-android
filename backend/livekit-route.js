@@ -89,11 +89,68 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         "INSERT INTO voice_room_messages(room_id,user_id,message) VALUES($1,$2,$3) RETURNING id, room_id, user_id, message, created_at",
         [roomId, req.userId, message]
       );
+      const minuteBucket = Math.floor(Date.now() / 60000);
+      const credited = await db.query(
+        "INSERT INTO voice_room_trend_message_minutes(room_id,user_id,minute_bucket) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING room_id",
+        [roomId, req.userId, minuteBucket]
+      );
+      if (credited.rows.length) {
+        await db.query(
+          "INSERT INTO voice_room_daily_trends(room_id,trend_date,points,message_count) VALUES($1,(NOW() AT TIME ZONE 'Asia/Baghdad')::date,2,1) ON CONFLICT(room_id,trend_date) DO UPDATE SET points=voice_room_daily_trends.points+2,message_count=voice_room_daily_trends.message_count+1,updated_at=NOW()",
+          [roomId]
+        );
+      }
       return res.status(201).json({ message: "Message sent", item: result.rows[0] });
     } catch (error) {
       console.error("Send room message:", error.message);
       return res.status(500).json({ error: "Could not send room message" });
     }
+  });
+
+  app.post("/api/voice-rooms/:roomId/trend/heartbeat", authenticateToken, async (req, res) => {
+    const roomId=req.params.roomId;
+    if(!validRoomId(roomId))return res.status(400).json({error:"Invalid room ID"});
+    try {
+      if(!(await isMember(roomId,req.userId)) )return res.status(403).json({error:"Join the room first"});
+      const seated=await db.query(
+        `SELECT 1 FROM voice_room_seats WHERE room_id=$1 AND user_id=$2
+         UNION ALL SELECT 1 FROM voice_room_camera_seats WHERE room_id=$1 AND user_id=$2 LIMIT 1`,
+        [roomId,req.userId]
+      );
+      if(!seated.rows.length)return res.json({credited:false,reason:"not_seated"});
+      const client=await db.connect();
+      try{
+        await client.query("BEGIN");
+        const d=await client.query("SELECT (NOW() AT TIME ZONE 'Asia/Baghdad')::date AS trend_date");
+        const day=d.rows[0].trend_date;
+        const prev=await client.query("SELECT last_seen_at FROM voice_room_trend_seat_sessions WHERE room_id=$1 AND user_id=$2 AND trend_date=$3 FOR UPDATE",[roomId,req.userId,day]);
+        const now=new Date(),last=prev.rows[0]?new Date(prev.rows[0].last_seen_at):now;
+        const seconds=Math.max(0,Math.min(90,Math.floor((now.getTime()-last.getTime())/1000)));
+        await client.query(`INSERT INTO voice_room_trend_seat_sessions(room_id,user_id,trend_date,last_seen_at) VALUES($1,$2,$3,NOW())
+          ON CONFLICT(room_id,user_id,trend_date) DO UPDATE SET last_seen_at=NOW()`,[roomId,req.userId,day]);
+        if(seconds>0)await client.query(`INSERT INTO voice_room_daily_trends(room_id,trend_date,seat_seconds,points)
+          VALUES($1,$2,$3,FLOOR($3::numeric/60)*5)
+          ON CONFLICT(room_id,trend_date) DO UPDATE SET seat_seconds=voice_room_daily_trends.seat_seconds+$3,
+          points=voice_room_daily_trends.points+(FLOOR((voice_room_daily_trends.seat_seconds+$3)/60)-FLOOR(voice_room_daily_trends.seat_seconds/60))*5,updated_at=NOW()`,
+          [roomId,day,seconds]);
+        await client.query("COMMIT");
+        return res.json({credited:seconds>0,seconds});
+      }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+    }catch(error){console.error("Room trend heartbeat:",error.message);return res.status(500).json({error:"تعذر تحديث نقاط الترند"});}
+  });
+
+  app.get("/api/voice-rooms/trending", authenticateToken, async (req,res)=>{
+    try{
+      const result=await db.query(`SELECT r.id,r.name,r.image_url,r.room_mode,r.camera_seat_count,
+        COALESCE(p.display_name,u.username) AS owner_name,COALESCE(m.member_count,0)::int AS member_count,
+        COALESCE(t.points,0)::bigint AS trend_points
+        FROM voice_rooms r JOIN users u ON u.id=r.owner_id
+        LEFT JOIN user_profiles p ON p.user_id=u.id
+        LEFT JOIN (SELECT room_id,COUNT(*) AS member_count FROM room_members GROUP BY room_id) m ON m.room_id=r.id
+        LEFT JOIN voice_room_daily_trends t ON t.room_id=r.id AND t.trend_date=(NOW() AT TIME ZONE 'Asia/Baghdad')::date
+        WHERE r.status='active' ORDER BY COALESCE(t.points,0) DESC,r.created_at DESC LIMIT 50`);
+      return res.json({rooms:result.rows});
+    }catch(error){console.error("Trending rooms:",error.message);return res.status(500).json({error:"تعذر تحميل بثوث الترند"});}
   });
 
   app.get("/api/voice-rooms/:roomId/seats", authenticateToken, async (req, res) => {
