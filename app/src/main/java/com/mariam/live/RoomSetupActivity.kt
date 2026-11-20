@@ -341,6 +341,7 @@ class RoomSetupActivity : Activity() {
     private var profileAvatarUrl = ""
     private var profileAvatar: Bitmap? = null
     private var selectedCapacity = 8
+    private var selectedBroadcastMode = "audio"
 
     // Palette
     private val ink = Color.parseColor("#F6F2FF")
@@ -497,7 +498,7 @@ class RoomSetupActivity : Activity() {
             previewName.text = name
             previewName.alpha = 1f
         }
-        previewSub.text = "بث صوتي مباشر  •  $selectedCapacity مقاعد"
+        previewSub.text = when (selectedBroadcastMode) { "camera4" -> "بث كاميرا مباشر • 4 مقاعد"; "camera6" -> "بث كاميرا مباشر • 6 مقاعد"; else -> "بث صوتي مباشر • 8 مقاعد" }
         if (::stage.isInitialized) stage.setSeats(selectedCapacity)
         if (::nameCheck.isInitialized) {
             val ok = name.length >= 2
@@ -756,7 +757,47 @@ class RoomSetupActivity : Activity() {
         nameBox.addView(nameCheck, sz(24))
         body.addView(nameBox, lp(t = 14))
 
-        // Seat selection cards removed to simplify the setup screen.
+        // Broadcast type selector: audio 8, camera 4, camera 6.
+        val modeTitle = label("نوع البث", 15f, ink, 2)
+        body.addView(modeTitle, lp(t = 18))
+        val modeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, 0)
+        }
+        fun modeCard(title: String, subtitle: String, mode: String, capacity: Int): LinearLayout {
+            val selected = selectedBroadcastMode == mode
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(7), dp(13), dp(7), dp(13))
+                background = rect(if(selected) Color.argb(45, 245, 190, 88) else surface,
+                    if(selected) gold1 else hairline, 16, if(selected) 2 else 1)
+                addView(label(title, 12.5f, if(selected) gold1 else ink, 2).apply { gravity = Gravity.CENTER })
+                addView(label(subtitle, 10.5f, muted, 1).apply { gravity = Gravity.CENTER }, lp(t = 4))
+                setOnClickListener {
+                    selectedBroadcastMode = mode
+                    selectedCapacity = capacity
+                    for(i in 0 until modeRow.childCount) {
+                        val child = modeRow.getChildAt(i)
+                        child.background = rect(surface, hairline, 16)
+                        if(child is LinearLayout && child.childCount > 0 && child.getChildAt(0) is TextView)
+                            (child.getChildAt(0) as TextView).setTextColor(ink)
+                    }
+                    background = rect(Color.argb(45, 245, 190, 88), gold1, 16, 2)
+                    (getChildAt(0) as TextView).setTextColor(gold1)
+                    updatePreview()
+                }
+            }
+        }
+        val modes = listOf(
+            modeCard("صوتي", "8 مقاعد", "audio", 8),
+            modeCard("كاميرا", "4 مقاعد", "camera4", 4),
+            modeCard("كاميرا", "6 مقاعد", "camera6", 6)
+        )
+        modes.forEach { modeRow.addView(it, LinearLayout.LayoutParams(0, dp(76), 1f).apply { setMargins(dp(3), 0, dp(3), 0) }) }
+        body.addView(modeRow, lp())
+        
 
         // Info tip
         val tip = LinearLayout(this).apply {
@@ -895,6 +936,8 @@ class RoomSetupActivity : Activity() {
                 } while (bytes.size() > 3 * 1024 * 1024 && quality >= 45)
                 if (bytes.size() > 3 * 1024 * 1024) throw Exception("تعذر تجهيز صورة الغرفة")
                 val payload = JSONObject().put("name", name).put("max_members", selectedCapacity)
+                    .put("room_mode", if (selectedBroadcastMode == "audio") "audio" else "camera")
+                    .put("camera_seat_count", if (selectedBroadcastMode == "camera4") 4 else if (selectedBroadcastMode == "camera6") 6 else 0)
                     .put("image_mime", "image/jpeg")
                     .put("image_base64", android.util.Base64.encodeToString(bytes.toByteArray(), android.util.Base64.NO_WRAP))
                 if (resized !== source) resized.recycle()

@@ -117,7 +117,12 @@ module.exports = (app, db, authenticateToken) => {
     let savedBackgroundFile = null;
     try {
       const name = String(req.body.name || "").trim();
+      const roomMode = String(req.body.room_mode || "audio");
+      const cameraSeatCount = Number(req.body.camera_seat_count || 0);
       const max_members = Number(req.body.max_members || 8);
+      if (!["audio", "camera"].includes(roomMode)) return res.status(400).json({ error: "Invalid room mode" });
+      if ((roomMode === "audio" && cameraSeatCount !== 0) || (roomMode === "camera" && ![4, 6].includes(cameraSeatCount))) return res.status(400).json({ error: "Invalid camera seat count" });
+      if (roomMode === "camera" && max_members !== cameraSeatCount) return res.status(400).json({ error: "Room capacity must match camera seats" });
       const imageData = String(req.body.image_base64 || "");
       const mimeType = String(req.body.image_mime || "");
       const backgroundData = String(req.body.background_base64 || "");
@@ -155,10 +160,12 @@ module.exports = (app, db, authenticateToken) => {
       const client = await db.connect();
       try {
         await client.query("BEGIN");
+        await client.query("ALTER TABLE voice_rooms ADD COLUMN IF NOT EXISTS room_mode VARCHAR(12) NOT NULL DEFAULT 'audio'");
+        await client.query("ALTER TABLE voice_rooms ADD COLUMN IF NOT EXISTS camera_seat_count SMALLINT NOT NULL DEFAULT 0");
         const result = await client.query(
-          `INSERT INTO voice_rooms (owner_id, name, max_members, status, image_url, room_background_url)
-           VALUES ($1, $2, $3, 'active', $4, $5) RETURNING *`,
-          [req.userId, name, max_members, imageUrl, backgroundUrl]
+          `INSERT INTO voice_rooms (owner_id, name, max_members, status, image_url, room_background_url, room_mode, camera_seat_count)
+           VALUES ($1, $2, $3, 'active', $4, $5, $6, $7) RETURNING *`,
+          [req.userId, name, max_members, imageUrl, backgroundUrl, roomMode, cameraSeatCount]
         );
         await client.query("INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)", [result.rows[0].id, req.userId]);
         await client.query("COMMIT");
