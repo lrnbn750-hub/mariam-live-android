@@ -997,8 +997,7 @@ class RoomActivity : Activity() {
       background=when{
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
-      }
-      elevation=dp(2).toFloat()
+      }      elevation=dp(2).toFloat()
      }
      val content=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.VERTICAL
@@ -1291,6 +1290,7 @@ class RoomActivity : Activity() {
   grid.removeAllViews()
   speakerWaveViews.clear()
   val cameraMode=roomMode=="camera"
+  if(cameraMode){drawCameraSeats();return}
   val visibleSeats=if(cameraMode)cameraSeats else seats
   val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else 8
   val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else 4
@@ -1472,6 +1472,248 @@ class RoomActivity : Activity() {
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
   }
+ }
+ // ===================== Camera rooms: BIGO-style layouts =====================
+ // 6 seats: big main camera (right, spans 2 rows) + 2 small seats (left) + 3 seats (bottom row).
+ // 4 seats: big main camera (right) + 3 vertical seats (left).
+ // All sizes derive from the screen size, so it adapts to any Android device.
+ private fun drawCameraSeats(){
+  val count=cameraSeatCount.coerceIn(4,6)
+  val screen=resources.displayMetrics
+  val gridW=(screen.widthPixels-dp(24)).coerceAtLeast(dp(240))
+  val totalH=minOf(gridW,(screen.heightPixels*0.46f).toInt()).coerceAtLeast(dp(240))
+  val rowH=totalH/3
+  val gap=dp(2)
+  val seatList=(0 until count).map{cameraSeats.optJSONObject(it)?:JSONObject()}
+  // The main (big) camera is the user chosen by the owner; falls back to the first seat.
+  var mainIdx=0
+  if(cameraMainUserId.isNotBlank()){
+   val found=seatList.indexOfFirst{it.optString("user_id")==cameraMainUserId}
+   if(found>=0)mainIdx=found
+  }
+  val others=(0 until count).filter{it!=mainIdx}
+  fun lp(w:Int,h:Int,weight:Float)=LinearLayout.LayoutParams(w,h,weight).apply{setMargins(gap,gap,gap,gap)}
+  val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  if(count==4){
+   val colW=gridW/4
+   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+   val left=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+   others.forEach{i->left.addView(buildCameraTile(seatList[i],i,false,colW,rowH),lp(-1,0,1f))}
+   row.addView(left,LinearLayout.LayoutParams(0,-1,1f))
+   row.addView(buildCameraTile(seatList[mainIdx],mainIdx,true,colW*3,totalH),lp(0,-1,3f))
+   root.addView(row,LinearLayout.LayoutParams(-1,totalH))
+  }else{
+   val cell=gridW/3
+   val top=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+   val left=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+   others.take(2).forEach{i->left.addView(buildCameraTile(seatList[i],i,false,cell,rowH),lp(-1,0,1f))}
+   top.addView(left,LinearLayout.LayoutParams(0,-1,1f))
+   top.addView(buildCameraTile(seatList[mainIdx],mainIdx,true,cell*2,rowH*2),lp(0,-1,2f))
+   root.addView(top,LinearLayout.LayoutParams(-1,rowH*2))
+   val bottomIds=others.drop(2)
+   if(bottomIds.isNotEmpty()){
+    val bottom=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+    val bw=gridW/bottomIds.size
+    bottomIds.forEach{i->bottom.addView(buildCameraTile(seatList[i],i,false,bw,rowH),lp(0,-1,1f))}
+    root.addView(bottom,LinearLayout.LayoutParams(-1,rowH))
+   }
+  }
+  grid.addView(root,LinearLayout.LayoutParams(-1,-2))
+ }
+
+ private fun buildCameraTile(seat:JSONObject,index:Int,isMain:Boolean,tileW:Int,tileH:Int):FrameLayout{
+  val seatNumber=seat.optInt("seat_number",index+1)
+  val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+  val occupied=uid!=null
+  val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
+   ?:if(occupied)"متحدث" else "مقعد فارغ"
+  val seatMuted=seat.optBoolean("is_muted",false)
+  val seatClosed=!seat.optBoolean("is_open",true)
+  val radius=dp(if(isMain)14 else 12).toFloat()
+  val tile=FrameLayout(this).apply{
+   isClickable=true
+   isFocusable=true
+   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+    intArrayOf(Color.rgb(58,30,104),Color.rgb(30,16,62))).apply{
+    cornerRadius=radius
+    setStroke(dp(1),if(occupied)Color.argb(150,244,194,92) else Color.argb(70,190,160,255))
+   }
+   clipToOutline=true
+   outlineProvider=object:android.view.ViewOutlineProvider(){
+    override fun getOutline(view:View,outline:Outline){outline.setRoundRect(0,0,view.width,view.height,radius)}
+   }
+  }
+  // ---- same data extraction as the audio seats (avatar, VIP, frame) ----
+  val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+  val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
+  val nestedVip=seat.optJSONObject("vip_membership")
+   ?:seat.optJSONObject("vip")
+   ?:seatUser?.optJSONObject("vip_membership")
+   ?:seatUser?.optJSONObject("vip")
+   ?:seatUser?.optJSONObject("membership")
+  val payloadVipLevel=readActiveVipLevel(nestedVip?:seatUser?:seat)
+  val seatVipLevel=when{
+   uid==currentUserId && currentUserVipLevel>0->currentUserVipLevel
+   seat.has("vip_active") && !seat.optBoolean("vip_active")->0
+   payloadVipLevel>0->payloadVipLevel
+   else->0
+  }
+  val seatLevel=(if(seat.has("level"))seat.optInt("level",1) else seat.optInt("user_level",1)).coerceIn(1,100)
+
+  // ---- avatar stage (shown when there is no live video) ----
+  val ringPx=(minOf(tileW,tileH)*if(isMain)0.42f else 0.52f).toInt().coerceIn(dp(34),dp(120))
+  val stagePx=(ringPx*70f/60f).toInt()
+  val innerPx=(ringPx*52f/60f).toInt()
+  val avatarInner=FrameLayout(this).apply{
+   clipChildren=false
+   clipToPadding=false
+   if(occupied){
+    addView(label(name.take(1).uppercase(),if(isMain)26f else 16f,Color.rgb(205,210,225),true),FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+   }else{
+    addView(label(if(seatClosed)"🔒" else "+",if(isMain)34f else 24f,Color.argb(230,255,255,255),true),FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
+   }
+  }
+  if(occupied && avatarUrl.isNotBlank()){
+   val photo=ImageView(this).apply{
+    scaleType=ImageView.ScaleType.CENTER_CROP
+    clipToOutline=true
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.TRANSPARENT)}
+    tag=avatarUrl
+   }
+   avatarInner.addView(photo,FrameLayout.LayoutParams(-1,-1))
+   loadAvatarInto(photo,avatarUrl)
+  }
+  val stage=FrameLayout(this).apply{
+   clipChildren=false
+   clipToPadding=false
+   val wave=CircularAudioWaveView(this@RoomActivity)
+   if(uid!=null){
+    speakerWaveViews[uid]=wave
+    wave.setLevel(activeSpeakerLevels[uid]?:0f)
+   }
+   addView(wave,FrameLayout.LayoutParams(-1,-1))
+   val ring=FrameLayout(this@RoomActivity).apply{
+    clipChildren=false
+    clipToPadding=false
+    background=GradientDrawable().apply{
+     shape=GradientDrawable.OVAL
+     if(occupied){
+      setColor(Color.argb(40,30,24,52))
+      setStroke(dp(2),Color.rgb(255,92,170))
+     }else{
+      setColor(Color.argb(40,255,255,255))
+      setStroke(dp(1),Color.argb(150,255,255,255),dp(4).toFloat(),dp(3).toFloat())
+     }
+    }
+    addView(avatarInner,FrameLayout.LayoutParams(innerPx,innerPx,Gravity.CENTER))
+   }
+   addView(ring,FrameLayout.LayoutParams(ringPx,ringPx,Gravity.CENTER))
+   val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+    .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+    ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
+   if(occupied && !frameUrl.isNullOrBlank()){
+    val frameView=RoyalGifFrame(this@RoomActivity).apply{visibility=View.VISIBLE;tag=frameUrl}
+    addView(frameView,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
+    seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
+    loadSeatFrame(frameView,frameUrl)
+   }
+  }
+  tile.addView(stage,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
+
+  // ---- live camera video fills the whole tile ----
+  val liveVideoTrack=if(occupied && uid!=null)videoTrackFor(uid) else null
+  if(liveVideoTrack!=null){
+   stage.visibility=View.GONE
+   val videoRenderer=TextureViewRenderer(this)
+   room.initVideoRenderer(videoRenderer)
+   // Fill the tile like BIGO (crop instead of letterbox). If your LiveKit version lacks this call, remove this line.
+   videoRenderer.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+   liveVideoTrack.addRenderer(videoRenderer)
+   cameraRenderers[uid!!]=videoRenderer
+   tile.addView(videoRenderer,0,FrameLayout.LayoutParams(-1,-1))
+  }
+
+  // ---- top-right gift-points chip (reads optional fields, defaults to 0) ----
+  val points=seat.optInt("gift_points",seat.optInt("score",0))
+  val chip=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(5),0,dp(5),0)
+   background=GradientDrawable().apply{cornerRadius=dp(9).toFloat();setColor(Color.argb(120,0,0,0))}
+   addView(label("$points",10f,Color.WHITE,true).apply{includeFontPadding=false})
+   addView(View(this@RoomActivity).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(255,196,40))}
+   },LinearLayout.LayoutParams(dp(9),dp(9)).apply{marginStart=dp(3)})
+  }
+  tile.addView(chip,FrameLayout.LayoutParams(-2,dp(17),Gravity.TOP or Gravity.END).apply{setMargins(dp(4),dp(4),dp(4),dp(4))})
+
+  // ---- muted indicator (top-left) ----
+  if(occupied && seatMuted){
+   tile.addView(label("🔇",10f,Color.WHITE).apply{
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(140,0,0,0))}
+   },FrameLayout.LayoutParams(dp(18),dp(18),Gravity.TOP or Gravity.START).apply{setMargins(dp(4),dp(4),dp(4),dp(4))})
+  }
+
+  // ---- bottom bar: Host chip, VIP, name, level, seat number ----
+  val bar=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(5),dp(10),dp(5),dp(4))
+   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(170,0,0,0)))
+  }
+  if(!isMain){
+   bar.addView(label("$seatNumber",10f,Color.WHITE,true).apply{
+    includeFontPadding=false
+    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(140,0,0,0))}
+   },LinearLayout.LayoutParams(dp(17),dp(17)).apply{marginEnd=dp(4)})
+  }
+  if(occupied){
+   bar.addView(label(name,if(isMain)12f else 10f,if(seatLevel>=100)Color.rgb(255,220,142) else Color.WHITE,true).apply{
+    maxLines=1
+    ellipsize=android.text.TextUtils.TruncateAt.END
+    includeFontPadding=false
+    gravity=Gravity.CENTER_VERTICAL or Gravity.START
+    setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
+   },LinearLayout.LayoutParams(0,-2,1f))
+   if(seatVipLevel>0){
+    bar.addView(label("VIP$seatVipLevel",8f,Color.rgb(60,38,4),true).apply{
+     includeFontPadding=false
+     setPadding(dp(4),dp(1),dp(4),dp(1))
+     background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,226,138),Color.rgb(240,172,60))).apply{cornerRadius=dp(7).toFloat()}
+    },LinearLayout.LayoutParams(-2,-2).apply{marginStart=dp(3)})
+   }
+   if(seatLevel>=100){
+    bar.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
+     includeFontPadding=false
+     background=GradientDrawable().apply{cornerRadius=dp(7).toFloat();setColor(Color.argb(155,95,65,18));setStroke(dp(1),Color.rgb(218,174,78))}
+     setPadding(dp(3),0,dp(3),0)
+    },LinearLayout.LayoutParams(-2,dp(14)).apply{marginStart=dp(3)})
+   }
+   if(isMain){
+    bar.addView(label("المضيف",9f,Color.WHITE,true).apply{
+     includeFontPadding=false
+     setPadding(dp(6),dp(2),dp(6),dp(2))
+     background=GradientDrawable().apply{cornerRadius=dp(8).toFloat();setColor(Color.rgb(40,170,110))}
+    },LinearLayout.LayoutParams(-2,-2).apply{marginStart=dp(4)})
+   }
+  }else{
+   bar.addView(label(if(seatClosed)"مغلق" else "متاح",if(isMain)12f else 10f,Color.argb(200,225,235,245),false).apply{
+    includeFontPadding=false
+    gravity=Gravity.CENTER_VERTICAL or Gravity.START
+   },LinearLayout.LayoutParams(0,-2,1f))
+  }
+  tile.addView(bar,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM))
+
+  // ---- same interactions as before ----
+  if(occupied){
+   tile.setOnClickListener{openSeatProfile(uid!!,seat,name,avatarUrl)}
+   tile.setOnLongClickListener{seatClick(seat,seatNumber,uid,name);true}
+  }else{
+   tile.setOnClickListener{claimCameraSeat(seatNumber)}
+  }
+  return tile
  }
  private fun loadSeatFrame(view:RoyalGifFrame,url:String){
   val cached=seatFrameBytes[url]
@@ -1755,7 +1997,6 @@ class RoomActivity : Activity() {
   pendingJoinToasts.add(notice)
   if(!joinToastShowing)showNextRoomJoinToast()
  }
-
  private fun showNextRoomJoinToast(){
   if(joinToastShowing || pendingJoinToasts.isEmpty() || isFinishing || leaving)return
   if(!::roomOverlayLayer.isInitialized || !::grid.isInitialized)return
@@ -2754,8 +2995,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    try{track?.removeRenderer(renderer)}catch(_:Exception){}
    try{renderer.release()}catch(_:Exception){}
   }
-  cameraRenderers.clear()
- }
+  cameraRenderers.clear() }
 
  private fun refreshCameraControl(){
   if(!::cameraControl.isInitialized)return
