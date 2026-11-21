@@ -1,5 +1,56 @@
 module.exports = (app, db, authenticateToken) => {
 
+  // Automatically close rooms that have had no occupied audio or camera seat for 3 minutes.
+  // The timestamp is persisted so the countdown survives backend restarts.
+  let emptyRoomCleanupRunning = false;
+  const cleanupEmptyRooms = async () => {
+    if (emptyRoomCleanupRunning) return;
+    emptyRoomCleanupRunning = true;
+    try {
+      await db.query(`
+        UPDATE voice_rooms r
+        SET empty_since = CASE
+          WHEN EXISTS (
+            SELECT 1 FROM voice_room_seats s
+            WHERE s.room_id = r.id AND s.user_id IS NOT NULL
+          ) OR EXISTS (
+            SELECT 1 FROM voice_room_camera_seats cs
+            WHERE cs.room_id = r.id AND cs.user_id IS NOT NULL
+          ) THEN NULL
+          ELSE COALESCE(r.empty_since, NOW())
+        END
+        WHERE r.status = 'active'
+      `);
+
+      const closed = await db.query(`
+        UPDATE voice_rooms r
+        SET status = 'closed'
+        WHERE r.status = 'active'
+          AND r.empty_since <= NOW() - INTERVAL '3 minutes'
+          AND NOT EXISTS (
+            SELECT 1 FROM voice_room_seats s
+            WHERE s.room_id = r.id AND s.user_id IS NOT NULL
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM voice_room_camera_seats cs
+            WHERE cs.room_id = r.id AND cs.user_id IS NOT NULL
+          )
+        RETURNING r.id
+      `);
+      if (closed.rows.length) {
+        console.log("Auto-closed empty BAK LIVE rooms:", closed.rows.map(row => row.id).join(", "));
+      }
+    } catch (error) {
+      console.error("Empty room cleanup:", error.message);
+    } finally {
+      emptyRoomCleanupRunning = false;
+    }
+  };
+
+  const emptyRoomCleanupTimer = setInterval(cleanupEmptyRooms, 15000);
+  if (typeof emptyRoomCleanupTimer.unref === "function") emptyRoomCleanupTimer.unref();
+
+
   // Return the authenticated user's saved profile, including the persisted avatar URL.
   app.get("/api/profile", authenticateToken, async (req, res) => {
     try {
