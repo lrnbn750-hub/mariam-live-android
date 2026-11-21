@@ -2,6 +2,8 @@ package com.mariam.live
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -11,16 +13,21 @@ import android.view.View
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class MessagesActivity : Activity() {
-    private val executor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newFixedThreadPool(4)
     private val green = Color.rgb(34, 158, 92)
     private val ink = Color.rgb(35, 45, 39)
     private val muted = Color.rgb(116, 130, 120)
     private lateinit var list: LinearLayout
     private lateinit var status: TextView
     private var loading = false
+    private val avatarCache = ConcurrentHashMap<String, Bitmap>()
+    private val avatarRequests = ConcurrentHashMap.newKeySet<String>()
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
@@ -155,12 +162,21 @@ class MessagesActivity : Activity() {
                 }
             }
         }
-        val avatar = TextView(this).apply {
+        val avatar = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = rounded(green, 28)
+            clipToOutline = true
+            contentDescription = "صورة $name"
+        }
+        val placeholder = TextView(this).apply {
             text = name.take(1).uppercase(); textSize = 20f
             typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
             setTextColor(Color.WHITE); background = rounded(green, 28)
         }
-        card.addView(avatar, LinearLayout.LayoutParams(dp(52), dp(52)))
+        val avatarFrame = FrameLayout(this)
+        avatarFrame.addView(placeholder, FrameLayout.LayoutParams(-1, -1))
+        avatarFrame.addView(avatar, FrameLayout.LayoutParams(-1, -1))
+        card.addView(avatarFrame, LinearLayout.LayoutParams(dp(52), dp(52)))
         val details = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(12), 0, 0, 0)
@@ -174,6 +190,64 @@ class MessagesActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
         card.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
         list.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+
+        val directAvatarUrl = other.optString("avatar_url").takeIf { it.startsWith("https://") }
+        if (directAvatarUrl != null) {
+            loadAvatar(directAvatarUrl, avatar, placeholder)
+        } else if (userId.isNotBlank()) {
+            loadAvatarFromProfile(userId, avatar, placeholder)
+        }
+    }
+
+    private fun loadAvatarFromProfile(userId: String, target: ImageView, placeholder: View) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        executor.execute {
+            try {
+                val profile = AuthApi.get("/api/users/$userId", token)
+                val user = profile.body.optJSONObject("user") ?: return@execute
+                val avatarUrl = user.optString("avatar_url")
+                if (avatarUrl.startsWith("https://")) {
+                    runOnUiThread { if (!isFinishing && target.parent != null) loadAvatar(avatarUrl, target, placeholder) }
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun loadAvatar(url: String, target: ImageView, placeholder: View) {
+        target.tag = url
+        val cached = avatarCache[url]
+        if (cached != null) {
+            target.setImageBitmap(cached)
+            placeholder.visibility = View.GONE
+            return
+        }
+        if (!avatarRequests.add(url)) return
+        executor.execute {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    instanceFollowRedirects = true
+                }
+                connection.inputStream.use { stream ->
+                    val bitmap = BitmapFactory.decodeStream(stream)
+                    if (bitmap != null) {
+                        avatarCache[url] = bitmap
+                        runOnUiThread {
+                            if (!isFinishing && target.tag == url) {
+                                target.setImageBitmap(bitmap)
+                                placeholder.visibility = View.GONE
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                connection?.disconnect()
+                avatarRequests.remove(url)
+            }
+        }
     }
 
     override fun onResume() { super.onResume(); if (::list.isInitialized) loadConversations() }
