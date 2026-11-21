@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -347,7 +348,7 @@ class AccountBannedActivity : Activity() {
                 .apply { setPadding(0, dp(14), 0, 0) }
         )
 
-        scroll.addView(card, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(card, ViewGroup.LayoutParams(-1, -2))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         // ===== الزر =====
