@@ -61,6 +61,9 @@ class HomeActivity : Activity() {
 
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
+        // طلب إذن إشعارات Android 13+ بعد دخول المستخدم إلى الصفحة الرئيسية.
+        PushTokenManager.requestNotificationPermission(this)
+        PushTokenManager.sync(this)
         val pageBg=Color.rgb(255,253,247)
         window.statusBarColor=Color.rgb(255,240,200)
         window.navigationBarColor=Color.rgb(247,210,125)
