@@ -749,7 +749,8 @@ class AgencyDashboardActivity : Activity() {
     val ag = m.body.optJSONObject("agency")
     runOnUiThread {
      members = mm; invites = ii; agencyInfo = ag ?: JSONObject()
-     agencyName = ag?.optString("agency_name")?.takeIf { it.isNotBlank() } ?: agencyName
+     val updatedAgencyName = ag?.optString("agency_name", "").orEmpty()
+     if (updatedAgencyName.isNotBlank()) agencyName = updatedAgencyName
      status.text = "تم تحديث $agencyName"
      render()
     }
