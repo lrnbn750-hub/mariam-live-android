@@ -1,6 +1,7 @@
 package com.mariam.live
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -9,7 +10,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.graphics.SweepGradient
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -28,18 +28,41 @@ import java.util.concurrent.Executors
 class AccountSecurityActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
 
-    // Palette
+    // ───────── Palette ─────────
     private val bg = Color.rgb(245, 247, 250)
-    private val ink = Color.rgb(26, 32, 44)
-    private val muted = Color.rgb(110, 118, 130)
+    private val ink = Color.rgb(17, 24, 39)
+    private val muted = Color.rgb(107, 114, 128)
     private val divider = Color.rgb(238, 240, 243)
     private val tealDark = Color.rgb(14, 135, 126)
-    private val okBg = Color.rgb(225, 247, 244)
+    private val okBg = Color.rgb(222, 246, 242)
     private val rose = Color.rgb(196, 58, 90)
     private val roseBg = Color.rgb(253, 236, 240)
     private val neutralBg = Color.rgb(238, 240, 243)
 
-    private val medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    // ───────── Typography ─────────
+    // لاستخدام خط احترافي: ضع ملفات الخط في res/font بهذه الأسماء بالضبط
+    // app_font_regular / app_font_medium / app_font_bold  (مثلاً IBM Plex Sans Arabic أو Tajawal)
+    // وإن لم تكن موجودة يستخدم التطبيق خط النظام تلقائياً.
+    private val fRegular by lazy { face("app_font_regular", Typeface.create("sans-serif", Typeface.NORMAL)) }
+    private val fMedium by lazy { face("app_font_medium", Typeface.create("sans-serif-medium", Typeface.NORMAL)) }
+    private val fBold by lazy { face("app_font_bold", Typeface.create("sans-serif", Typeface.BOLD)) }
+
+    private fun face(name: String, fallback: Typeface): Typeface {
+        if (Build.VERSION.SDK_INT >= 26) {
+            val id = resources.getIdentifier(name, "font", packageName)
+            if (id != 0) {
+                try { return resources.getFont(id) } catch (_: Exception) {}
+            }
+        }
+        return fallback
+    }
+
+    private fun label(size: Float, face: Typeface, color: Int) = TextView(this).apply {
+        textSize = size
+        typeface = face
+        setTextColor(color)
+    }
+
     private val totalMethods = 2 // الهاتف + البريد
 
     private lateinit var phoneRow: AccountRow
@@ -48,6 +71,7 @@ class AccountSecurityActivity : Activity() {
     private lateinit var heroSub: TextView
     private lateinit var heroCount: TextView
     private val segments = mutableListOf<View>()
+    private var linkedEmail: String? = null
 
     private enum class Tone { OK, WARN, NEUTRAL }
 
@@ -91,22 +115,30 @@ class AccountSecurityActivity : Activity() {
 
         body.addView(buildHero())
 
-        body.addView(TextView(this).apply {
+        body.addView(label(13.5f, fMedium, muted).apply {
             text = "وسائل الربط"
-            textSize = 14f
-            typeface = medium
-            setTextColor(muted)
             setPadding(dp(6), 0, dp(6), 0)
         }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(26); bottomMargin = dp(10) })
 
-        phoneRow = accountRow("الهاتف", Glyph.PHONE, tealDark, Color.rgb(226, 248, 246)) {
-            startActivity(Intent(this, PhoneSecurityActivity::class.java))
-        }
-        emailRow = accountRow("البريد الإلكتروني", Glyph.MAIL, Color.rgb(92, 106, 132), Color.rgb(236, 240, 247)) {
-            comingSoon("البريد الإلكتروني")
-        }
-        val googleRow = accountRow("Google", Glyph.GOOGLE, Color.BLACK, Color.rgb(235, 242, 255)) { comingSoon("Google") }
-        val snapRow = accountRow("Snapchat", Glyph.SNAPCHAT, Color.rgb(30, 30, 30), Color.rgb(255, 252, 0)) { comingSoon("Snapchat") }
+        phoneRow = accountRow(
+            "الهاتف", Glyph.PHONE,
+            Color.rgb(52, 211, 196), Color.rgb(16, 160, 150), Color.WHITE, Color.rgb(16, 160, 150), false
+        ) { startActivity(Intent(this, PhoneSecurityActivity::class.java)) }
+
+        emailRow = accountRow(
+            "البريد الإلكتروني", Glyph.MAIL,
+            Color.rgb(96, 165, 250), Color.rgb(37, 99, 235), Color.WHITE, Color.rgb(37, 99, 235), false
+        ) { onEmailClick() }
+
+        val googleRow = accountRow(
+            "Google", Glyph.GOOGLE,
+            Color.WHITE, Color.WHITE, Color.BLACK, Color.WHITE, true
+        ) { comingSoon("Google") }
+
+        val snapRow = accountRow(
+            "Snapchat", Glyph.SNAPCHAT,
+            Color.rgb(255, 252, 0), Color.rgb(255, 252, 0), Color.rgb(24, 24, 24), Color.WHITE, false
+        ) { comingSoon("Snapchat") }
 
         applyChip(phoneRow.chip, "جارٍ التحقق", Tone.NEUTRAL)
         applyChip(emailRow.chip, "جارٍ التحقق", Tone.NEUTRAL)
@@ -122,13 +154,14 @@ class AccountSecurityActivity : Activity() {
         val rows = listOf(phoneRow, emailRow, googleRow, snapRow)
         rows.forEachIndexed { i, r ->
             card.addView(r.root, LinearLayout.LayoutParams(-1, -2))
-            if (i < rows.lastIndex) card.addView(separator(), LinearLayout.LayoutParams(-1, 1.coerceAtLeast(dp(1))).apply {
-                marginStart = dp(76)
-            })
+            if (i < rows.lastIndex) card.addView(
+                View(this).apply { setBackgroundColor(divider) },
+                LinearLayout.LayoutParams(-1, 1.coerceAtLeast(dp(1))).apply { marginStart = dp(76) }
+            )
         }
         body.addView(card, LinearLayout.LayoutParams(-1, -2))
 
-        body.addView(noteBanner("i", "نستخدم هذه الوسائل لتأمين حسابك واستعادته إذا فقدت الوصول إليه.", Color.rgb(232, 246, 245), Color.rgb(43, 202, 190)))
+        body.addView(noteBanner("نستخدم هذه الوسائل لتأمين حسابك واستعادته إذا فقدت الوصول إليه."))
 
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -138,7 +171,7 @@ class AccountSecurityActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        loadAccountLinks() // يتحدث تلقائياً عند الرجوع من صفحة الهاتف
+        loadAccountLinks()
     }
 
     // ───────── Header ─────────
@@ -156,38 +189,29 @@ class AccountSecurityActivity : Activity() {
             isFocusable = true
             contentDescription = "رجوع"
             setOnClickListener { finish() }
-            addView(GlyphView(this@AccountSecurityActivity, Glyph.CHEVRON_RIGHT, ink), FrameLayout.LayoutParams(-1, -1))
+            addView(GlyphView(this@AccountSecurityActivity, Glyph.CHEVRON_RIGHT, ink, ink), FrameLayout.LayoutParams(-1, -1))
         }
         addView(back, LinearLayout.LayoutParams(dp(44), dp(44)))
-        addView(TextView(this@AccountSecurityActivity).apply {
+        addView(label(18f, fBold, ink).apply {
             text = "إدارة الحساب"
-            textSize = 18f
-            typeface = medium
-            setTextColor(ink)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@AccountSecurityActivity), LinearLayout.LayoutParams(dp(44), dp(44)))
     }
 
-    // ───────── Hero (حالة الحماية) ─────────
+    // ───────── Hero ─────────
 
     private fun buildHero(): View {
-        heroTitle = TextView(this).apply { textSize = 19f; typeface = medium; setTextColor(Color.WHITE) }
-        heroSub = TextView(this).apply {
-            textSize = 13.5f
-            setTextColor(Color.argb(225, 255, 255, 255))
-            setLineSpacing(0f, 1.15f)
-            setPadding(0, dp(4), 0, 0)
+        heroTitle = label(20f, fBold, Color.WHITE)
+        heroSub = label(13.5f, fRegular, Color.argb(225, 255, 255, 255)).apply {
+            setLineSpacing(0f, 1.25f)
+            setPadding(0, dp(5), 0, 0)
         }
-        heroCount = TextView(this).apply {
-            textSize = 12.5f
-            typeface = medium
-            setTextColor(Color.argb(225, 255, 255, 255))
-        }
+        heroCount = label(12.5f, fMedium, Color.argb(225, 255, 255, 255))
 
         val shield = FrameLayout(this).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(56, 255, 255, 255)) }
-            addView(GlyphView(this@AccountSecurityActivity, Glyph.SHIELD, Color.WHITE), FrameLayout.LayoutParams(-1, -1))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(50, 255, 255, 255)) }
+            addView(GlyphView(this@AccountSecurityActivity, Glyph.SHIELD, Color.WHITE, Color.rgb(14, 126, 124)), FrameLayout.LayoutParams(-1, -1))
         }
         val texts = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -196,7 +220,7 @@ class AccountSecurityActivity : Activity() {
         }
         val top = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            addView(shield, LinearLayout.LayoutParams(dp(52), dp(52)))
+            addView(shield, LinearLayout.LayoutParams(dp(54), dp(54)))
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(14) })
         }
         val bar = LinearLayout(this)
@@ -231,42 +255,44 @@ class AccountSecurityActivity : Activity() {
 
     // ───────── Rows ─────────
 
-    private fun separator() = View(this).apply { setBackgroundColor(divider) }
-
-    private fun accountRow(title: String, glyph: Glyph, glyphColor: Int, tileColor: Int, click: () -> Unit): AccountRow {
-        val titleView = TextView(this).apply {
-            text = title; textSize = 16f; typeface = medium; setTextColor(ink)
+    private fun accountRow(
+        title: String, glyph: Glyph,
+        tileStart: Int, tileEnd: Int, tint: Int, detail: Int, outlined: Boolean,
+        click: () -> Unit
+    ): AccountRow {
+        val titleView = label(16f, fMedium, ink).apply { text = title }
+        val subtitle = label(13f, fRegular, muted).apply {
+            visibility = View.GONE
+            setPadding(0, dp(3), 0, 0)
         }
-        val subtitle = TextView(this).apply {
-            textSize = 13f; setTextColor(muted); visibility = View.GONE
-            setPadding(0, dp(2), 0, 0)
-        }
-        val chip = TextView(this).apply {
-            textSize = 12.5f; typeface = medium
-            setPadding(dp(10), dp(5), dp(10), dp(5))
+        val chip = label(12f, fMedium, muted).apply {
+            setPadding(dp(11), dp(5), dp(11), dp(5))
         }
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(titleView); addView(subtitle)
         }
         val tile = FrameLayout(this).apply {
-            background = rounded(tileColor, 14)
-            addView(GlyphView(this@AccountSecurityActivity, glyph, glyphColor), FrameLayout.LayoutParams(-1, -1))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(tileStart, tileEnd)).apply {
+                cornerRadius = dp(14).toFloat()
+                if (outlined) setStroke(dp(1), Color.rgb(226, 229, 234))
+            }
+            addView(GlyphView(this@AccountSecurityActivity, glyph, tint, detail), FrameLayout.LayoutParams(-1, -1))
         }
         val row = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(76)
+            minimumHeight = dp(78)
             setPadding(dp(16), dp(14), dp(16), dp(14))
             isClickable = true
             isFocusable = true
             background = RippleDrawable(
                 ColorStateList.valueOf(Color.argb(38, 43, 202, 190)), ColorDrawable(Color.WHITE), null
             )
-            addView(tile, LinearLayout.LayoutParams(dp(46), dp(46)))
+            addView(tile, LinearLayout.LayoutParams(dp(48), dp(48)))
             addView(column, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(14) })
             addView(chip, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
             addView(
-                GlyphView(this@AccountSecurityActivity, Glyph.CHEVRON_LEFT, Color.rgb(176, 181, 189)),
+                GlyphView(this@AccountSecurityActivity, Glyph.CHEVRON_LEFT, Color.rgb(170, 176, 186), Color.rgb(170, 176, 186)),
                 LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginStart = dp(4) }
             )
             setOnClickListener { click() }
@@ -294,26 +320,38 @@ class AccountSecurityActivity : Activity() {
         }
     }
 
-    private fun noteBanner(icon: String, message: String, backgroundColor: Int, iconColor: Int) =
-        LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            background = rounded(backgroundColor, 16)
-            addView(TextView(this@AccountSecurityActivity).apply {
-                text = icon; textSize = 14f; typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.WHITE); gravity = Gravity.CENTER
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor) }
-            }, LinearLayout.LayoutParams(dp(26), dp(26)))
-            addView(TextView(this@AccountSecurityActivity).apply {
-                text = message; textSize = 13f
-                setTextColor(Color.rgb(62, 92, 92))
-                setLineSpacing(0f, 1.2f)
-            }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) }
-        }
+    private fun noteBanner(message: String) = LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(14), dp(14), dp(14), dp(14))
+        background = rounded(Color.rgb(232, 246, 245), 16)
+        addView(
+            GlyphView(this@AccountSecurityActivity, Glyph.INFO, Color.rgb(24, 168, 158), Color.WHITE),
+            LinearLayout.LayoutParams(dp(24), dp(24))
+        )
+        addView(label(13f, fRegular, Color.rgb(52, 84, 84)).apply {
+            text = message
+            setLineSpacing(0f, 1.25f)
+        }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) }
+    }
+
+    // ───────── Actions ─────────
 
     private fun comingSoon(provider: String) {
         Toast.makeText(this, "ربط $provider سيكون متاحاً قريباً", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun onEmailClick() {
+        val email = linkedEmail
+        if (email.isNullOrBlank()) {
+            comingSoon("البريد الإلكتروني")
+        } else {
+            AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)
+                .setTitle("البريد الإلكتروني")
+                .setMessage("بريدك مرتبط بالحساب:\n" + maskEmail(email))
+                .setPositiveButton("حسناً", null)
+                .show()
+        }
     }
 
     // ───────── Data ─────────
@@ -352,6 +390,7 @@ class AccountSecurityActivity : Activity() {
                         applyChip(phoneRow.chip, "ربط الآن", Tone.WARN)
                     }
 
+                    linkedEmail = email
                     if (!email.isNullOrBlank()) {
                         linked++
                         setSubtitle(emailRow, maskEmail(email))
@@ -385,102 +424,119 @@ class AccountSecurityActivity : Activity() {
     }
 }
 
-// ───────── Vector-style icons drawn with Canvas (no emoji, no extra assets) ─────────
+// ───────── Icons: مرسومة بالكود، شكل مصمت (Filled) بنمط التطبيقات العالمية ─────────
 
-private enum class Glyph { PHONE, MAIL, GOOGLE, SNAPCHAT, SHIELD, CHEVRON_LEFT, CHEVRON_RIGHT }
+private enum class Glyph { PHONE, MAIL, GOOGLE, SNAPCHAT, SHIELD, INFO, CHEVRON_LEFT, CHEVRON_RIGHT }
 
-private class GlyphView(context: Context, private val glyph: Glyph, private val tint: Int) : View(context) {
+/** tint = لون الشكل الأساسي، detail = لون التفاصيل الداخلية (عادةً لون الخلفية) */
+private class GlyphView(
+    context: Context,
+    private val glyph: Glyph,
+    private val tint: Int,
+    private val detail: Int
+) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+
+    private fun fill(c: Int) { paint.style = Paint.Style.FILL; paint.color = c }
+    private fun stroke(c: Int, wd: Float, cap: Paint.Cap = Paint.Cap.ROUND) {
+        paint.style = Paint.Style.STROKE; paint.color = c; paint.strokeWidth = wd; paint.strokeCap = cap
+    }
 
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
         val cx = w / 2
         val cy = h / 2
-
-        paint.shader = null
-        paint.style = Paint.Style.STROKE
-        paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
-        paint.strokeWidth = w * 0.07f
-        paint.color = tint
         path.reset()
 
         when (glyph) {
             Glyph.PHONE -> {
-                canvas.drawRoundRect(RectF(w * .31f, h * .2f, w * .69f, h * .8f), w * .09f, w * .09f, paint)
-                canvas.drawLine(w * .44f, h * .7f, w * .56f, h * .7f, paint)
+                fill(tint)
+                canvas.drawRoundRect(RectF(w * .31f, h * .17f, w * .69f, h * .83f), w * .1f, w * .1f, paint)
+                fill(detail)
+                canvas.drawRoundRect(RectF(w * .355f, h * .235f, w * .645f, h * .69f), w * .035f, w * .035f, paint)
+                fill(detail)
+                canvas.drawCircle(cx, h * .76f, w * .028f, paint)
             }
             Glyph.MAIL -> {
-                canvas.drawRoundRect(RectF(w * .22f, h * .3f, w * .78f, h * .7f), w * .07f, w * .07f, paint)
-                path.moveTo(w * .25f, h * .35f)
-                path.lineTo(cx, h * .54f)
-                path.lineTo(w * .75f, h * .35f)
+                fill(tint)
+                canvas.drawRoundRect(RectF(w * .2f, h * .29f, w * .8f, h * .71f), w * .08f, w * .08f, paint)
+                path.moveTo(w * .25f, h * .37f)
+                path.lineTo(cx, h * .56f)
+                path.lineTo(w * .75f, h * .37f)
+                stroke(detail, w * .05f)
                 canvas.drawPath(path, paint)
             }
             Glyph.GOOGLE -> {
-                paint.style = Paint.Style.FILL
-                paint.typeface = Typeface.DEFAULT_BOLD
-                paint.textAlign = Paint.Align.CENTER
-                paint.textSize = h * 0.6f
-                paint.shader = SweepGradient(
-                    cx, cy,
-                    intArrayOf(
-                        Color.rgb(234, 67, 53), Color.rgb(251, 188, 5),
-                        Color.rgb(52, 168, 83), Color.rgb(66, 133, 244), Color.rgb(234, 67, 53)
-                    ),
-                    null
-                )
-                canvas.drawText("G", cx, cy - (paint.ascent() + paint.descent()) / 2, paint)
+                val r = w * .24f
+                val box = RectF(cx - r, cy - r, cx + r, cy + r)
+                val sw = w * .12f
+                stroke(Color.rgb(234, 67, 53), sw, Paint.Cap.BUTT)
+                canvas.drawArc(box, 222f, 100f, false, paint)
+                stroke(Color.rgb(251, 188, 5), sw, Paint.Cap.BUTT)
+                canvas.drawArc(box, 132f, 90f, false, paint)
+                stroke(Color.rgb(52, 168, 83), sw, Paint.Cap.BUTT)
+                canvas.drawArc(box, 48f, 84f, false, paint)
+                stroke(Color.rgb(66, 133, 244), sw, Paint.Cap.BUTT)
+                canvas.drawArc(box, 0f, 48f, false, paint)
+                canvas.drawLine(cx, cy, cx + r + sw / 2, cy, paint)
             }
             Glyph.SNAPCHAT -> {
-                path.moveTo(cx - w * .17f, h * .4f)
-                path.arcTo(RectF(cx - w * .17f, h * .2f, cx + w * .17f, h * .6f), 180f, 180f)
+                path.moveTo(cx - w * .17f, h * .42f)
+                path.arcTo(RectF(cx - w * .17f, h * .2f, cx + w * .17f, h * .64f), 180f, 180f)
                 path.lineTo(cx + w * .17f, h * .7f)
-                path.lineTo(cx + w * .11f, h * .77f)
-                path.lineTo(cx, h * .71f)
-                path.lineTo(cx - w * .11f, h * .77f)
-                path.lineTo(cx - w * .17f, h * .7f)
+                path.quadTo(cx + w * .16f, h * .79f, cx + w * .09f, h * .77f)
+                path.quadTo(cx + w * .04f, h * .74f, cx, h * .77f)
+                path.quadTo(cx - w * .04f, h * .74f, cx - w * .09f, h * .77f)
+                path.quadTo(cx - w * .16f, h * .79f, cx - w * .17f, h * .7f)
                 path.close()
-                paint.style = Paint.Style.FILL
-                paint.color = Color.WHITE
+                fill(detail)
                 canvas.drawPath(path, paint)
-                paint.style = Paint.Style.STROKE
-                paint.color = tint
+                stroke(tint, w * .05f)
                 canvas.drawPath(path, paint)
-                paint.style = Paint.Style.FILL
-                canvas.drawCircle(cx - w * .06f, h * .43f, w * .025f, paint)
-                canvas.drawCircle(cx + w * .06f, h * .43f, w * .025f, paint)
+                fill(tint)
+                canvas.drawCircle(cx - w * .06f, h * .44f, w * .026f, paint)
+                canvas.drawCircle(cx + w * .06f, h * .44f, w * .026f, paint)
             }
             Glyph.SHIELD -> {
-                paint.strokeWidth = w * 0.06f
-                path.moveTo(cx, h * .2f)
-                path.lineTo(w * .74f, h * .3f)
-                path.lineTo(w * .74f, h * .52f)
-                path.quadTo(w * .74f, h * .72f, cx, h * .82f)
-                path.quadTo(w * .26f, h * .72f, w * .26f, h * .52f)
-                path.lineTo(w * .26f, h * .3f)
+                path.moveTo(cx, h * .18f)
+                path.lineTo(w * .75f, h * .29f)
+                path.lineTo(w * .75f, h * .5f)
+                path.quadTo(w * .75f, h * .72f, cx, h * .83f)
+                path.quadTo(w * .25f, h * .72f, w * .25f, h * .5f)
+                path.lineTo(w * .25f, h * .29f)
                 path.close()
+                fill(tint)
                 canvas.drawPath(path, paint)
                 path.reset()
-                path.moveTo(w * .4f, h * .5f)
-                path.lineTo(w * .47f, h * .58f)
-                path.lineTo(w * .61f, h * .42f)
+                path.moveTo(w * .39f, h * .5f)
+                path.lineTo(w * .465f, h * .58f)
+                path.lineTo(w * .62f, h * .41f)
+                stroke(detail, w * .065f)
                 canvas.drawPath(path, paint)
             }
+            Glyph.INFO -> {
+                fill(tint)
+                canvas.drawCircle(cx, cy, w * .5f, paint)
+                fill(detail)
+                canvas.drawCircle(cx, h * .3f, w * .07f, paint)
+                stroke(detail, w * .12f)
+                canvas.drawLine(cx, h * .46f, cx, h * .72f, paint)
+            }
             Glyph.CHEVRON_LEFT -> {
-                paint.strokeWidth = w * 0.09f
                 path.moveTo(w * .6f, h * .28f)
                 path.lineTo(w * .4f, cy)
                 path.lineTo(w * .6f, h * .72f)
+                stroke(tint, w * .09f)
                 canvas.drawPath(path, paint)
             }
             Glyph.CHEVRON_RIGHT -> {
-                paint.strokeWidth = w * 0.08f
                 path.moveTo(w * .4f, h * .28f)
                 path.lineTo(w * .6f, cy)
                 path.lineTo(w * .4f, h * .72f)
+                stroke(tint, w * .08f)
                 canvas.drawPath(path, paint)
             }
         }
