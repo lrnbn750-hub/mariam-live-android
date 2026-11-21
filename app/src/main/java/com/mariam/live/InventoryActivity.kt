@@ -175,7 +175,7 @@ class InventoryActivity : Activity() {
             isFocusable = true
             contentDescription = "رجوع"
             setOnClickListener { finish() }
-            addView(IconView(this@InventoryActivity, Icon.BACK, purple), FrameLayout.LayoutParams(-1, -1))
+            addView(InventoryIconView(this@InventoryActivity, Icon.BACK, purple), FrameLayout.LayoutParams(-1, -1))
         }
         addView(back, LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(label(19f, fBold, ink).apply {
@@ -309,7 +309,7 @@ class InventoryActivity : Activity() {
         setPadding(dp(24), dp(56), dp(24), dp(24))
         addView(FrameLayout(this@InventoryActivity).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(purpleSoft) }
-            addView(IconView(this@InventoryActivity, icon, purple), FrameLayout.LayoutParams(-1, -1).apply {
+            addView(InventoryIconView(this@InventoryActivity, icon, purple), FrameLayout.LayoutParams(-1, -1).apply {
                 setMargins(dp(22), dp(22), dp(22), dp(22))
             })
         }, LinearLayout.LayoutParams(dp(92), dp(92)))
@@ -402,7 +402,7 @@ class InventoryActivity : Activity() {
                 FrameLayout.LayoutParams(-1, -1))
             holder.addView(FrameLayout(this).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(210, 40, 38, 56)) }
-                addView(IconView(this@InventoryActivity, Icon.LOCK, Color.WHITE), FrameLayout.LayoutParams(-1, -1).apply {
+                addView(InventoryIconView(this@InventoryActivity, Icon.LOCK, Color.WHITE), FrameLayout.LayoutParams(-1, -1).apply {
                     setMargins(dp(6), dp(6), dp(6), dp(6))
                 })
             }, FrameLayout.LayoutParams(dp(28), dp(28), Gravity.TOP or Gravity.START).apply {
@@ -414,7 +414,7 @@ class InventoryActivity : Activity() {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(8), dp(4), dp(10), dp(4))
                 background = rounded(purple, 12)
-                addView(IconView(this@InventoryActivity, Icon.CHECK, Color.WHITE), LinearLayout.LayoutParams(dp(12), dp(12)))
+                addView(InventoryIconView(this@InventoryActivity, Icon.CHECK, Color.WHITE), LinearLayout.LayoutParams(dp(12), dp(12)))
                 addView(label(11.5f, fMedium, Color.WHITE).apply { text = "مركّب" },
                     LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(4) })
             }, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
@@ -613,7 +613,7 @@ private class AssetPreview(context: Context, private val mode: Mode) : View(cont
 
 private enum class Icon { BACK, CHECK, LOCK, BAG }
 
-private class IconView(context: Context, private val icon: Icon, private val color: Int) : View(context) {
+private class InventoryIconView(context: Context, private val icon: Icon, private val color: Int) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
 
