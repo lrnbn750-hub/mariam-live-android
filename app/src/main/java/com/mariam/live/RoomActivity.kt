@@ -36,7 +36,6 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
-import java.util.concurrent.atomic.AtomicInteger
 import com.mariam.live.data.GiftRepository
 import com.mariam.live.model.Gift
 import com.opensource.svgaplayer.SVGACallback
@@ -48,8 +47,6 @@ import java.net.URL
 import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
- companion object { private val activeRoomActivityCount = AtomicInteger(0) }
- private var countedAsActiveRoom = false
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
@@ -236,8 +233,6 @@ class RoomActivity : Activity() {
  }
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState)
-  activeRoomActivityCount.incrementAndGet()
-  countedAsActiveRoom=true
   window.statusBarColor=Color.BLACK;window.navigationBarColor=Color.BLACK;window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
   // Keep the first joined room as the persistent return target while the user browses other screens/broadcasts.
@@ -3733,23 +3728,9 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   cameraTracks.clear()
   seatRefreshJob?.cancel()
   giftPoll?.cancel()
-  if(connected && !leaving){
-   connected=false
-   val roomToClose=room
-   val closingRoomId=roomId
-   val closingToken=authToken
-   CoroutineScope(SupervisorJob()+Dispatchers.IO).launch{
-    try{roomToClose.disconnect()}catch(_:Exception){}
-    try{AuthApi.post("/api/voice-rooms/$closingRoomId/leave",JSONObject().put("keep_open",true),closingToken)}catch(_:Exception){}
-   }
-  }
+  // Navigation or Activity recreation must never be treated as an explicit room leave.
+  // Keep the LiveKit session and server membership independent from this screen lifecycle.
   scope.cancel()
-  if(countedAsActiveRoom){
-   countedAsActiveRoom=false
-   if(activeRoomActivityCount.decrementAndGet()<=0){
-    stopService(Intent(this,VoiceForegroundService::class.java))
-   }
-  }
   super.onDestroy()
  }
 }
