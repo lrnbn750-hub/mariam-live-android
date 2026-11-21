@@ -165,7 +165,12 @@ class HomeActivity : Activity() {
                             val sent=delivery?.optInt("sent",-1) ?: -1
                             val failed=delivery?.optInt("failed",-1) ?: -1
                             val message=if(result.status in 200..299){
-                                "تم حفظ الإشعار وإرساله. ناجح: $sent، فاشل: $failed"
+                                when {
+                                    sent > 0 && failed == 0 -> "تم إرسال الإشعار بنجاح إلى جميع الأجهزة. ناجح: $sent"
+                                    sent > 0 && failed > 0 -> "وصل الإشعار لبعض الأجهزة فقط. ناجح: $sent، فاشل: $failed"
+                                    sent == 0 -> "تم حفظ الإشعار، لكن لم يصل لأي جهاز. فاشل: $failed"
+                                    else -> "تم حفظ طلب الاختبار. تحقق من حالة الإرسال."
+                                }
                             }else{
                                 "فشل الاختبار (HTTP ${result.status}): ${result.body.optString("error")}"
                             }
