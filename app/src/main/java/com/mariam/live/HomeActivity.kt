@@ -104,7 +104,7 @@ class HomeActivity : Activity() {
             visibility=if(prefs.getString("active_room_id",null).isNullOrBlank())View.GONE else View.VISIBLE
             setOnClickListener{
                 val id=prefs.getString("active_room_id",null).orEmpty()
-                if(id.isNotBlank())startActivity(Intent(this@HomeActivity,RoomActivity::class.java).putExtra("room_id",id).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                if(id.isNotBlank())startActivity(Intent(this@HomeActivity,RoomActivity::class.java).putExtra("room_id",id).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                 else visibility=View.GONE
             }
         }
