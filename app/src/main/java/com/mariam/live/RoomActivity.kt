@@ -1273,15 +1273,39 @@ class RoomActivity : Activity() {
    try{
     val r=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/$roomId/seats",authToken)}
     if(r.status==403 || r.status==404){
+     // A seats endpoint denial alone is NOT proof that the room was closed.
+     // Re-check the authoritative room membership before ending the LiveKit session.
+     val membership=withContext(Dispatchers.IO){
+      runCatching{AuthApi.get("/api/voice-rooms/$roomId/members",authToken)}.getOrNull()
+     }
+     if(membership==null || membership.status !in 200..299){
+      status.text="تعذر تحديث المقاعد مؤقتاً؛ اتصالك بالغرفة مستمر"
+      return@launch
+     }
+     val members=membership.body.optJSONArray("members")?:JSONArray()
+     val stillMember=currentUserId.isNotBlank() && (0 until members.length()).any{index->
+      members.optJSONObject(index)?.optString("user_id")==currentUserId
+     }
+     if(stillMember){
+      // The user is still in the room; ignore this stale/temporary 403 or 404.
+      status.text="تعذر تحديث المقاعد مؤقتاً؛ اتصالك بالغرفة مستمر"
+      return@launch
+     }
+     // Membership is now authoritatively absent. This can mean a moderator
+     // removed the user or the room ended; do not falsely blame the room owner.
      if(!leaving){
       leaving=true
       chatPoll?.cancel()
       membershipWatch?.cancel()
+      seatRefreshJob?.cancel()
       try{if(connected)room.disconnect()}catch(_:Exception){}
       connected=false
-        AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
-       .setTitle("انتهى البث")
-       .setMessage("قام صاحب الغرفة بإغلاق الغرفة. تم إخراجك من البث.")
+      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+      val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+      if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+      AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
+       .setTitle("انتهى اتصالك بالغرفة")
+       .setMessage("لم تعد عضويتك فعّالة في هذه الغرفة. ربما أُغلقت الغرفة أو أزالك المشرف.")
        .setPositiveButton("العودة للرئيسية"){_,_->finish()}
        .setCancelable(false).show()
      }
