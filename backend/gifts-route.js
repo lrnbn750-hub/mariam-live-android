@@ -154,17 +154,14 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
          VALUES($1,'gift_received',$2,'diamonds','completed',$3,$4,$5)`,
         [recipientId,diamonds.toString(),eventKey+":recipient",req.userId,JSON.stringify({room_id:roomId,gift_id:giftId,quantity,creator_earnings_usd_cents:creatorCents.toString(),platform_share_usd_cents:platformCents.toString()})]
       );
-      await client.query(`INSERT INTO voice_room_daily_trends(room_id,trend_date,points,gift_coins)
-        VALUES($1,(NOW() AT TIME ZONE 'Asia/Baghdad')::date,$2,$3)
-        ON CONFLICT(room_id,trend_date) DO UPDATE SET points=voice_room_daily_trends.points+$2,
-        gift_coins=voice_room_daily_trends.gift_coins+$3,updated_at=NOW()`,
-        [roomId,(totalCoins*10n).toString(),totalCoins.toString()]);
+      // Credit gift trend points once, and restart the 5-second gift inactivity timer.
       await client.query(
-        `INSERT INTO voice_room_daily_trends(room_id,trend_date,points,gift_coins)
-         VALUES($1,(NOW() AT TIME ZONE 'Asia/Baghdad')::date,$2,$3)
+        `INSERT INTO voice_room_daily_trends(room_id,trend_date,points,gift_coins,last_gift_at)
+         VALUES($1,(NOW() AT TIME ZONE 'Asia/Baghdad')::date,$2,$3,NOW())
          ON CONFLICT(room_id,trend_date) DO UPDATE SET
           points=voice_room_daily_trends.points+$2,
           gift_coins=voice_room_daily_trends.gift_coins+$3,
+          last_gift_at=NOW(),
           updated_at=NOW()`,
         [roomId,(totalCoins*10n).toString(),totalCoins.toString()]
       );
