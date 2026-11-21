@@ -5,7 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.Toast
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
@@ -30,31 +30,64 @@ object PushTokenManager {
         val appContext = context.applicationContext
         val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val authToken = prefs.getString("token", null).orEmpty()
-        if (authToken.isBlank()) return
+        val userId = prefs.getString("user_id", null).orEmpty()
 
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { fcmToken ->
-            if (fcmToken.isNullOrBlank()) return@addOnSuccessListener
-            val previous = prefs.getString(TOKEN_KEY, null)
-            prefs.edit().putString(TOKEN_KEY, fcmToken).apply()
-            if (previous == fcmToken && prefs.getBoolean("fcm_token_registered", false)) return@addOnSuccessListener
+        if (authToken.isBlank()) {
+            Log.w("BAK_PUSH", "Skip token registration: user is not signed in")
+            return
+        }
 
-            executor.execute {
-                try {
-                    val result = AuthApi.post(
-                        "/api/notifications/devices/register",
-                        JSONObject().put("device_token", fcmToken).put("platform", "android"),
-                        authToken
-                    )
-                    if (result.status in 200..299) {
-                        prefs.edit().putBoolean("fcm_token_registered", true).apply()
-                    } else {
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { fcmToken ->
+                if (fcmToken.isBlank()) {
+                    Log.e("BAK_PUSH", "Firebase returned an empty FCM token")
+                    return@addOnSuccessListener
+                }
+
+                val previousToken = prefs.getString(TOKEN_KEY, null)
+                val registeredUser = prefs.getString("fcm_registered_user_id", null)
+                val alreadyRegistered = prefs.getBoolean("fcm_token_registered", false)
+
+                prefs.edit().putString(TOKEN_KEY, fcmToken).apply()
+                if (previousToken == fcmToken && alreadyRegistered &&
+                    registeredUser == userId
+                ) {
+                    Log.d("BAK_PUSH", "This device is already registered for the current user")
+                    return@addOnSuccessListener
+                }
+
+                executor.execute {
+                    try {
+                        val result = AuthApi.post(
+                            "/api/notifications/devices/register",
+                            JSONObject()
+                                .put("device_token", fcmToken)
+                                .put("platform", "android"),
+                            authToken
+                        )
+
+                        if (result.status in 200..299) {
+                            prefs.edit()
+                                .putBoolean("fcm_token_registered", true)
+                                .putString("fcm_registered_user_id", userId)
+                                .apply()
+                            Log.i("BAK_PUSH", "Device token registered successfully (HTTP ${result.status})")
+                        } else {
+                            prefs.edit().putBoolean("fcm_token_registered", false).apply()
+                            Log.e(
+                                "BAK_PUSH",
+                                "Device registration failed (HTTP ${result.status}): ${result.body.optString("error")}"
+                            )
+                        }
+                    } catch (error: Exception) {
                         prefs.edit().putBoolean("fcm_token_registered", false).apply()
+                        Log.e("BAK_PUSH", "Device registration request failed", error)
                     }
-                } catch (_: Exception) {
-                    prefs.edit().putBoolean("fcm_token_registered", false).apply()
                 }
             }
-        }
+            .addOnFailureListener { error ->
+                Log.e("BAK_PUSH", "Unable to obtain Firebase messaging token", error)
+            }
     }
 
     fun onTokenRefresh(context: Context, token: String) {
