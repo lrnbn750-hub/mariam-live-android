@@ -160,12 +160,12 @@ class AdminActivity : Activity() {
                             setPadding(dp(13), dp(11), dp(13), dp(11))
                             background = rounded(Color.WHITE)
                         }
-                        card.addView(line("بلاغ #$id  •  \${item.optString("status", "new")}", 15, true))
-                        card.addView(line("المبلّغ: \${item.optString("reporter_username", "—")}  |  المُبلّغ عليه: \${item.optString("reported_username", "—")}", 13, false, muted))
-                        card.addView(line("السبب: \${item.optString("reason", "—")}", 13))
+                        card.addView(line("بلاغ #$id  •  ${item.optString("status", "new")}", 15, true))
+                        card.addView(line("المبلّغ: ${item.optString("reporter_username", "—")}  |  المُبلّغ عليه: ${item.optString("reported_username", "—")}", 13, false, muted))
+                        card.addView(line("السبب: ${item.optString("reason", "—")}", 13))
                         val details = item.optString("details")
                         if (details.isNotBlank() && details != "null") card.addView(line("التفاصيل: $details", 13))
-                        card.addView(line("التاريخ: \${item.optString("created_at", "—")}", 11, false, muted))
+                        card.addView(line("التاريخ: ${item.optString("created_at", "—")}", 11, false, muted))
                         val review = actionButton("مراجعة البلاغ")
                         card.addView(review, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(7) })
                         review.setOnClickListener { reviewReport(id, item.optString("status", "new")) }
