@@ -2924,10 +2924,16 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    reportDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{
     val note=details.text.toString().trim()
     if(keys[selected]=="other" && note.length<5){details.error="اكتب تفاصيل السبب (5 أحرف على الأقل)";return@setOnClickListener}
-    val payload=JSONObject().put("reported_user_id",reportedUserId).put("room_id",roomId).put("reason",keys[selected]).put("details",note)
     reportDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled=false
     scope.launch{
      try{
+      // Room member IDs may be public IDs/identifiers; resolve the canonical users.id UUID first.
+      val profileResponse=withContext(Dispatchers.IO){AuthApi.get("/api/users/$reportedUserId",authToken)}
+      if(profileResponse.status !in 200..299)throw Exception(profileResponse.body.optString("error","تعذر التحقق من حساب المستخدم"))
+      val profile=profileResponse.body.optJSONObject("user")?:profileResponse.body
+      val canonicalUserId=sequenceOf("id","user_id","uuid").map{profile.optString(it)}.firstOrNull{it.matches(Regex("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"))}
+       ?:throw Exception("لم يعثر التطبيق على المعرّف الداخلي الصحيح لهذا الحساب")
+      val payload=JSONObject().put("reported_user_id",canonicalUserId).put("room_id",roomId).put("reason",keys[selected]).put("details",note)
       val response=withContext(Dispatchers.IO){AuthApi.post("/api/reports",payload,authToken)}
       if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر إرسال البلاغ"))
       reportDialog.dismiss();profileDialog.dismiss()
