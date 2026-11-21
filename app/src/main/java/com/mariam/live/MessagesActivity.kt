@@ -18,7 +18,8 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-// Conversation list with remote profile avatars and a letter fallback.\nclass MessagesActivity : Activity() {
+// Conversation list with remote profile avatars and a letter fallback.
+class MessagesActivity : Activity() {
     private val executor = Executors.newFixedThreadPool(4)
     private val green = Color.rgb(34, 158, 92)
     private val ink = Color.rgb(35, 45, 39)
