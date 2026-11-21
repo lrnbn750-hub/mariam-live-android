@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "329416265885",
+    "project_id": "bak-live-e6ff3",
+    "storage_bucket": "bak-live-e6ff3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:329416265885:android:63606744097084af1d4474",
+        "android_client_info": {
+          "package_name": "com.bak.live"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAegUVs91UUs57RKdEz0Q8NU2qvNp5b-rY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
