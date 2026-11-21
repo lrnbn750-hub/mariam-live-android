@@ -117,6 +117,7 @@ class RoomActivity : Activity() {
  private var trendHeartbeatJob:Job?=null
  private var trendButton:TextView?=null
  private var trendPoints=0L
+  private var trendAnimator:android.animation.ValueAnimator?=null
  private var lastGiftEventId=0L
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
@@ -323,7 +324,7 @@ class RoomActivity : Activity() {
    contentDescription="نقاط ترند الغرفة، اضغط لعرض قائمة المستخدمين المشهورين"
    setOnClickListener{showTrendingRooms()}
   }
-  trendButton=label("0",13f,Color.WHITE,true).apply{
+  trendButton=label(String.format(java.util.Locale.US,"%,d",trendPoints),13f,Color.WHITE,true).apply{
    includeFontPadding=false
    gravity=Gravity.CENTER
   }
@@ -1855,6 +1856,13 @@ class RoomActivity : Activity() {
     if(bitmap!=null){
      avatarBitmaps[url]=bitmap
      if(view.tag==url)view.setImageBitmap(bitmap)
+     // Viewer avatars must also appear in the member strip before they take a seat.
+     if(::memberAvatars.isInitialized){
+      for(index in 0 until memberAvatars.childCount){
+       val thumb=memberAvatars.getChildAt(index) as? ImageView ?: continue
+       if(thumb.tag==url)thumb.setImageBitmap(bitmap)
+      }
+     }
     }
    }catch(_:Exception){}finally{avatarLoading.remove(url)}
   }
@@ -2601,7 +2609,9 @@ class RoomActivity : Activity() {
        val member=fresh.optJSONObject(index)
        val nested=member?.optJSONObject("user")?:member?.optJSONObject("profile")
        val avatarUrl=member?.optString("avatar_url")?.takeIf{!it.isNullOrBlank()&&it!="null"}
-        ?:nested?.optString("avatar_url")?.takeIf{!it.isNullOrBlank()&&it!="null"}
+         ?:member?.optString("profile_image")?.takeIf{!it.isNullOrBlank()&&it!="null"}
+         ?:nested?.optString("avatar_url")?.takeIf{!it.isNullOrBlank()&&it!="null"}
+         ?:nested?.optString("profile_image")?.takeIf{!it.isNullOrBlank()&&it!="null"}
        thumb.setImageDrawable(VectorIcon("user",Color.rgb(255,190,220),dp(13)))
        thumb.tag=avatarUrl.orEmpty()
        if(!avatarUrl.isNullOrBlank())loadAvatarInto(thumb,avatarUrl)
@@ -3577,6 +3587,30 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
  }
+ private fun animateTrendPoints(target:Long){
+  val start=trendPoints
+  if(start==target){
+   trendButton?.text=String.format(java.util.Locale.US,"%,d",target)
+   return
+  }
+  trendAnimator?.cancel()
+  trendAnimator=android.animation.ValueAnimator.ofFloat(0f,1f).apply{
+   duration=850L
+   interpolator=android.view.animation.DecelerateInterpolator(1.6f)
+   addUpdateListener{anim->
+    val fraction=anim.animatedValue as Float
+    val value=(start.toDouble()+(target.toDouble()-start.toDouble())*fraction).toLong()
+    trendButton?.text=String.format(java.util.Locale.US,"%,d",value)
+   }
+   addListener(object:android.animation.AnimatorListenerAdapter(){
+    override fun onAnimationEnd(animation:android.animation.Animator){
+     trendPoints=target
+     trendButton?.text=String.format(java.util.Locale.US,"%,d",target)
+    }
+   })
+   start()
+  }
+ }
  private fun loadTrendScore(){
   scope.launch{
    try{
@@ -3586,8 +3620,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      for(i in 0 until rooms.length()){
       val item=rooms.optJSONObject(i)?:continue
       if(item.optString("id")==roomId){
-       trendPoints=item.optLong("trend_points")
-       trendButton?.text=String.format("%,d",trendPoints)
+       val latest=item.optLong("trend_points")
+       animateTrendPoints(latest)
        break
       }
      }
@@ -3816,7 +3850,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
 
- override fun onDestroy(){try{giftSound?.stop()}catch(_:Exception){};giftSound=null
+ override fun onDestroy(){trendAnimator?.cancel();trendAnimator=null;try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
   watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
