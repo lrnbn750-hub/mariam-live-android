@@ -6,6 +6,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.TextView
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -71,16 +79,72 @@ class BanSessionMonitor : Application(), Application.ActivityLifecycleCallbacks 
         }
     }
 
+    private fun dp(activity: Activity, value: Int): Int =
+        (value * activity.resources.displayMetrics.density).toInt()
+
+    /** A small in-app dock keeps the active room one tap away on every screen. */
+    private fun showRoomReturnButton(activity: Activity) {
+        if (activity is RoomActivity || activity is LoginActivity || activity is AccountBannedActivity) return
+        val roomId = getSharedPreferences("MariamLive", MODE_PRIVATE)
+            .getString("active_room_id", null)?.takeIf { it.isNotBlank() } ?: return
+        val decor = activity.window?.decorView as? ViewGroup ?: return
+        if (decor.findViewWithTag<View>("bak_live_room_return") != null) return
+
+        val button = TextView(activity).apply {
+            tag = "bak_live_room_return"
+            text = "🎙  الرجوع للغرفة"
+            textSize = 12.5f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(dp(activity, 15), 0, dp(activity, 15), 0)
+            elevation = dp(activity, 8).toFloat()
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(82, 65, 125), Color.rgb(42, 35, 72))
+            ).apply {
+                cornerRadius = dp(activity, 24).toFloat()
+                setStroke(dp(activity, 1), Color.argb(110, 255, 255, 255))
+            }
+            contentDescription = "العودة إلى الغرفة الصوتية مع الاحتفاظ بالمقعد"
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                val currentRoomId = getSharedPreferences("MariamLive", MODE_PRIVATE)
+                    .getString("active_room_id", null)?.takeIf { it.isNotBlank() } ?: roomId
+                val intent = Intent(activity, RoomActivity::class.java).apply {
+                    putExtra("room_id", currentRoomId)
+                    addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+                activity.startActivity(intent)
+            }
+        }
+        val params = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 42), Gravity.TOP or Gravity.END
+        ).apply {
+            topMargin = dp(activity, 58)
+            marginEnd = dp(activity, 12)
+        }
+        decor.addView(button, params)
+    }
+
+    private fun removeRoomReturnButton(activity: Activity) {
+        val decor = activity.window?.decorView as? ViewGroup ?: return
+        decor.findViewWithTag<View>("bak_live_room_return")?.let { decor.removeView(it) }
+    }
+
     override fun onActivityResumed(activity: Activity) {
         foregroundActivities++
         if (activity !is AccountBannedActivity && activity !is LoginActivity) {
             checkCurrentSession()
         }
+        showRoomReturnButton(activity)
         handler.removeCallbacks(poll)
         handler.postDelayed(poll, 15_000L)
     }
 
     override fun onActivityPaused(activity: Activity) {
+        removeRoomReturnButton(activity)
         foregroundActivities = (foregroundActivities - 1).coerceAtLeast(0)
         if (foregroundActivities == 0) handler.removeCallbacks(poll)
     }
