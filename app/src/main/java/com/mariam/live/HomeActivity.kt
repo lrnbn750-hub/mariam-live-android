@@ -273,6 +273,39 @@ class HomeActivity : Activity() {
         }
         setContentView(root)
         ViewCompat.requestApplyInsets(navWrap)
+        handlePushIntent(intent)
+    }
+
+    override fun onNewIntent(newIntent: Intent) {
+        super.onNewIntent(newIntent)
+        setIntent(newIntent)
+        handlePushIntent(newIntent)
+    }
+
+    private fun handlePushIntent(pushIntent: Intent?) {
+        if (pushIntent?.getBooleanExtra("from_push", false) != true) return
+        val screen = pushIntent.getStringExtra("screen").orEmpty().lowercase()
+        val type = pushIntent.getStringExtra("type").orEmpty().lowercase()
+        val conversationId = pushIntent.getStringExtra("conversation_id").orEmpty()
+        val roomId = pushIntent.getStringExtra("room_id").orEmpty()
+        val userId = pushIntent.getStringExtra("user_id").orEmpty()
+        val destination = when {
+            screen == "chat" && conversationId.isNotBlank() ->
+                Intent(this, DirectChatActivity::class.java).putExtra("conversation_id", conversationId)
+            (screen == "room" || type == "gift" || type.contains("room")) && roomId.isNotBlank() ->
+                Intent(this, RoomActivity::class.java).putExtra("room_id", roomId)
+            (screen == "profile" || type == "follow") && userId.isNotBlank() ->
+                Intent(this, ProfileActivity::class.java).putExtra("profile_user_id", userId)
+            screen == "agency" || type.contains("agency") ->
+                Intent(this, AgencyActivity::class.java)
+            else -> null
+        }
+        // Clear the push marker before navigating so returning to Home cannot reopen it.
+        pushIntent.removeExtra("from_push")
+        if (destination != null) {
+            destination.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(destination)
+        }
     }
 
     override fun onResume(){
