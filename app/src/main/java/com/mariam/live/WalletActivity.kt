@@ -32,9 +32,10 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
-import kotlin.concurrent.thread
+import java.util.concurrent.Executors
 
 class WalletActivity : Activity() {
+    private val io = Executors.newFixedThreadPool(4)
 
     // ───────── Palette ─────────
     private val ink = 0xFFFFFFFF.toInt()
@@ -180,6 +181,7 @@ class WalletActivity : Activity() {
 
     override fun onDestroy() {
         stopPulses()
+        io.shutdownNow()
         super.onDestroy()
     }
 
@@ -192,11 +194,15 @@ class WalletActivity : Activity() {
     private fun loadWallet() {
         if (token.isBlank()) { showError("انتهت جلسة الدخول"); return }
         loading()
-        thread {
+        io.execute {
             try {
-                val w = AuthApi.get("/api/wallet", token)
-                val p = AuthApi.get("/api/wallet/packages", token)
-                val h = AuthApi.get("/api/wallet/transactions", token)
+                // Load balance, packages and transaction history in parallel.
+                val walletFuture = io.submit { AuthApi.get("/api/wallet", token) }
+                val packagesFuture = io.submit { AuthApi.get("/api/wallet/packages", token) }
+                val historyFuture = io.submit { AuthApi.get("/api/wallet/transactions", token) }
+                val w = walletFuture.get()
+                val p = packagesFuture.get()
+                val h = historyFuture.get()
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
                     if (w.status !in 200..299) {
