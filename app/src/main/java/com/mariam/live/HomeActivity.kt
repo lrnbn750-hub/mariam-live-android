@@ -292,7 +292,7 @@ class HomeActivity : Activity() {
         val destination = when {
             screen == "chat" && conversationId.isNotBlank() ->
                 Intent(this, DirectChatActivity::class.java).putExtra("conversation_id", conversationId)
-            (screen == "room" || type == "gift" || type.contains("room")) && roomId.isNotBlank() ->
+            (screen == "room" || screen == "invite" || type == "gift" || type.contains("room") || type.contains("invite")) && roomId.isNotBlank() ->
                 Intent(this, RoomActivity::class.java).putExtra("room_id", roomId)
             (screen == "profile" || type == "follow") && userId.isNotBlank() ->
                 Intent(this, ProfileActivity::class.java).putExtra("profile_user_id", userId)
