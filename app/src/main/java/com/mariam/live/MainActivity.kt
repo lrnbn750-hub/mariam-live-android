@@ -20,7 +20,7 @@ class MainActivity : Activity() {
             LoginActivity::class.java
         }
 
-        startActivity(Intent(this, destination))
+        val launchIntent = Intent(this, destination).apply {\n            intent.extras?.let { putExtras(it) }\n            action = intent.action\n        }\n        startActivity(launchIntent)
         finish()
     }
 }
