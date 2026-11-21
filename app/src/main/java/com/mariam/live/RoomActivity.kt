@@ -90,6 +90,7 @@ class RoomActivity : Activity() {
  private var currentUserEquippedFrameUrl=""
  private val chatBubbleStylesByUser=HashMap<String,String>()
  private var chatBubbleSelectionRefreshAt=0L
+ private var lastRenderedChatSignature=""
  private val avatarLoading=HashSet<String>()
  private lateinit var mic:LinearLayout
  private lateinit var micControl:ImageView
@@ -1006,7 +1007,7 @@ class RoomActivity : Activity() {
     val messages=result.body.optJSONArray("messages")?:JSONArray()
     // Refresh the equipped bubble skins for visible senders at most every 15 seconds.
     val nowForBubbleSync=System.currentTimeMillis()
-    if(nowForBubbleSync-chatBubbleSelectionRefreshAt>3000L && messages.length()>0){
+    if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
      for(index in 0 until messages.length()){
       val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { msg.optString("sender_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } } }.orEmpty()
@@ -1035,6 +1036,16 @@ class RoomActivity : Activity() {
       }catch(_:Exception){ /* Keep the last known skin if the optional lookup is unavailable. */ }
      }
     }
+    val activeJoinNotices=joinNotices.filter{nowForBubbleSync-it.createdAt<=12000L}.takeLast(2)
+    val chatRenderSignature=buildString{
+     append(messages.toString())
+     append('|')
+     append(chatBubbleStylesByUser.toSortedMap().entries.joinToString(";"){it.key+":"+it.value})
+     append('|')
+     activeJoinNotices.forEach{append(it.userId).append(':').append(it.createdAt/1000L).append(';')}
+    }
+    // Polling should not tear down and recreate identical chat bubbles every 3 seconds.
+    if(chatRenderSignature==lastRenderedChatSignature)return@launch
     // Preserve the reader's position during polling; only follow new messages
     // automatically when they were already at the bottom.
     val previousScrollY=chatScroll.scrollY
@@ -1157,6 +1168,7 @@ class RoomActivity : Activity() {
      if(wasAtBottom)chatScroll.fullScroll(View.FOCUS_DOWN)
      else chatScroll.scrollTo(0,previousScrollY.coerceAtMost(chatMessages.height-chatScroll.height).coerceAtLeast(0))
     }
+    lastRenderedChatSignature=chatRenderSignature
    }catch(_:Exception){
     if(chatMessages.childCount==0)chatMessages.addView(label("تعذر الاتصال بالدردشة",13f,Color.LTGRAY))
    }
@@ -2923,7 +2935,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   membershipWatch=scope.launch{
    while(isActive && connected && !leaving){
     delay(4500)
-    loadSeats()
     loadRoomMembers()
    }
   }
