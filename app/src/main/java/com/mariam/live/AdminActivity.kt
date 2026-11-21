@@ -341,43 +341,78 @@ class AdminActivity : Activity() {
     }
 
     private fun askBan(publicId: String) {
-        val reason = EditText(this).apply { hint = "سبب الحظر (إلزامي)" }
-        val duration = EditText(this).apply {
-            hint = "مدة الحظر بالساعات (1 إلى 8760)"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        val reasons = listOf(
+            "الإساءة إلى كبار الشخصيات (VIP)",
+            "السب والشتم والإساءة اللفظية",
+            "التهديد أو التحرش والمضايقة",
+            "التخريب والإزعاج داخل الغرف",
+            "نشر محتوى غير لائق",
+            "مخالفة الضوابط الدينية",
+            "مخالفة شروط وأحكام التطبيق"
+        )
+        val reasonPicker = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@AdminActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                reasons
+            )
+        }
+        val durations = listOf(
+            "ساعة واحدة" to 1,
+            "6 ساعات" to 6,
+            "24 ساعة" to 24,
+            "3 أيام" to 72,
+            "7 أيام" to 168,
+            "30 يوماً" to 720
+        )
+        val durationPicker = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@AdminActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                durations.map { it.first }
+            )
         }
         val type = android.widget.RadioGroup(this).apply {
             orientation = android.widget.RadioGroup.VERTICAL
-            val temporary = android.widget.RadioButton(this@AdminActivity).apply { text = "حظر مؤقت"; id = View.generateViewId(); isChecked = true }
-            val permanent = android.widget.RadioButton(this@AdminActivity).apply { text = "حظر دائم"; id = View.generateViewId() }
+            val temporary = android.widget.RadioButton(this@AdminActivity).apply {
+                text = "حظر مؤقت"; id = View.generateViewId(); isChecked = true
+            }
+            val permanent = android.widget.RadioButton(this@AdminActivity).apply {
+                text = "حظر دائم"; id = View.generateViewId()
+            }
             addView(temporary); addView(permanent)
             tag = Pair(temporary.id, permanent.id)
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
-            addView(type); addView(duration); addView(reason)
+            addView(line("سبب الحظر", 14, true))
+            addView(reasonPicker, LinearLayout.LayoutParams(-1, dp(52)))
+            addView(line("نوع الحظر", 14, true))
+            addView(type)
+            addView(line("مدة الحظر المؤقت", 14, true))
+            addView(durationPicker, LinearLayout.LayoutParams(-1, dp(52)))
         }
         type.setOnCheckedChangeListener { _, checked ->
-            duration.visibility = if (checked == (type.tag as Pair<*, *>).first) View.VISIBLE else View.GONE
+            durationPicker.visibility =
+                if (checked == (type.tag as Pair<*, *>).first) View.VISIBLE else View.GONE
         }
         android.app.AlertDialog.Builder(this)
-            .setTitle("حظر $publicId")
+            .setTitle("تأكيد حظر المستخدم")
+            .setMessage("المستخدم: $publicId")
             .setView(content)
             .setNegativeButton("إلغاء", null)
             .setPositiveButton("تأكيد الحظر", null)
             .create().also { dialog ->
                 dialog.setOnShowListener {
                     dialog.getButton(-1).setOnClickListener {
-                        val why = reason.text.toString().trim()
                         val temporary = type.checkedRadioButtonId == (type.tag as Pair<*, *>).first
-                        val hours = duration.text.toString().toIntOrNull()
-                        if (why.isBlank() || (temporary && (hours == null || hours !in 1..8760))) {
-                            Toast.makeText(this, "أدخل السبب والمدة الصحيحة", Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
+                        val payload = JSONObject()
+                            .put("ban_type", if (temporary) "temporary" else "permanent")
+                            .put("reason", reasons[reasonPicker.selectedItemPosition])
+                        if (temporary) {
+                            payload.put("duration_hours", durations[durationPicker.selectedItemPosition].second)
                         }
-                        val payload = JSONObject().put("ban_type", if (temporary) "temporary" else "permanent").put("reason", why)
-                        if (temporary) payload.put("duration_hours", hours)
                         submitBan(publicId, payload, dialog)
                     }
                 }
