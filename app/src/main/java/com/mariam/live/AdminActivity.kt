@@ -31,6 +31,7 @@ class AdminActivity : Activity() {
     private lateinit var auditBox: LinearLayout
     private lateinit var agenciesBox: LinearLayout
     private lateinit var withdrawalsBox: LinearLayout
+    private lateinit var reportsBox: LinearLayout
     private var agencyStatus = "pending"
     private var withdrawalStatus = "pending"
 
@@ -69,6 +70,13 @@ class AdminActivity : Activity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))
         }
         page.addView(statsBox)
+
+        page.addView(title("بلاغات المستخدمين", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
+        val reportsRefresh = actionButton("تحديث البلاغات")
+        page.addView(reportsRefresh, LinearLayout.LayoutParams(-1, dp(46)))
+        reportsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        page.addView(reportsBox)
+        reportsRefresh.setOnClickListener { loadReports() }
 
         page.addView(title("إدارة المستخدمين", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
         searchInput = EditText(this).apply {
@@ -127,6 +135,101 @@ class AdminActivity : Activity() {
         auditBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(auditBox)
         loadDashboard()
+        loadReports()
+    }
+
+    private fun loadReports() {
+        if (!::reportsBox.isInitialized) return
+        val token = tokenOrClose() ?: return
+        reportsBox.removeAllViews()
+        reportsBox.addView(line("جارٍ تحميل البلاغات…", 14, false, muted))
+        executor.execute {
+            try {
+                val response = AuthApi.get("/api/admin/v2/reports?limit=30", token)
+                if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل البلاغات"))
+                val array = response.body.optJSONArray("reports")
+                val rows = ArrayList<JSONObject>()
+                if (array != null) for (i in 0 until array.length()) array.optJSONObject(i)?.let(rows::add)
+                runOnUiThread {
+                    reportsBox.removeAllViews()
+                    if (rows.isEmpty()) reportsBox.addView(line("لا توجد بلاغات حالياً", 14, false, muted))
+                    rows.forEach { item ->
+                        val id = item.optLong("id")
+                        val card = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(13), dp(11), dp(13), dp(11))
+                            background = rounded(Color.WHITE)
+                        }
+                        card.addView(line("بلاغ #$id  •  \${item.optString("status", "new")}", 15, true))
+                        card.addView(line("المبلّغ: \${item.optString("reporter_username", "—")}  |  المُبلّغ عليه: \${item.optString("reported_username", "—")}", 13, false, muted))
+                        card.addView(line("السبب: \${item.optString("reason", "—")}", 13))
+                        val details = item.optString("details")
+                        if (details.isNotBlank() && details != "null") card.addView(line("التفاصيل: $details", 13))
+                        card.addView(line("التاريخ: \${item.optString("created_at", "—")}", 11, false, muted))
+                        val review = actionButton("مراجعة البلاغ")
+                        card.addView(review, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(7) })
+                        review.setOnClickListener { reviewReport(id, item.optString("status", "new")) }
+                        reportsBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread { reportsBox.removeAllViews(); reportsBox.addView(line(e.message ?: "تعذر تحميل البلاغات", 14, false, Color.RED)) }
+            }
+        }
+    }
+
+    private fun reviewReport(reportId: Long, currentStatus: String) {
+        val labels = listOf("قيد المراجعة", "مقبول", "مرفوض", "مغلق")
+        val statuses = listOf("reviewing", "accepted", "rejected", "closed")
+        val group = android.widget.RadioGroup(this).apply { orientation = android.widget.RadioGroup.VERTICAL }
+        var selected = statuses.indexOf(currentStatus).takeIf { it >= 0 } ?: 0
+        labels.forEachIndexed { index, value ->
+            group.addView(android.widget.RadioButton(this).apply {
+                text = value
+                id = View.generateViewId()
+                tag = index
+                if (index == selected) isChecked = true
+            })
+        }
+        group.setOnCheckedChangeListener { g, checked ->
+            selected = (0 until g.childCount).mapNotNull { g.getChildAt(it) as? android.widget.RadioButton }
+                .firstOrNull { it.id == checked }?.tag as? Int ?: 0
+        }
+        val note = EditText(this).apply { hint = "ملاحظة المراجعة (مطلوبة عند القبول أو الرفض أو الإغلاق)" }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(group)
+            addView(note)
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("مراجعة البلاغ #$reportId")
+            .setView(content)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("حفظ القرار", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(-1).setOnClickListener {
+                val memo = note.text.toString().trim()
+                if (statuses[selected] != "reviewing" && memo.length < 3) {
+                    note.error = "أدخل ملاحظة للمراجعة"
+                    return@setOnClickListener
+                }
+                val token = tokenOrClose() ?: return@setOnClickListener
+                val payload = JSONObject().put("status", statuses[selected]).put("note", memo)
+                dialog.getButton(-1).isEnabled = false
+                executor.execute {
+                    try {
+                        val result = AuthApi.post("/api/admin/v2/reports/$reportId/review", payload, token)
+                        if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر حفظ القرار"))
+                        runOnUiThread { dialog.dismiss(); Toast.makeText(this, "تم تحديث البلاغ", Toast.LENGTH_SHORT).show(); loadReports() }
+                    } catch (e: Exception) {
+                        runOnUiThread { dialog.getButton(-1).isEnabled = true; Toast.makeText(this, e.message ?: "تعذر تحديث البلاغ", Toast.LENGTH_LONG).show() }
+                    }
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun loadDashboard() {
