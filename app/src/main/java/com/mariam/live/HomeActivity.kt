@@ -6,7 +6,6 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 import android.graphics.BitmapFactory
-import android.util.LruCache
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Base64
@@ -30,14 +29,9 @@ import org.json.JSONObject
 import java.net.URL
 import java.net.HttpURLConnection
 import java.util.concurrent.Executors
-import java.util.Collections
 
 class HomeActivity : Activity() {
     private val executor = Executors.newFixedThreadPool(4)
-    private val roomCoverCache = object : LruCache<String, Bitmap>(maxOf(1, (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt())) {
-        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
-    }
-    private val roomCoverLoading = Collections.synchronizedSet(mutableSetOf<String>())
     private val ink = Color.rgb(35,45,39)
     private val muted = Color.rgb(150,128,90)
     private val gold = Color.rgb(224,152,24)
@@ -297,7 +291,7 @@ class HomeActivity : Activity() {
             }
             // أيقونة بديلة إذا لا توجد صورة
             frame.addView(LineIcon(this,"mic",Color.argb(140,210,150,40)),FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
-            val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;tag=room.imageUrl}
+            val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP}
             frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
             if(!room.imageUrl.isNullOrBlank())loadRoomCover(cover,room.imageUrl)
             // تدرجات الظل أعلى وأسفل البطاقة
@@ -401,42 +395,24 @@ class HomeActivity : Activity() {
         }
     }
     private fun loadRoomCover(view:ImageView,imageUrl:String){
-        val cached=roomCoverCache.get(imageUrl)
-        if(cached!=null){if(view.tag==imageUrl)view.setImageBitmap(cached);return}
-        if(!roomCoverLoading.add(imageUrl))return
         executor.execute{
             var connection:HttpURLConnection?=null
             try{
                 connection=(URL(imageUrl).openConnection() as HttpURLConnection).apply{
-                    connectTimeout=10000
-                    readTimeout=12000
+                    connectTimeout=15000
+                    readTimeout=20000
                     instanceFollowRedirects=true
                     setRequestProperty("Accept","image/avif,image/webp,image/png,image/jpeg,*/*")
-                    setRequestProperty("User-Agent","BAK-LIVE-Android")
+                    setRequestProperty("User-Agent","MariamLive-Android")
                     connect()
                 }
                 if(connection.responseCode !in 200..299)throw Exception("HTTP ${connection.responseCode}")
-                val bytes=connection.inputStream.use{it.readBytes()}
-                val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
-                BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
-                val targetWidth=view.width.takeIf{it>0}?:480
-                val targetHeight=view.height.takeIf{it>0}?:540
-                var sample=1
-                while(bounds.outWidth/sample>targetWidth*2 || bounds.outHeight/sample>targetHeight*2)sample*=2
-                val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size,BitmapFactory.Options().apply{
-                    inSampleSize=sample
-                    inPreferredConfig=Bitmap.Config.RGB_565
-                })?:throw Exception("Invalid room image")
-                roomCoverCache.put(imageUrl,bitmap)
-                runOnUiThread{
-                    if(!isFinishing && !isDestroyed && view.tag==imageUrl)view.setImageBitmap(bitmap)
-                }
+                val bitmap=connection.inputStream.use{BitmapFactory.decodeStream(it)}
+                    ?: throw Exception("Invalid room image")
+                runOnUiThread{if(!isFinishing && !isDestroyed)view.setImageBitmap(bitmap) else bitmap.recycle()}
             }catch(e:Exception){
                 android.util.Log.w("MariamLive","Room cover load failed: $imageUrl",e)
-            }finally{
-                connection?.disconnect()
-                roomCoverLoading.remove(imageUrl)
-            }
+            }finally{connection?.disconnect()}
         }
     }
     private fun joinRoom(id:String,name:String){
