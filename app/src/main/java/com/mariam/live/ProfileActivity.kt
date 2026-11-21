@@ -35,7 +35,6 @@ import java.net.URL
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
-import java.util.concurrent.CompletableFuture
 
 /**
  * Fully native Kotlin profile screen (no WebView). UI redesign only:
@@ -43,7 +42,7 @@ import java.util.concurrent.CompletableFuture
  * upload flow are identical to the previous version.
  */
 class ProfileActivity : Activity() {
-    private val executor = Executors.newFixedThreadPool(5)
+    private val executor = Executors.newSingleThreadExecutor()
     private val photoPickerCode = 7421
     private lateinit var page: LinearLayout
     private lateinit var header: ProfileHeaderView
@@ -458,26 +457,19 @@ class ProfileActivity : Activity() {
                     .put("fans", 0)
                     .put("diamonds", 0)
                     .put("coins", 0)
-                // These four requests are independent. Run them together so profile
-                // opening is not delayed by a chain of sequential network round-trips.
-                val levelFuture = CompletableFuture.supplyAsync({ AuthApi.get("/api/levels/me", token) }, executor)
-                val followsFuture = CompletableFuture.supplyAsync({ AuthApi.get("/api/follows/me", token) }, executor)
-                val walletFuture = CompletableFuture.supplyAsync({ AuthApi.get("/api/wallet", token) }, executor)
-                val adminFuture = CompletableFuture.supplyAsync({ AuthApi.get("/api/admin/v2/me", token) }, executor)
-
                 try {
-                    val level = levelFuture.get()
+                    val level = AuthApi.get("/api/levels/me", token)
                     if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
                 } catch (_: Exception) {}
                 try {
-                    val follows = followsFuture.get()
+                    val follows = AuthApi.get("/api/follows/me", token)
                     if (follows.status in 200..299) {
                         data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
                         data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
                     }
                 } catch (_: Exception) {}
                 try {
-                    val wallet = walletFuture.get()
+                    val wallet = AuthApi.get("/api/wallet", token)
                     if (wallet.status in 200..299) {
                         val w = wallet.body.optJSONObject("wallet") ?: wallet.body
                         data.put("coins", w.optLong("recharge_coins", 0L))
@@ -487,7 +479,7 @@ class ProfileActivity : Activity() {
                 profileData = data
                 var isAdmin = false
                 try {
-                    val adminCheck = adminFuture.get()
+                    val adminCheck = AuthApi.get("/api/admin/v2/me", token)
                     isAdmin = adminCheck.status in 200..299 &&
                         adminCheck.body.optBoolean("success", false) &&
                         adminCheck.body.optJSONObject("admin") != null
