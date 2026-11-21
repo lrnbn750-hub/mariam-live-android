@@ -161,7 +161,10 @@ class AdminActivity : Activity() {
                             background = rounded(Color.WHITE)
                         }
                         card.addView(line("بلاغ #$id  •  ${item.optString("status", "new")}", 15, true))
-                        card.addView(line("المبلّغ: ${item.optString("reporter_username", "—")}  |  المُبلّغ عليه: ${item.optString("reported_username", "—")}", 13, false, muted))
+                        card.addView(line("المبلّغ: ${item.optString("reporter_username", "—")}", 13, false, muted))
+                        card.addView(line("ID المبلّغ: ${item.optString("reporter_public_id", item.optString("reporter_user_id", "غير متوفر"))}", 12, false, muted))
+                        card.addView(line("المُبلّغ عليه: ${item.optString("reported_username", "—")}", 13, false, muted))
+                        card.addView(line("ID المُبلّغ عليه: ${item.optString("reported_public_id", item.optString("reported_user_id", "غير متوفر"))}", 12, false, muted))
                         card.addView(line("السبب: ${item.optString("reason", "—")}", 13))
                         val details = item.optString("details")
                         if (details.isNotBlank() && details != "null") card.addView(line("التفاصيل: $details", 13))
@@ -169,11 +172,42 @@ class AdminActivity : Activity() {
                         val review = actionButton("مراجعة البلاغ")
                         card.addView(review, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(7) })
                         review.setOnClickListener { reviewReport(id, item.optString("status", "new")) }
+                        val reportedPublicId = item.optString("reported_public_id", "")
+                        val roomIdForWatch = item.optString("room_id", "")
+                        if (reportedPublicId.isNotBlank() && reportedPublicId != "null") {
+                            val ban = actionButton("حظر المستخدم المُبلّغ عليه")
+                            card.addView(ban, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+                            ban.setOnClickListener { askBan(reportedPublicId) }
+                        }
+                        if (roomIdForWatch.isNotBlank() && roomIdForWatch != "null" && item.optString("status") !in listOf("rejected", "closed")) {
+                            val watch = actionButton("مشاهدة البث بالصوت والصورة")
+                            card.addView(watch, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+                            watch.setOnClickListener { startReportWatch(id) }
+                        }
                         reportsBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread { reportsBox.removeAllViews(); reportsBox.addView(line(e.message ?: "تعذر تحميل البلاغات", 14, false, Color.RED)) }
+            }
+        }
+    }
+
+    private fun startReportWatch(reportId: Long) {
+        val token = tokenOrClose() ?: return
+        executor.execute {
+            try {
+                val response = AuthApi.post("/api/admin/v2/reports/$reportId/watch", JSONObject(), token)
+                if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر بدء مراقبة البث"))
+                val intent = Intent(this, AdminLiveMonitorActivity::class.java)
+                    .putExtra("admin_token", token)
+                    .putExtra("session_id", response.body.optString("sessionId"))
+                    .putExtra("room_id", response.body.optString("roomId"))
+                    .putExtra("server_url", response.body.optString("serverUrl"))
+                    .putExtra("participant_token", response.body.optString("participantToken"))
+                runOnUiThread { startActivity(intent) }
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this, e.message ?: "تعذر بدء مراقبة البث", Toast.LENGTH_LONG).show() }
             }
         }
     }
