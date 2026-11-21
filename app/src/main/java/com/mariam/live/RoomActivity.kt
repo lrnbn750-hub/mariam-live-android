@@ -3693,8 +3693,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       }
      }
     }
-   }catch(_:CancellationException){
-    throw
+   }catch(e:CancellationException){
+    throw e
    }catch(_:Exception){
     // Keep the last confirmed score; retry on the next one-second cycle.
    }finally{
