@@ -147,7 +147,7 @@ class DirectChatActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setBackgroundColor(Color.WHITE)
         }
-        applyInsets(root)
+        // Insets are attached after the view hierarchy is fully initialized.
 
         // ───────── الهيدر ─────────
         val header = LinearLayout(this).apply {
@@ -271,6 +271,7 @@ class DirectChatActivity : Activity() {
         updateSendState()
 
         setContentView(root)
+        applyInsets(root)
         root.requestApplyInsets()
 
         when {
@@ -315,7 +316,7 @@ class DirectChatActivity : Activity() {
                 }
             }
             v.setPadding(l, t, r, b)
-            if (b != lastBottomInset) {
+            if (::scroll.isInitialized && b != lastBottomInset) {
                 lastBottomInset = b
                 scrollToBottom()
             }
@@ -324,7 +325,12 @@ class DirectChatActivity : Activity() {
     }
 
     private fun scrollToBottom() {
-        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        if (!::scroll.isInitialized) return
+        scroll.post {
+            if (::scroll.isInitialized && !isFinishing && !isDestroyed) {
+                scroll.fullScroll(View.FOCUS_DOWN)
+            }
+        }
     }
 
     // ───────── حالة الواجهة ─────────
