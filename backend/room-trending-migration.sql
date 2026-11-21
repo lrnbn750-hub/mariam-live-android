@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.voice_room_daily_trends (
   gift_coins bigint NOT NULL DEFAULT 0 CHECK (gift_coins >= 0),
   message_count bigint NOT NULL DEFAULT 0 CHECK (message_count >= 0),
   seat_seconds bigint NOT NULL DEFAULT 0 CHECK (seat_seconds >= 0),
+  last_gift_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(room_id,trend_date)
 );
@@ -31,3 +32,7 @@ CREATE TABLE IF NOT EXISTS public.voice_room_trend_seat_sessions (
 GRANT SELECT,INSERT,UPDATE ON public.voice_room_daily_trends TO :"app_role";
 GRANT SELECT,INSERT,DELETE ON public.voice_room_trend_message_minutes TO :"app_role";
 GRANT SELECT,INSERT,UPDATE ON public.voice_room_trend_seat_sessions TO :"app_role";
+
+-- Track the most recent gift so gift-derived trend points can cool down gradually.
+ALTER TABLE public.voice_room_daily_trends
+  ADD COLUMN IF NOT EXISTS last_gift_at timestamptz;
