@@ -117,7 +117,8 @@ class RoomActivity : Activity() {
  private var trendHeartbeatJob:Job?=null
  private var trendButton:TextView?=null
  private var trendPoints=0L
-  private var trendAnimator:android.animation.ValueAnimator?=null
+ private var trendScoreLoaded=false
+ private var trendAnimator:android.animation.ValueAnimator?=null
  private var lastGiftEventId=0L
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
@@ -3658,8 +3659,16 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      for(i in 0 until rooms.length()){
       val item=rooms.optJSONObject(i)?:continue
       if(item.optString("id")==roomId){
-       val latest=item.optLong("trend_points")
-       animateTrendPoints(latest)
+       val latest=item.optLong("trend_points").coerceAtLeast(0L)
+       if(!trendScoreLoaded){
+        // First room load: show the server's real score immediately, never count up from zero.
+        trendAnimator?.cancel()
+        trendPoints=latest
+        trendButton?.text=String.format(java.util.Locale.US,"%,d",latest)
+        trendScoreLoaded=true
+       }else{
+        animateTrendPoints(latest)
+       }
        break
       }
      }
