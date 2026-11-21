@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 object PushTokenManager {
     private val executor = Executors.newSingleThreadExecutor()
@@ -37,6 +38,9 @@ object PushTokenManager {
             return
         }
 
+        // Always upload the current FCM token on app resume. The server may have
+        // removed a token after FCM returned UNREGISTERED while local preferences
+        // still said it was registered; trusting that flag would prevent recovery.
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { fcmToken ->
                 if (fcmToken.isBlank()) {
@@ -44,45 +48,39 @@ object PushTokenManager {
                     return@addOnSuccessListener
                 }
 
-                val previousToken = prefs.getString(TOKEN_KEY, null)
-                val registeredUser = prefs.getString("fcm_registered_user_id", null)
-                val alreadyRegistered = prefs.getBoolean("fcm_token_registered", false)
-
                 prefs.edit().putString(TOKEN_KEY, fcmToken).apply()
-                if (previousToken == fcmToken && alreadyRegistered &&
-                    registeredUser == userId
-                ) {
-                    Log.d("BAK_PUSH", "This device is already registered for the current user")
-                    return@addOnSuccessListener
-                }
 
-                executor.execute {
-                    try {
-                        val result = AuthApi.post(
-                            "/api/notifications/devices/register",
-                            JSONObject()
-                                .put("device_token", fcmToken)
-                                .put("platform", "android"),
-                            authToken
-                        )
-
-                        if (result.status in 200..299) {
-                            prefs.edit()
-                                .putBoolean("fcm_token_registered", true)
-                                .putString("fcm_registered_user_id", userId)
-                                .apply()
-                            Log.i("BAK_PUSH", "Device token registered successfully (HTTP ${result.status})")
-                        } else {
-                            prefs.edit().putBoolean("fcm_token_registered", false).apply()
-                            Log.e(
-                                "BAK_PUSH",
-                                "Device registration failed (HTTP ${result.status}): ${result.body.optString("error")}"
+                try {
+                    executor.execute {
+                        try {
+                            val result = AuthApi.post(
+                                "/api/notifications/devices/register",
+                                JSONObject()
+                                    .put("device_token", fcmToken)
+                                    .put("platform", "android"),
+                                authToken
                             )
+
+                            if (result.status in 200..299) {
+                                prefs.edit()
+                                    .putBoolean("fcm_token_registered", true)
+                                    .putString("fcm_registered_user_id", userId)
+                                    .apply()
+                                Log.i("BAK_PUSH", "Device token registered/refreshed successfully (HTTP ${result.status})")
+                            } else {
+                                prefs.edit().putBoolean("fcm_token_registered", false).apply()
+                                Log.e(
+                                    "BAK_PUSH",
+                                    "Device registration failed (HTTP ${result.status}): ${result.body.optString("error")}"
+                                )
+                            }
+                        } catch (error: Exception) {
+                            prefs.edit().putBoolean("fcm_token_registered", false).apply()
+                            Log.e("BAK_PUSH", "Device registration request failed", error)
                         }
-                    } catch (error: Exception) {
-                        prefs.edit().putBoolean("fcm_token_registered", false).apply()
-                        Log.e("BAK_PUSH", "Device registration request failed", error)
                     }
+                } catch (error: RejectedExecutionException) {
+                    Log.e("BAK_PUSH", "Token registration executor is unavailable", error)
                 }
             }
             .addOnFailureListener { error ->
