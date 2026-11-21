@@ -459,10 +459,10 @@ class ProfileActivity : Activity() {
                     .put("coins", 0)
                 // These four requests are independent. Run them concurrently so the profile
                 // does not wait for each network round-trip one after another.
-                val levelFuture = executor.submit { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() }
-                val followsFuture = executor.submit { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() }
-                val walletFuture = executor.submit { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() }
-                val adminFuture = executor.submit { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() }
+                val levelFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() }
+                val followsFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() }
+                val walletFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() }
+                val adminFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() }
 
                 val level = levelFuture.get()
                 if (level != null && level.status in 200..299) {
