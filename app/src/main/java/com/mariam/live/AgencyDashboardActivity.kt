@@ -482,9 +482,9 @@ class AgencyDashboardActivity : Activity() {
   worker.execute {
    try {
     // Independent report endpoints are fetched together to reduce dashboard wait time.
-    val overviewFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings", tok) }
-    val membersFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings/members", tok) }
-    val historyFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings/history?limit=30", tok) }
+    val overviewFuture = apiExecutor.submit<AuthApi.Result> { AuthApi.get("/api/agency/earnings", tok) }
+    val membersFuture = apiExecutor.submit<AuthApi.Result> { AuthApi.get("/api/agency/earnings/members", tok) }
+    val historyFuture = apiExecutor.submit<AuthApi.Result> { AuthApi.get("/api/agency/earnings/history?limit=30", tok) }
     val overview = overviewFuture.get()
     val perMember = membersFuture.get()
     val history = historyFuture.get()
@@ -738,8 +738,8 @@ class AgencyDashboardActivity : Activity() {
   worker.execute {
    try {
     // Member and invitation lists do not depend on each other.
-    val membersFuture = apiExecutor.submit { AuthApi.get("/api/agency/members", tok) }
-    val invitesFuture = apiExecutor.submit { AuthApi.get("/api/agency/invitations", tok) }
+    val membersFuture = apiExecutor.submit<AuthApi.Result> { AuthApi.get("/api/agency/members", tok) }
+    val invitesFuture = apiExecutor.submit<AuthApi.Result> { AuthApi.get("/api/agency/invitations", tok) }
     val m = membersFuture.get()
     val i = invitesFuture.get()
     if (m.status !in 200..299) throw Exception(m.body.optString("error", "فشل تحميل الأعضاء"))
