@@ -41,6 +41,7 @@ import java.util.concurrent.Executors
 class AgencyDashboardActivity : Activity() {
 
  private val worker = Executors.newSingleThreadExecutor()
+ private val apiExecutor = Executors.newFixedThreadPool(4)
 
  // ───────────── Palette (white theme) ─────────────
  private val bg = Color.WHITE
@@ -480,9 +481,13 @@ class AgencyDashboardActivity : Activity() {
   if (::earningsStatus.isInitialized) earningsStatus.text = "جارٍ تحميل تقرير الأرباح..."
   worker.execute {
    try {
-    val overview = AuthApi.get("/api/agency/earnings", tok)
-    val perMember = AuthApi.get("/api/agency/earnings/members", tok)
-    val history = AuthApi.get("/api/agency/earnings/history?limit=30", tok)
+    // Independent report endpoints are fetched together to reduce dashboard wait time.
+    val overviewFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings", tok) }
+    val membersFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings/members", tok) }
+    val historyFuture = apiExecutor.submit { AuthApi.get("/api/agency/earnings/history?limit=30", tok) }
+    val overview = overviewFuture.get()
+    val perMember = membersFuture.get()
+    val history = historyFuture.get()
     if (overview.status !in 200..299) throw Exception(overview.body.optString("error", "فشل تحميل الأرباح"))
     if (perMember.status !in 200..299) throw Exception(perMember.body.optString("error", "فشل تحميل أرباح الأعضاء"))
     if (history.status !in 200..299) throw Exception(history.body.optString("error", "فشل تحميل سجل الأرباح"))
@@ -732,7 +737,11 @@ class AgencyDashboardActivity : Activity() {
   if (!afterRemoval) status.text = "جارٍ تحديث البيانات..."
   worker.execute {
    try {
-    val m = AuthApi.get("/api/agency/members", tok); val i = AuthApi.get("/api/agency/invitations", tok)
+    // Member and invitation lists do not depend on each other.
+    val membersFuture = apiExecutor.submit { AuthApi.get("/api/agency/members", tok) }
+    val invitesFuture = apiExecutor.submit { AuthApi.get("/api/agency/invitations", tok) }
+    val m = membersFuture.get()
+    val i = invitesFuture.get()
     if (m.status !in 200..299) throw Exception(m.body.optString("error", "فشل تحميل الأعضاء"))
     if (i.status !in 200..299) throw Exception(i.body.optString("error", "فشل تحميل الدعوات"))
     val mm = m.body.optJSONArray("members") ?: JSONArray()
@@ -928,6 +937,12 @@ class AgencyDashboardActivity : Activity() {
     }
    }
   }
+ }
+
+ override fun onDestroy() {
+  worker.shutdownNow()
+  apiExecutor.shutdownNow()
+  super.onDestroy()
  }
 
  private fun render() {
