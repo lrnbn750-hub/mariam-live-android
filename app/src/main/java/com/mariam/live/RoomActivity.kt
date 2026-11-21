@@ -36,6 +36,7 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicInteger
 import com.mariam.live.data.GiftRepository
 import com.mariam.live.model.Gift
 import com.opensource.svgaplayer.SVGACallback
@@ -47,6 +48,8 @@ import java.net.URL
 import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
+ companion object { private val activeRoomActivityCount = AtomicInteger(0) }
+ private var countedAsActiveRoom = false
  private lateinit var room: Room
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
  private var connected=false; private var leaving=false; private var microphoneEnabled=true; private var isSeated=false
@@ -232,7 +235,10 @@ class RoomActivity : Activity() {
   dialogRef=showSheet(root)
  }
  override fun onCreate(savedInstanceState:Bundle?){
-  super.onCreate(savedInstanceState);window.statusBarColor=Color.BLACK;window.navigationBarColor=Color.BLACK;window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
+  super.onCreate(savedInstanceState)
+  activeRoomActivityCount.incrementAndGet()
+  countedAsActiveRoom=true
+  window.statusBarColor=Color.BLACK;window.navigationBarColor=Color.BLACK;window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
   // Keep the first joined room as the persistent return target while the user browses other screens/broadcasts.
   val roomPrefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
@@ -496,7 +502,6 @@ class RoomActivity : Activity() {
      withContext(Dispatchers.IO){
       AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
      }
-     stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
      val next=Intent(this@RoomActivity,RoomActivity::class.java)
       .putExtra("room_id",target.first)
       .putExtra("room_name",target.second)
@@ -1279,8 +1284,7 @@ class RoomActivity : Activity() {
       membershipWatch?.cancel()
       try{if(connected)room.disconnect()}catch(_:Exception){}
       connected=false
-      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
-      AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
        .setTitle("انتهى البث")
        .setMessage("قام صاحب الغرفة بإغلاق الغرفة. تم إخراجك من البث.")
        .setPositiveButton("العودة للرئيسية"){_,_->finish()}
@@ -3443,7 +3447,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      try{
       stopRoomMusic(restoreMic=false)
       if(connected)room.disconnect()
-      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
       val result=withContext(Dispatchers.IO){
        AuthApi.delete("/api/voice-rooms/$roomId",authToken)
       }
@@ -3733,7 +3736,23 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   cameraTracks.clear()
   seatRefreshJob?.cancel()
   giftPoll?.cancel()
+  if(connected && !leaving){
+   connected=false
+   val roomToClose=room
+   val closingRoomId=roomId
+   val closingToken=authToken
+   CoroutineScope(SupervisorJob()+Dispatchers.IO).launch{
+    try{roomToClose.disconnect()}catch(_:Exception){}
+    try{AuthApi.post("/api/voice-rooms/$closingRoomId/leave",JSONObject().put("keep_open",true),closingToken)}catch(_:Exception){}
+   }
+  }
   scope.cancel()
+  if(countedAsActiveRoom){
+   countedAsActiveRoom=false
+   if(activeRoomActivityCount.decrementAndGet()<=0){
+    stopService(Intent(this,VoiceForegroundService::class.java))
+   }
+  }
   super.onDestroy()
  }
 }
