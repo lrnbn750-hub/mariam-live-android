@@ -234,7 +234,11 @@ class RoomActivity : Activity() {
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.statusBarColor=Color.BLACK;window.navigationBarColor=Color.BLACK;window.setSoftInputMode(if(Build.VERSION.SDK_INT>=30) android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.decorView.systemUiVisibility=0
   roomId=intent.getStringExtra("room_id").orEmpty()
-  getSharedPreferences("MariamLive",MODE_PRIVATE).edit().putString("active_room_id",roomId).apply()
+  // Keep the first joined room as the persistent return target while the user browses other screens/broadcasts.
+  val roomPrefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+  if(roomPrefs.getString("active_room_id",null).isNullOrBlank()){
+   roomPrefs.edit().putString("active_room_id",roomId).apply()
+  }
   authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
   roomPage=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(8),dp(12),dp(10));setBackgroundColor(Color.TRANSPARENT)}
   fun glassCircleButton(iconRes:Int,description:String,onClick:()->Unit)=FrameLayout(this).apply{
@@ -268,7 +272,14 @@ class RoomActivity : Activity() {
   val top=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val topRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   topRow.addView(headerIcon("share","مشاركة البث"){shareRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
-  topRow.addView(headerIcon("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(8)})
+  topRow.addView(headerIcon("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
+  topRow.addView(label("⌂",22f,Color.WHITE,true).apply{
+   background=ctrlBg();isClickable=true;isFocusable=true
+   contentDescription="تصغير الغرفة والعودة للرئيسية مع استمرار الصوت والمقعد"
+   setOnClickListener{
+    startActivity(Intent(this@RoomActivity,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   }
+  },LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(topRow,LinearLayout.LayoutParams(-1,dp(48)))
   // Members pill. Child 0 must stay the counter TextView: loadRoomMembers() updates it.
