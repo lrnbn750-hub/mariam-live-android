@@ -140,57 +140,6 @@ class HomeActivity : Activity() {
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(42)))
 
-        // Temporary button to verify Firebase push delivery for the signed-in account.
-        val pushTestButton=Button(this).apply{
-            text="اختبار إشعارات Firebase"
-            isAllCaps=false
-            setTextColor(Color.WHITE)
-            background=shape(Color.rgb(196,128,16),12)
-            setOnClickListener{
-                val authToken=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null).orEmpty()
-                if(authToken.isBlank()){
-                    Toast.makeText(this@HomeActivity,"سجّل الدخول أولاً",Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                isEnabled=false
-                text="جارٍ إرسال إشعار الاختبار..."
-                executor.execute{
-                    try{
-                        val result=AuthApi.post("/api/notifications/test-self",JSONObject(),authToken)
-                        runOnUiThread{
-                            if(isFinishing || isDestroyed)return@runOnUiThread
-                            isEnabled=true
-                            text="اختبار إشعارات Firebase"
-                            val delivery=result.body.optJSONObject("delivery")
-                            val sent=delivery?.optInt("sent",-1) ?: -1
-                            val failed=delivery?.optInt("failed",-1) ?: -1
-                            val message=if(result.status in 200..299){
-                                when {
-                                    sent > 0 && failed == 0 -> "تم إرسال الإشعار بنجاح إلى جميع الأجهزة. ناجح: $sent"
-                                    sent > 0 && failed > 0 -> "وصل الإشعار لبعض الأجهزة فقط. ناجح: $sent، فاشل: $failed"
-                                    sent == 0 -> "تم حفظ الإشعار، لكن لم يصل لأي جهاز. فاشل: $failed"
-                                    else -> "تم حفظ طلب الاختبار. تحقق من حالة الإرسال."
-                                }
-                            }else{
-                                "فشل الاختبار (HTTP ${result.status}): ${result.body.optString("error")}"
-                            }
-                            Toast.makeText(this@HomeActivity,message,Toast.LENGTH_LONG).show()
-                        }
-                    }catch(error:Exception){
-                        runOnUiThread{
-                            if(isFinishing || isDestroyed)return@runOnUiThread
-                            isEnabled=true
-                            text="اختبار إشعارات Firebase"
-                            Toast.makeText(this@HomeActivity,"تعذر الاتصال: ${error.message}",Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-            }
-        }
-        content.addView(pushTestButton,LinearLayout.LayoutParams(-1,dp(50)).apply{
-            setMargins(dp(8),dp(8),dp(8),dp(12))
-        })
-
         // ───────────── القائمة السفلية ─────────────
         val navWrap=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;clipChildren=false}
         val bar=LinearLayout(this).apply{
