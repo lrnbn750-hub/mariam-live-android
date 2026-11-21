@@ -147,8 +147,7 @@ class HomeActivity : Activity() {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(255,247,224),Color.rgb(247,210,125))).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
                 setStroke(dp(1),0x88E6B450.toInt())
-            }
-            setPadding(dp(6),dp(4),dp(6),0)
+            }            setPadding(dp(6),dp(4),dp(6),0)
             elevation=dp(8).toFloat()
         }
         fun navItem(kind:String,title:String,selected:Boolean,onTap:()->Unit)=FrameLayout(this).apply{
@@ -297,8 +296,7 @@ class HomeActivity : Activity() {
                 setOnClickListener{                    if(mode==3){Toast.makeText(this@HomeActivity,"قريباً",Toast.LENGTH_SHORT).show();return@setOnClickListener}
                     tabMode=mode;buildTabs();buildCards()
                 }
-            }
-            col.addView(TextView(this).apply{
+            }            col.addView(TextView(this).apply{
                 text=title;textSize=if(selected)17f else 15f;gravity=Gravity.CENTER
                 setTextColor(if(selected)gold else muted)
                 typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.DEFAULT
@@ -447,8 +445,7 @@ class HomeActivity : Activity() {
     }
     private fun roomImageUrl(item:JSONObject):String?{
         val image=item.optJSONObject("image")
-        val raw=sequenceOf(
-            item.optString("image_url"),
+        val raw=sequenceOf(            item.optString("image_url"),
             item.optString("imageUrl"),
             item.optString("cover_url"),
             item.optString("coverUrl"),
@@ -592,13 +589,14 @@ class HomeActivity : Activity() {
                     canvas.drawLine(12f,19.5f,12f,22f,p)
                     canvas.drawLine(8.5f,22f,15.5f,22f,p)
                 }
-            }            canvas.restore()
+                else -> Unit
+            }
+            canvas.restore()
         }
     }
 
     /** أيقونات القائمة السفلية الذهبية: home / discover / messages / profile */
-    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){
-        private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
+    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){        private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
         private val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.4f;strokeJoin=Paint.Join.ROUND;strokeCap=Paint.Cap.ROUND}
         private val detail=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(canvas:Canvas){
