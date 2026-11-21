@@ -1456,7 +1456,7 @@ class RoomActivity : Activity() {
       },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
-    val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+    val avatarUrl=resolveSeatAvatarUrl(seat)
     val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
     val nestedVip=seat.optJSONObject("vip_membership")
       ?:seat.optJSONObject("vip")
@@ -1655,7 +1655,7 @@ class RoomActivity : Activity() {
    }
   }
   // ---- same data extraction as the audio seats (avatar, VIP, frame) ----
-  val avatarUrl=seat.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+  val avatarUrl=resolveSeatAvatarUrl(seat)
   val seatUser=seat.optJSONObject("user")?:seat.optJSONObject("member")
   val nestedVip=seat.optJSONObject("vip_membership")
    ?:seat.optJSONObject("vip")
@@ -1844,6 +1844,26 @@ class RoomActivity : Activity() {
    }finally{seatFrameLoading.remove(url)}
   }
  }
+ private fun resolveSeatAvatarUrl(seat:JSONObject):String{
+  fun first(obj:JSONObject?,keys:Array<String>):String{
+   if(obj==null)return ""
+   for(key in keys){
+    val value=obj.optString(key).trim()
+    if(value.isNotEmpty() && value!="null" && value!="undefined")return value
+   }
+   return ""
+  }
+  val keys=arrayOf("avatar_url","profile_image","avatar","image_url","photo_url","picture","user_avatar","profile_picture")
+  val nested=arrayOf("user","member","profile","account")
+  first(seat,keys).takeIf{it.isNotBlank()}?.let{return it}
+  for(key in nested){
+   val obj=seat.optJSONObject(key)?:continue
+   first(obj,keys).takeIf{it.isNotBlank()}?.let{return it}
+   first(obj.optJSONObject("profile"),keys).takeIf{it.isNotBlank()}?.let{return it}
+  }
+  return ""
+ }
+
  private fun loadAvatarInto(view:ImageView,url:String){
   val cached=avatarBitmaps[url]
   if(cached!=null){view.setImageBitmap(cached);return}
@@ -3594,9 +3614,12 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    return
   }
   trendAnimator?.cancel()
+  val distance=if(target>=start)target-start else start-target
+  // Server score stays authoritative; larger changes take longer to read.
+  val animationDuration=(1200L+(distance/35L)).coerceIn(1200L,5000L)
   trendAnimator=android.animation.ValueAnimator.ofFloat(0f,1f).apply{
-   duration=850L
-   interpolator=android.view.animation.DecelerateInterpolator(1.6f)
+   duration=animationDuration
+   interpolator=android.view.animation.LinearInterpolator()
    addUpdateListener{anim->
     val fraction=anim.animatedValue as Float
     val value=(start.toDouble()+(target.toDouble()-start.toDouble())*fraction).toLong()
