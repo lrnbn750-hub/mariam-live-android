@@ -1208,29 +1208,27 @@ class RoomActivity : Activity() {
 
  private fun loadIdentity(){
   scope.launch{
-   try{
-    val r=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)}
-    currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")
-   }catch(_:Exception){}
-   // The room chat payload may omit level; load the signed-in user's authoritative level.
-   try{
-    val levelResponse=withContext(Dispatchers.IO){AuthApi.get("/api/levels/me",authToken)}
-    if(levelResponse.status in 200..299){
-     currentUserLevel=levelResponse.body.optInt("level",1).coerceIn(1,100)
-    }
-   }catch(_:Exception){}
-   // Load the authenticated user's active VIP membership for room decorations.
-   try{
-    val vipResponse=withContext(Dispatchers.IO){AuthApi.get("/api/vip/me",authToken)}
-    if(vipResponse.status in 200..299){
-     currentUserVipLevel=readActiveVipLevel(vipResponse.body)
-    }
-   }catch(_:Exception){}
-   // Read the same equipped avatar frame selected in Profile > Inventory.
-   try{
-    val inventory=withContext(Dispatchers.IO){AuthApi.get("/api/inventory",authToken)}
-    if(inventory.status in 200..299){
-     val items=inventory.body.optJSONArray("items")?:JSONArray()
+   // These independent identity decorations were previously fetched one after
+   // another. Run them concurrently without blocking the room's main thread.
+   val responses=supervisorScope{
+    val me=async(Dispatchers.IO){runCatching{AuthApi.get("/api/auth/me",authToken)}.getOrNull()}
+    val level=async(Dispatchers.IO){runCatching{AuthApi.get("/api/levels/me",authToken)}.getOrNull()}
+    val vip=async(Dispatchers.IO){runCatching{AuthApi.get("/api/vip/me",authToken)}.getOrNull()}
+    val inventory=async(Dispatchers.IO){runCatching{AuthApi.get("/api/inventory",authToken)}.getOrNull()}
+    listOf(me.await(),level.await(),vip.await(),inventory.await())
+   }
+   responses[0]?.let{r->
+    if(r.status in 200..299)currentUserId=(r.body.optJSONObject("user")?:r.body).optString("id")
+   }
+   responses[1]?.let{r->
+    if(r.status in 200..299)currentUserLevel=r.body.optInt("level",1).coerceIn(1,100)
+   }
+   responses[2]?.let{r->
+    if(r.status in 200..299)currentUserVipLevel=readActiveVipLevel(r.body)
+   }
+   responses[3]?.let{r->
+    if(r.status in 200..299){
+     val items=r.body.optJSONArray("items")?:JSONArray()
      for(i in 0 until items.length()){
       val item=items.optJSONObject(i)?:continue
       if(item.optString("item_type")=="frame" && item.optBoolean("owned") && item.optBoolean("equipped")){
@@ -1239,9 +1237,8 @@ class RoomActivity : Activity() {
       }
      }
     }
-   }catch(_:Exception){}
+   }
    // Start chat only after identity and the authoritative level have loaded.
-   // This prevents the first frame from showing a temporary LV 1 badge.
    chatPoll?.cancel()
    loadRoomMessages()
    chatPoll=launch{

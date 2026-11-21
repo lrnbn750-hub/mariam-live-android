@@ -32,7 +32,6 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
-import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 
 class WalletActivity : Activity() {
@@ -195,14 +194,9 @@ class WalletActivity : Activity() {
         loading()
         thread {
             try {
-                // Wallet summary, recharge packages and history are independent reads.
-                // Fetch them concurrently to reduce the time spent on the loading screen.
-                val walletFuture = CompletableFuture.supplyAsync { AuthApi.get("/api/wallet", token) }
-                val packagesFuture = CompletableFuture.supplyAsync { AuthApi.get("/api/wallet/packages", token) }
-                val historyFuture = CompletableFuture.supplyAsync { AuthApi.get("/api/wallet/transactions", token) }
-                val w = walletFuture.get()
-                val p = packagesFuture.get()
-                val h = historyFuture.get()
+                val w = AuthApi.get("/api/wallet", token)
+                val p = AuthApi.get("/api/wallet/packages", token)
+                val h = AuthApi.get("/api/wallet/transactions", token)
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
                     if (w.status !in 200..299) {
