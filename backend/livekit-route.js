@@ -147,7 +147,16 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     try{
       const result=await db.query(`SELECT r.id,r.name,r.image_url,r.room_mode,r.camera_seat_count,
         COALESCE(p.display_name,u.username) AS owner_name,COALESCE(m.member_count,0)::int AS member_count,
-        COALESCE(t.points,0)::bigint AS trend_points
+        GREATEST(
+          0,
+          COALESCE(t.points,0) - CASE
+            WHEN t.last_gift_at IS NULL THEN 0
+            ELSE LEAST(
+              COALESCE(t.gift_coins,0)*10,
+              FLOOR(GREATEST(0,EXTRACT(EPOCH FROM (NOW()-t.last_gift_at))-5)/3)::bigint
+            )
+          END
+        )::bigint AS trend_points
         FROM voice_rooms r JOIN users u ON u.id=r.owner_id
         LEFT JOIN user_profiles p ON p.user_id=u.id
         LEFT JOIN (SELECT room_id,COUNT(*) AS member_count FROM room_members GROUP BY room_id) m ON m.room_id=r.id
