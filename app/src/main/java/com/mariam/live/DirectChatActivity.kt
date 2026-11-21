@@ -81,7 +81,7 @@ class DirectChatActivity : Activity() {
     }
 
     private fun ripple(content: Drawable?): Drawable =
-        RippleDrawable(ColorStateList.valueOf(Color.argb(36, 0, 0, 0)), content, null)
+        RippleDrawable(ColorStateList.valueOf(Color.argb(36, 0, 0, 0)), content, oval(Color.WHITE))
 
     /** أيقونات مرسومة بالكود (واضحة على كل الدقّات) */
     private inner class Icon(private val kind: Int, private val tint: Int) : View(this@DirectChatActivity) {
@@ -133,6 +133,15 @@ class DirectChatActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            buildScreen()
+        } catch (e: Throwable) {
+            Toast.makeText(this, "خطأ: ${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+        }
+    }
+
+    private fun buildScreen() {
         conversationId = intent.getStringExtra("conversation_id").orEmpty()
         otherUserId = intent.getStringExtra("other_user_id").orEmpty()
         otherName = intent.getStringExtra("other_name")?.takeIf { it.isNotBlank() } ?: "محادثة"
@@ -147,7 +156,7 @@ class DirectChatActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setBackgroundColor(Color.WHITE)
         }
-        // Insets are attached after the view hierarchy is fully initialized.
+        applyInsets(root)
 
         // ───────── الهيدر ─────────
         val header = LinearLayout(this).apply {
@@ -271,7 +280,6 @@ class DirectChatActivity : Activity() {
         updateSendState()
 
         setContentView(root)
-        applyInsets(root)
         root.requestApplyInsets()
 
         when {
@@ -283,54 +291,44 @@ class DirectChatActivity : Activity() {
 
     // ───────── الحواف الآمنة: لا شيء يلتصق بالشحن/الشبكة أو شريط التنقل ─────────
     private fun setupSystemBars() {
-        window.setBackgroundDrawable(ColorDrawable(Color.WHITE))
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        window.statusBarColor = Color.WHITE
-        window.navigationBarColor = Color.WHITE
-        if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        if (Build.VERSION.SDK_INT >= 30) {
-            window.setDecorFitsSystemWindows(false)
-            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            window.insetsController?.setSystemBarsAppearance(mask, mask)
-        } else {
+        try {
+            window.setBackgroundDrawable(ColorDrawable(Color.WHITE))
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            window.statusBarColor = Color.WHITE
+            window.navigationBarColor = Color.WHITE
+            if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
+            if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
             var flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
             if (Build.VERSION.SDK_INT >= 26) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
             window.decorView.systemUiVisibility = flags
+        } catch (_: Throwable) {
         }
     }
 
     private fun applyInsets(target: View) {
         target.setOnApplyWindowInsetsListener { v, insets ->
-            val l: Int; val t: Int; val r: Int; val b: Int
-            if (Build.VERSION.SDK_INT >= 30) {
-                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-                val ime = insets.getInsets(WindowInsets.Type.ime())
-                l = bars.left; t = bars.top; r = bars.right
-                b = maxOf(bars.bottom, ime.bottom)
-            } else {
+            try {
                 @Suppress("DEPRECATION")
-                run {
-                    l = insets.systemWindowInsetLeft; t = insets.systemWindowInsetTop
-                    r = insets.systemWindowInsetRight; b = insets.systemWindowInsetBottom
+                val l = insets.systemWindowInsetLeft
+                @Suppress("DEPRECATION")
+                val t = insets.systemWindowInsetTop
+                @Suppress("DEPRECATION")
+                val r = insets.systemWindowInsetRight
+                @Suppress("DEPRECATION")
+                val b = insets.systemWindowInsetBottom
+                v.setPadding(l, t, r, b)
+                if (b != lastBottomInset) {
+                    lastBottomInset = b
+                    scrollToBottom()
                 }
-            }
-            v.setPadding(l, t, r, b)
-            if (::scroll.isInitialized && b != lastBottomInset) {
-                lastBottomInset = b
-                scrollToBottom()
+            } catch (_: Throwable) {
             }
             insets
         }
     }
 
     private fun scrollToBottom() {
-        if (!::scroll.isInitialized) return
-        scroll.post {
-            if (::scroll.isInitialized && !isFinishing && !isDestroyed) {
-                scroll.fullScroll(View.FOCUS_DOWN)
-            }
-        }
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     // ───────── حالة الواجهة ─────────
