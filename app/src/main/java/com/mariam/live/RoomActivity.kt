@@ -1509,12 +1509,12 @@ class RoomActivity : Activity() {
       }
       addView(avatar,FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
-     addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     addView(photoFrame,FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
      val liveVideoTrack=if(occupied && uid!=null)videoTrackFor(uid) else null
      if(liveVideoTrack!=null){
       avatar.visibility=View.GONE
       val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
-      addView(videoRenderer,FrameLayout.LayoutParams(dp(56),dp(56),Gravity.CENTER))
+      addView(videoRenderer,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
      }
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
@@ -1524,7 +1524,7 @@ class RoomActivity : Activity() {
        visibility=View.VISIBLE
        tag=frameUrl
       }
-      addView(frameView,FrameLayout.LayoutParams(dp(72),dp(72),Gravity.CENTER))
+      addView(frameView,FrameLayout.LayoutParams(dp(65),dp(65),Gravity.CENTER))
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
@@ -1541,7 +1541,7 @@ class RoomActivity : Activity() {
       },FrameLayout.LayoutParams(dp(17),dp(17),Gravity.BOTTOM or Gravity.END))
      }
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(74),dp(74)))
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(66),dp(66)))
     if(occupied){
      val seatLevel=(if(seat.has("level"))seat.optInt("level",1) else seat.optInt("user_level",1)).coerceIn(1,100)
      val nameLine=LinearLayout(this).apply{
@@ -1580,8 +1580,8 @@ class RoomActivity : Activity() {
     }else{
      tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else claimSeat(seatNumber)}
     }
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(104),1f).apply{
-     setMargins(dp(3),dp(3),dp(3),dp(3))
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(96),1f).apply{
+     setMargins(dp(3),dp(2),dp(3),dp(2))
      })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
@@ -1595,7 +1595,7 @@ class RoomActivity : Activity() {
   val count=cameraSeatCount.coerceIn(4,6)
   val screen=resources.displayMetrics
   val gridW=(screen.widthPixels-dp(24)).coerceAtLeast(dp(240))
-  val totalH=minOf(gridW,(screen.heightPixels*0.46f).toInt()).coerceAtLeast(dp(240))
+  val totalH=minOf(gridW,(screen.heightPixels*0.43f).toInt()).coerceAtLeast(dp(240))
   val rowH=totalH/3
   val gap=dp(4)
   val seatList=(0 until count).map{cameraSeats.optJSONObject(it)?:JSONObject()}
@@ -1675,7 +1675,7 @@ class RoomActivity : Activity() {
   val seatLevel=(if(seat.has("level"))seat.optInt("level",1) else seat.optInt("user_level",1)).coerceIn(1,100)
 
   // ---- avatar stage (shown when there is no live video) ----
-  val ringPx=(minOf(tileW,tileH)*if(isMain)0.42f else 0.52f).toInt().coerceIn(dp(34),dp(120))
+  val ringPx=(minOf(tileW,tileH)*if(isMain)0.39f else 0.48f).toInt().coerceIn(dp(32),dp(110))
   val stagePx=(ringPx*70f/60f).toInt()
   val innerPx=(ringPx*52f/60f).toInt()
   val avatarInner=FrameLayout(this).apply{
