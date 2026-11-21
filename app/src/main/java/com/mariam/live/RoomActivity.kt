@@ -2337,11 +2337,21 @@ class RoomActivity : Activity() {
    SheetOption("رجوع",2){}))
  }
  private fun sendRoomGift(gift:Gift,recipientId:String,quantity:Int){
-  scope.launch{try{val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,quantity,authToken)};if(response.status in 200..299)Toast.makeText(this@RoomActivity,"تم إرسال ${gift.name} × $quantity بنجاح",Toast.LENGTH_LONG).show() else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()}catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()}}
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){giftRepository.sendGift(roomId,recipientId,gift.id,quantity,authToken)}
+    if(response.status in 200..299){
+     // Gift is committed before the API responds; fetch the authoritative room score now.
+     loadTrendScore()
+     Toast.makeText(this@RoomActivity,"تم إرسال ${gift.name} × $quantity بنجاح",Toast.LENGTH_LONG).show()
+    }else Toast.makeText(this@RoomActivity,response.body.optString("error","تعذر إرسال الهدية"),Toast.LENGTH_LONG).show()
+   }catch(_:Exception){
+    Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم، لم نؤكد إرسال الهدية",Toast.LENGTH_LONG).show()
+   }
+  }
  }
  /** Poll the authenticated room gift feed and animate only newly committed events. */
  private fun startRoomGiftWatch(){
-  trendHeartbeatJob?.cancel()
   giftPoll?.cancel()
   giftFeedInitialized=false
   lastGiftEventId=0L
@@ -2357,12 +2367,16 @@ class RoomActivity : Activity() {
        lastGiftEventId=events.maxOfOrNull{it.id}?:lastGiftEventId
        giftFeedInitialized=true
       }else{
+       var receivedNewGift=false
        events.sortedBy{it.id}.forEach{event->
         if(event.id>lastGiftEventId){
          lastGiftEventId=event.id
+         receivedNewGift=true
          showReceivedGiftAnimation(event)
         }
        }
+       // Gift feed confirms a committed gift; refresh the room score for every viewer.
+       if(receivedNewGift)loadTrendScore()
       }
      }
     }catch(_:CancellationException){break}
@@ -3558,7 +3572,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      }
      if(response.status in 200..299 && response.body.optBoolean("credited"))loadTrendScore()
     }catch(_:CancellationException){break}catch(_:Exception){}
-    delay(60000)
+    // Check frequently; the server still awards only after 55 seconds of verified seating.
+    delay(15000)
    }
   }
  }
