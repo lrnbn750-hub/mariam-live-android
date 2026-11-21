@@ -2890,7 +2890,56 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   actions.addView(follow,LinearLayout.LayoutParams(0,dp(48),1f))
   loadMemberFollowState(uid,follow)
   root.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(12)})
+  val reportButton=actionButton("إبلاغ عن المستخدم",Color.rgb(176,55,70)){reportRoomMember(uid,name,dialog)}
+  root.addView(reportButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(9)})
   presentSheet(dialog,root)
+ }
+ private fun reportRoomMember(reportedUserId:String,reportedName:String,profileDialog:android.app.Dialog){
+  if(reportedUserId.isBlank() || reportedUserId==currentUserId){
+   Toast.makeText(this,"لا يمكنك الإبلاغ عن حسابك",Toast.LENGTH_SHORT).show()
+   return
+  }
+  val labels=listOf("إساءة أو ألفاظ غير لائقة","محتوى غير مناسب","انتحال شخصية","احتيال أو نصب","مضايقة أو تحرش","غش أو مخالفة القوانين","سبب آخر")
+  val keys=listOf("abuse","inappropriate_content","impersonation","fraud","harassment","cheating","other")
+  val details=EditText(this).apply{hint="تفاصيل إضافية (اختياري، وإلزامي عند اختيار سبب آخر)";minLines=2;maxLines=4;setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY)}
+  var selected=0
+  val content=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   setPadding(dp(18),dp(8),dp(18),0)
+   val group=android.widget.RadioGroup(this@RoomActivity).apply{
+    orientation=android.widget.RadioGroup.VERTICAL
+    labels.forEachIndexed{index,labelText->
+     addView(android.widget.RadioButton(this@RoomActivity).apply{text=labelText;setTextColor(Color.WHITE);id=View.generateViewId();if(index==0)isChecked=true;tag=index})
+    }
+    setOnCheckedChangeListener{g,checkedId->
+     selected=(0 until g.childCount).mapNotNull{g.getChildAt(it) as? android.widget.RadioButton}.firstOrNull{it.id==checkedId}?.tag as? Int ?: 0
+    }
+   }
+   addView(group)
+   addView(details,LinearLayout.LayoutParams(-1,dp(92)).apply{topMargin=dp(8)})
+  }
+  val reportDialog=AlertDialog.Builder(this,android.R.style.Theme_DeviceDefault_Dialog_Alert)
+   .setTitle("إبلاغ عن $reportedName").setView(content).setNegativeButton("إلغاء",null).setPositiveButton("إرسال البلاغ",null).create()
+  reportDialog.setOnShowListener{
+   reportDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{
+    val note=details.text.toString().trim()
+    if(keys[selected]=="other" && note.length<5){details.error="اكتب تفاصيل السبب (5 أحرف على الأقل)";return@setOnClickListener}
+    val payload=JSONObject().put("reported_user_id",reportedUserId).put("room_id",roomId).put("reason",keys[selected]).put("details",note)
+    reportDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled=false
+    scope.launch{
+     try{
+      val response=withContext(Dispatchers.IO){AuthApi.post("/api/reports",payload,authToken)}
+      if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر إرسال البلاغ"))
+      reportDialog.dismiss();profileDialog.dismiss()
+      Toast.makeText(this@RoomActivity,"تم إرسال البلاغ بنجاح",Toast.LENGTH_LONG).show()
+     }catch(e:Exception){
+      reportDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled=true
+      Toast.makeText(this@RoomActivity,e.message?:"تعذر إرسال البلاغ",Toast.LENGTH_LONG).show()
+     }
+    }
+   }
+  }
+  reportDialog.show()
  }
  private fun renderMemberFollowState(button:TextView,following:Boolean){
   button.text=if(following)"✓ تتابعه" else "＋ متابعة"
