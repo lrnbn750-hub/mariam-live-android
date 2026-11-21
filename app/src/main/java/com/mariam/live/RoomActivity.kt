@@ -1864,25 +1864,40 @@ class RoomActivity : Activity() {
   return ""
  }
 
+ private fun applyAvatarBitmapToTree(root:View,url:String,bitmap:Bitmap){
+  if(root is ImageView && root.tag==url)root.setImageBitmap(bitmap)
+  if(root is android.view.ViewGroup){
+   for(index in 0 until root.childCount){
+    applyAvatarBitmapToTree(root.getChildAt(index),url,bitmap)
+   }
+  }
+ }
+
  private fun loadAvatarInto(view:ImageView,url:String){
+  if(url.isBlank())return
   val cached=avatarBitmaps[url]
-  if(cached!=null){view.setImageBitmap(cached);return}
+  if(cached!=null){
+   view.setImageBitmap(cached)
+   return
+  }
+  // A request already in progress will update every currently attached view
+  // with this URL when it finishes, including views created by a seat redraw.
   if(!avatarLoading.add(url))return
   scope.launch{
    try{
     val bitmap=withContext(Dispatchers.IO){
-     java.net.URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000}.getInputStream().use{BitmapFactory.decodeStream(it)}
+     java.net.URL(url).openConnection().apply{
+      connectTimeout=10000
+      readTimeout=15000
+      useCaches=true
+     }.getInputStream().use{BitmapFactory.decodeStream(it)}
     }
     if(bitmap!=null){
      avatarBitmaps[url]=bitmap
+     if(::grid.isInitialized)applyAvatarBitmapToTree(grid,url,bitmap)
+     if(::memberAvatars.isInitialized)applyAvatarBitmapToTree(memberAvatars,url,bitmap)
+     if(::ownerAvatarView.isInitialized && ownerAvatarView.tag==url)ownerAvatarView.setImageBitmap(bitmap)
      if(view.tag==url)view.setImageBitmap(bitmap)
-     // Viewer avatars must also appear in the member strip before they take a seat.
-     if(::memberAvatars.isInitialized){
-      for(index in 0 until memberAvatars.childCount){
-       val thumb=memberAvatars.getChildAt(index) as? ImageView ?: continue
-       if(thumb.tag==url)thumb.setImageBitmap(bitmap)
-      }
-     }
     }
    }catch(_:Exception){}finally{avatarLoading.remove(url)}
   }
