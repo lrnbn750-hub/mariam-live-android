@@ -286,13 +286,28 @@ class HomeActivity : Activity() {
         if (pushIntent?.getBooleanExtra("from_push", false) != true) return
         val screen = pushIntent.getStringExtra("screen").orEmpty().lowercase()
         val type = pushIntent.getStringExtra("type").orEmpty().lowercase()
-        val conversationId = pushIntent.getStringExtra("conversation_id").orEmpty()
-        val roomId = pushIntent.getStringExtra("room_id").orEmpty()
-        val userId = pushIntent.getStringExtra("user_id").orEmpty()
+        val conversationId = (pushIntent.getStringExtra("conversation_id")
+            ?: pushIntent.getStringExtra("conversationId")
+            ?: pushIntent.getStringExtra("chat_id")).orEmpty()
+        val roomId = (pushIntent.getStringExtra("room_id")
+            ?: pushIntent.getStringExtra("live_room_id")
+            ?: pushIntent.getStringExtra("roomId")
+            ?: pushIntent.getStringExtra("broadcast_id")).orEmpty()
+        val userId = (pushIntent.getStringExtra("user_id")
+            ?: pushIntent.getStringExtra("sender_id")
+            ?: pushIntent.getStringExtra("from_user_id")).orEmpty()
+        val isMessage = screen == "chat" || screen == "message" ||
+            type.contains("message") || type.contains("chat")
+        val isLive = screen.contains("live") || type.contains("live") ||
+            type.contains("broadcast") || type.contains("stream")
         val destination = when {
-            screen == "chat" && conversationId.isNotBlank() ->
-                Intent(this, DirectChatActivity::class.java).putExtra("conversation_id", conversationId)
-            (screen.contains("room") || screen.contains("invite") || type == "gift" || type.contains("room") || type.contains("invite")) && roomId.isNotBlank() ->
+            isMessage ->
+                Intent(this, DirectChatActivity::class.java)
+                    .putExtra("conversation_id", conversationId)
+                    .putExtra("other_user_id", userId)
+                    .putExtra("other_name", pushIntent.getStringExtra("sender_name").orEmpty())
+            (isLive || screen.contains("room") || screen.contains("invite") ||
+                type == "gift" || type.contains("room") || type.contains("invite")) && roomId.isNotBlank() ->
                 Intent(this, RoomActivity::class.java).putExtra("room_id", roomId)
             (screen == "profile" || type == "follow") && userId.isNotBlank() ->
                 Intent(this, ProfileActivity::class.java).putExtra("profile_user_id", userId)
