@@ -73,6 +73,7 @@ class ProfileActivity : Activity() {
         window.navigationBarColor = pageBg
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR // light status icons on the dark hero
         requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
+        isOwnProfile = requestedProfileUserId.isBlank()
         buildNativePage()
         if (!isOwnProfile) {
             header.editAvatarView.visibility = View.GONE
