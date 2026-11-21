@@ -23,6 +23,7 @@ class DirectChatActivity : Activity() {
     private var conversationId = ""
     private var otherName = "محادثة"
     private var loading = false
+    private var lastMessagesSignature = ""
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
@@ -104,11 +105,15 @@ class DirectChatActivity : Activity() {
                 val result = AuthApi.get("/api/messages/$conversationId", token)
                 val rows = result.body.optJSONArray("messages") ?: JSONArray()
                 runOnUiThread {
-                    messages.removeAllViews()
                     if (result.status in 200..299) {
-                        for (i in 0 until rows.length()) {
-                            val message = rows.optJSONObject(i)
-                            if (message != null) addMessage(message)
+                        val signature = rows.toString()
+                        if (signature != lastMessagesSignature) {
+                            messages.removeAllViews()
+                            for (i in 0 until rows.length()) {
+                                val message = rows.optJSONObject(i)
+                                if (message != null) addMessage(message)
+                            }
+                            lastMessagesSignature = signature
                         }
                         status.text = if (rows.length() == 0) "ابدأ أول محادثة بينكما" else " "
                     } else status.text = result.body.optString("error", "تعذر تحميل الرسائل")

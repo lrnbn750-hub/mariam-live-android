@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Base64
 import java.io.ByteArrayOutputStream
+import java.io.ByteArrayInputStream
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -48,6 +49,9 @@ class HomeActivity : Activity() {
     private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف", 3 to "الألعاب")
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
+    private var roomsLoadInFlight = false
+    private var roomsReloadPending = false
+    private var lastCardsSignature = ""
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun shape(c:Int,r:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(r).toFloat()}
     private fun label(s:String,n:Float,c:Int,b:Boolean=false)=TextView(this).apply{
@@ -260,7 +264,6 @@ class HomeActivity : Activity() {
     }
 
     private fun buildCards(){
-        grid.removeAllViews()
         val avail=resources.displayMetrics.widthPixels-dp(24)
         val cardW=avail/2-dp(8)
         val cardH=(cardW*1.12f).toInt()
@@ -275,6 +278,10 @@ class HomeActivity : Activity() {
             2->list.sortedByDescending{if(it.max>0)it.count.toFloat()/it.max else 0f}
             else->list
         }
+        val cardsSignature = "$tabMode|$chipMode|$searchQuery|" + list.joinToString(";") { "${it.id}:${it.name}:${it.count}:${it.max}:${it.imageUrl.orEmpty()}" }
+        if (cardsSignature == lastCardsSignature) return
+        lastCardsSignature = cardsSignature
+        grid.removeAllViews()
         if(list.isEmpty()){
             roomStatus.visibility=View.VISIBLE
             roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
@@ -293,7 +300,7 @@ class HomeActivity : Activity() {
             frame.addView(LineIcon(this,"mic",Color.argb(140,210,150,40)),FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
             val cover=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP}
             frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
-            if(!room.imageUrl.isNullOrBlank())loadRoomCover(cover,room.imageUrl)
+            if(!room.imageUrl.isNullOrBlank()){cover.tag=room.imageUrl;loadRoomCover(cover,room.imageUrl)}
             // تدرجات الظل أعلى وأسفل البطاقة
             val topShade=View(this).apply{
                 background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0x66000000,0x00000000))
@@ -353,12 +360,15 @@ class HomeActivity : Activity() {
     private fun loadRooms(){
         val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
         if(token.isNullOrBlank()){roomStatus.text="سجّل الدخول لعرض الغرف";return}
+        if (roomsLoadInFlight) { roomsReloadPending = true; return }
+        roomsLoadInFlight = true
         roomStatus.text="جارٍ تحميل الغرف الحقيقية..."
         executor.execute{
+            var parsed = mutableListOf<RoomItem>()
+            var errorMessage: String? = null
             try{
                 val result=AuthApi.get("/api/voice-rooms",token)
                 val array=result.body.optJSONArray("rooms")
-                val parsed= mutableListOf<RoomItem>()
                 if(result.status in 200..299 && array!=null){
                     for(i in 0 until array.length()){
                         val item=array.optJSONObject(i)?:continue
@@ -370,12 +380,22 @@ class HomeActivity : Activity() {
                             roomImageUrl(item)
                         ))
                     }
+                } else errorMessage=result.body.optString("error","تعذر تحميل الغرف")
+            }catch(_:Exception){ errorMessage="تعذر الاتصال بالخادم" }
+            runOnUiThread{
+                if (!isFinishing && !isDestroyed) {
+                    if (errorMessage == null) {
+                        liveRooms.clear();liveRooms.addAll(parsed);buildCards()
+                    } else if (liveRooms.isEmpty()) {
+                        roomStatus.text=errorMessage
+                    }
                 }
-                runOnUiThread{
-                    liveRooms.clear();liveRooms.addAll(parsed);buildCards()
-                    if(result.status !in 200..299)roomStatus.text=result.body.optString("error","تعذر تحميل الغرف")
+                roomsLoadInFlight = false
+                if (roomsReloadPending && !isFinishing && !isDestroyed) {
+                    roomsReloadPending = false
+                    loadRooms()
                 }
-            }catch(_:Exception){runOnUiThread{liveRooms.clear();buildCards();roomStatus.text="تعذر الاتصال بالخادم"}}
+            }
         }
     }
     private fun roomImageUrl(item:JSONObject):String?{
@@ -399,17 +419,30 @@ class HomeActivity : Activity() {
             var connection:HttpURLConnection?=null
             try{
                 connection=(URL(imageUrl).openConnection() as HttpURLConnection).apply{
-                    connectTimeout=15000
-                    readTimeout=20000
+                    connectTimeout=10000
+                    readTimeout=12000
                     instanceFollowRedirects=true
                     setRequestProperty("Accept","image/avif,image/webp,image/png,image/jpeg,*/*")
                     setRequestProperty("User-Agent","MariamLive-Android")
                     connect()
                 }
                 if(connection.responseCode !in 200..299)throw Exception("HTTP ${connection.responseCode}")
-                val bitmap=connection.inputStream.use{BitmapFactory.decodeStream(it)}
+                val bytes=connection.inputStream.use{it.readBytes()}
+                val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
+                BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
+                val maxDimension=720
+                var sample=1
+                while(bounds.outWidth/sample>maxDimension || bounds.outHeight/sample>maxDimension) sample*=2
+                val options=BitmapFactory.Options().apply{
+                    inSampleSize=sample
+                    inPreferredConfig=Bitmap.Config.RGB_565
+                }
+                val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
                     ?: throw Exception("Invalid room image")
-                runOnUiThread{if(!isFinishing && !isDestroyed)view.setImageBitmap(bitmap) else bitmap.recycle()}
+                runOnUiThread{
+                    if(!isFinishing && !isDestroyed && view.tag==imageUrl) view.setImageBitmap(bitmap)
+                    else bitmap.recycle()
+                }
             }catch(e:Exception){
                 android.util.Log.w("MariamLive","Room cover load failed: $imageUrl",e)
             }finally{connection?.disconnect()}
