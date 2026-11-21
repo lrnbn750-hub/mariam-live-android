@@ -54,6 +54,8 @@ class ProfileActivity : Activity() {
     private var profileData = JSONObject()
     private var publicId = ""
     private var userId = ""
+    private var requestedProfileUserId = ""
+    private var isOwnProfile = true
     private lateinit var adminEntry: LinearLayout
 
     private val ink = Color.rgb(20, 24, 34)
@@ -70,7 +72,13 @@ class ProfileActivity : Activity() {
         window.statusBarColor = heroTop              // same color as the top of the hero gradient
         window.navigationBarColor = pageBg
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR // light status icons on the dark hero
+        requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
         buildNativePage()
+        if (!isOwnProfile) {
+            header.editAvatarView.visibility = View.GONE
+            header.settingsView.visibility = View.GONE
+            header.supportView.visibility = View.GONE
+        }
         loadProfileData()
     }
 
@@ -440,12 +448,15 @@ class ProfileActivity : Activity() {
                 val me = AuthApi.get("/api/auth/me", token)
                 if (me.status !in 200..299) throw Exception(me.body.optString("error", "تعذر تحميل الحساب"))
                 val account = me.body.optJSONObject("user") ?: throw Exception("بيانات الحساب غير مكتملة")
-                userId = account.optString("id")
-                publicId = account.optString("public_id")
+                val ownUserId = account.optString("id")
+                isOwnProfile = requestedProfileUserId.isBlank() || requestedProfileUserId == ownUserId
+                userId = if (isOwnProfile) ownUserId else requestedProfileUserId
+                publicId = if (isOwnProfile) account.optString("public_id") else ""
                 if (userId.isBlank() || userId == "null") throw Exception("معرّف المستخدم غير متوفر")
                 val details = AuthApi.get("/api/users/$userId", token)
                 if (details.status !in 200..299) throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
                 val user = details.body.optJSONObject("user") ?: JSONObject()
+                if (!isOwnProfile) publicId = user.optString("public_id")
                 val data = JSONObject()
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
@@ -459,34 +470,34 @@ class ProfileActivity : Activity() {
                     .put("coins", 0)
                 // These four requests are independent. Run them concurrently so the profile
                 // does not wait for each network round-trip one after another.
-                val levelFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() }
-                val followsFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() }
-                val walletFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() }
-                val adminFuture = executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() }
+                val levelFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() } else null
+                val followsFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() } else null
+                val walletFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() } else null
+                val adminFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() } else null
 
-                val level = levelFuture.get()
+                val level = levelFuture?.get()
                 if (level != null && level.status in 200..299) {
                     data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
                 }
-                val follows = followsFuture.get()
+                val follows = followsFuture?.get()
                 if (follows != null && follows.status in 200..299) {
                     data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
                     data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
                 }
-                val wallet = walletFuture.get()
+                val wallet = walletFuture?.get()
                 if (wallet != null && wallet.status in 200..299) {
                     val w = wallet.body.optJSONObject("wallet") ?: wallet.body
                     data.put("coins", w.optLong("recharge_coins", 0L))
                     data.put("diamonds", w.optLong("earned_diamonds", 0L))
                 }
-                val adminCheck = adminFuture.get()
+                val adminCheck = adminFuture?.get()
                 val isAdmin = adminCheck != null && adminCheck.status in 200..299 &&
                     adminCheck.body.optBoolean("success", false) &&
                     adminCheck.body.optJSONObject("admin") != null
                 profileData = data
                 runOnUiThread {
                     bindProfile(data, token)
-                    if (::adminEntry.isInitialized) adminEntry.visibility = if (isAdmin) View.VISIBLE else View.GONE
+                    if (::adminEntry.isInitialized) adminEntry.visibility = if (isOwnProfile && isAdmin) View.VISIBLE else View.GONE
                 }
             } catch (e: Exception) {
                 Log.e("BAKProfileNative", "Profile load failed", e)
