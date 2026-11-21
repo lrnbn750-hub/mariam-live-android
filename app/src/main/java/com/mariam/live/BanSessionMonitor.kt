@@ -114,7 +114,7 @@ class BanSessionMonitor : Application(), Application.ActivityLifecycleCallbacks 
                     .getString("active_room_id", null)?.takeIf { it.isNotBlank() } ?: roomId
                 val intent = Intent(activity, RoomActivity::class.java).apply {
                     putExtra("room_id", currentRoomId)
-                    addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
                 activity.startActivity(intent)
             }
