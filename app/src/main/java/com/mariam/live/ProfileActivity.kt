@@ -42,7 +42,7 @@ import java.util.concurrent.Executors
  * upload flow are identical to the previous version.
  */
 class ProfileActivity : Activity() {
-    private val executor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newFixedThreadPool(5)
     private val photoPickerCode = 7421
     private lateinit var page: LinearLayout
     private lateinit var header: ProfileHeaderView
@@ -457,35 +457,33 @@ class ProfileActivity : Activity() {
                     .put("fans", 0)
                     .put("diamonds", 0)
                     .put("coins", 0)
-                try {
-                    val level = AuthApi.get("/api/levels/me", token)
-                    if (level.status in 200..299) data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
-                } catch (_: Exception) {}
-                try {
-                    val follows = AuthApi.get("/api/follows/me", token)
-                    if (follows.status in 200..299) {
-                        data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
-                        data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
-                    }
-                } catch (_: Exception) {}
-                try {
-                    val wallet = AuthApi.get("/api/wallet", token)
-                    if (wallet.status in 200..299) {
-                        val w = wallet.body.optJSONObject("wallet") ?: wallet.body
-                        data.put("coins", w.optLong("recharge_coins", 0L))
-                        data.put("diamonds", w.optLong("earned_diamonds", 0L))
-                    }
-                } catch (_: Exception) {}
-                profileData = data
-                var isAdmin = false
-                try {
-                    val adminCheck = AuthApi.get("/api/admin/v2/me", token)
-                    isAdmin = adminCheck.status in 200..299 &&
-                        adminCheck.body.optBoolean("success", false) &&
-                        adminCheck.body.optJSONObject("admin") != null
-                } catch (e: Exception) {
-                    Log.w("BAKProfileNative", "Admin capability check unavailable", e)
+                // These four requests are independent. Run them concurrently so the profile
+                // does not wait for each network round-trip one after another.
+                val levelFuture = executor.submit { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() }
+                val followsFuture = executor.submit { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() }
+                val walletFuture = executor.submit { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() }
+                val adminFuture = executor.submit { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() }
+
+                val level = levelFuture.get()
+                if (level != null && level.status in 200..299) {
+                    data.put("level", level.body.optInt("level", 1).coerceIn(1, 100))
                 }
+                val follows = followsFuture.get()
+                if (follows != null && follows.status in 200..299) {
+                    data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
+                    data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
+                }
+                val wallet = walletFuture.get()
+                if (wallet != null && wallet.status in 200..299) {
+                    val w = wallet.body.optJSONObject("wallet") ?: wallet.body
+                    data.put("coins", w.optLong("recharge_coins", 0L))
+                    data.put("diamonds", w.optLong("earned_diamonds", 0L))
+                }
+                val adminCheck = adminFuture.get()
+                val isAdmin = adminCheck != null && adminCheck.status in 200..299 &&
+                    adminCheck.body.optBoolean("success", false) &&
+                    adminCheck.body.optJSONObject("admin") != null
+                profileData = data
                 runOnUiThread {
                     bindProfile(data, token)
                     if (::adminEntry.isInitialized) adminEntry.visibility = if (isAdmin) View.VISIBLE else View.GONE
