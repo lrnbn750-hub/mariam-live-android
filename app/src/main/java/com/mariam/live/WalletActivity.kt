@@ -197,9 +197,9 @@ class WalletActivity : Activity() {
         io.execute {
             try {
                 // Load balance, packages and transaction history in parallel.
-                val walletFuture = io.submit { AuthApi.get("/api/wallet", token) }
-                val packagesFuture = io.submit { AuthApi.get("/api/wallet/packages", token) }
-                val historyFuture = io.submit { AuthApi.get("/api/wallet/transactions", token) }
+                val walletFuture = io.submit<AuthApi.Result> { AuthApi.get("/api/wallet", token) }
+                val packagesFuture = io.submit<AuthApi.Result> { AuthApi.get("/api/wallet/packages", token) }
+                val historyFuture = io.submit<AuthApi.Result> { AuthApi.get("/api/wallet/transactions", token) }
                 val w = walletFuture.get()
                 val p = packagesFuture.get()
                 val h = historyFuture.get()
