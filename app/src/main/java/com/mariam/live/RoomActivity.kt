@@ -2041,7 +2041,6 @@ class RoomActivity : Activity() {
     startTrendHeartbeat()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
-    stopService(service)
    }
   }
  }
@@ -3426,7 +3425,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    try{
     stopRoomMusic(restoreMic=false)
     if(connected)room.disconnect()
-    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
     withContext(Dispatchers.IO){
      AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",!closeRoom),authToken)
     }
@@ -3515,7 +3513,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      room.disconnect()
      connected=false
     }
-    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
     val left=withContext(Dispatchers.IO){
      AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
     }
