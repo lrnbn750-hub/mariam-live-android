@@ -40,7 +40,26 @@ module.exports = function registerGiftRoutes(app, db, authenticateToken) {
         WHERE e.room_id=$1 AND e.id>$2
         ORDER BY e.id ASC LIMIT 30
       `, [roomId, afterId]);
-      return res.json({ events: result.rows });
+      const trend = await db.query(
+        `SELECT GREATEST(
+           0,
+           COALESCE(points,0) - CASE
+             WHEN last_gift_at IS NULL THEN 0
+             ELSE LEAST(
+               COALESCE(gift_coins,0)*10,
+               FLOOR(GREATEST(0,EXTRACT(EPOCH FROM (NOW()-last_gift_at))-5)/3)::bigint
+             )
+           END
+         )::text AS trend_points
+         FROM voice_room_daily_trends
+         WHERE room_id=$1 AND trend_date=(NOW() AT TIME ZONE 'Asia/Baghdad')::date
+         LIMIT 1`,
+        [roomId]
+      );
+      return res.json({
+        events: result.rows,
+        trend_points: trend.rows[0]?.trend_points || "0"
+      });
     } catch (error) {
       console.error("Gift feed:", error.message);
       return res.status(500).json({ error: "تعذر تحميل هدايا الغرفة" });
