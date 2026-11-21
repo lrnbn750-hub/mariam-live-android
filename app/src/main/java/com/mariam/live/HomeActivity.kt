@@ -226,6 +226,8 @@ class HomeActivity : Activity() {
 
     override fun onResume(){
         super.onResume()
+        // Retry FCM registration when returning to the app after sign-in/network recovery.
+        PushTokenManager.sync(this)
         verifyAccount()
         val activeId=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("active_room_id",null)
         window.decorView.findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
@@ -723,11 +725,4 @@ class HomeActivity : Activity() {
             canvas.restoreToCount(save)
         }
     }
-    override fun onResume() {
-        super.onResume()
-        // Retry registration whenever the user returns to the app; this also
-        // covers login/session timing and temporary network failures.
-        PushTokenManager.sync(this)
-    }
-
 }
