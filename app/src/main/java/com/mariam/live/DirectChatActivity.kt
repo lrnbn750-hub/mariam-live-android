@@ -21,6 +21,7 @@ class DirectChatActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var status: TextView
     private var conversationId = ""
+    private var otherUserId = ""
     private var otherName = "محادثة"
     private var loading = false
     private var lastMessagesSignature = ""
@@ -33,7 +34,8 @@ class DirectChatActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         conversationId = intent.getStringExtra("conversation_id").orEmpty()
-        otherName = intent.getStringExtra("other_name") ?: "محادثة"
+        otherUserId = intent.getStringExtra("other_user_id").orEmpty()
+        otherName = intent.getStringExtra("other_name")?.takeIf { it.isNotBlank() } ?: "محادثة"
         window.statusBarColor = Color.WHITE
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
@@ -90,9 +92,69 @@ class DirectChatActivity : Activity() {
         composer.addView(send, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
         root.addView(composer)
         setContentView(root)
-        if (conversationId.isBlank()) {
-            status.text = "معرّف المحادثة غير صالح"
-        } else loadMessages()
+        when {
+            conversationId.isNotBlank() -> loadMessages()
+            otherUserId.isNotBlank() -> resolveConversation()
+            else -> status.text = "معرّف المحادثة غير صالح"
+        }
+    }
+
+    // إذا وصل إشعار الرسالة بمعرّف المرسل فقط، ابحث عن محادثته وافتحها مباشرة.
+    private fun resolveConversation() {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
+        status.text = "جارٍ فتح محادثة المرسل..."
+        executor.execute {
+            try {
+                val result = AuthApi.get("/api/messages/conversations", token)
+                val rows = result.body.optJSONArray("conversations") ?: JSONArray()
+                var foundId = ""
+                var foundName = ""
+                for (i in 0 until rows.length()) {
+                    val item = rows.optJSONObject(i) ?: continue
+                    val members = item.optJSONArray("members") ?: JSONArray()
+                    for (j in 0 until members.length()) {
+                        val member = members.optJSONObject(j) ?: continue
+                        if (member.optString("user_id") == otherUserId) {
+                            foundId = item.optString("id").takeIf { it.isNotBlank() && it != "null" }
+                                ?: item.optString("conversation_id")
+                            foundName = member.optString("display_name").takeIf { it.isNotBlank() && it != "null" }
+                                ?: member.optString("username")
+                            break
+                        }
+                    }
+                    if (foundId.isNotBlank()) break
+                }
+                runOnUiThread {
+                    if (foundId.isNotBlank()) {
+                        conversationId = foundId
+                        if (otherName == "محادثة" && foundName.isNotBlank()) {
+                            otherName = foundName
+                            // تحديث عنوان المحادثة الظاهر
+                            (window.decorView as? android.view.ViewGroup)?.let { root ->
+                                findChatTitle(root)?.text = otherName
+                            }
+                        }
+                        loadMessages()
+                    } else {
+                        status.text = "لم يتم العثور على محادثة مع هذا المستخدم"
+                    }
+                }
+            } catch (_: Exception) {
+                runOnUiThread { status.text = "تعذر فتح محادثة المرسل" }
+            }
+        }
+    }
+
+    private fun findChatTitle(view: android.view.ViewGroup): TextView? {
+        for (i in 0 until view.childCount) {
+            val child = view.getChildAt(i)
+            if (child is TextView && child.text == "محادثة") return child
+            if (child is android.view.ViewGroup) {
+                val found = findChatTitle(child)
+                if (found != null) return found
+            }
+        }
+        return null
     }
 
     private fun loadMessages() {
