@@ -132,8 +132,6 @@ class HomeActivity : Activity() {
         }
         column.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
 
-        val banner=PalestineBannerView(this)
-        content.addView(banner,LinearLayout.LayoutParams(-1,dp(92)).apply{setMargins(0,dp(4),0,dp(8))})
 
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2))
@@ -147,8 +145,7 @@ class HomeActivity : Activity() {
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,247,224),Color.rgb(247,210,125))).apply{
-                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
+                intArrayOf(Color.rgb(255,247,224),Color.rgb(247,210,125))).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
                 setStroke(dp(1),0x88E6B450.toInt())
             }
             setPadding(dp(6),dp(4),dp(6),0)
@@ -297,8 +294,7 @@ class HomeActivity : Activity() {
             val col=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
                 isClickable=true;isFocusable=true
-                setOnClickListener{
-                    if(mode==3){Toast.makeText(this@HomeActivity,"قريباً",Toast.LENGTH_SHORT).show();return@setOnClickListener}
+                setOnClickListener{                    if(mode==3){Toast.makeText(this@HomeActivity,"قريباً",Toast.LENGTH_SHORT).show();return@setOnClickListener}
                     tabMode=mode;buildTabs();buildCards()
                 }
             }
@@ -447,8 +443,7 @@ class HomeActivity : Activity() {
                     roomsReloadPending = false
                     loadRooms()
                 }
-            }
-        }
+            }        }
     }
     private fun roomImageUrl(item:JSONObject):String?{
         val image=item.optJSONObject("image")
@@ -597,8 +592,7 @@ class HomeActivity : Activity() {
                     canvas.drawLine(12f,19.5f,12f,22f,p)
                     canvas.drawLine(8.5f,22f,15.5f,22f,p)
                 }
-            }
-            canvas.restore()
+            }            canvas.restore()
         }
     }
 
@@ -738,39 +732,4 @@ class HomeActivity : Activity() {
         }
     }
 
-    /** Festive Palestine banner drawn natively, with no external image dependency. */
-    private class PalestineBannerView(context:android.content.Context):View(context){
-        private val d=resources.displayMetrics.density
-        private val p=Paint(Paint.ANTI_ALIAS_FLAG)
-        private val goldP=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(255,211,92);style=Paint.Style.STROKE;strokeWidth=1.5f*d}
-        private val title=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(255,224,125);textSize=20f*d;typeface=Typeface.create("sans-serif",Typeface.BOLD);textAlign=Paint.Align.CENTER;setShadowLayer(3f*d,0f,2f*d,Color.BLACK)}
-        private val subtitle=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE;textSize=18f*d;typeface=Typeface.DEFAULT_BOLD;textAlign=Paint.Align.CENTER;setShadowLayer(2f*d,0f,1f*d,Color.BLACK)}
-        override fun onDraw(canvas:Canvas){
-            super.onDraw(canvas)
-            val w=width.toFloat();val h=height.toFloat()
-            val rect=RectF(0f,0f,w,h)
-            val clip=Path().apply{addRoundRect(rect,14f*d,14f*d,Path.Direction.CW)}
-            val save=canvas.save();canvas.clipPath(clip)
-            p.shader=LinearGradient(0f,0f,w,h,intArrayOf(Color.rgb(7,24,63),Color.rgb(10,73,78),Color.rgb(5,35,63)),null,Shader.TileMode.CLAMP)
-            canvas.drawRect(rect,p);p.shader=null
-            val cx=w*.80f;val cy=h*.22f
-            p.color=0x55FFD66B;canvas.drawCircle(cx,cy,24f*d,p)
-            for(i in 0 until 16){
-                val a=i*Math.PI/8.0
-                canvas.drawLine(cx+(7*d*kotlin.math.cos(a)).toFloat(),cy+(7*d*kotlin.math.sin(a)).toFloat(),cx+(23*d*kotlin.math.cos(a)).toFloat(),cy+(23*d*kotlin.math.sin(a)).toFloat(),goldP)
-            }
-            canvas.drawRoundRect(rect,14f*d,14f*d,goldP)
-            val fx=16f*d;val fy=h*.24f;val fw=58f*d;val fh=h*.42f
-            p.color=Color.WHITE;canvas.drawRect(fx,fy,fx+fw,fy+fh,p)
-            p.color=Color.BLACK;canvas.drawRect(fx,fy,fx+fw,fy+fh/3f,p)
-            p.color=Color.rgb(0,145,75);canvas.drawRect(fx,fy+fh*2f/3f,fx+fw,fy+fh,p)
-            p.color=Color.rgb(210,30,45)
-            val flag=Path().apply{moveTo(fx,fy);lineTo(fx+fw*.43f,fy+fh/2f);lineTo(fx,fy+fh);close()}
-            canvas.drawPath(flag,p)
-            canvas.drawText("عيد وطني سعيد",w*.60f,h*.48f,title)
-            canvas.drawText("فلسطين",w*.60f,h*.77f,subtitle)
-            for(i in 0..8)canvas.drawCircle(w*(.10f+.10f*i),h*.91f,1.5f*d,goldP)
-            canvas.restoreToCount(save)
-        }
-    }
 }
