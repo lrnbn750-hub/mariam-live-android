@@ -139,57 +139,90 @@ class AdminActivity : Activity() {
         loadReports()
     }
 
+    private var reportFilter = "active"
+
     private fun loadReports() {
         if (!::reportsBox.isInitialized) return
         val token = tokenOrClose() ?: return
         reportsBox.removeAllViews()
-        reportsBox.addView(line("جارٍ تحميل البلاغات…", 14, false, muted))
+        val filters = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf("active" to "البلاغات الحالية", "completed" to "بلاغات مكتملة", "rejected" to "بلاغات مرفوضة").forEach { (key, label) ->
+            val button = actionButton(label)
+            filters.addView(button, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(4) })
+            button.alpha = if (reportFilter == key) 1f else 0.65f
+            button.setOnClickListener { reportFilter = key; loadReports() }
+        }
+        reportsBox.addView(filters)
+        val listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        reportsBox.addView(listBox)
+        listBox.addView(line("جارٍ تحميل البلاغات…", 14, false, muted))
         executor.execute {
             try {
-                val response = AuthApi.get("/api/admin/v2/reports?limit=30", token)
+                val response = AuthApi.get("/api/admin/v2/reports?limit=100", token)
                 if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل البلاغات"))
                 val array = response.body.optJSONArray("reports")
                 val rows = ArrayList<JSONObject>()
                 if (array != null) for (i in 0 until array.length()) array.optJSONObject(i)?.let(rows::add)
+                val filtered = rows.filter { item ->
+                    when (reportFilter) {
+                        "completed" -> item.optString("status") in listOf("accepted", "closed")
+                        "rejected" -> item.optString("status") == "rejected"
+                        else -> item.optString("status") !in listOf("accepted", "closed", "rejected")
+                    }
+                }
                 runOnUiThread {
-                    reportsBox.removeAllViews()
-                    if (rows.isEmpty()) reportsBox.addView(line("لا توجد بلاغات حالياً", 14, false, muted))
-                    rows.forEach { item ->
+                    listBox.removeAllViews()
+                    if (filtered.isEmpty()) {
+                        val empty = when(reportFilter) {
+                            "completed" -> "لا توجد بلاغات مكتملة حالياً"
+                            "rejected" -> "لا توجد بلاغات مرفوضة حالياً"
+                            else -> "لا توجد بلاغات قيد المعالجة حالياً"
+                        }
+                        listBox.addView(line(empty, 14, false, muted))
+                    }
+                    filtered.forEach { item ->
                         val id = item.optLong("id")
+                        val status = item.optString("status", "new")
                         val card = LinearLayout(this).apply {
                             orientation = LinearLayout.VERTICAL
                             setPadding(dp(13), dp(11), dp(13), dp(11))
                             background = rounded(Color.WHITE)
                         }
-                        card.addView(line("بلاغ #$id  •  ${item.optString("status", "new")}", 15, true))
+                        val statusLabel = when(status) { "new" -> "جديد"; "reviewing" -> "قيد المراجعة"; "accepted" -> "مكتمل"; "closed" -> "مكتمل"; "rejected" -> "مرفوض"; else -> status }
+                        card.addView(line("بلاغ #$id  •  $statusLabel", 15, true))
                         card.addView(line("المبلّغ: ${item.optString("reporter_username", "—")}", 13, false, muted))
                         card.addView(line("ID المبلّغ: ${item.optString("reporter_public_id", item.optString("reporter_user_id", "غير متوفر"))}", 12, false, muted))
                         card.addView(line("المُبلّغ عليه: ${item.optString("reported_username", "—")}", 13, false, muted))
-                        card.addView(line("ID المُبلّغ عليه: ${item.optString("reported_public_id", item.optString("reported_user_id", "غير متوفر"))}", 12, false, muted))
+                        card.addView(line("ID المبلّغ عليه: ${item.optString("reported_public_id", item.optString("reported_user_id", "غير متوفر"))}", 12, false, muted))
                         card.addView(line("السبب: ${item.optString("reason", "—")}", 13))
                         val details = item.optString("details")
                         if (details.isNotBlank() && details != "null") card.addView(line("التفاصيل: $details", 13))
                         card.addView(line("التاريخ: ${item.optString("created_at", "—")}", 11, false, muted))
-                        val review = actionButton("مراجعة البلاغ")
-                        card.addView(review, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(7) })
-                        review.setOnClickListener { reviewReport(id, item.optString("status", "new")) }
                         val reportedPublicId = item.optString("reported_public_id", "")
                         val roomIdForWatch = item.optString("room_id", "")
-                        if (reportedPublicId.isNotBlank() && reportedPublicId != "null") {
-                            val ban = actionButton("حظر المستخدم المُبلّغ عليه")
-                            card.addView(ban, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
-                            ban.setOnClickListener { askBan(reportedPublicId) }
-                        }
-                        if (roomIdForWatch.isNotBlank() && roomIdForWatch != "null" && item.optString("status") !in listOf("rejected", "closed")) {
-                            val watch = actionButton("مشاهدة البث بالصوت والصورة")
-                            card.addView(watch, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
-                            watch.setOnClickListener { startReportWatch(id) }
+                        if (reportFilter == "active") {
+                            val review = actionButton("مراجعة البلاغ")
+                            card.addView(review, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(7) })
+                            review.setOnClickListener { reviewReport(id, status) }
+                            if (reportedPublicId.isNotBlank() && reportedPublicId != "null") {
+                                val ban = actionButton("حظر المستخدم المُبلّغ عليه")
+                                card.addView(ban, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+                                ban.setOnClickListener { askBan(reportedPublicId, id) }
+                            }
+                            if (roomIdForWatch.isNotBlank() && roomIdForWatch != "null") {
+                                val watch = actionButton("مشاهدة البث بالصوت والصورة")
+                                card.addView(watch, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+                                watch.setOnClickListener { startReportWatch(id) }
+                            }
+                        } else {
+                            val note = item.optString("review_note", "")
+                            if (note.isNotBlank() && note != "null") card.addView(line("قرار الإدارة: $note", 12, false, muted))
                         }
                         reportsBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
                     }
                 }
             } catch (e: Exception) {
-                runOnUiThread { reportsBox.removeAllViews(); reportsBox.addView(line(e.message ?: "تعذر تحميل البلاغات", 14, false, Color.RED)) }
+                runOnUiThread { listBox.removeAllViews(); listBox.addView(line(e.message ?: "تعذر تحميل البلاغات", 14, false, Color.RED)) }
             }
         }
     }
@@ -340,7 +373,7 @@ class AdminActivity : Activity() {
         }
     }
 
-    private fun askBan(publicId: String) {
+    private fun askBan(publicId: String, reportId: Long? = null) {
         val reasons = listOf(
             "الإساءة إلى كبار الشخصيات (VIP)",
             "السب والشتم والإساءة اللفظية",
@@ -413,23 +446,31 @@ class AdminActivity : Activity() {
                         if (temporary) {
                             payload.put("duration_hours", durations[durationPicker.selectedItemPosition].second)
                         }
-                        submitBan(publicId, payload, dialog)
+                        submitBan(publicId, payload, dialog, reportId)
                     }
                 }
                 dialog.show()
             }
     }
 
-    private fun submitBan(publicId: String, payload: JSONObject, dialog: android.app.AlertDialog) {
+    private fun submitBan(publicId: String, payload: JSONObject, dialog: android.app.AlertDialog, reportId: Long? = null) {
         val token = tokenOrClose() ?: return
         executor.execute {
             try {
                 val response = AuthApi.post("/api/admin/v2/users/$publicId/ban", payload, token)
                 if (response.status !in 200..299) throw Exception(response.body.optString("error", "فشل الحظر"))
+                if (reportId != null) {
+                    val reviewPayload = JSONObject()
+                        .put("status", "accepted")
+                        .put("note", "تم اتخاذ إجراء حظر بحق المستخدم المُبلّغ عليه.")
+                    val reviewResponse = AuthApi.post("/api/admin/v2/reports/$reportId/review", reviewPayload, token)
+                    if (reviewResponse.status !in 200..299) throw Exception("تم الحظر لكن تعذر إكمال البلاغ؛ راجعه من قائمة البلاغات")
+                }
                 runOnUiThread {
                     dialog.dismiss()
-                    Toast.makeText(this, "تم تنفيذ الحظر وتسجيل العملية", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, if (reportId != null) "تم الحظر ونقل البلاغ إلى البلاغات المكتملة" else "تم تنفيذ الحظر وتسجيل العملية", Toast.LENGTH_LONG).show()
                     searchUsers()
+                    loadReports()
                 }
             } catch (e: Exception) {
                 runOnUiThread { Toast.makeText(this, e.message ?: "فشل الحظر", Toast.LENGTH_LONG).show() }
