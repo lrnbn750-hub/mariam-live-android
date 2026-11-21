@@ -3423,7 +3423,10 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     withContext(Dispatchers.IO){
      AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",!closeRoom),authToken)
     }
-   }catch(_:Exception){}
+    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+   }catch(_:Exception){
+    stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+   }
    finally{
     val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
     if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
@@ -3455,6 +3458,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       if(!isFinishing)connect()
       return@launch
      }
+     stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
      val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
      if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
      finish()
