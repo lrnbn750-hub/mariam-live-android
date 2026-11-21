@@ -2933,7 +2933,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       val profile=profileResponse.body.optJSONObject("user")?:profileResponse.body
       val canonicalUserId=sequenceOf("id","user_id","uuid").map{profile.optString(it)}.firstOrNull{it.matches(Regex("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"))}
        ?:throw Exception("لم يعثر التطبيق على المعرّف الداخلي الصحيح لهذا الحساب")
-      val payload=JSONObject().put("reported_user_id",canonicalUserId).put("room_id",roomId).put("reason",keys[selected]).put("details",note)
+      val payload=JSONObject().put("reportedUserId",canonicalUserId).put("roomId",roomId).put("reason",keys[selected]).put("details",note)
       val response=withContext(Dispatchers.IO){AuthApi.post("/api/reports",payload,authToken)}
       if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر إرسال البلاغ"))
       reportDialog.dismiss();profileDialog.dismiss()
