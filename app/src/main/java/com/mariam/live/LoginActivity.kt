@@ -177,7 +177,9 @@ class LoginActivity : Activity() {
                     if (result.status in 200..299) {
                         saveSession(result.body)
                         runOnUiThread {
-                            startActivity(Intent(this, HomeActivity::class.java))
+                            startActivity(Intent(this, HomeActivity::class.java).apply {
+                                intent.extras?.let { putExtras(it) }
+                            })
                             finish()
                         }
                     } else {
