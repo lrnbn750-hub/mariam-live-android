@@ -2406,6 +2406,9 @@ class RoomActivity : Activity() {
       giftRepository.loadRoomEvents(roomId,lastGiftEventId,authToken)
      }
      if(response.status in 200..299){
+      // The gift feed also carries the live decaying score, so every room
+      // member sees the 5-second cooldown without an extra polling request.
+      applyAuthoritativeTrendScore(response.body.optLong("trend_points",trendPoints))
       if(!giftFeedInitialized){
        // Establish a cursor without replaying gifts sent before this viewer joined.
        lastGiftEventId=events.maxOfOrNull{it.id}?:lastGiftEventId
@@ -3650,6 +3653,18 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    start()
   }
  }
+ private fun applyAuthoritativeTrendScore(latestValue:Long){
+  val latest=latestValue.coerceAtLeast(0L)
+  if(!trendScoreLoaded){
+   // First room load: show the server's real score immediately, never count up from zero.
+   trendAnimator?.cancel()
+   trendPoints=latest
+   trendButton?.text=String.format(java.util.Locale.US,"%,d",latest)
+   trendScoreLoaded=true
+  }else{
+   animateTrendPoints(latest)
+  }
+ }
  private fun loadTrendScore(){
   scope.launch{
    try{
@@ -3659,16 +3674,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      for(i in 0 until rooms.length()){
       val item=rooms.optJSONObject(i)?:continue
       if(item.optString("id")==roomId){
-       val latest=item.optLong("trend_points").coerceAtLeast(0L)
-       if(!trendScoreLoaded){
-        // First room load: show the server's real score immediately, never count up from zero.
-        trendAnimator?.cancel()
-        trendPoints=latest
-        trendButton?.text=String.format(java.util.Locale.US,"%,d",latest)
-        trendScoreLoaded=true
-       }else{
-        animateTrendPoints(latest)
-       }
+       applyAuthoritativeTrendScore(item.optLong("trend_points"))
        break
       }
      }
