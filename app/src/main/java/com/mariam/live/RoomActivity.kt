@@ -115,6 +115,8 @@ class RoomActivity : Activity() {
  private val giftRepository=GiftRepository()
  private var giftPoll:Job?=null
  private var trendHeartbeatJob:Job?=null
+ private var trendRefreshJob:Job?=null
+ private var trendRequestInFlight=false
  private var trendButton:TextView?=null
  private var trendPoints=0L
  private var trendScoreLoaded=false
@@ -2100,7 +2102,7 @@ class RoomActivity : Activity() {
     loadSeats()
     startRoomMembershipWatch()
     startRoomGiftWatch()
-    loadTrendScore()
+    startTrendRefresh()
     startTrendHeartbeat()
    } catch(e:Exception) {
     status.text=e.message?:"تعذر الاتصال"
@@ -3634,8 +3636,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
   trendAnimator?.cancel()
   val distance=if(target>=start)target-start else start-target
-  // Server score stays authoritative; larger changes take longer to read.
-  val animationDuration=(1200L+(distance/35L)).coerceIn(1200L,5000L)
+  // The score is refreshed every second; finish each transition before the next sample.
+  val animationDuration=900L
   trendAnimator=android.animation.ValueAnimator.ofFloat(0f,1f).apply{
    duration=animationDuration
    interpolator=android.view.animation.LinearInterpolator()
@@ -3665,10 +3667,22 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    animateTrendPoints(latest)
   }
  }
- private fun loadTrendScore(){
-  scope.launch{
+ private fun startTrendRefresh(){
+   trendRefreshJob?.cancel()
+   trendRefreshJob=scope.launch{
+    while(isActive && connected && !leaving){
+     refreshTrendScoreOnce()
+     delay(1000)
+    }
+   }
+  }
+  private suspend fun refreshTrendScoreOnce(){
+   if(trendRequestInFlight || !connected || leaving)return
+   trendRequestInFlight=true
    try{
-    val response=withContext(Dispatchers.IO){AuthApi.get("/api/voice-rooms/trending",authToken)}
+    val response=withContext(Dispatchers.IO){
+     AuthApi.get("/api/voice-rooms/trending",authToken)
+    }
     if(response.status in 200..299){
      val rooms=response.body.optJSONArray("rooms")?:JSONArray()
      for(i in 0 until rooms.length()){
@@ -3679,10 +3693,18 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       }
      }
     }
-   }catch(_:Exception){}
+   }catch(_:CancellationException){
+    throw
+   }catch(_:Exception){
+    // Keep the last confirmed score; retry on the next one-second cycle.
+   }finally{
+    trendRequestInFlight=false
+   }
   }
- }
- private fun openTrendingRoom(targetRoomId:String){
+  private fun loadTrendScore(){
+   scope.launch{refreshTrendScoreOnce()}
+  }
+  private fun openTrendingRoom(targetRoomId:String){
   if(switchingRoom||leaving||targetRoomId.isBlank()||targetRoomId==roomId)return
   switchingRoom=true
   scope.launch{
@@ -3903,7 +3925,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
 
- override fun onDestroy(){trendAnimator?.cancel();trendAnimator=null;try{giftSound?.stop()}catch(_:Exception){};giftSound=null
+ override fun onDestroy(){trendRefreshJob?.cancel();trendRefreshJob=null;trendHeartbeatJob?.cancel();trendHeartbeatJob=null;trendAnimator?.cancel();trendAnimator=null;try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
   watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
