@@ -682,7 +682,7 @@ class ProfileActivity : Activity() {
     private fun onPublicStarClick() {
         if (isFollowingPublic) {
             val bmp = (publicAvatar?.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
-            showUnfollowDialog(this, publicName?.text?.toString().orEmpty(), bmp) { togglePublicFollow() }
+            showUnfollowDialog(this, publicName?.text?.toString().orEmpty(), bmp) { setPublicFollow(false) }
         } else togglePublicFollow()
     }
 
@@ -962,24 +962,70 @@ class ProfileActivity : Activity() {
     }
 
     private fun togglePublicFollow() {
+        setPublicFollow(!isFollowingPublic)
+    }
+
+    /**
+     * Apply an explicit follow state. Do not decide POST vs DELETE on the executor thread:
+     * the state may change while the request is queued (or while the confirmation dialog is open).
+     * After DELETE/POST, read the authoritative status from the server before updating the UI.
+     */
+    private fun setPublicFollow(shouldFollow: Boolean) {
         val target = userId
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
-        if (target.isBlank() || token.isNullOrBlank()) return
+        if (target.isBlank() || token.isNullOrBlank()) {
+            Toast.makeText(this, "تعذر تحديد المستخدم أو تسجيل الدخول", Toast.LENGTH_SHORT).show()
+            return
+        }
         publicFollowButton?.isEnabled = false
+        publicFriendsButton?.isEnabled = false
         executor.execute {
             try {
                 val endpoint = "/api/follows/$target"
-                val result = if (isFollowingPublic) AuthApi.delete(endpoint, token) else AuthApi.post(endpoint, JSONObject(), token)
-                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر تحديث المتابعة"))
-                isFollowingPublic = !isFollowingPublic
+                val result = if (shouldFollow) {
+                    AuthApi.post(endpoint, JSONObject(), token)
+                } else {
+                    AuthApi.delete(endpoint, token)
+                }
+                if (result.status !in 200..299) {
+                    throw Exception(result.body.optString("error", "تعذر تحديث المتابعة (HTTP ${result.status})"))
+                }
+
+                // Verify that the server really persisted the requested state.
+                val status = AuthApi.get("/api/follows/status/$target", token)
+                if (status.status !in 200..299) {
+                    throw Exception(status.body.optString("error", "تم إرسال الطلب لكن تعذر التحقق من حالة المتابعة"))
+                }
+                val serverFollowing = status.body.optBoolean("following", false)
+                if (serverFollowing != shouldFollow) {
+                    throw Exception(if (shouldFollow) "لم يتم تأكيد المتابعة من الخادم" else "الخادم لم يؤكد إلغاء المتابعة")
+                }
+
+                isFollowingPublic = serverFollowing
                 runOnUiThread {
                     updatePublicFollowUi()
                     publicFollowButton?.isEnabled = true
+                    publicFriendsButton?.isEnabled = true
+                    Toast.makeText(
+                        this,
+                        if (serverFollowing) "تمت المتابعة بنجاح" else "تم إلغاء المتابعة بنجاح",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
+                // Refresh the real state after any error so the button never lies about the server.
+                val actualState = runCatching {
+                    val check = AuthApi.get("/api/follows/status/$target", token)
+                    if (check.status in 200..299) check.body.optBoolean("following", false) else null
+                }.getOrNull()
                 runOnUiThread {
+                    if (actualState != null) {
+                        isFollowingPublic = actualState
+                        updatePublicFollowUi()
+                    }
                     publicFollowButton?.isEnabled = true
-                    Toast.makeText(this, e.message ?: "تعذر تحديث المتابعة", Toast.LENGTH_SHORT).show()
+                    publicFriendsButton?.isEnabled = true
+                    Toast.makeText(this, e.message ?: "تعذر تحديث المتابعة", Toast.LENGTH_LONG).show()
                 }
             }
         }
