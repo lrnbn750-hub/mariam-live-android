@@ -1986,7 +1986,8 @@ class RoomActivity : Activity() {
    }
    return
   }
-  if(!isOwner){Toast.makeText(this,"هذا المقعد مشغول",Toast.LENGTH_SHORT).show();return}
+  showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
+  return
   val muted=s.optBoolean("is_muted")
   showActionSheet(name,listOf(if(muted)"إلغاء الكتم" else "كتم المتحدث","إزالة من المقعد")){which->
     scope.launch {
@@ -2028,7 +2029,8 @@ class RoomActivity : Activity() {
    }
    return
   }
-  if(!isOwner){Toast.makeText(this,"هذا المقعد مشغول",Toast.LENGTH_SHORT).show();return}
+  showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
+  return
   showActionSheet(name,listOf(if(muted)"إلغاء كتم المايك" else "كتم المايك", "إزالة من مقعد الكاميرا", if(isOpen)"إغلاق المقعد" else "فتح المقعد", "تعيين كاميرته رئيسية")){which->
    scope.launch{
     try{
@@ -2727,8 +2729,7 @@ class RoomActivity : Activity() {
    })
    row.setOnClickListener{
     dialog.dismiss()
-    if(isOwner && !isOwnerMember && member.optString("user_id")!=currentUserId)showMemberModeration(member)
-    else showMemberProfile(member)
+    showMemberProfile(member)
    }
    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
   }
@@ -2861,6 +2862,22 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   return "—"
  }
  private fun showMemberProfile(member:JSONObject){
+  val uid=member.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}?:return
+  scope.launch{
+   try{
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/users/$uid",authToken)}
+    if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحديث بيانات الملف"))
+    val full=response.body.optJSONObject("user")?:response.body.optJSONObject("profile")?:response.body
+    val merged=JSONObject(member.toString())
+    val keys=listOf("user_id","display_name","username","public_id","account_id","avatar_url","profile_image","total_xp","level","bio","fans_count","fans","followers_count","followersCount","following_count","following","follow_count","followings_count","diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent","diamonds_received","total_diamonds_received","received_diamonds","total_received")
+    for(key in keys)if(full.has(key)&&full.opt(key)!=JSONObject.NULL)merged.put(key,full.opt(key))
+    val nested=full.optJSONObject("stats")?:full.optJSONObject("statistics")?:full.optJSONObject("profile_stats")
+    if(nested!=null)for(key in keys)if(nested.has(key)&&nested.opt(key)!=JSONObject.NULL)merged.put(key,nested.opt(key))
+    renderMemberProfile(merged)
+   }catch(_:Exception){renderMemberProfile(member)}
+  }
+ }
+ private fun renderMemberProfile(member:JSONObject){
   val uid=member.optString("user_id")
   if(uid.isBlank() || uid=="null")return
   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
