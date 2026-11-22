@@ -57,6 +57,14 @@ class ProfileActivity : Activity() {
     private var requestedProfileUserId = ""
     private var isOwnProfile = true
     private lateinit var adminEntry: LinearLayout
+    private var publicAvatar: ImageView? = null
+    private var publicName: TextView? = null
+    private var publicIdView: TextView? = null
+    private var publicLevel: TextView? = null
+    private var publicFans: TextView? = null
+    private var publicFollowing: TextView? = null
+    private var publicSent: TextView? = null
+    private var publicReceived: TextView? = null
 
     private val ink = Color.rgb(20, 24, 34)
     private val muted = Color.rgb(143, 151, 164)
@@ -75,7 +83,7 @@ class ProfileActivity : Activity() {
         requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
         isOwnProfile = requestedProfileUserId.isBlank()
         buildNativePage()
-        if (!isOwnProfile) {
+        if (!isOwnProfile && ::header.isInitialized) {
             header.editAvatarView.visibility = View.GONE
             header.settingsView.visibility = View.GONE
             header.supportView.visibility = View.GONE
@@ -129,6 +137,10 @@ class ProfileActivity : Activity() {
 
     // ------------------------------------------------------------------ page
     private fun buildNativePage() {
+        if (!isOwnProfile) {
+            buildPublicProfilePage()
+            return
+        }
         val scroll = ScrollView(this).apply {
             setBackgroundColor(pageBg)
             isFillViewport = true
@@ -441,6 +453,104 @@ class ProfileActivity : Activity() {
         return row
     }
 
+
+    private fun buildPublicProfilePage() {
+        window.statusBarColor = Color.rgb(34, 30, 65)
+        window.navigationBarColor = Color.WHITE
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE) }
+        val scroll = ScrollView(this).apply { isFillViewport = true; isVerticalScrollBarEnabled = false }
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE) }
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(50, 43, 91), Color.rgb(31, 116, 129)))
+            setPadding(dp(18f), dp(8f), dp(18f), dp(24f))
+        }
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(text("‹", 34f, Color.WHITE, true).apply { gravity = Gravity.CENTER; setOnClickListener { finish() } }, LinearLayout.LayoutParams(dp(44f), dp(48f)))
+        top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        top.addView(text("⋮", 30f, Color.WHITE, true).apply { gravity = Gravity.CENTER; setOnClickListener { showPublicActions() } }, LinearLayout.LayoutParams(dp(44f), dp(48f)))
+        hero.addView(top, LinearLayout.LayoutParams(-1, -2))
+        publicAvatar = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = rounded(Color.WHITE, 70f, Color.WHITE)
+            clipToOutline = true
+        }
+        hero.addView(publicAvatar, LinearLayout.LayoutParams(dp(118f), dp(118f)).apply { topMargin = dp(10f) })
+        publicName = text("مستخدم BAK LIVE", 23f, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12f), 0, dp(4f)) }
+        hero.addView(publicName)
+        publicIdView = text("ID: —", 14f, 0xFFE1E2ED.toInt()).apply { gravity = Gravity.CENTER }
+        hero.addView(publicIdView)
+        publicLevel = text("★  LV 1", 15f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(0x66302050, 22f, 0x88E7C66D.toInt())
+            setPadding(dp(22f), dp(8f), dp(22f), dp(8f))
+        }
+        hero.addView(publicLevel, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12f) })
+        content.addView(hero, LinearLayout.LayoutParams(-1, -2))
+        val stats = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER
+            setPadding(dp(6f), dp(18f), dp(6f), dp(18f))
+        }
+        fun stat(caption: String, setter: (TextView) -> Unit): View {
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+            val value = text("—", 20f, ink, true).apply { gravity = Gravity.CENTER }
+            setter(value)
+            col.addView(value)
+            col.addView(text(caption, 12f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(5f), 0, 0) })
+            return col
+        }
+        stats.addView(stat("المعجبون") { publicFans = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
+        stats.addView(stat("المتابعون") { publicFollowing = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
+        stats.addView(stat("ألماس أرسله") { publicSent = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
+        stats.addView(stat("ألماس استلمه") { publicReceived = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
+        content.addView(stats)
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            setPadding(dp(18f), dp(8f), dp(18f), dp(28f))
+        }
+        fun action(caption: String, color: Int, callback: () -> Unit): TextView = text(caption, 15f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(color, 28f, Color.TRANSPARENT)
+            setOnClickListener { callback() }
+            pressable()
+        }
+        actions.addView(action("مراسلة", Color.rgb(90, 94, 108)) {
+            Toast.makeText(this, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show()
+        }, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginEnd = dp(6f) })
+        actions.addView(action("متابعة +", Color.rgb(25, 174, 145)) {
+            Toast.makeText(this, "المتابعة غير مربوطة بعد", Toast.LENGTH_SHORT).show()
+        }, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginStart = dp(6f) })
+        content.addView(actions)
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        setContentView(root)
+    }
+
+    private fun compactPublicCount(value: Long): String = when {
+        value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000.0).replace(".0M", "M")
+        value >= 1_000 -> String.format(Locale.US, "%.1fK", value / 1_000.0).replace(".0K", "K")
+        else -> value.toString()
+    }
+
+    private fun showPublicActions() {
+        val choices = arrayOf("الإبلاغ عن المستخدم", "حظر المستخدم", "إلغاء")
+        android.app.AlertDialog.Builder(this).setItems(choices) { _, which ->
+            when (which) {
+                0 -> Toast.makeText(this, "الإبلاغ سيُربط بنظام البلاغات", Toast.LENGTH_SHORT).show()
+                1 -> android.app.AlertDialog.Builder(this).setMessage("هل تريد حظر هذا المستخدم؟")
+                    .setNegativeButton("إلغاء", null)
+                    .setPositiveButton("حظر") { _, _ ->
+                        Toast.makeText(this, "الحظر سيُربط بخدمة الحظر", Toast.LENGTH_SHORT).show()
+                    }.show()
+            }
+        }.show()
+    }
+
     // ------------------------------------------------------------------ data (unchanged logic)
     private fun loadProfileData() {
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
@@ -458,13 +568,20 @@ class ProfileActivity : Activity() {
                 val details = AuthApi.get("/api/users/$userId", token)
                 if (details.status !in 200..299) throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
                 val user = details.body.optJSONObject("user") ?: JSONObject()
-                if (!isOwnProfile) publicId = user.optString("public_id")
+                if (!isOwnProfile) {
+                    publicId = user.optString("public_id")
+                    data.put("level", user.optInt("level", 1))
+                }
                 val data = JSONObject()
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
                     .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
+                    .put("publicFans", user.optLong("followers_count", 0L))
+                    .put("publicFollowing", user.optLong("following_count", 0L))
+                    .put("publicSent", user.optLong("diamonds_sent", 0L))
+                    .put("publicReceived", user.optLong("diamonds_received", 0L))
                     .put("friends", 0)
                     .put("followers", 0)
                     .put("fans", 0)
@@ -524,6 +641,23 @@ class ProfileActivity : Activity() {
     }
 
     private fun bindProfile(data: JSONObject, token: String) {
+        if (!isOwnProfile) {
+            publicName?.text = data.optString("name")
+            publicIdView?.text = "ID: " + publicId
+            publicLevel?.text = "★  LV " + data.optInt("level", 1)
+            publicFans?.text = compactPublicCount(data.optLong("publicFans", 0L))
+            publicFollowing?.text = compactPublicCount(data.optLong("publicFollowing", 0L))
+            publicSent?.text = compactPublicCount(data.optLong("publicSent", 0L))
+            publicReceived?.text = compactPublicCount(data.optLong("publicReceived", 0L))
+            val url = normalizeAvatar(data.optString("avatarUrl"))
+            if (url.isNotBlank()) executor.execute {
+                try {
+                    val bitmap = URL(url).openStream().use { BitmapFactory.decodeStream(it) }
+                    if (bitmap != null) runOnUiThread { if (!isFinishing) publicAvatar?.setImageBitmap(bitmap) }
+                } catch (e: Exception) { Log.w("BAKPublicProfile", "Avatar load failed", e) }
+            }
+            return
+        }
         header.setUserName(data.optString("name"))
         header.setUserIdText(publicId)
         header.setLevel(data.optInt("level", 1))
