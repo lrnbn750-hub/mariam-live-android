@@ -665,7 +665,7 @@ class ProfileActivity : Activity() {
             gravity = Gravity.CENTER
             background = rounded(Color.rgb(240, 241, 246), 23f, Color.TRANSPARENT)
             isClickable = true
-            setOnClickListener { if (isFollowingPublic) onPublicStarClick() else openFollowList("friends", userId) }
+            setOnClickListener { openFollowList("friends", userId) }
             pressable()
         }
         publicFriendsLabel = text("⇄  الأصدقاء", 14f, Color.rgb(110, 116, 130), true).apply { gravity = Gravity.CENTER }
