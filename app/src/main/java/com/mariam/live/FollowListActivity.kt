@@ -55,7 +55,7 @@ class FollowListActivity : Activity() {
         tabs.addView(label("الكل",17f,ink,true),LinearLayout.LayoutParams(0,dp(48),1f))
         tabs.addView(label("متابعة خاصة (0)",16f,muted),LinearLayout.LayoutParams(0,dp(48),1f))
         root.addView(tabs)
-        search=EditText(this).apply { hint="البحث"; textSize=15f; setTextColor(ink); setHintTextColor(muted); singleLine=true; background=pill(pale); setPadding(dp(18),0,dp(18),0); layoutDirection=View.LAYOUT_DIRECTION_RTL }
+        search=EditText(this).apply { hint="البحث"; textSize=15f; setTextColor(ink); setHintTextColor(muted); isSingleLine=true; background=pill(pale); setPadding(dp(18),0,dp(18),0); layoutDirection=View.LAYOUT_DIRECTION_RTL }
         root.addView(search,LinearLayout.LayoutParams(-1,dp(50)).apply { bottomMargin=dp(12) })
         val scroll=ScrollView(this).apply { isFillViewport=true }
         val body=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
@@ -108,7 +108,7 @@ class FollowListActivity : Activity() {
         val action=TextView(this).apply { text=if(type=="followers") "يتابعك" else "تتابعه"; textSize=14f; setTextColor(Color.rgb(139,145,157)); gravity=Gravity.CENTER; background=pill(pale) }
         row.addView(action,LinearLayout.LayoutParams(dp(104),dp(42)))
         row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
-        val nameView=TextView(this).apply { text=name; textSize=16f; setTextColor(ink); setTypeface(typeface,Typeface.MEDIUM); gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT; maxLines=1; ellipsize=android.text.TextUtils.TruncateAt.END }
+        val nameView=TextView(this).apply { text=name; textSize=16f; setTextColor(ink); setTypeface(typeface,Typeface.NORMAL); gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT; maxLines=1; ellipsize=android.text.TextUtils.TruncateAt.END }
         row.addView(nameView,LinearLayout.LayoutParams(0,dp(54),1f).apply { marginEnd=dp(10) })
         val avatar=ImageView(this).apply { scaleType=ImageView.ScaleType.CENTER_CROP; background=pill(pale); clipToOutline=true; setImageDrawable(android.graphics.drawable.ColorDrawable(Color.rgb(230,232,238))) }
         row.addView(avatar,LinearLayout.LayoutParams(dp(54),dp(54)))
