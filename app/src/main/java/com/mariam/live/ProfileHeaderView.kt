@@ -25,6 +25,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
     val followingCountView: TextView
     val fansCell: View
     val followingCell: View
+    val friendsCell: View
     val settingsView: View
     val supportView: View
 
@@ -49,6 +50,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         followingCountView = findViewById(R.id.profileHeaderFollowingCount)
         fansCell = findViewById(R.id.profileHeaderFansCell)
         followingCell = findViewById(R.id.profileHeaderFollowingCell)
+        friendsCell = findViewById(R.id.profileHeaderFriendsCell)
         settingsView = findViewById(R.id.profileHeaderSettings)
         supportView = findViewById(R.id.profileHeaderSupport)
         avatarFrame = findViewById(R.id.profileHeaderAvatarSlot)
