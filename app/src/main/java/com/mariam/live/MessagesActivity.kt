@@ -109,11 +109,26 @@ class MessagesActivity : Activity() {
                         status.text = "لا توجد محادثات بعد"
                         showEmpty()
                     } else {
-                        status.text = "محادثاتك الخاصة • ${rows.length()}"
+                        var shown = 0
+                        val myId = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("user_id", "").orEmpty()
                         for (i in 0 until rows.length()) {
-                            val item = rows.optJSONObject(i)
-                            if (item != null) addConversation(item)
+                            val item = rows.optJSONObject(i) ?: continue
+                            if (item.optString("type") != "direct") continue
+                            val members = item.optJSONArray("members") ?: continue
+                            if (members.length() != 2) continue
+                            var hasMe = false
+                            var hasOther = false
+                            for (j in 0 until members.length()) {
+                                val uid = members.optJSONObject(j)?.optString("user_id") ?: continue
+                                if (uid == myId) hasMe = true else if (uid.isNotBlank()) hasOther = true
+                            }
+                            if (hasMe && hasOther) {
+                                addConversation(item)
+                                shown++
+                            }
                         }
+                        status.text = if (shown == 0) "لا توجد محادثات خاصة صالحة بعد" else "محادثاتك الخاصة • $shown"
+                        if (shown == 0) showEmpty()
                     }
                     loading = false
                 }
