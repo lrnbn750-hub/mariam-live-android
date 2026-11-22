@@ -2951,6 +2951,17 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    setImageDrawable(VectorIcon("user",Color.rgb(130,137,145),dp(28)))
   }
   if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
+  avatar.isClickable=true
+  avatar.isFocusable=true
+  avatar.contentDescription="فتح الملف الشخصي الكامل"
+  avatar.setOnClickListener{
+   // Keep the room underneath this Activity; its LiveKit session and seat remain active.
+   dialog.dismiss()
+   startActivity(
+    Intent(this@RoomActivity,ProfileActivity::class.java)
+     .putExtra("profile_user_id",uid)
+   )
+  }
   root.addView(avatar,FrameLayout.LayoutParams(dp(104),dp(104),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
   val nameLabel=label(name,21f,Color.rgb(28,29,33),true).apply{gravity=Gravity.CENTER}
   val accountLabel=label("ID: $account",13f,Color.rgb(137,140,146)).apply{gravity=Gravity.CENTER}
