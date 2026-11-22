@@ -231,6 +231,34 @@ class LoginActivity : Activity() {
         page.addView(create)
         page.addView(forgot)
 
+        val legalLinks = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(0, AuthUi.dp(this@LoginActivity, 18), 0, AuthUi.dp(this@LoginActivity, 8))
+        }
+        val privacyLink = AuthUi.link(this, "سياسة الخصوصية").apply {
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                startActivity(Intent(this@LoginActivity, LegalActivity::class.java).putExtra("legal_page", "privacy"))
+            }
+        }
+        val separator = TextView(this).apply {
+            text = "  |  "
+            textSize = 14f
+            setTextColor(0xFFBEB8D0.toInt())
+        }
+        val termsLink = AuthUi.link(this, "شروط الاستخدام").apply {
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                startActivity(Intent(this@LoginActivity, LegalActivity::class.java).putExtra("legal_page", "terms"))
+            }
+        }
+        legalLinks.addView(privacyLink)
+        legalLinks.addView(separator)
+        legalLinks.addView(termsLink)
+        page.addView(legalLinks)
+
         val root = FrameLayout(this).apply { setBackgroundColor(0xFF17152B.toInt()) }
         val videoId = resources.getIdentifier("login_background", "raw", packageName)
         if (videoId != 0) {
