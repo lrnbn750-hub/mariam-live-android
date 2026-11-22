@@ -34,6 +34,7 @@ class FollowListActivity : Activity() {
     private var followingIds = emptySet<String>()
     private var followerIds = emptySet<String>()
     private var type = "followers"
+    private var targetUserId = ""
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun label(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
         text=value; textSize=size; setTextColor(color); gravity=Gravity.CENTER
@@ -47,10 +48,12 @@ class FollowListActivity : Activity() {
         window.statusBarColor=Color.WHITE; window.navigationBarColor=Color.rgb(242,243,246)
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         type=intent.getStringExtra("list_type") ?: "followers"
+        targetUserId=intent.getStringExtra("target_user_id").orEmpty()
         val root=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE); layoutDirection=View.LAYOUT_DIRECTION_RTL; setPadding(dp(18),dp(8),dp(18),dp(8)) }
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; layoutDirection=View.LAYOUT_DIRECTION_LTR }
         top.addView(label("‹",38f,ink).apply { setOnClickListener { finish() } },LinearLayout.LayoutParams(dp(48),dp(54)))
-        top.addView(label(if(type=="followers") "المتابعون" else "أتابعهم",21f,ink,true),LinearLayout.LayoutParams(0,dp(54),1f))
+        val title = when(type) { "friends" -> "الأصدقاء"; "following" -> "يتابعهم"; else -> "المتابعون" }
+        top.addView(label(title,21f,ink,true),LinearLayout.LayoutParams(0,dp(54),1f))
         top.addView(View(this),LinearLayout.LayoutParams(dp(48),dp(54)))
         root.addView(top)
         val tabs=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER; layoutDirection=View.LAYOUT_DIRECTION_RTL; setPadding(0,dp(10),0,dp(12)) }
@@ -78,7 +81,8 @@ class FollowListActivity : Activity() {
         if(token.isNullOrBlank()){ finish(); return }
         io.execute {
             try {
-                val result=AuthApi.get("/api/follows/me",token)
+                val endpoint = if (targetUserId.isBlank()) "/api/follows/me" else "/api/follows/user/$targetUserId"
+                val result=AuthApi.get(endpoint,token)
                 if(result.status !in 200..299) throw Exception(result.body.optString("error","تعذر تحميل القائمة"))
                 val followers = result.body.optJSONArray("followers") ?: JSONArray()
                 val following = result.body.optJSONArray("following") ?: JSONArray()
@@ -130,7 +134,7 @@ class FollowListActivity : Activity() {
 
     private fun makeRow(item:JSONObject,name:String):View {
         val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; layoutDirection=View.LAYOUT_DIRECTION_LTR; setPadding(dp(4),dp(12),dp(4),dp(12)); isClickable=true
-            setOnClickListener { val id=item.optString("id"); if(id.isNotBlank()) startActivity(android.content.Intent(this@FollowListActivity,ProfileActivity::class.java).putExtra("profile_user_id",id)) }
+            setOnClickListener { val id=itemId(item); if(id.isNotBlank()) startActivity(android.content.Intent(this@FollowListActivity,ProfileActivity::class.java).putExtra("profile_user_id",id)) }
         }
         val id = itemId(item)
         val mutual = id.isNotBlank() && id in followerIds && id in followingIds
