@@ -986,7 +986,8 @@ class ProfileActivity : Activity() {
 
     private fun openAction(action: String) {
         when (action) {
-            "settings", "privacy" -> startActivity(Intent(this, AccountSecurityActivity::class.java))
+            "settings" -> startActivity(Intent(this, AccountSecurityActivity::class.java))
+            "privacy" -> startActivity(Intent(this, LegalActivity::class.java).putExtra("legal_page", "privacy"))
             "music" -> Toast.makeText(this, "الموسيقى", Toast.LENGTH_SHORT).show()
             "level" -> startActivity(Intent(this, LevelActivity::class.java))
             "diamonds", "coins" -> startActivity(Intent(this, WalletActivity::class.java))
