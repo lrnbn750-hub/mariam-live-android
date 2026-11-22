@@ -760,6 +760,49 @@ class ProfileActivity : Activity() {
         if (token.isNullOrBlank()) { finish(); return }
         executor.execute {
             try {
+                // Public profiles opened from a live room must not depend on /api/auth/me.
+                // Some sessions can load /api/users/{id} while the /me endpoint is temporarily
+                // unavailable; requiring /me first caused the profile launch to appear to bounce.
+                if (requestedProfileUserId.isNotBlank()) {
+                    isOwnProfile = false
+                    userId = requestedProfileUserId
+                    val details = AuthApi.get("/api/users/$userId", token)
+                    if (details.status !in 200..299) {
+                        throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
+                    }
+                    val user = details.body.optJSONObject("user")
+                        ?: details.body.optJSONObject("profile")
+                        ?: details.body
+                    publicId = user.optString("public_id").takeIf { it.isNotBlank() && it != "null" }
+                        ?: user.optString("account_id").takeIf { it.isNotBlank() && it != "null" }.orEmpty()
+                    val data = JSONObject()
+                        .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" }
+                            ?: user.optString("username", "مستخدم BAK LIVE"))
+                        .put("id", publicId)
+                        .put("level", user.optInt("level", 1).coerceAtLeast(1))
+                        .put("avatarUrl", user.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
+                            ?: user.optString("profile_image"))
+                        .put("visitors", JSONObject.NULL)
+                        .put("publicFans", user.optLong("followers_count", user.optLong("fans_count", 0L)))
+                        .put("publicFollowing", user.optLong("following_count", 0L))
+                        .put("publicSent", user.optLong("diamonds_sent", user.optLong("total_diamonds_sent", 0L)))
+                        .put("publicReceived", user.optLong("diamonds_received", user.optLong("total_diamonds_received", 0L)))
+                        .put("gender", user.optString("gender"))
+                        .put("city", user.optString("city"))
+                        .put("country", user.optString("country"))
+                        .put("bio", user.optString("bio"))
+                        .put("friends", 0)
+                        .put("followers", 0)
+                        .put("fans", 0)
+                        .put("diamonds", 0)
+                        .put("coins", 0)
+                    profileData = data
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) bindProfile(data, token)
+                    }
+                    return@execute
+                }
+
                 val me = AuthApi.get("/api/auth/me", token)
                 if (me.status !in 200..299) throw Exception(me.body.optString("error", "تعذر تحميل الحساب"))
                 val account = me.body.optJSONObject("user") ?: throw Exception("بيانات الحساب غير مكتملة")
