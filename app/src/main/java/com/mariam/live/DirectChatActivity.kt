@@ -499,35 +499,76 @@ class DirectChatActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(64) })
             return
         }
+
         val ownId = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("user_id", "")
         var prevSender: String? = null
         var prevDay: String? = null
-        for (i in 0 until rows.length()) {
-            val item = rows.optJSONObject(i) ?: continue
+        var i = 0
+
+        // اجمع الرسائل التعبيرية المتتالية من نفس المرسل في فقاعة واحدة.
+        // الرسائل النصية تبقى مستقلة حتى لا يتغير ترتيب أو معنى المحادثة.
+        while (i < rows.length()) {
+            val item = rows.optJSONObject(i) ?: run { i++; continue }
             val sender = item.optString("sender_id")
             val date = parseDate(item.optString("created_at"))
             val day = date?.let { dayLabel(it) }
-
             if (day != null && day != prevDay) {
                 addDaySeparator(day)
                 prevSender = null
             }
-            val nextSender = rows.optJSONObject(i + 1)?.optString("sender_id")
-            val nextDay = rows.optJSONObject(i + 1)?.let { n ->
-                parseDate(n.optString("created_at"))?.let { dayLabel(it) }
+
+            val contents = ArrayList<String>()
+            contents.add(item.optString("content"))
+            var lastDate = date
+            var j = i + 1
+            if (isEmojiOnly(contents[0])) {
+                while (j < rows.length()) {
+                    val next = rows.optJSONObject(j) ?: break
+                    val nextContent = next.optString("content")
+                    val nextDate = parseDate(next.optString("created_at"))
+                    val nextDay = nextDate?.let { dayLabel(it) }
+                    if (next.optString("sender_id") != sender ||
+                        !isEmojiOnly(nextContent) ||
+                        (day != null && nextDay != day)) break
+                    contents.add(nextContent)
+                    if (nextDate != null) lastDate = nextDate
+                    j++
+                }
+            }
+
+            val nextItem = rows.optJSONObject(j)
+            val nextSender = nextItem?.optString("sender_id")
+            val nextDay = nextItem?.let { next ->
+                parseDate(next.optString("created_at"))?.let { dayLabel(it) }
             }
             val isLastInGroup = nextSender != sender || (day != null && nextDay != day)
             val topGap = if (prevSender == sender) 2 else 8
-
             addBubble(
-                content = item.optString("content"),
+                content = contents.joinToString(" "),
                 mine = sender == ownId,
-                time = date?.let { formatClock(it) } ?: "",
+                time = lastDate?.let { formatClock(it) } ?: "",
                 tail = isLastInGroup,
                 topGap = topGap
             )
             prevSender = sender
             if (day != null) prevDay = day
+            i = if (j > i + 1) j else i + 1
+        }
+    }
+
+    private fun isEmojiOnly(value: String): Boolean {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return false
+        // Allow emoji, variation selectors, joiners, skin-tone modifiers and whitespace only.
+        return trimmed.codePoints().allMatch { cp ->
+            Character.getType(cp) in intArrayOf(
+                Character.OTHER_SYMBOL.toInt(),
+                Character.MODIFIER_SYMBOL.toInt(),
+                Character.NON_SPACING_MARK.toInt(),
+                Character.ENCLOSING_MARK.toInt(),
+                Character.COMBINING_SPACING_MARK.toInt()
+            ) || cp == 0x200D || cp == 0xFE0F || cp == 0xFE0E ||
+                cp == 0x20E3 || cp in 0x1F3FB..0x1F3FF || Character.isWhitespace(cp)
         }
     }
 
