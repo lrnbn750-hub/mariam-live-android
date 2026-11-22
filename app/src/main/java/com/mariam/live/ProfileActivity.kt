@@ -543,7 +543,9 @@ class ProfileActivity : Activity() {
         // ---- Stats ----
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            // Explicit LTR placement: left-to-right = diamonds, Beans, following, fans.
+            // This puts fans at the far right exactly like the reference screenshot.
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12f), dp(15f), dp(12f), dp(12f))
             setBackgroundColor(Color.WHITE)
@@ -576,13 +578,13 @@ class ProfileActivity : Activity() {
             pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5f) })
             return pair
         }
-        // RTL order: fans are the first item and therefore sit at the far right, like the reference.
-        stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
-            LinearLayout.LayoutParams(0, dp(44f), 1.05f))
+        // Exact reference order from LEFT to RIGHT. Fans end up at the FAR RIGHT.
+        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
+        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
         stats.addView(statPair("متابعون", { publicFollowing = it }) { openFollowList("following", userId) },
             LinearLayout.LayoutParams(0, dp(44f), 1f))
-        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
-        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
+        stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
+            LinearLayout.LayoutParams(0, dp(44f), 1.05f))
         content.addView(stats)
 
         // ---- Level badge ----
