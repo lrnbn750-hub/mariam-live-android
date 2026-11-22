@@ -75,6 +75,7 @@ class DirectChatActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setBackgroundColor(canvas)
+            fitsSystemWindows = true
         }
 
         val header = LinearLayout(this).apply {
@@ -134,35 +135,43 @@ class DirectChatActivity : Activity() {
 
         root.addView(View(this).apply { setBackgroundColor(Color.rgb(235, 239, 236)) },
             LinearLayout.LayoutParams(-1, dp(1)))
+        // Composer follows the compact rounded style used in voice-room chat.
         val composer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setPadding(dp(12), dp(8), dp(12), dp(8))
             setBackgroundColor(Color.WHITE)
         }
         input = EditText(this).apply {
-            hint = "اكتب رسالتك..."
-            textSize = 15f
-            setTextColor(ink); setHintTextColor(muted)
-            background = shape(canvas, 28)
-            setPadding(dp(18), dp(11), dp(18), dp(11))
+            hint = "اكتب رسالة..."
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.argb(155, 255, 255, 255))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(48, 48, 48), Color.rgb(25, 25, 25))).apply { cornerRadius = dp(24).toFloat() }
+            setPadding(dp(16), 0, dp(16), 0)
             minHeight = dp(48)
-            maxLines = 4
+            maxLines = 1
+            setSingleLine(true)
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             imeOptions = EditorInfo.IME_ACTION_SEND
             setOnEditorActionListener { _, action, _ ->
                 if (action == EditorInfo.IME_ACTION_SEND) { sendMessage(); true } else false
             }
         }
-        composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
+        composer.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) })
         sendButton = TextView(this).apply {
-            text = "➤"; textSize = 23f; gravity = Gravity.CENTER
-            setTextColor(Color.WHITE); background = shape(green, 30)
+            text = "إرسال"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(dp(18), 0, dp(18), 0)
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(255, 64, 140), Color.rgb(255, 140, 60))).apply { cornerRadius = dp(23).toFloat() }
             setOnClickListener { sendMessage() }
         }
-        composer.addView(sendButton, LinearLayout.LayoutParams(dp(50), dp(50)).apply {
-            marginStart = dp(9)
-        })
+        composer.addView(sendButton, LinearLayout.LayoutParams(-2, dp(46)))
         root.addView(composer)
         setContentView(root)
         updateSendButton()
