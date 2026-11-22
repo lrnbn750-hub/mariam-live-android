@@ -508,7 +508,8 @@ class DirectChatActivity : Activity() {
         // اجمع الرسائل التعبيرية المتتالية من نفس المرسل في فقاعة واحدة.
         // الرسائل النصية تبقى مستقلة حتى لا يتغير ترتيب أو معنى المحادثة.
         while (i < rows.length()) {
-            val item = rows.optJSONObject(i) ?: run { i++; continue }
+            val item = rows.optJSONObject(i)
+            if (item == null) { i++; continue }
             val sender = item.optString("sender_id")
             val date = parseDate(item.optString("created_at"))
             val day = date?.let { dayLabel(it) }
@@ -560,16 +561,21 @@ class DirectChatActivity : Activity() {
         val trimmed = value.trim()
         if (trimmed.isEmpty()) return false
         // Allow emoji, variation selectors, joiners, skin-tone modifiers and whitespace only.
-        return trimmed.codePoints().allMatch { cp ->
-            Character.getType(cp) in intArrayOf(
-                Character.OTHER_SYMBOL.toInt(),
-                Character.MODIFIER_SYMBOL.toInt(),
-                Character.NON_SPACING_MARK.toInt(),
-                Character.ENCLOSING_MARK.toInt(),
-                Character.COMBINING_SPACING_MARK.toInt()
-            ) || cp == 0x200D || cp == 0xFE0F || cp == 0xFE0E ||
+        var index = 0
+        while (index < trimmed.length) {
+            val cp = Character.codePointAt(trimmed, index)
+            val type = Character.getType(cp)
+            val allowed = type == Character.OTHER_SYMBOL.toInt() ||
+                type == Character.MODIFIER_SYMBOL.toInt() ||
+                type == Character.NON_SPACING_MARK.toInt() ||
+                type == Character.ENCLOSING_MARK.toInt() ||
+                type == Character.COMBINING_SPACING_MARK.toInt() ||
+                cp == 0x200D || cp == 0xFE0F || cp == 0xFE0E ||
                 cp == 0x20E3 || cp in 0x1F3FB..0x1F3FF || Character.isWhitespace(cp)
+            if (!allowed) return false
+            index += Character.charCount(cp)
         }
+        return true
     }
 
     private fun addDaySeparator(label: String) {
