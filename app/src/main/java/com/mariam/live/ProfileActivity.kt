@@ -568,10 +568,7 @@ class ProfileActivity : Activity() {
                 val details = AuthApi.get("/api/users/$userId", token)
                 if (details.status !in 200..299) throw Exception(details.body.optString("error", "تعذر تحميل الملف الشخصي"))
                 val user = details.body.optJSONObject("user") ?: JSONObject()
-                if (!isOwnProfile) {
-                    publicId = user.optString("public_id")
-                    data.put("level", user.optInt("level", 1))
-                }
+                if (!isOwnProfile) publicId = user.optString("public_id")
                 val data = JSONObject()
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
@@ -587,6 +584,7 @@ class ProfileActivity : Activity() {
                     .put("fans", 0)
                     .put("diamonds", 0)
                     .put("coins", 0)
+                if (!isOwnProfile) data.put("level", user.optInt("level", 1))
                 // These four requests are independent. Run them concurrently so the profile
                 // does not wait for each network round-trip one after another.
                 val levelFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/levels/me", token) }.getOrNull() } else null
