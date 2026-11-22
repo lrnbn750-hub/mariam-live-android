@@ -356,7 +356,7 @@ class ProfileActivity : Activity() {
             clipToOutline = true
         }
         serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color, rounded(Color.rgb(226, 247, 243), 14f, Color.TRANSPARENT), dp(8f)) { openAction("help") }
-        serviceRow(services, "الأمان والخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
+        serviceRow(services, "سياسة الخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
         body.addView(services, LinearLayout.LayoutParams(-1, -2))
 
         // لا نعرض قسم الإدارة إلا بعد تأكيد الصلاحية من الخادم.
