@@ -250,7 +250,11 @@ class FollowListActivity : Activity() {
             val btn = label(relationText(p.id), 14f, muted).apply {
                 gravity = Gravity.CENTER
                 background = bg(fieldBg, 22f)
-                setOnClickListener { toggleFollow(p.id, this) }
+                setOnClickListener {
+                    if (p.id in myFollowing) {
+                        showUnfollowDialog(this@FollowListActivity, p.name, cache[p.avatarUrl]) { toggleFollow(p.id, this) }
+                    } else toggleFollow(p.id, this)
+                }
             }
             row.addView(btn, LinearLayout.LayoutParams(dp(92f), dp(42f)))
         } else row.addView(View(this), LinearLayout.LayoutParams(dp(92f), 1))
@@ -323,4 +327,61 @@ class FollowListActivity : Activity() {
         executor.shutdownNow()
         super.onDestroy()
     }
+}
+
+
+/** "Are you sure you want to unfollow X?" confirmation card (bottom sheet style). */
+fun showUnfollowDialog(activity: Activity, name: String, avatar: Bitmap?, onConfirm: () -> Unit) {
+    val density = activity.resources.displayMetrics.density
+    fun dp(v: Float) = (v * density).toInt()
+    val pink = Color.rgb(255, 61, 110)
+    val soft = Color.rgb(250, 128, 150)
+    val dialog = android.app.Dialog(activity)
+    dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+    val card = LinearLayout(activity).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(24f).toFloat() }
+        setPadding(dp(22f), dp(24f), dp(22f), dp(20f))
+    }
+    val frame = FrameLayout(activity)
+    val img = ImageView(activity).apply {
+        scaleType = ImageView.ScaleType.CENTER_CROP
+        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(226, 229, 238)) }
+        clipToOutline = true
+        if (avatar != null) setImageBitmap(avatar)
+    }
+    frame.addView(img, FrameLayout.LayoutParams(dp(74f), dp(74f)))
+    frame.addView(TextView(activity).apply { text = "💔"; textSize = 16f },
+        FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.LEFT))
+    card.addView(frame, LinearLayout.LayoutParams(dp(74f), dp(74f)))
+    fun line(value: String, color: Int) = TextView(activity).apply {
+        text = value; textSize = 14f; setTextColor(color); gravity = Gravity.CENTER
+        textDirection = View.TEXT_DIRECTION_RTL
+    }
+    card.addView(line("هل أنت متأكد من", Color.rgb(20, 24, 34)), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18f) })
+    card.addView(line("إلغاء متابعه $name؟", soft), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f) })
+    fun button(label: String, color: Int, bold: Boolean, onClick: () -> Unit) = TextView(activity).apply {
+        text = label; textSize = 15f; setTextColor(color); gravity = Gravity.CENTER
+        if (bold) setTypeface(typeface, Typeface.BOLD)
+        background = GradientDrawable().apply {
+            setColor(Color.WHITE); cornerRadius = dp(24f).toFloat()
+            setStroke(dp(1f), if (bold) color else Color.rgb(205, 208, 215))
+        }
+        setOnClickListener { dialog.dismiss(); onClick() }
+    }
+    card.addView(button("إلغاء المتابعة", pink, true) { onConfirm() },
+        LinearLayout.LayoutParams(-1, dp(46f)).apply { topMargin = dp(22f) })
+    card.addView(button("إلغاء", Color.rgb(20, 24, 34), false) {},
+        LinearLayout.LayoutParams(-1, dp(46f)).apply { topMargin = dp(10f) })
+    val holder = FrameLayout(activity).apply { setPadding(dp(16f), 0, dp(16f), dp(16f)) }
+    holder.addView(card, FrameLayout.LayoutParams(-1, -2))
+    dialog.setContentView(holder)
+    dialog.window?.apply {
+        setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        setGravity(Gravity.BOTTOM)
+        setLayout(-1, -2)
+        setDimAmount(0.5f)
+    }
+    dialog.show()
 }
