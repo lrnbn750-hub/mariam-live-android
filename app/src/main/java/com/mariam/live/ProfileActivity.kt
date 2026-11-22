@@ -541,8 +541,9 @@ class ProfileActivity : Activity() {
         actions.addView(action("مراسلة", Color.rgb(90, 94, 108)) {
             Toast.makeText(this, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show()
         }, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginEnd = dp(6f) })
-        publicFollowButton = action("متابعة +", Color.rgb(25, 174, 145)) { togglePublicFollow() }
-        actions.addView(publicFollowButton, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginStart = dp(6f) })
+        val followButton = action("متابعة +", Color.rgb(25, 174, 145)) { togglePublicFollow() }
+        publicFollowButton = followButton
+        actions.addView(followButton, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginStart = dp(6f) })
         content.addView(actions)
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
