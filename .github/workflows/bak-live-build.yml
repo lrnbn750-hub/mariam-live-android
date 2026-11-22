@@ -1,5 +1,6 @@
 name: BAK LIVE Android Build
 # Build BAK LIVE debug APK for test installation.
+# Includes the room mini-profile to full-profile navigation.
 
 on:
   workflow_dispatch:
