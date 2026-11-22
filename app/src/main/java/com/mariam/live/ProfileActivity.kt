@@ -540,22 +540,20 @@ class ProfileActivity : Activity() {
         idRow.addView(publicIdView)
         content.addView(idRow)
 
-        // ---- Stats ----
+        // ---- Compact stats: value above, caption directly underneath ----
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            // Explicit LTR placement: left-to-right = diamonds, Beans, following, fans.
-            // This puts fans at the far right exactly like the reference screenshot.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12f), dp(15f), dp(12f), dp(12f))
+            setPadding(dp(10f), dp(10f), dp(10f), dp(9f))
             setBackgroundColor(Color.WHITE)
         }
         fun statPair(caption: String, setter: (TextView) -> Unit, onClick: (() -> Unit)?): View {
             val pair = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
+                orientation = LinearLayout.VERTICAL
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
                 gravity = Gravity.CENTER
-                minimumWidth = dp(1f)
+                setPadding(dp(1f), dp(2f), dp(1f), dp(2f))
                 if (onClick != null) {
                     isClickable = true
                     isFocusable = true
@@ -563,30 +561,34 @@ class ProfileActivity : Activity() {
                     setOnClickListener { onClick() }
                 }
             }
-            val value = text("—", 17f, ink, true).apply {
+            val value = text("—", 16f, ink, true).apply {
+                gravity = Gravity.CENTER
                 setSingleLine(true)
                 includeFontPadding = false
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 letterSpacing = 0f
             }
             setter(value)
-            pair.addView(text(caption, 11.5f, sub, false).apply {
+            pair.addView(value, LinearLayout.LayoutParams(-2, -2))
+            pair.addView(text(caption, 10.5f, sub, false).apply {
+                gravity = Gravity.CENTER
                 textDirection = View.TEXT_DIRECTION_RTL
                 setSingleLine(true)
                 includeFontPadding = false
                 typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 letterSpacing = 0f
-            }, LinearLayout.LayoutParams(-2, -2))
-            pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5f) })
+            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(3f) })
             return pair
         }
-        // Exact reference order from LEFT to RIGHT. Fans end up at the FAR RIGHT.
-        stats.addView(statPair("ألماس مرسل", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
-        stats.addView(statPair("ألماس مستلم", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
+        // Left-to-right order: sent diamonds, received diamonds, following, fans (far right).
+        stats.addView(statPair("ألماس مرسل", { publicSent = it }, null),
+            LinearLayout.LayoutParams(0, dp(48f), 1f))
+        stats.addView(statPair("ألماس مستلم", { publicReceived = it }, null),
+            LinearLayout.LayoutParams(0, dp(48f), 1f))
         stats.addView(statPair("متابعون", { publicFollowing = it }) { openFollowList("following", userId) },
-            LinearLayout.LayoutParams(0, dp(44f), 1f))
+            LinearLayout.LayoutParams(0, dp(48f), 1f))
         stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
-            LinearLayout.LayoutParams(0, dp(44f), 1.05f))
+            LinearLayout.LayoutParams(0, dp(48f), 1f))
         content.addView(stats)
 
         // ---- Level badge ----
