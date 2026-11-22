@@ -2902,7 +2902,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    orientation=LinearLayout.VERTICAL
    gravity=Gravity.CENTER_HORIZONTAL
    layoutDirection=View.LAYOUT_DIRECTION_RTL
-   setPadding(dp(18),dp(58),dp(18),dp(20))
+   setPadding(dp(18),dp(14),dp(18),dp(20))
    background=GradientDrawable().apply{
     setColor(Color.WHITE)
     val r=dp(28).toFloat()
@@ -2911,7 +2911,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
    elevation=dp(8).toFloat()
   }
-  root.addView(card,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM).apply{topMargin=dp(54)})
+  root.addView(card,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM))
   val header=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val close=ImageView(this).apply{
    setImageResource(R.drawable.ic_profile_close)
@@ -2944,17 +2944,20 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   card.addView(header,LinearLayout.LayoutParams(-1,dp(32)))
   val avatar=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(238,240,243));setStroke(dp(4),Color.WHITE)}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(238,240,243));setStroke(dp(3),Color.WHITE)}
    clipToOutline=true
-   elevation=dp(12).toFloat()
-   setImageDrawable(VectorIcon("user",Color.rgb(130,137,145),dp(30)))
+   setImageDrawable(VectorIcon("user",Color.rgb(130,137,145),dp(26)))
   }
-  root.addView(avatar,FrameLayout.LayoutParams(dp(112),dp(112),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
   if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
-  card.addView(label(name,21f,Color.rgb(25,28,34),true),LinearLayout.LayoutParams(-1,dp(40)))
-  card.addView(label("ID: $account",13f,Color.rgb(125,130,138)),LinearLayout.LayoutParams(-1,dp(25)))
+  val identity=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+  }
+  identity.addView(label(name,20f,Color.rgb(25,28,34),true).apply{gravity=Gravity.START},LinearLayout.LayoutParams(-1,dp(31)))
+  identity.addView(label("ID: $account",12f,Color.rgb(125,130,138)).apply{gravity=Gravity.START},LinearLayout.LayoutParams(-1,dp(23)))
   val levelColors=memberLevelColors(level)
-  val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  val badges=LinearLayout(this).apply{gravity=Gravity.START;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val levelBadge=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER
    setPadding(dp(16),dp(7),dp(16),dp(7))
@@ -2970,19 +2973,43 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    addView(label("LV $level",14f,levelColors[4],true))
   }
   badges.addView(levelBadge)
-  card.addView(badges,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(3)})
-  val stats=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-  fun metric(value:String,title:String){
-   val col=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER}
-   col.addView(label(value,19f,Color.rgb(25,28,34),true),LinearLayout.LayoutParams(-1,dp(31)))
-   col.addView(label(title,11f,Color.rgb(139,143,150)),LinearLayout.LayoutParams(-1,dp(25)))
-   stats.addView(col,LinearLayout.LayoutParams(0,dp(60),1f))
+  identity.addView(badges,LinearLayout.LayoutParams(-1,dp(34)).apply{topMargin=dp(4)})
+  val hero=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(4),dp(5),dp(4),dp(13))
   }
-  metric(compactProfileCount(fans),"المعجبون")
-  metric(compactProfileCount(followers),"يتابعهم")
-  metric(compactProfileCount(sent),"ماس أرسله")
-  metric(compactProfileCount(received),"ماس استلمه")
-  card.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(12);bottomMargin=dp(14)})
+  hero.addView(avatar,LinearLayout.LayoutParams(dp(82),dp(82)).apply{marginEnd=dp(14)})
+  hero.addView(identity,LinearLayout.LayoutParams(0,-2,1f))
+  card.addView(hero,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(5)})
+  val stats=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+  }
+  fun metric(value:String,title:String):View{
+   return LinearLayout(this@RoomActivity).apply{
+    orientation=LinearLayout.VERTICAL
+    gravity=Gravity.CENTER
+    background=GradientDrawable().apply{
+     setColor(Color.rgb(247,248,250))
+     cornerRadius=dp(16).toFloat()
+     setStroke(dp(1),Color.rgb(235,237,241))
+    }
+    setPadding(dp(8),dp(9),dp(8),dp(8))
+    addView(label(value,19f,Color.rgb(25,28,34),true),LinearLayout.LayoutParams(-1,dp(29)))
+    addView(label(title,11f,Color.rgb(125,130,138)),LinearLayout.LayoutParams(-1,dp(22)))
+   }
+  }
+  val statsTop=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  statsTop.addView(metric(compactProfileCount(fans),"المعجبون"),LinearLayout.LayoutParams(0,dp(66),1f).apply{marginEnd=dp(6)})
+  statsTop.addView(metric(compactProfileCount(followers),"يتابعهم"),LinearLayout.LayoutParams(0,dp(66),1f))
+  val statsBottom=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  statsBottom.addView(metric(compactProfileCount(sent),"ماس أرسله"),LinearLayout.LayoutParams(0,dp(66),1f).apply{marginEnd=dp(6)})
+  statsBottom.addView(metric(compactProfileCount(received),"ماس استلمه"),LinearLayout.LayoutParams(0,dp(66),1f))
+  stats.addView(statsTop,LinearLayout.LayoutParams(-1,dp(66)))
+  stats.addView(statsBottom,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(6)})
+  card.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(14)})
   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun actionButton(title:String,color:Int,textColor:Int=Color.WHITE,click:(TextView)->Unit):TextView{
    return label(title,14f,textColor,true).apply{
