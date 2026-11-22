@@ -31,6 +31,8 @@ class FollowListActivity : Activity() {
     private lateinit var search: EditText
     private lateinit var empty: TextView
     private var all = JSONArray()
+    private var followingIds = emptySet<String>()
+    private var followerIds = emptySet<String>()
     private var type = "followers"
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun label(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
@@ -78,13 +80,38 @@ class FollowListActivity : Activity() {
             try {
                 val result=AuthApi.get("/api/follows/me",token)
                 if(result.status !in 200..299) throw Exception(result.body.optString("error","تعذر تحميل القائمة"))
-                all=result.body.optJSONArray(type) ?: JSONArray()
+                val followers = result.body.optJSONArray("followers") ?: JSONArray()
+                val following = result.body.optJSONArray("following") ?: JSONArray()
+                followerIds = ids(followers)
+                followingIds = ids(following)
+                all = when (type) {
+                    "friends" -> JSONArray().apply {
+                        for (i in 0 until followers.length()) {
+                            val obj = followers.optJSONObject(i) ?: continue
+                            val id = itemId(obj)
+                            if (id.isNotBlank() && id in followingIds) put(obj)
+                        }
+                    }
+                    "following" -> following
+                    else -> followers
+                }
                 runOnUiThread { if(!isFinishing) render() }
             } catch(e:Exception) {
                 runOnUiThread { if(!isFinishing){ empty.text=e.message ?: "تعذر تحميل القائمة"; Toast.makeText(this,empty.text,Toast.LENGTH_SHORT).show() } }
             }
         }
     }
+
+    private fun itemId(item: JSONObject): String =
+        listOf("id", "user_id", "following_id", "follower_id").firstNotNullOfOrNull { key ->
+            item.optString(key).takeIf { it.isNotBlank() && it != "null" }
+        }.orEmpty()
+
+    private fun ids(array: JSONArray): Set<String> =
+        (0 until array.length()).mapNotNull { i ->
+            val obj = array.optJSONObject(i) ?: return@mapNotNull null
+            itemId(obj).takeIf { it.isNotBlank() }
+        }.toSet()
 
     private fun render() {
         rows.removeAllViews()
@@ -105,7 +132,14 @@ class FollowListActivity : Activity() {
         val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; layoutDirection=View.LAYOUT_DIRECTION_LTR; setPadding(dp(4),dp(12),dp(4),dp(12)); isClickable=true
             setOnClickListener { val id=item.optString("id"); if(id.isNotBlank()) startActivity(android.content.Intent(this@FollowListActivity,ProfileActivity::class.java).putExtra("profile_user_id",id)) }
         }
-        val action=TextView(this).apply { text=if(type=="followers") "يتابعك" else "تتابعه"; textSize=14f; setTextColor(Color.rgb(139,145,157)); gravity=Gravity.CENTER; background=pill(pale) }
+        val id = itemId(item)
+        val mutual = id.isNotBlank() && id in followerIds && id in followingIds
+        val actionText = when {
+            type == "friends" || mutual -> "الأصدقاء"
+            type == "following" -> "متابع"
+            else -> "يتابعك"
+        }
+        val action=TextView(this).apply { text=actionText; textSize=14f; setTextColor(Color.rgb(139,145,157)); gravity=Gravity.CENTER; background=pill(pale) }
         row.addView(action,LinearLayout.LayoutParams(dp(104),dp(42)))
         row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
         val nameView=TextView(this).apply { text=name; textSize=16f; setTextColor(ink); setTypeface(typeface,Typeface.NORMAL); gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT; maxLines=1; ellipsize=android.text.TextUtils.TruncateAt.END }
