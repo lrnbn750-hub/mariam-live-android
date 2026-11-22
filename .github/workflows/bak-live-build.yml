@@ -1,5 +1,6 @@
 name: BAK LIVE Android Build
 # Build BAK LIVE debug APK for test installation.
+# Match mini-profile stat column positions with the full profile.
 # Includes the room mini-profile to full-profile navigation.
 
 on:
