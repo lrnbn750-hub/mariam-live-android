@@ -578,32 +578,7 @@ class ProfileActivity : Activity() {
     }
 
     private fun openFollowList(type: String) {
-        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
-        val title = if (type == "followers") "المعجبون" else "أتابعهم"
-        val dialog = android.app.AlertDialog.Builder(this).setTitle(title)
-            .setMessage("جارٍ تحميل القائمة...").setNegativeButton("إغلاق", null).create()
-        dialog.show()
-        executor.execute {
-            try {
-                val result = AuthApi.get("/api/follows/me", token)
-                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر تحميل القائمة"))
-                val list = result.body.optJSONArray(type) ?: org.json.JSONArray()
-                val names = ArrayList<String>()
-                for (i in 0 until list.length()) {
-                    val item = list.optJSONObject(i) ?: continue
-                    names.add(item.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: item.optString("username", "مستخدم"))
-                }
-                runOnUiThread {
-                    if (isFinishing) return@runOnUiThread
-                    dialog.dismiss()
-                    android.app.AlertDialog.Builder(this).setTitle("$title (${names.size})")
-                        .setMessage(if (names.isEmpty()) "لا توجد حسابات في هذه القائمة بعد" else names.joinToString("\n"))
-                        .setPositiveButton("حسناً", null).show()
-                }
-            } catch (e: Exception) {
-                runOnUiThread { dialog.dismiss(); Toast.makeText(this, e.message ?: "تعذر تحميل القائمة", Toast.LENGTH_SHORT).show() }
-            }
-        }
+        startActivity(Intent(this, FollowListActivity::class.java).putExtra("list_type", type))
     }
 
     private fun pickPhoto() {
