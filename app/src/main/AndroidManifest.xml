@@ -53,6 +53,7 @@
         <activity android:name=".AgencyActivity" android:exported="false" />
         <activity android:name=".AgencyDashboardActivity" android:exported="false" />
         <activity android:name=".AccountSecurityActivity" android:exported="false" />
+        <activity android:name=".LegalActivity" android:exported="false" />
         <activity android:name=".PhoneSecurityActivity" android:exported="false" />
         <activity android:name=".LevelActivity" android:exported="false" />
         <activity android:name=".MessagesActivity" android:exported="false" />
