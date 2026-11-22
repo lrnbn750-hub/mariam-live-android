@@ -176,6 +176,7 @@ module.exports = function(app, db, authenticateToken) {
       const result = await db.query(`
         SELECT
           u.id,
+          u.public_id,
           u.username,
           u.created_at,
           p.display_name,
