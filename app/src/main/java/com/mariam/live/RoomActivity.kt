@@ -2845,7 +2845,16 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     if(text.isNotBlank() && text!="null")return text
    }
   }
-  return "—"
+  return "0"
+ }
+ private fun compactProfileCount(raw:String):String{
+  val value=raw.replace(",","").toDoubleOrNull() ?: return raw
+  return when{
+   value>=1_000_000_000 -> String.format(java.util.Locale.US,"%.1fB",value/1_000_000_000.0).replace(".0B","B")
+   value>=1_000_000 -> String.format(java.util.Locale.US,"%.1fM",value/1_000_000.0).replace(".0M","M")
+   value>=1_000 -> String.format(java.util.Locale.US,"%.1fK",value/1_000.0).replace(".0K","K")
+   else -> String.format(java.util.Locale.US,"%.0f",value)
+  }
  }
  private fun showMemberProfile(member:JSONObject){
   val uid=member.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}?:return
@@ -2879,8 +2888,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
    calculated
   }
-  val fans=profileValue(member,listOf("fans_count","fans","followers_count","followersCount"))
-  val followers=profileValue(member,listOf("following_count","following","follow_count","followings_count"))
+  val followers=profileValue(member,listOf("followers_count","followersCount","fans_count"))
+  val fans=profileValue(member,listOf("fans_count","fans"))
   val sent=profileValue(member,listOf("diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent"))
   val received=profileValue(member,listOf("diamonds_received","total_diamonds_received","received_diamonds","total_received"))
   val dialog=android.app.Dialog(this)
@@ -2911,8 +2920,28 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    contentDescription="إغلاق الملف الشخصي"
    setOnClickListener{dialog.dismiss()}
   }
-  header.addView(close,FrameLayout.LayoutParams(dp(38),dp(38),Gravity.END or Gravity.TOP))
-  card.addView(header,LinearLayout.LayoutParams(-1,dp(28)))
+  header.addView(close,FrameLayout.LayoutParams(dp(34),dp(34),Gravity.START or Gravity.TOP))
+  val reportChip=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(9),dp(5),dp(9),dp(5))
+   background=GradientDrawable().apply{
+    setColor(Color.rgb(248,249,251))
+    cornerRadius=dp(16).toFloat()
+    setStroke(dp(1),Color.rgb(226,229,234))
+   }
+   isClickable=true
+   isFocusable=true
+   contentDescription="إبلاغ عن المستخدم"
+   addView(ImageView(this@RoomActivity).apply{
+    setImageDrawable(VectorIcon("flag",Color.rgb(70,74,82),dp(14)))
+   },LinearLayout.LayoutParams(dp(16),dp(16)).apply{marginEnd=dp(4)})
+   addView(label("إبلاغ",11f,Color.rgb(70,74,82),true))
+   setOnClickListener{reportRoomMember(uid,name,dialog)}
+  }
+  header.addView(reportChip,FrameLayout.LayoutParams(-2,dp(30),Gravity.END or Gravity.TOP))
+  card.addView(header,LinearLayout.LayoutParams(-1,dp(32)))
   val avatar=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(238,240,243));setStroke(dp(4),Color.WHITE)}
@@ -2949,10 +2978,10 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    col.addView(label(title,11f,Color.rgb(139,143,150)),LinearLayout.LayoutParams(-1,dp(25)))
    stats.addView(col,LinearLayout.LayoutParams(0,dp(60),1f))
   }
-  metric(fans,"المعجبون")
-  metric(followers,"يتابعهم")
-  metric(sent,"ماس أرسله")
-  metric(received,"ماس استلمه")
+  metric(compactProfileCount(followers),"المتابعون")
+  metric(compactProfileCount(fans),"المعجبون")
+  metric(compactProfileCount(sent),"ماس أرسله")
+  metric(compactProfileCount(received),"ماس استلمه")
   card.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(12);bottomMargin=dp(14)})
   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun actionButton(title:String,color:Int,textColor:Int=Color.WHITE,click:(TextView)->Unit):TextView{
@@ -2984,8 +3013,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   actions.addView(follow,LinearLayout.LayoutParams(0,dp(50),1f))
   loadMemberFollowState(uid,follow)
   card.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(5)})
-  val reportButton=actionButton("إبلاغ عن المستخدم",Color.rgb(190,55,72)){reportRoomMember(uid,name,dialog)}
-  card.addView(reportButton,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(10)})
   presentSheet(dialog,root)
  }
  private fun reportRoomMember(reportedUserId:String,reportedName:String,profileDialog:android.app.Dialog){
