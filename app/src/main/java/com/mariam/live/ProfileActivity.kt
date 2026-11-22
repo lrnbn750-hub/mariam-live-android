@@ -997,3 +997,4 @@ class ProfileActivity : Activity() {
             }
         }
     }
+}
