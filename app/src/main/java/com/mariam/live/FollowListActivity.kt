@@ -89,6 +89,7 @@ class FollowListActivity : Activity() {
     private var myId = ""
     private var myFollowing: Set<String> = emptySet()
     private var myFollowers: Set<String> = emptySet()
+    private val rowButtons = HashMap<String, TextView>()
     private var listType = "following"
     private var targetUserId = ""
     private var token = ""
@@ -224,11 +225,12 @@ class FollowListActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(160f)))
             return
         }
+        rowButtons.clear()
         shown.forEach { listBox.addView(row(it), LinearLayout.LayoutParams(-1, -2)) }
     }
 
     private fun relationText(id: String) = when {
-        id in myFollowing && id in myFollowers -> "الأصدقاء"
+        id in myFollowing && id in myFollowers -> "حنا أصدقاء"
         id in myFollowing -> "متابَع"
         else -> "متابعة +"
     }
@@ -250,6 +252,7 @@ class FollowListActivity : Activity() {
             val btn = label(relationText(p.id), 14f, muted).apply {
                 gravity = Gravity.CENTER
                 background = bg(fieldBg, 22f)
+                rowButtons[p.id] = this
                 setOnClickListener {
                     if (p.id in myFollowing) {
                         showUnfollowDialog(this@FollowListActivity, p.name, cache[p.avatarUrl]) { toggleFollow(p.id, this) }
@@ -294,7 +297,11 @@ class FollowListActivity : Activity() {
                 val r = if (wasFollowing) AuthApi.delete(endpoint, token) else AuthApi.post(endpoint, JSONObject(), token)
                 if (r.status !in 200..299) throw Exception(r.body.optString("error", "تعذر تحديث المتابعة"))
                 myFollowing = if (wasFollowing) myFollowing - id else myFollowing + id
-                runOnUiThread { btn.text = relationText(id); btn.isEnabled = true }
+                // The visible relationship label is based on both directions.
+                runOnUiThread {
+                    btn.text = relationText(id)
+                    btn.isEnabled = true
+                }
             } catch (e: Exception) {
                 runOnUiThread {
                     btn.isEnabled = true
