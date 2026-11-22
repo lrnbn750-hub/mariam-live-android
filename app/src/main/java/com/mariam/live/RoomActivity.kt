@@ -2988,8 +2988,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    col.addView(label(title,11f,Color.rgb(151,153,158)),LinearLayout.LayoutParams(-1,dp(24)))
    stats.addView(col,LinearLayout.LayoutParams(0,dp(58),1f))
   }
-  metric(compactProfileCount(received),"ماس استلمه")
   metric(compactProfileCount(sent),"ماس أرسله")
+  metric(compactProfileCount(received),"ماس استلمه")
   metric(compactProfileCount(followers),"متابعون")
   metric(compactProfileCount(fans),"معجبين")
   card.addView(stats,LinearLayout.LayoutParams(-1,dp(64)).apply{topMargin=dp(8);bottomMargin=dp(18)})
