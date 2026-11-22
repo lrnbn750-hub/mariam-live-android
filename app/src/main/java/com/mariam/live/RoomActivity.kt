@@ -3000,7 +3000,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   val stats=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
     gravity=Gravity.CENTER
-    layoutDirection=View.LAYOUT_DIRECTION_RTL
+    // Same physical column positions as the full profile page.
+    layoutDirection=View.LAYOUT_DIRECTION_LTR
     clipChildren=false
    }
    fun metric(value:String,title:String){
