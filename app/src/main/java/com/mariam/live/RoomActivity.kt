@@ -2884,71 +2884,88 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   val sent=profileValue(member,listOf("diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent"))
   val received=profileValue(member,listOf("diamonds_received","total_diamonds_received","received_diamonds","total_received"))
   val dialog=android.app.Dialog(this)
-  val root=LinearLayout(this).apply{
-   orientation=1;gravity=Gravity.CENTER_HORIZONTAL;setPadding(dp(18),dp(16),dp(18),dp(18))
-   background=sheetBg()
+  val root=FrameLayout(this).apply{
+   setBackgroundColor(Color.TRANSPARENT)
+   clipChildren=false
+   clipToPadding=false
   }
-  val top=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-  top.addView(View(this),LinearLayout.LayoutParams(0,dp(34),1f))
-  top.addView(ImageView(this).apply{
+  val card=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   gravity=Gravity.CENTER_HORIZONTAL
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   setPadding(dp(18),dp(58),dp(18),dp(20))
+   background=GradientDrawable().apply{
+    setColor(Color.WHITE)
+    val r=dp(28).toFloat()
+    cornerRadii=floatArrayOf(r,r,r,r,0f,0f,0f,0f)
+    setStroke(dp(1),Color.rgb(235,237,240))
+   }
+   elevation=dp(8).toFloat()
+  }
+  root.addView(card,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM).apply{topMargin=dp(54)})
+  val header=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  val close=ImageView(this).apply{
    setImageResource(R.drawable.ic_profile_close)
-   setColorFilter(Color.argb(210,255,255,255),PorterDuff.Mode.SRC_IN)
-   setPadding(dp(9),dp(9),dp(9),dp(9))
+   setColorFilter(Color.rgb(65,68,74),PorterDuff.Mode.SRC_IN)
+   setPadding(dp(8),dp(8),dp(8),dp(8))
    contentDescription="إغلاق الملف الشخصي"
    setOnClickListener{dialog.dismiss()}
-  },LinearLayout.LayoutParams(dp(38),dp(34)))
-  root.addView(top)
+  }
+  header.addView(close,FrameLayout.LayoutParams(dp(38),dp(38),Gravity.END or Gravity.TOP))
+  card.addView(header,LinearLayout.LayoutParams(-1,dp(28)))
   val avatar=ImageView(this).apply{
    scaleType=ImageView.ScaleType.CENTER_CROP
-   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(44,36,66));setStroke(dp(3),Color.rgb(255,92,170))}
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(238,240,243));setStroke(dp(4),Color.WHITE)}
    clipToOutline=true
-   setImageDrawable(VectorIcon("user",Color.rgb(110,130,115),dp(28)))
+   elevation=dp(12).toFloat()
+   setImageDrawable(VectorIcon("user",Color.rgb(130,137,145),dp(30)))
   }
-  root.addView(avatar,LinearLayout.LayoutParams(dp(104),dp(104)).apply{topMargin=dp(-2)})
+  root.addView(avatar,FrameLayout.LayoutParams(dp(112),dp(112),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
   if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
-  root.addView(label(name,20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(42)))
-  root.addView(label("ID: $account",13f,Color.argb(170,255,255,255)),LinearLayout.LayoutParams(-1,dp(26)))
+  card.addView(label(name,21f,Color.rgb(25,28,34),true),LinearLayout.LayoutParams(-1,dp(40)))
+  card.addView(label("ID: $account",13f,Color.rgb(125,130,138)),LinearLayout.LayoutParams(-1,dp(25)))
   val levelColors=memberLevelColors(level)
   val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val levelBadge=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER
-   setPadding(dp(16),dp(8),dp(16),dp(8))
+   setPadding(dp(16),dp(7),dp(16),dp(7))
    background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(levelColors[0],levelColors[1],levelColors[2])).apply{
-    cornerRadius=dp(14).toFloat()
+    cornerRadius=dp(18).toFloat()
     setStroke(dp(1),levelColors[3])
    }
    val levelIcon=ImageView(this@RoomActivity).apply{
     setImageResource(R.drawable.ic_profile_level)
     setColorFilter(levelColors[4],PorterDuff.Mode.SRC_IN)
    }
-   addView(levelIcon,LinearLayout.LayoutParams(dp(19),dp(19)).apply{marginEnd=dp(7)})
+   addView(levelIcon,LinearLayout.LayoutParams(dp(18),dp(18)).apply{marginEnd=dp(7)})
    addView(label("LV $level",14f,levelColors[4],true))
   }
   badges.addView(levelBadge)
-  root.addView(badges,LinearLayout.LayoutParams(-1,dp(48)))
+  card.addView(badges,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(3)})
   val stats=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun metric(value:String,title:String){
    val col=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER}
-   col.addView(label(value,19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
-   col.addView(label(title,11f,Color.argb(150,255,255,255)),LinearLayout.LayoutParams(-1,dp(25)))
-   stats.addView(col,LinearLayout.LayoutParams(0,dp(58),1f))
+   col.addView(label(value,19f,Color.rgb(25,28,34),true),LinearLayout.LayoutParams(-1,dp(31)))
+   col.addView(label(title,11f,Color.rgb(139,143,150)),LinearLayout.LayoutParams(-1,dp(25)))
+   stats.addView(col,LinearLayout.LayoutParams(0,dp(60),1f))
   }
   metric(fans,"المعجبون")
   metric(followers,"يتابعهم")
   metric(sent,"ماس أرسله")
   metric(received,"ماس استلمه")
-  root.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(8)})
+  card.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(12);bottomMargin=dp(14)})
   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
-  fun actionButton(title:String,color:Int,click:(TextView)->Unit):TextView{
-   return label(title,14f,Color.WHITE,true).apply{
-    background=GradientDrawable().apply{setColor(color);cornerRadius=dp(24).toFloat()}
-    setPadding(dp(12),dp(12),dp(12),dp(12));isClickable=true;setOnClickListener{click(this)}
+  fun actionButton(title:String,color:Int,textColor:Int=Color.WHITE,click:(TextView)->Unit):TextView{
+   return label(title,14f,textColor,true).apply{
+    gravity=Gravity.CENTER
+    background=GradientDrawable().apply{setColor(color);cornerRadius=dp(26).toFloat()}
+    setPadding(dp(10),dp(11),dp(10),dp(11));isClickable=true;setOnClickListener{click(this)}
    }
   }
-  val message=actionButton("مراسلة",Color.argb(60,255,255,255)){openMemberConversation(uid,name)}
-  actions.addView(message,LinearLayout.LayoutParams(0,dp(48),1f).apply{marginEnd=dp(6)})
+  val message=actionButton("مراسلة",Color.rgb(235,236,239),Color.rgb(45,48,54)){openMemberConversation(uid,name)}
+  actions.addView(message,LinearLayout.LayoutParams(0,dp(50),1f).apply{marginEnd=dp(6)})
   val gift=FrameLayout(this).apply{
-   background=GradientDrawable().apply{setColor(Color.rgb(255,140,60));cornerRadius=dp(24).toFloat()}
+   background=GradientDrawable().apply{setColor(Color.rgb(255,137,47));cornerRadius=dp(25).toFloat()}
    val giftIcon=ImageView(this@RoomActivity).apply{
     setImageResource(R.drawable.ic_profile_gift)
     setColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN)
@@ -2961,14 +2978,14 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     else{dialog.dismiss();loadGiftCatalogAndChoose(uid,name)}
    }
   }
-  actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
-  val follow=actionButton("جارٍ التحقق...",Color.rgb(254,44,85)){toggleMemberFollow(uid,it)}
+  actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(50)).apply{marginEnd=dp(6)})
+  val follow=actionButton("جارٍ التحقق...",Color.rgb(31,169,132)){toggleMemberFollow(uid,it)}
   follow.isEnabled=false
-  actions.addView(follow,LinearLayout.LayoutParams(0,dp(48),1f))
+  actions.addView(follow,LinearLayout.LayoutParams(0,dp(50),1f))
   loadMemberFollowState(uid,follow)
-  root.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(12)})
-  val reportButton=actionButton("إبلاغ عن المستخدم",Color.rgb(176,55,70)){reportRoomMember(uid,name,dialog)}
-  root.addView(reportButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(9)})
+  card.addView(actions,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(5)})
+  val reportButton=actionButton("إبلاغ عن المستخدم",Color.rgb(190,55,72)){reportRoomMember(uid,name,dialog)}
+  card.addView(reportButton,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(10)})
   presentSheet(dialog,root)
  }
  private fun reportRoomMember(reportedUserId:String,reportedName:String,profileDialog:android.app.Dialog){
