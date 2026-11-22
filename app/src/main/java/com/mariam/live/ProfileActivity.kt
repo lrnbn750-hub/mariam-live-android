@@ -65,6 +65,8 @@ class ProfileActivity : Activity() {
     private var publicFollowing: TextView? = null
     private var publicSent: TextView? = null
     private var publicReceived: TextView? = null
+    private var publicFollowButton: TextView? = null
+    private var isFollowingPublic = false
 
     private val ink = Color.rgb(20, 24, 34)
     private val muted = Color.rgb(143, 151, 164)
@@ -508,6 +510,23 @@ class ProfileActivity : Activity() {
         stats.addView(stat("ألماس أرسله") { publicSent = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
         stats.addView(stat("ألماس استلمه") { publicReceived = it }, LinearLayout.LayoutParams(0, dp(72f), 1f))
         content.addView(stats)
+        val socialTabs = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(248,249,252), 18f, border)
+            setPadding(dp(5f), dp(5f), dp(5f), dp(5f))
+        }
+        fun socialTab(title: String, type: String): TextView = text(title, 14f, ink, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(4f), dp(13f), dp(4f), dp(13f))
+            background = ripple(null, 12f)
+            setOnClickListener { openFollowList(type, userId) }
+        }
+        socialTabs.addView(socialTab("المتابعون", "followers"), LinearLayout.LayoutParams(0, -2, 1f))
+        socialTabs.addView(socialTab("يتابعهم", "following"), LinearLayout.LayoutParams(0, -2, 1f))
+        socialTabs.addView(socialTab("الأصدقاء", "friends"), LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(socialTabs, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16f), 0, dp(16f), dp(12f)) })
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
@@ -522,9 +541,8 @@ class ProfileActivity : Activity() {
         actions.addView(action("مراسلة", Color.rgb(90, 94, 108)) {
             Toast.makeText(this, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show()
         }, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginEnd = dp(6f) })
-        actions.addView(action("متابعة +", Color.rgb(25, 174, 145)) {
-            Toast.makeText(this, "المتابعة غير مربوطة بعد", Toast.LENGTH_SHORT).show()
-        }, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginStart = dp(6f) })
+        publicFollowButton = action("متابعة +", Color.rgb(25, 174, 145)) { togglePublicFollow() }
+        actions.addView(publicFollowButton, LinearLayout.LayoutParams(0, dp(54f), 1f).apply { marginStart = dp(6f) })
         content.addView(actions)
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -647,6 +665,18 @@ class ProfileActivity : Activity() {
             publicFollowing?.text = compactPublicCount(data.optLong("publicFollowing", 0L))
             publicSent?.text = compactPublicCount(data.optLong("publicSent", 0L))
             publicReceived?.text = compactPublicCount(data.optLong("publicReceived", 0L))
+            executor.execute {
+                try {
+                    val status = AuthApi.get("/api/follows/status/$userId", token)
+                    if (status.status in 200..299) {
+                        isFollowingPublic = status.body.optBoolean("following", false)
+                        runOnUiThread {
+                            publicFollowButton?.text = if (isFollowingPublic) "متابع ✓" else "متابعة +"
+                            publicFollowButton?.background = rounded(if (isFollowingPublic) Color.rgb(95,100,112) else Color.rgb(25,174,145), 28f, Color.TRANSPARENT)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
             val url = normalizeAvatar(data.optString("avatarUrl"))
             if (url.isNotBlank()) executor.execute {
                 try {
@@ -726,8 +756,35 @@ class ProfileActivity : Activity() {
             .setPositiveButton("حسناً", null).show()
     }
 
-    private fun openFollowList(type: String) {
-        startActivity(Intent(this, FollowListActivity::class.java).putExtra("list_type", type))
+    private fun openFollowList(type: String, targetUserId: String = "") {
+        startActivity(Intent(this, FollowListActivity::class.java)
+            .putExtra("list_type", type)
+            .putExtra("target_user_id", targetUserId))
+    }
+
+    private fun togglePublicFollow() {
+        val target = userId
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        if (target.isBlank() || token.isNullOrBlank()) return
+        publicFollowButton?.isEnabled = false
+        executor.execute {
+            try {
+                val endpoint = "/api/follows/$target"
+                val result = if (isFollowingPublic) AuthApi.delete(endpoint, token) else AuthApi.post(endpoint, JSONObject(), token)
+                if (result.status !in 200..299) throw Exception(result.body.optString("error", "تعذر تحديث المتابعة"))
+                isFollowingPublic = !isFollowingPublic
+                runOnUiThread {
+                    publicFollowButton?.text = if (isFollowingPublic) "متابع ✓" else "متابعة +"
+                    publicFollowButton?.background = rounded(if (isFollowingPublic) Color.rgb(95,100,112) else Color.rgb(25,174,145), 28f, Color.TRANSPARENT)
+                    publicFollowButton?.isEnabled = true
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    publicFollowButton?.isEnabled = true
+                    Toast.makeText(this, e.message ?: "تعذر تحديث المتابعة", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun pickPhoto() {
