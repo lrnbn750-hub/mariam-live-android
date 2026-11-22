@@ -75,6 +75,7 @@ class RoomActivity : Activity() {
  private var currentUserLevel=1
  private var currentUserVipLevel=0
  private var followRequestSent=false
+ private val memberFollowStates=HashMap<String,Boolean>()
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
  private var swipeDownX=0f; private var swipeDownY=0f; private var switchingRoom=false
@@ -3076,29 +3077,31 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
   reportDialog.show()
  }
- private fun renderMemberFollowState(button:TextView,following:Boolean){
+ private fun renderMemberFollowState(userId:String,button:TextView,following:Boolean){
+  memberFollowStates[userId]=following
   button.text=if(following)"✓ تتابعه" else "＋ متابعة"
   button.background=GradientDrawable().apply{setColor(if(following)Color.argb(210,60,170,120) else Color.rgb(254,44,85));cornerRadius=dp(24).toFloat()}
   button.isEnabled=true
  }
  private fun loadMemberFollowState(userId:String,button:TextView){
   if(userId==currentUserId){button.text="حسابك";button.isEnabled=false;return}
+  button.isEnabled=false
   scope.launch{
    try{
     val result=withContext(Dispatchers.IO){AuthApi.get("/api/follows/status/$userId",authToken)}
-    if(result.status in 200..299)renderMemberFollowState(button,result.body.optBoolean("following",false))
-    else{button.text="＋ متابعة";button.isEnabled=true}
-   }catch(_:Exception){button.text="＋ متابعة";button.isEnabled=true}
+    if(result.status in 200..299)renderMemberFollowState(userId,button,result.body.optBoolean("following",false))
+    else{memberFollowStates.remove(userId);button.text="＋ متابعة";button.isEnabled=true}
+   }catch(_:Exception){memberFollowStates.remove(userId);button.text="＋ متابعة";button.isEnabled=true}
   }
  }
  private fun toggleMemberFollow(userId:String,name:String,button:TextView){
    if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
-   val wasFollowing=button.text.toString().contains("تتابعه")
+   val wasFollowing=memberFollowStates[userId] ?: button.text.toString().contains("تتابعه")
    if(wasFollowing){
     AlertDialog.Builder(this,android.R.style.Theme_Material_Light_Dialog_Alert)
-     .setTitle("هل أنت متأكد من")
-     .setMessage("إلغاء متابعة $name؟")
-     .setNegativeButton("إلغاء",null)
+     .setTitle("تأكيد إلغاء المتابعة")
+     .setMessage("هل تريد إلغاء متابعة $name؟")
+     .setNegativeButton("إبقاء المتابعة",null)
      .setPositiveButton("إلغاء المتابعة"){_,_->submitMemberFollowChange(userId,false,button)}
      .show()
    }else submitMemberFollowChange(userId,true,button)
@@ -3112,7 +3115,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       else AuthApi.delete("/api/follows/$userId",authToken)
      }
      if(result.status in 200..299){
-      renderMemberFollowState(button,shouldFollow)
+      renderMemberFollowState(userId,button,shouldFollow)
       Toast.makeText(this@RoomActivity,if(shouldFollow)"تمت المتابعة بنجاح" else "تم إلغاء المتابعة",Toast.LENGTH_SHORT).show()
      }else{
       button.isEnabled=true
