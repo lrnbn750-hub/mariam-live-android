@@ -3009,10 +3009,11 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     col.addView(label(title,10f,Color.rgb(151,153,158)),LinearLayout.LayoutParams(-2,dp(21)))
     stats.addView(col,LinearLayout.LayoutParams(0,dp(52),1f))
    }
-   metric(compactProfileCount(fans),"المعجبون")
-   metric(compactProfileCount(followers),"يتابعهم")
-   metric(compactProfileCount(received),"ماس استلمه")
-   metric(compactProfileCount(sent),"ماس أرسله")
+   // Match the full profile statistics order exactly (left to right).
+   metric(compactProfileCount(sent),"ألماس مرسل")
+   metric(compactProfileCount(received),"ألماس مستلم")
+   metric(compactProfileCount(followers),"متابعون")
+   metric(compactProfileCount(fans),"معجبين")
    card.addView(stats,LinearLayout.LayoutParams(-1,dp(58)).apply{topMargin=dp(6);bottomMargin=dp(14)})
    val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun actionButton(title:String,color:Int,textColor:Int=Color.WHITE,click:(TextView)->Unit):TextView{
