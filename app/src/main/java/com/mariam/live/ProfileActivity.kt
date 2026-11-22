@@ -505,7 +505,7 @@ class ProfileActivity : Activity() {
         hero.addView(menu, FrameLayout.LayoutParams(dp(44f), dp(44f), Gravity.TOP or Gravity.LEFT).apply {
             topMargin = dp(8f); leftMargin = dp(8f)
         })
-        content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 4 / 5))
+        content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 9 / 10))
 
         // ---- Name + gender ----
         val nameRow = LinearLayout(this).apply {
@@ -519,7 +519,7 @@ class ProfileActivity : Activity() {
             background = rounded(Color.rgb(84, 170, 235), 10f, Color.TRANSPARENT)
         }
         nameRow.addView(publicGender, LinearLayout.LayoutParams(dp(30f), dp(20f)).apply { marginEnd = dp(8f) })
-        publicName = text("مستخدم BAK LIVE", 19f, ink, true).apply {
+        publicName = text("مستخدم BAK LIVE", 22f, ink, true).apply {
             textDirection = View.TEXT_DIRECTION_RTL
             setSingleLine(true)
         }
@@ -533,10 +533,10 @@ class ProfileActivity : Activity() {
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             setPadding(dp(16f), dp(6f), dp(16f), 0)
         }
-        publicLocation = text("", 12f, sub).apply { visibility = View.GONE; textDirection = View.TEXT_DIRECTION_RTL }
+        publicLocation = text("", 13f, sub).apply { visibility = View.GONE; textDirection = View.TEXT_DIRECTION_RTL }
         idRow.addView(publicLocation)
         idRow.addView(text("⧉", 13f, sub).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(5f), 0) })
-        publicIdView = text("ID: —", 13f, sub).apply { setOnClickListener { copyId() } }
+        publicIdView = text("ID: —", 14f, sub).apply { setOnClickListener { copyId() } }
         idRow.addView(publicIdView)
         content.addView(idRow)
 
@@ -545,30 +545,44 @@ class ProfileActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10f), dp(12f), dp(10f), dp(4f))
+            setPadding(dp(12f), dp(15f), dp(12f), dp(12f))
+            setBackgroundColor(Color.WHITE)
         }
         fun statPair(caption: String, setter: (TextView) -> Unit, onClick: (() -> Unit)?): View {
             val pair = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
                 gravity = Gravity.CENTER
+                minimumWidth = dp(1f)
+                if (onClick != null) {
+                    isClickable = true
+                    isFocusable = true
+                    background = ripple(null, 8f)
+                    setOnClickListener { onClick() }
+                }
             }
-            val value = text("—", 16f, ink, true).apply { setSingleLine(true) }
+            val value = text("—", 20f, ink, true).apply {
+                setSingleLine(true)
+                includeFontPadding = false
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            }
             setter(value)
-            pair.addView(text(caption, 11.5f, sub).apply {
+            pair.addView(text(caption, 13f, sub, false).apply {
                 textDirection = View.TEXT_DIRECTION_RTL
                 setSingleLine(true)
+                includeFontPadding = false
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }, LinearLayout.LayoutParams(-2, -2))
-            pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(4f) })
-            if (onClick != null) { pair.isClickable = true; pair.setOnClickListener { onClick() } }
+            pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5f) })
             return pair
         }
+        // RTL order: fans are the first item and therefore sit at the far right, like the reference.
         stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
-            LinearLayout.LayoutParams(0, dp(36f), 1f))
+            LinearLayout.LayoutParams(0, dp(44f), 1.05f))
         stats.addView(statPair("متابعون", { publicFollowing = it }) { openFollowList("following", userId) },
-            LinearLayout.LayoutParams(0, dp(36f), 1f))
-        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(36f), 1.1f))
-        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(36f), 1f))
+            LinearLayout.LayoutParams(0, dp(44f), 1f))
+        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
+        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
         content.addView(stats)
 
         // ---- Level badge ----
@@ -595,7 +609,7 @@ class ProfileActivity : Activity() {
             setPadding(dp(16f), dp(14f), dp(16f), 0)
         }
         val tabCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
-        tabCol.addView(text("الملف الشخصي", 15f, ink, true).apply { textDirection = View.TEXT_DIRECTION_RTL },
+        tabCol.addView(text("الملف الشخصي", 18f, ink, true).apply { textDirection = View.TEXT_DIRECTION_RTL },
             LinearLayout.LayoutParams(-2, -2))
         tabCol.addView(View(this).apply { setBackgroundColor(ink) },
             LinearLayout.LayoutParams(dp(16f), dp(2f)).apply { topMargin = dp(5f) })
@@ -603,7 +617,7 @@ class ProfileActivity : Activity() {
         content.addView(tabRow)
 
         // ---- Basic info ----
-        content.addView(text("معلومات اساسية", 15f, ink, true).apply {
+        content.addView(text("معلومات اساسية", 18f, ink, true).apply {
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             textDirection = View.TEXT_DIRECTION_RTL
             setPadding(dp(16f), dp(18f), dp(16f), dp(10f))
