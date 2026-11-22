@@ -1332,7 +1332,10 @@ class RoomActivity : Activity() {
     val seatsNeedRedraw=seatRenderSignature!=lastSeatRenderSignature
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
-    if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
+    // Audio rooms always use the fixed supplied artwork; camera rooms keep their uploaded background.
+    if(roomMode=="audio"){
+     if(loadedBackgroundUrl!="__fixed_audio_backdrop__") applyAudioRoomBackdrop()
+    }else if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=if(roomMode=="camera") (0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()} else (0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
     // Owner identity comes from the room record, never from seat 1.
     // This keeps the creator's profile visible even after they leave the room or seat.
@@ -1368,6 +1371,12 @@ class RoomActivity : Activity() {
     }
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
+ }
+
+ private fun applyAudioRoomBackdrop(){
+  loadedBackgroundUrl="__fixed_audio_backdrop__"
+  roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
+  roomBackgroundView.setImageResource(R.drawable.audio_room_backdrop)
  }
 
  private fun applyRoomBackground(url:String){
