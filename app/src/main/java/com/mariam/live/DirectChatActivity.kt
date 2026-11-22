@@ -6,6 +6,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
+import android.widget.FrameLayout
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.*
@@ -128,7 +129,7 @@ class DirectChatActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             setPadding(dp(14), dp(8), dp(14), dp(12))
         }
-        scroll.addView(chatList, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(chatList, FrameLayout.LayoutParams(-1, -2))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         root.addView(View(this).apply { setBackgroundColor(Color.rgb(235, 239, 236)) },
