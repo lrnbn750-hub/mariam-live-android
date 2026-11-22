@@ -73,6 +73,7 @@ class ProfileActivity : Activity() {
     private var publicInfoBox: LinearLayout? = null
     private var publicFriendsCount = -1
     private var isFollowingPublic = false
+    private var isFollowedByPublic = false
 
     private val ink = Color.rgb(20, 24, 34)
     private val muted = Color.rgb(143, 151, 164)
@@ -665,7 +666,7 @@ class ProfileActivity : Activity() {
             gravity = Gravity.CENTER
             background = rounded(Color.rgb(240, 241, 246), 23f, Color.TRANSPARENT)
             isClickable = true
-            setOnClickListener { if (isFollowingPublic) onPublicStarClick() else openFollowList("friends", userId) }
+            setOnClickListener { onPublicStarClick() }
             pressable()
         }
         publicFriendsLabel = text("⇄  الأصدقاء", 14f, Color.rgb(110, 116, 130), true).apply { gravity = Gravity.CENTER }
@@ -688,7 +689,11 @@ class ProfileActivity : Activity() {
 
     private fun updatePublicFollowUi() {
         publicFollowButton?.text = if (isFollowingPublic) "★" else "☆"
-        publicFriendsLabel?.text = "⇄  الأصدقاء" + if (publicFriendsCount >= 0) "  $publicFriendsCount" else ""
+        publicFriendsLabel?.text = when {
+            isFollowingPublic && isFollowedByPublic -> "⇄  حنا أصدقاء"
+            isFollowingPublic -> "⇄  متابَع"
+            else -> "⇄  متابعة +"
+        }
     }
 
     private fun addInfoChip(label: String) {
@@ -865,6 +870,7 @@ class ProfileActivity : Activity() {
                     val status = AuthApi.get("/api/follows/status/$userId", token)
                     if (status.status in 200..299) {
                         isFollowingPublic = status.body.optBoolean("following", false)
+                        isFollowedByPublic = status.body.optBoolean("followed_by", false)
                         runOnUiThread { updatePublicFollowUi() }
                     }
                 } catch (_: Exception) {}
@@ -997,11 +1003,13 @@ class ProfileActivity : Activity() {
                     throw Exception(status.body.optString("error", "تم إرسال الطلب لكن تعذر التحقق من حالة المتابعة"))
                 }
                 val serverFollowing = status.body.optBoolean("following", false)
+                val serverFollowedBy = status.body.optBoolean("followed_by", false)
                 if (serverFollowing != shouldFollow) {
                     throw Exception(if (shouldFollow) "لم يتم تأكيد المتابعة من الخادم" else "الخادم لم يؤكد إلغاء المتابعة")
                 }
 
                 isFollowingPublic = serverFollowing
+                isFollowedByPublic = serverFollowedBy
                 runOnUiThread {
                     updatePublicFollowUi()
                     publicFollowButton?.isEnabled = true
@@ -1016,7 +1024,10 @@ class ProfileActivity : Activity() {
                 // Refresh the real state after any error so the button never lies about the server.
                 val actualState = runCatching {
                     val check = AuthApi.get("/api/follows/status/$target", token)
-                    if (check.status in 200..299) check.body.optBoolean("following", false) else null
+                    if (check.status in 200..299) {
+                        isFollowedByPublic = check.body.optBoolean("followed_by", false)
+                        check.body.optBoolean("following", false)
+                    } else null
                 }.getOrNull()
                 runOnUiThread {
                     if (actualState != null) {
