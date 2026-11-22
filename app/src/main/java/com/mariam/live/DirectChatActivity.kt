@@ -75,16 +75,14 @@ class DirectChatActivity : Activity() {
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
             (if (android.os.Build.VERSION.SDK_INT >= 26) View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else 0)
-        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setBackgroundColor(canvas)
-            fitsSystemWindows = false
-            val statusBarId = resources.getIdentifier("status_bar_height", "dimen", "android")
-            val statusBarHeight = if (statusBarId > 0) resources.getDimensionPixelSize(statusBarId) else dp(24)
-            setPadding(0, statusBarHeight, 0, 0)
+            fitsSystemWindows = true
         }
 
         val header = LinearLayout(this).apply {
@@ -160,7 +158,7 @@ class DirectChatActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            setBackgroundColor(Color.WHITE)
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(30, 22, 24), Color.rgb(18, 15, 17)))
         }
         input = EditText(this).apply {
             hint = "اكتب رسالة..."
@@ -191,8 +189,13 @@ class DirectChatActivity : Activity() {
             setOnClickListener { sendMessage() }
         }
         composer.addView(sendButton, LinearLayout.LayoutParams(-2, dp(46)))
-        root.addView(composer)
+        root.addView(composer, LinearLayout.LayoutParams(-1, -2))
         setContentView(root)
+        input.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) input.postDelayed({
+                if (!destroyed) (input.parent?.parent as? ScrollView)?.fullScroll(View.FOCUS_DOWN)
+            }, 180)
+        }
         updateSendButton()
         input.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
