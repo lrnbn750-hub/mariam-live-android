@@ -2335,7 +2335,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   root.addView(avatar,LinearLayout.LayoutParams(dp(104),dp(104)).apply{topMargin=dp(-2)})
   if(avatarUrl.isNotBlank())loadAvatarInto(avatar,avatarUrl)
   root.addView(label(name,20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(42)))
-  root.addView(label("ID: $account",13f,Color.argb(170,255,255,255)),LinearLayout.LayoutParams(-1,dp(26)))
+  root.addView(label("ID: $account",11f,Color.argb(170,255,255,255)),LinearLayout.LayoutParams(-1,dp(26)))
   val levelColors=memberLevelColors(level)
   val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val levelBadge=LinearLayout(this).apply{
@@ -2354,18 +2354,25 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
   badges.addView(levelBadge)
   root.addView(badges,LinearLayout.LayoutParams(-1,dp(48)))
-  val stats=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+  val stats=LinearLayout(this).apply{
+   gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT
+   layoutDirection=View.LAYOUT_DIRECTION_RTL
+   clipChildren=false
+  }
   fun metric(value:String,title:String){
-   val col=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER}
-   col.addView(label(value,19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
-   col.addView(label(title,11f,Color.argb(150,255,255,255)),LinearLayout.LayoutParams(-1,dp(25)))
-   stats.addView(col,LinearLayout.LayoutParams(0,dp(58),1f))
+   val col=LinearLayout(this@RoomActivity).apply{
+    orientation=1;gravity=Gravity.CENTER
+    setPadding(dp(5),0,dp(5),0)
+   }
+   col.addView(label(value,17f,Color.WHITE,true),LinearLayout.LayoutParams(-2,dp(27)))
+   col.addView(label(title,10f,Color.argb(165,255,255,255)),LinearLayout.LayoutParams(-2,dp(22)))
+   stats.addView(col,LinearLayout.LayoutParams(-2,dp(54)))
   }
   metric(fans,"المعجبون")
   metric(followers,"يتابعهم")
   metric(sent,"ماس أرسله")
   metric(received,"ماس استلمه")
-  root.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(8)})
+  root.addView(stats,LinearLayout.LayoutParams(-1,dp(60)).apply{topMargin=dp(8)})
   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun actionButton(title:String,color:Int,click:(TextView)->Unit):TextView{
    return label(title,14f,Color.WHITE,true).apply{
@@ -2390,7 +2397,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
   actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(48)).apply{marginEnd=dp(6)})
-  val follow=actionButton("جارٍ التحقق...",Color.rgb(254,44,85)){toggleMemberFollow(uid,it)}
+  val follow=actionButton("جارٍ التحقق...",Color.rgb(254,44,85)){toggleMemberFollow(uid,name,avatarUrl,it)}
   follow.isEnabled=false
   actions.addView(follow,LinearLayout.LayoutParams(0,dp(48),1f))
   loadMemberFollowState(uid,follow)
@@ -2412,19 +2419,90 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }catch(_:Exception){button.text="＋ متابعة";button.isEnabled=true}
   }
  }
- private fun toggleMemberFollow(userId:String,button:TextView){
+ private fun toggleMemberFollow(userId:String,name:String,avatarUrl:String,button:TextView){
   if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
   val wasFollowing=button.text.toString().contains("تتابعه")
+  if(wasFollowing){
+   showUnfollowConfirmation(userId,name,avatarUrl,button)
+  }else{
+   submitMemberFollow(userId,true,button,null)
+  }
+ }
+ private fun showUnfollowConfirmation(userId:String,name:String,avatarUrl:String,button:TextView){
+  val dialog=android.app.Dialog(this)
+  val root=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   gravity=Gravity.CENTER_HORIZONTAL
+   setPadding(dp(22),dp(22),dp(22),dp(20))
+   background=GradientDrawable().apply{
+    setColor(Color.WHITE);cornerRadius=dp(24).toFloat()
+   }
+  }
+  val avatarFrame=FrameLayout(this)
+  val photo=ImageView(this).apply{
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(235,239,246))}
+   clipToOutline=true
+   setImageDrawable(VectorIcon("user",Color.rgb(110,130,145),dp(28)))
+  }
+  avatarFrame.addView(photo,FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
+  if(avatarUrl.isNotBlank())loadAvatarInto(photo,avatarUrl)
+  val badge=TextView(this).apply{
+   text="♥";textSize=17f;gravity=Gravity.CENTER
+   setTextColor(Color.WHITE)
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(255,91,119))}
+  }
+  avatarFrame.addView(badge,FrameLayout.LayoutParams(dp(28),dp(28),Gravity.BOTTOM or Gravity.END))
+  root.addView(avatarFrame,LinearLayout.LayoutParams(dp(96),dp(96)))
+  root.addView(label("هل أنت متأكد من",17f,Color.rgb(65,65,70),false),
+   LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(20)})
+  root.addView(label("إلغاء متابعة $name؟",17f,Color.rgb(238,111,143),true),
+   LinearLayout.LayoutParams(-1,dp(34)))
+  fun dialogButton(title:String,primary:Boolean):TextView=label(
+   title,15f,if(primary)Color.rgb(235,91,130) else Color.rgb(95,98,105),true
+  ).apply{
+   gravity=Gravity.CENTER
+   background=GradientDrawable().apply{
+    setColor(Color.WHITE)
+    cornerRadius=dp(28).toFloat()
+    setStroke(dp(1),if(primary)Color.rgb(238,111,151) else Color.rgb(220,222,226))
+   }
+   isClickable=true
+   isFocusable=true
+  }
+  val confirm=dialogButton("إلغاء المتابعة",true)
+  root.addView(confirm,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(22)})
+  val cancel=dialogButton("إلغاء",false)
+  root.addView(cancel,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(12)})
+  cancel.setOnClickListener{dialog.dismiss()}
+  confirm.setOnClickListener{
+   confirm.isEnabled=false
+   button.isEnabled=false
+   submitMemberFollow(userId,false,button,dialog)
+  }
+  dialog.setContentView(root)
+  dialog.setCancelable(true)
+  dialog.window?.apply{
+   setBackgroundDrawableResource(android.R.color.transparent)
+   setLayout((resources.displayMetrics.widthPixels*0.88f).toInt(),-2)
+   addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+   attributes=attributes.apply{dimAmount=0.62f}
+  }
+  dialog.show()
+  dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.88f).toInt(),-2)
+ }
+ private fun submitMemberFollow(userId:String,shouldFollow:Boolean,button:TextView,confirmation:android.app.Dialog?){
   button.isEnabled=false
   scope.launch{
    try{
     val result=withContext(Dispatchers.IO){
-     if(wasFollowing)AuthApi.delete("/api/follows/$userId",authToken)
-     else AuthApi.post("/api/follows/$userId",JSONObject(),authToken)
+     if(shouldFollow)AuthApi.post("/api/follows/$userId",JSONObject(),authToken)
+     else AuthApi.delete("/api/follows/$userId",authToken)
     }
     if(result.status in 200..299){
-     renderMemberFollowState(button,!wasFollowing)
-     Toast.makeText(this@RoomActivity,if(wasFollowing)"تم إلغاء المتابعة" else "تمت المتابعة بنجاح",Toast.LENGTH_SHORT).show()
+     confirmation?.dismiss()
+     renderMemberFollowState(button,shouldFollow)
+     Toast.makeText(this@RoomActivity,if(shouldFollow)"تمت المتابعة بنجاح" else "تم إلغاء المتابعة",Toast.LENGTH_SHORT).show()
     }else{
      button.isEnabled=true
      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تحديث المتابعة"),Toast.LENGTH_SHORT).show()
