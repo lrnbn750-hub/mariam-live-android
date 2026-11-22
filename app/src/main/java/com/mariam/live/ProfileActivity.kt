@@ -563,24 +563,26 @@ class ProfileActivity : Activity() {
                     setOnClickListener { onClick() }
                 }
             }
-            val value = text("—", 20f, ink, true).apply {
-                setSingleLine(true)
-                includeFontPadding = false
-                typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            }
-            setter(value)
-            pair.addView(text(caption, 13f, sub, false).apply {
-                textDirection = View.TEXT_DIRECTION_RTL
+            val value = text("—", 17f, ink, true).apply {
                 setSingleLine(true)
                 includeFontPadding = false
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                letterSpacing = 0f
+            }
+            setter(value)
+            pair.addView(text(caption, 11.5f, sub, false).apply {
+                textDirection = View.TEXT_DIRECTION_RTL
+                setSingleLine(true)
+                includeFontPadding = false
+                typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                letterSpacing = 0f
             }, LinearLayout.LayoutParams(-2, -2))
             pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5f) })
             return pair
         }
         // Exact reference order from LEFT to RIGHT. Fans end up at the FAR RIGHT.
-        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
-        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
+        stats.addView(statPair("ألماس مرسل", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 0.9f))
+        stats.addView(statPair("ألماس مستلم", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1.1f))
         stats.addView(statPair("متابعون", { publicFollowing = it }) { openFollowList("following", userId) },
             LinearLayout.LayoutParams(0, dp(44f), 1f))
         stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
