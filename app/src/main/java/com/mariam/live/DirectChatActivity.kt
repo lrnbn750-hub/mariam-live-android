@@ -68,6 +68,8 @@ class DirectChatActivity : Activity() {
     private var lastMessagesSignature = ""
     private var lastBottomInset = 0
     private var contentWidthPx = 0
+    private var directConversationValidated = false
+    private var sending = false
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -283,7 +285,7 @@ class DirectChatActivity : Activity() {
         root.requestApplyInsets()
 
         when {
-            conversationId.isNotBlank() -> loadMessages()
+            conversationId.isNotBlank() -> validateDirectConversation()
             otherUserId.isNotBlank() -> resolveConversation()
             else -> setStatus("معرّف المحادثة غير صالح")
         }
@@ -344,8 +346,8 @@ class DirectChatActivity : Activity() {
 
     private fun updateSendState() {
         val enabled = input.text.toString().isNotBlank()
-        send.isEnabled = enabled
-        send.alpha = if (enabled) 1f else 0.4f
+        send.isEnabled = enabled && !sending && directConversationValidated
+        send.alpha = if (send.isEnabled) 1f else 0.4f
     }
 
     // إذا وصل إشعار الرسالة بمعرّف المرسل فقط، ابحث عن محادثته وافتحها مباشرة.
@@ -391,8 +393,61 @@ class DirectChatActivity : Activity() {
         }
     }
 
-    private fun loadMessages() {
+    // Confirm a private chat contains exactly the signed-in user and the intended recipient.
+    private fun validateDirectConversation() {
         if (conversationId.isBlank()) return
+        val prefs = getSharedPreferences("MariamLive", MODE_PRIVATE)
+        val token = prefs.getString("token", null) ?: return
+        val myId = prefs.getString("user_id", "").orEmpty()
+        if (myId.isBlank()) { setStatus("تعذر التحقق من حسابك"); return }
+        setStatus("جارٍ التحقق من خصوصية المحادثة...")
+        executor.execute {
+            try {
+                val result = AuthApi.get("/api/messages/conversations", token)
+                val rows = result.body.optJSONArray("conversations") ?: JSONArray()
+                var valid = false
+                var recipientId = ""
+                var recipientName = ""
+                if (result.status in 200..299) {
+                    for (i in 0 until rows.length()) {
+                        val item = rows.optJSONObject(i) ?: continue
+                        if (item.optString("id") != conversationId || item.optString("type") != "direct") continue
+                        val members = item.optJSONArray("members") ?: JSONArray()
+                        if (members.length() != 2) break
+                        var hasMe = false
+                        var hasRecipient = false
+                        for (j in 0 until members.length()) {
+                            val member = members.optJSONObject(j) ?: continue
+                            val uid = member.optString("user_id")
+                            if (uid == myId) hasMe = true else {
+                                recipientId = uid
+                                recipientName = member.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: member.optString("username")
+                                if (otherUserId.isBlank() || uid == otherUserId) hasRecipient = true
+                            }
+                        }
+                        valid = hasMe && hasRecipient && recipientId.isNotBlank()
+                        break
+                    }
+                }
+                runOnUiThread {
+                    if (valid) {
+                        otherUserId = recipientId
+                        if (otherName == "محادثة" && recipientName.isNotBlank()) otherName = recipientName
+                        directConversationValidated = true
+                        updateHeader()
+                        updateSendState()
+                        loadMessages()
+                    } else {
+                        directConversationValidated = false
+                        setStatus("تم إيقاف المحادثة: أطرافها غير صحيحة أو تضم أكثر من شخص")
+                        updateSendState()
+                    }
+                }
+            } catch (_: Exception) { runOnUiThread { setStatus("تعذر التحقق من خصوصية المحادثة") } }
+        }
+    }
+    private fun loadMessages() {
+        if (conversationId.isBlank() || !directConversationValidated) return
         if (loading) { reloadQueued = true; return }
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
         loading = true
@@ -402,6 +457,8 @@ class DirectChatActivity : Activity() {
                 val result = AuthApi.get("/api/messages/$conversationId", token)
                 val rows = result.body.optJSONArray("messages") ?: JSONArray()
                 runOnUiThread {
+                    sending = false
+                    updateSendState()
                     if (result.status in 200..299) {
                         val signature = rows.toString()
                         if (signature != lastMessagesSignature) {
@@ -546,6 +603,8 @@ class DirectChatActivity : Activity() {
 
     // ───────── الإرسال (زر الإرسال أو زر الكيبورد) ─────────
     private fun sendMessage() {
+        if (!directConversationValidated) { Toast.makeText(this, "لم يتم التأكد من خصوصية المحادثة", Toast.LENGTH_LONG).show(); return }
+        if (sending) return
         val content = input.text.toString().trim()
         if (content.isBlank()) return
         if (content.length > 5000) {
@@ -555,6 +614,8 @@ class DirectChatActivity : Activity() {
         if (conversationId.isBlank()) return
         val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null) ?: return
 
+        sending = true
+        updateSendState()
         // إظهار الرسالة فوراً وإبقاء الكيبورد مفتوحاً لكتابة التالية
         input.setText("")
         val pending = addBubble(content, mine = true, time = "", tail = true, topGap = 8)
@@ -578,6 +639,8 @@ class DirectChatActivity : Activity() {
                 }
             } catch (_: Exception) {
                 runOnUiThread {
+                    sending = false
+                    updateSendState()
                     messages.removeView(pending)
                     restoreDraft(content)
                     Toast.makeText(this, "تعذر الاتصال بالخادم", Toast.LENGTH_SHORT).show()
