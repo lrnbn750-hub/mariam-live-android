@@ -360,20 +360,28 @@ class DirectChatActivity : Activity() {
                 val rows = result.body.optJSONArray("conversations") ?: JSONArray()
                 var foundId = ""
                 var foundName = ""
+                val myId = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("user_id", "").orEmpty()
                 for (i in 0 until rows.length()) {
                     val item = rows.optJSONObject(i) ?: continue
+                    if (item.optString("type") != "direct") continue
                     val members = item.optJSONArray("members") ?: JSONArray()
+                    if (members.length() != 2) continue
+                    var hasMe = false
+                    var target: JSONObject? = null
                     for (j in 0 until members.length()) {
                         val member = members.optJSONObject(j) ?: continue
-                        if (member.optString("user_id") == otherUserId) {
-                            foundId = item.optString("id").takeIf { it.isNotBlank() && it != "null" }
-                                ?: item.optString("conversation_id")
-                            foundName = member.optString("display_name").takeIf { it.isNotBlank() && it != "null" }
-                                ?: member.optString("username")
-                            break
+                        when (member.optString("user_id")) {
+                            myId -> hasMe = true
+                            otherUserId -> target = member
                         }
                     }
-                    if (foundId.isNotBlank()) break
+                    if (hasMe && target != null) {
+                        foundId = item.optString("id").takeIf { it.isNotBlank() && it != "null" }
+                            ?: item.optString("conversation_id")
+                        foundName = target.optString("display_name").takeIf { it.isNotBlank() && it != "null" }
+                            ?: target.optString("username")
+                        break
+                    }
                 }
                 runOnUiThread {
                     if (foundId.isNotBlank()) {
