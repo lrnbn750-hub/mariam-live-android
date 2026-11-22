@@ -2888,8 +2888,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
    calculated
   }
-  val followers=profileValue(member,listOf("followers_count","followersCount","fans_count"))
-  val fans=profileValue(member,listOf("fans_count","fans"))
+  val fans=profileValue(member,listOf("fans_count","fans","followers_count","followersCount"))
+  val followers=profileValue(member,listOf("following_count","following","follow_count","followings_count"))
   val sent=profileValue(member,listOf("diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent"))
   val received=profileValue(member,listOf("diamonds_received","total_diamonds_received","received_diamonds","total_received"))
   val dialog=android.app.Dialog(this)
@@ -2978,8 +2978,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    col.addView(label(title,11f,Color.rgb(139,143,150)),LinearLayout.LayoutParams(-1,dp(25)))
    stats.addView(col,LinearLayout.LayoutParams(0,dp(60),1f))
   }
-  metric(compactProfileCount(followers),"المتابعون")
   metric(compactProfileCount(fans),"المعجبون")
+  metric(compactProfileCount(followers),"يتابعهم")
   metric(compactProfileCount(sent),"ماس أرسله")
   metric(compactProfileCount(received),"ماس استلمه")
   card.addView(stats,LinearLayout.LayoutParams(-1,dp(66)).apply{topMargin=dp(12);bottomMargin=dp(14)})
