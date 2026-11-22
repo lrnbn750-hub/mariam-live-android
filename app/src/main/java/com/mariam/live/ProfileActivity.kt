@@ -251,6 +251,7 @@ class ProfileActivity : Activity() {
         header.levelBadgeView.setOnClickListener { openAction("level") }
         header.fansCell.setOnClickListener { openFollowList("followers") }
         header.followingCell.setOnClickListener { openFollowList("following") }
+        header.friendsCell.setOnClickListener { openFollowList("friends") }
         header.settingsView.pressable()
         header.supportView.pressable()
         page.addView(header)
@@ -484,6 +485,21 @@ class ProfileActivity : Activity() {
                 if (follows != null && follows.status in 200..299) {
                     data.put("followers", follows.body.optInt("following_count", follows.body.optJSONArray("following")?.length() ?: 0))
                     data.put("fans", follows.body.optInt("followers_count", follows.body.optJSONArray("followers")?.length() ?: 0))
+                    val followersArray = follows.body.optJSONArray("followers") ?: org.json.JSONArray()
+                    val followingArray = follows.body.optJSONArray("following") ?: org.json.JSONArray()
+                    val followingIds = (0 until followingArray.length()).mapNotNull { i ->
+                        val o = followingArray.optJSONObject(i) ?: return@mapNotNull null
+                        listOf("id", "user_id", "following_id", "follower_id").firstNotNullOfOrNull { key ->
+                            o.optString(key).takeIf { it.isNotBlank() && it != "null" }
+                        }
+                    }.toSet()
+                    val followerIds = (0 until followersArray.length()).mapNotNull { i ->
+                        val o = followersArray.optJSONObject(i) ?: return@mapNotNull null
+                        listOf("id", "user_id", "following_id", "follower_id").firstNotNullOfOrNull { key ->
+                            o.optString(key).takeIf { it.isNotBlank() && it != "null" }
+                        }
+                    }.toSet()
+                    data.put("friends", followingIds.intersect(followerIds).size)
                 }
                 val wallet = walletFuture?.get()
                 if (wallet != null && wallet.status in 200..299) {
@@ -513,6 +529,7 @@ class ProfileActivity : Activity() {
         header.setLevel(data.optInt("level", 1))
         header.setFansCount(data.optInt("fans", 0).toString())
         header.setFollowingCount(data.optInt("followers", 0).toString())
+        header.findViewById<android.widget.TextView>(R.id.profileHeaderFriendsCount).text = data.optInt("friends", 0).toString()
         coinValue.text = formatNumber(data.optLong("coins", 0))
         diamondValue.text = formatNumber(data.optLong("diamonds", 0))
         val avatarUrl = normalizeAvatar(data.optString("avatarUrl"))
