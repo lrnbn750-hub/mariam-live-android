@@ -74,6 +74,7 @@ class ProfileActivity : Activity() {
     private var publicFriendsCount = -1
     private var isFollowingPublic = false
     private var isFollowedByPublic = false
+    // Keep the profile relationship label synchronized with both follow directions.
 
     private val ink = Color.rgb(20, 24, 34)
     private val muted = Color.rgb(143, 151, 164)
