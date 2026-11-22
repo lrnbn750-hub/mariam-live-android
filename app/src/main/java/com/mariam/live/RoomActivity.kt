@@ -2975,25 +2975,23 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   badges.addView(levelBadge)
   card.addView(badges,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(2);bottomMargin=dp(10)})
   val stats=LinearLayout(this).apply{
-   orientation=LinearLayout.HORIZONTAL
-   gravity=Gravity.CENTER
-   layoutDirection=View.LAYOUT_DIRECTION_LTR
-  }
-  fun metric(value:String,title:String){
-   val col=LinearLayout(this@RoomActivity).apply{
-    orientation=LinearLayout.VERTICAL
+    orientation=LinearLayout.HORIZONTAL
     gravity=Gravity.CENTER
+    layoutDirection=View.LAYOUT_DIRECTION_RTL
+    clipChildren=false
    }
-   col.addView(label(value,19f,Color.rgb(27,29,34),true),LinearLayout.LayoutParams(-1,dp(31)))
-   col.addView(label(title,11f,Color.rgb(151,153,158)),LinearLayout.LayoutParams(-1,dp(24)))
-   stats.addView(col,LinearLayout.LayoutParams(0,dp(58),1f))
-  }
-  metric(compactProfileCount(sent),"ماس أرسله")
-  metric(compactProfileCount(received),"ماس استلمه")
-  metric(compactProfileCount(followers),"متابعون")
-  metric(compactProfileCount(fans),"معجبين")
-  card.addView(stats,LinearLayout.LayoutParams(-1,dp(64)).apply{topMargin=dp(8);bottomMargin=dp(18)})
-  val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
+   fun metric(value:String,title:String){
+    val col=LinearLayout(this@RoomActivity).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(4),0,dp(4),0)}
+    col.addView(label(value,17f,Color.rgb(27,29,34),true),LinearLayout.LayoutParams(-2,dp(27)))
+    col.addView(label(title,10f,Color.rgb(151,153,158)),LinearLayout.LayoutParams(-2,dp(21)))
+    stats.addView(col,LinearLayout.LayoutParams(0,dp(52),1f))
+   }
+   metric(compactProfileCount(fans),"المعجبون")
+   metric(compactProfileCount(followers),"يتابعهم")
+   metric(compactProfileCount(received),"ماس استلمه")
+   metric(compactProfileCount(sent),"ماس أرسله")
+   card.addView(stats,LinearLayout.LayoutParams(-1,dp(58)).apply{topMargin=dp(6);bottomMargin=dp(14)})
+   val actions=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   fun actionButton(title:String,color:Int,textColor:Int=Color.WHITE,click:(TextView)->Unit):TextView{
    return label(title,14f,textColor,true).apply{
     gravity=Gravity.CENTER
@@ -3018,7 +3016,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
   actions.addView(gift,LinearLayout.LayoutParams(dp(58),dp(50)).apply{marginEnd=dp(6)})
-  val follow=actionButton("جارٍ التحقق...",Color.rgb(31,169,132)){toggleMemberFollow(uid,it)}
+  val follow=actionButton("جارٍ التحقق...",Color.rgb(31,169,132)){toggleMemberFollow(uid,name,it)}
   follow.isEnabled=false
   actions.addView(follow,LinearLayout.LayoutParams(0,dp(50),1f))
   loadMemberFollowState(uid,follow)
@@ -3093,31 +3091,40 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }catch(_:Exception){button.text="＋ متابعة";button.isEnabled=true}
   }
  }
- private fun toggleMemberFollow(userId:String,button:TextView){
-  if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
-  val wasFollowing=button.text.toString().contains("تتابعه")
-  button.isEnabled=false
-  scope.launch{
-   try{
-    val result=withContext(Dispatchers.IO){
-     if(wasFollowing)AuthApi.delete("/api/follows/$userId",authToken)
-     else AuthApi.post("/api/follows/$userId",JSONObject(),authToken)
-    }
-    if(result.status in 200..299){
-     renderMemberFollowState(button,!wasFollowing)
-     Toast.makeText(this@RoomActivity,if(wasFollowing)"تم إلغاء المتابعة" else "تمت المتابعة بنجاح",Toast.LENGTH_SHORT).show()
-    }else{
+ private fun toggleMemberFollow(userId:String,name:String,button:TextView){
+   if(userId==currentUserId){Toast.makeText(this,"لا يمكنك متابعة نفسك",Toast.LENGTH_SHORT).show();return}
+   val wasFollowing=button.text.toString().contains("تتابعه")
+   if(wasFollowing){
+    AlertDialog.Builder(this,android.R.style.Theme_Material_Light_Dialog_Alert)
+     .setTitle("هل أنت متأكد من")
+     .setMessage("إلغاء متابعة $name؟")
+     .setNegativeButton("إلغاء",null)
+     .setPositiveButton("إلغاء المتابعة"){_,_->submitMemberFollowChange(userId,false,button)}
+     .show()
+   }else submitMemberFollowChange(userId,true,button)
+  }
+  private fun submitMemberFollowChange(userId:String,shouldFollow:Boolean,button:TextView){
+   button.isEnabled=false
+   scope.launch{
+    try{
+     val result=withContext(Dispatchers.IO){
+      if(shouldFollow)AuthApi.post("/api/follows/$userId",JSONObject(),authToken)
+      else AuthApi.delete("/api/follows/$userId",authToken)
+     }
+     if(result.status in 200..299){
+      renderMemberFollowState(button,shouldFollow)
+      Toast.makeText(this@RoomActivity,if(shouldFollow)"تمت المتابعة بنجاح" else "تم إلغاء المتابعة",Toast.LENGTH_SHORT).show()
+     }else{
+      button.isEnabled=true
+      Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تحديث المتابعة"),Toast.LENGTH_SHORT).show()
+     }
+    }catch(_:Exception){
      button.isEnabled=true
-     Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تحديث المتابعة"),Toast.LENGTH_SHORT).show()
+     Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
     }
-   }catch(_:Exception){
-    button.isEnabled=true
-    Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()
    }
   }
- }
-
- private fun openMemberConversation(userId:String,name:String){
+  private fun openMemberConversation(userId:String,name:String){
   if(userId==currentUserId){
    Toast.makeText(this,"هذا حسابك",Toast.LENGTH_SHORT).show()
    return
