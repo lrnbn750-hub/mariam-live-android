@@ -1376,7 +1376,7 @@ class RoomActivity : Activity() {
  private fun applyAudioRoomBackdrop(){
   loadedBackgroundUrl="__fixed_audio_backdrop__"
   roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
-  roomBackgroundView.setImageResource(R.drawable.audio_room_backdrop)
+  roomBackgroundView.setImageResource(R.drawable.bg_voice_room)
  }
 
  private fun applyRoomBackground(url:String){
