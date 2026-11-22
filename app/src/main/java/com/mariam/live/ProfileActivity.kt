@@ -472,71 +472,80 @@ class ProfileActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             setBackgroundColor(Color.WHITE)
         }
+        // Keep the photo below the status bar and the bottom bar above the navigation bar.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
         val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE) }
+        val sub = Color.rgb(120, 128, 142)
 
-        // ---- Hero photo (full width) with back (right) and menu (left) ----
+        // ---- Hero photo ----
         val hero = FrameLayout(this)
         publicAvatar = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             setBackgroundColor(Color.rgb(226, 229, 238))
         }
         hero.addView(publicAvatar, FrameLayout.LayoutParams(-1, -1))
-        val back = text("›", 38f, Color.WHITE, true).apply {
+        val back = text("›", 30f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
             setShadowLayer(6f, 0f, 2f, 0xAA000000.toInt())
             setOnClickListener { finish() }
         }
-        hero.addView(back, FrameLayout.LayoutParams(dp(52f), dp(52f), Gravity.TOP or Gravity.RIGHT).apply {
-            topMargin = dp(12f); rightMargin = dp(6f)
+        hero.addView(back, FrameLayout.LayoutParams(dp(44f), dp(44f), Gravity.TOP or Gravity.RIGHT).apply {
+            topMargin = dp(8f); rightMargin = dp(6f)
         })
-        val menu = text("•••", 16f, Color.WHITE, true).apply {
+        val menu = text("•••", 13f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
             setShadowLayer(6f, 0f, 2f, 0xAA000000.toInt())
             setOnClickListener { showPublicActions() }
         }
-        hero.addView(menu, FrameLayout.LayoutParams(dp(52f), dp(52f), Gravity.TOP or Gravity.LEFT).apply {
-            topMargin = dp(12f); leftMargin = dp(10f)
+        hero.addView(menu, FrameLayout.LayoutParams(dp(44f), dp(44f), Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = dp(8f); leftMargin = dp(8f)
         })
-        content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 9 / 10))
+        content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 4 / 5))
 
         // ---- Name + gender ----
         val nameRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            setPadding(dp(18f), dp(16f), dp(18f), 0)
+            setPadding(dp(16f), dp(14f), dp(16f), 0)
         }
-        publicGender = text("♂", 13f, Color.WHITE, true).apply {
+        publicGender = text("♂", 11f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(84, 170, 235), 12f, Color.TRANSPARENT)
+            background = rounded(Color.rgb(84, 170, 235), 10f, Color.TRANSPARENT)
         }
-        nameRow.addView(publicGender, LinearLayout.LayoutParams(dp(36f), dp(24f)).apply { marginEnd = dp(10f) })
-        publicName = text("مستخدم BAK LIVE", 22f, ink, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
-        nameRow.addView(publicName)
+        nameRow.addView(publicGender, LinearLayout.LayoutParams(dp(30f), dp(20f)).apply { marginEnd = dp(8f) })
+        publicName = text("مستخدم BAK LIVE", 19f, ink, true).apply {
+            textDirection = View.TEXT_DIRECTION_RTL
+            setSingleLine(true)
+        }
+        nameRow.addView(publicName, LinearLayout.LayoutParams(-2, -2))
         content.addView(nameRow)
 
-        // ---- Location | copy + ID ----
+        // ---- Location | ID ----
         val idRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            setPadding(dp(18f), dp(8f), dp(18f), 0)
+            setPadding(dp(16f), dp(6f), dp(16f), 0)
         }
-        publicLocation = text("", 14f, muted).apply { visibility = View.GONE; textDirection = View.TEXT_DIRECTION_RTL }
+        publicLocation = text("", 12f, sub).apply { visibility = View.GONE; textDirection = View.TEXT_DIRECTION_RTL }
         idRow.addView(publicLocation)
-        val copyIcon = text("⧉", 15f, muted).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(6f), 0) }
-        idRow.addView(copyIcon)
-        publicIdView = text("ID: —", 15f, muted).apply { setOnClickListener { copyId() } }
+        idRow.addView(text("⧉", 13f, sub).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(5f), 0) })
+        publicIdView = text("ID: —", 13f, sub).apply { setOnClickListener { copyId() } }
         idRow.addView(publicIdView)
         content.addView(idRow)
 
-        // ---- Stats: fans | following | beans | diamonds (tap fans / following to open lists) ----
+        // ---- Stats ----
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            gravity = Gravity.CENTER
-            setPadding(dp(12f), dp(14f), dp(12f), dp(6f))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10f), dp(12f), dp(10f), dp(4f))
         }
         fun statPair(caption: String, setter: (TextView) -> Unit, onClick: (() -> Unit)?): View {
             val pair = LinearLayout(this).apply {
@@ -544,19 +553,22 @@ class ProfileActivity : Activity() {
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
                 gravity = Gravity.CENTER
             }
-            val value = text("—", 20f, ink, true)
+            val value = text("—", 16f, ink, true).apply { setSingleLine(true) }
             setter(value)
-            pair.addView(text(caption, 13f, muted).apply { textDirection = View.TEXT_DIRECTION_RTL })
-            pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5f) })
+            pair.addView(text(caption, 11.5f, sub).apply {
+                textDirection = View.TEXT_DIRECTION_RTL
+                setSingleLine(true)
+            }, LinearLayout.LayoutParams(-2, -2))
+            pair.addView(value, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(4f) })
             if (onClick != null) { pair.isClickable = true; pair.setOnClickListener { onClick() } }
             return pair
         }
         stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
-            LinearLayout.LayoutParams(0, dp(44f), 1f))
+            LinearLayout.LayoutParams(0, dp(36f), 1f))
         stats.addView(statPair("متابعون", { publicFollowing = it }) { openFollowList("following", userId) },
-            LinearLayout.LayoutParams(0, dp(44f), 1f))
-        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1f))
-        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(44f), 1f))
+            LinearLayout.LayoutParams(0, dp(36f), 1f))
+        stats.addView(statPair("Beans", { publicReceived = it }, null), LinearLayout.LayoutParams(0, dp(36f), 1.1f))
+        stats.addView(statPair("الماس", { publicSent = it }, null), LinearLayout.LayoutParams(0, dp(36f), 1f))
         content.addView(stats)
 
         // ---- Level badge ----
@@ -564,43 +576,45 @@ class ProfileActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            setPadding(dp(18f), dp(10f), dp(18f), dp(16f))
+            setPadding(dp(16f), dp(6f), dp(16f), dp(14f))
         }
-        publicLevel = text("◆  1", 13f, Color.rgb(70, 100, 140), true).apply {
+        publicLevel = text("◆  1", 12f, Color.rgb(70, 100, 140), true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(222, 236, 250), 14f, Color.TRANSPARENT)
-            setPadding(dp(14f), dp(4f), dp(14f), dp(4f))
+            background = rounded(Color.rgb(222, 236, 250), 12f, Color.TRANSPARENT)
+            setPadding(dp(11f), dp(3f), dp(11f), dp(3f))
         }
-        badges.addView(publicLevel)
+        badges.addView(publicLevel, LinearLayout.LayoutParams(-2, -2))
         content.addView(badges)
-        content.addView(View(this).apply { setBackgroundColor(Color.rgb(246, 247, 250)) }, LinearLayout.LayoutParams(-1, dp(12f)))
+        content.addView(View(this).apply { setBackgroundColor(Color.rgb(246, 247, 250)) }, LinearLayout.LayoutParams(-1, dp(8f)))
 
         // ---- Tab ----
         val tabRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.RIGHT
-            setPadding(dp(18f), dp(16f), dp(18f), 0)
+            setPadding(dp(16f), dp(14f), dp(16f), 0)
         }
         val tabCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
-        tabCol.addView(text("الملف الشخصي", 18f, ink, true).apply { textDirection = View.TEXT_DIRECTION_RTL })
-        tabCol.addView(View(this).apply { setBackgroundColor(ink) }, LinearLayout.LayoutParams(dp(14f), dp(3f)).apply { topMargin = dp(6f) })
-        tabRow.addView(tabCol)
+        tabCol.addView(text("الملف الشخصي", 15f, ink, true).apply { textDirection = View.TEXT_DIRECTION_RTL },
+            LinearLayout.LayoutParams(-2, -2))
+        tabCol.addView(View(this).apply { setBackgroundColor(ink) },
+            LinearLayout.LayoutParams(dp(16f), dp(2f)).apply { topMargin = dp(5f) })
+        tabRow.addView(tabCol, LinearLayout.LayoutParams(-2, -2))
         content.addView(tabRow)
 
         // ---- Basic info ----
-        content.addView(text("معلومات اساسية", 18f, ink, true).apply {
+        content.addView(text("معلومات اساسية", 15f, ink, true).apply {
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
             textDirection = View.TEXT_DIRECTION_RTL
-            setPadding(dp(18f), dp(22f), dp(18f), dp(12f))
+            setPadding(dp(16f), dp(18f), dp(16f), dp(10f))
         }, LinearLayout.LayoutParams(-1, -2))
         publicInfoBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18f), 0, dp(18f), dp(24f))
+            setPadding(dp(16f), 0, dp(16f), dp(20f))
         }
-        content.addView(publicInfoBox)
+        content.addView(publicInfoBox, LinearLayout.LayoutParams(-1, -2))
 
-        scroll.addView(content)
+        scroll.addView(content, ViewGroup.LayoutParams(-1, -2))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         // ---- Bottom bar: chat | follow (star) | friends ----
@@ -609,39 +623,47 @@ class ProfileActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundColor(Color.WHITE)
-            setPadding(dp(16f), dp(10f), dp(16f), dp(10f))
-            elevation = dp(8f).toFloat()
+            setPadding(dp(14f), dp(8f), dp(14f), dp(8f))
+            elevation = dp(6f).toFloat()
         }
-        val chat = text("💬  دردشة", 16f, ink, true).apply {
+        val chat = text("💬  دردشة", 14f, ink, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.WHITE, 28f, Color.rgb(200, 204, 212))
+            background = rounded(Color.WHITE, 23f, Color.rgb(200, 204, 212))
             setOnClickListener { Toast.makeText(this@ProfileActivity, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show() }
             pressable()
         }
         val gold = Color.rgb(247, 181, 0)
-        val star = text("☆", 26f, gold, true).apply {
+        val star = text("☆", 22f, gold, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.WHITE, 28f, gold)
-            setOnClickListener { togglePublicFollow() }
+            background = rounded(Color.WHITE, 23f, gold)
+            setOnClickListener { onPublicStarClick() }
             pressable()
         }
         publicFollowButton = star
         val friendsBtn = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(240, 241, 246), 28f, Color.TRANSPARENT)
+            background = rounded(Color.rgb(240, 241, 246), 23f, Color.TRANSPARENT)
             isClickable = true
             setOnClickListener { openFollowList("friends", userId) }
             pressable()
         }
-        publicFriendsLabel = text("⇄  الأصدقاء", 15f, Color.rgb(110, 116, 130), true).apply { gravity = Gravity.CENTER }
-        friendsBtn.addView(publicFriendsLabel)
+        publicFriendsLabel = text("⇄  الأصدقاء", 14f, Color.rgb(110, 116, 130), true).apply { gravity = Gravity.CENTER }
+        friendsBtn.addView(publicFriendsLabel, LinearLayout.LayoutParams(-2, -2))
         publicFriendsButton = friendsBtn
-        bar.addView(chat, LinearLayout.LayoutParams(0, dp(52f), 1f))
-        bar.addView(star, LinearLayout.LayoutParams(dp(52f), dp(52f)).apply { setMargins(dp(12f), 0, dp(12f), 0) })
-        bar.addView(friendsBtn, LinearLayout.LayoutParams(0, dp(52f), 1f))
+        bar.addView(chat, LinearLayout.LayoutParams(0, dp(46f), 1f))
+        bar.addView(star, LinearLayout.LayoutParams(dp(46f), dp(46f)).apply { setMargins(dp(10f), 0, dp(10f), 0) })
+        bar.addView(friendsBtn, LinearLayout.LayoutParams(0, dp(46f), 1f))
         root.addView(bar, LinearLayout.LayoutParams(-1, -2))
         setContentView(root)
+        androidx.core.view.ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun onPublicStarClick() {
+        if (isFollowingPublic) {
+            val bmp = (publicAvatar?.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+            showUnfollowDialog(this, publicName?.text?.toString().orEmpty(), bmp) { togglePublicFollow() }
+        } else togglePublicFollow()
     }
 
     private fun updatePublicFollowUi() {
@@ -650,13 +672,13 @@ class ProfileActivity : Activity() {
     }
 
     private fun addInfoChip(label: String) {
-        val chip = text(label, 15f, ink).apply {
+        val chip = text(label, 13f, ink).apply {
             gravity = Gravity.CENTER
             textDirection = View.TEXT_DIRECTION_RTL
-            background = rounded(Color.WHITE, 28f, Color.rgb(214, 217, 224))
-            setPadding(dp(20f), dp(12f), dp(20f), dp(12f))
+            background = rounded(Color.WHITE, 22f, Color.rgb(214, 217, 224))
+            setPadding(dp(16f), dp(9f), dp(16f), dp(9f))
         }
-        publicInfoBox?.addView(chip, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.RIGHT; bottomMargin = dp(10f) })
+        publicInfoBox?.addView(chip, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.RIGHT; bottomMargin = dp(8f) })
     }
 
     private fun compactPublicCount(value: Long): String = when {
@@ -996,5 +1018,10 @@ class ProfileActivity : Activity() {
                 runOnUiThread { Toast.makeText(this, e.message ?: "تعذر رفع الصورة", Toast.LENGTH_LONG).show() }
             }
         }
+    }
+
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
     }
 }
