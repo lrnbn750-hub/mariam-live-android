@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.FrameLayout
@@ -12,6 +13,8 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +39,8 @@ class DirectChatActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var sendButton: TextView
     private lateinit var headerName: TextView
+    private lateinit var headerAvatar: ImageView
+    private lateinit var avatarFallback: TextView
     private lateinit var status: TextView
 
     private var conversationId = ""
@@ -47,6 +52,7 @@ class DirectChatActivity : Activity() {
     private var refreshQueued = false
     private var lastSignature = ""
     private var destroyed = false
+    private var avatarUrlLoaded = false
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
@@ -75,7 +81,10 @@ class DirectChatActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setBackgroundColor(canvas)
-            fitsSystemWindows = true
+            fitsSystemWindows = false
+            val statusBarId = resources.getIdentifier("status_bar_height", "dimen", "android")
+            val statusBarHeight = if (statusBarId > 0) resources.getDimensionPixelSize(statusBarId) else dp(24)
+            setPadding(0, statusBarHeight, 0, 0)
         }
 
         val header = LinearLayout(this).apply {
@@ -90,13 +99,22 @@ class DirectChatActivity : Activity() {
             setTextColor(ink); setOnClickListener { finish() }
         }
         header.addView(back, LinearLayout.LayoutParams(dp(42), dp(48)))
-        val avatar = TextView(this).apply {
+        val avatarFrame = FrameLayout(this)
+        avatarFallback = TextView(this).apply {
             text = otherName.trim().firstOrNull()?.toString() ?: "؟"
             textSize = 18f; typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER; setTextColor(greenDark)
             background = shape(Color.rgb(229, 245, 236), 30)
         }
-        header.addView(avatar, LinearLayout.LayoutParams(dp(44), dp(44)))
+        headerAvatar = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = shape(Color.rgb(229, 245, 236), 30)
+            clipToOutline = true
+            contentDescription = "الصورة الشخصية"
+        }
+        avatarFrame.addView(avatarFallback, FrameLayout.LayoutParams(-1, -1))
+        avatarFrame.addView(headerAvatar, FrameLayout.LayoutParams(-1, -1))
+        header.addView(avatarFrame, LinearLayout.LayoutParams(dp(44), dp(44)))
         val nameColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), 0, 0, 0)
@@ -111,6 +129,7 @@ class DirectChatActivity : Activity() {
         nameColumn.addView(headerName)
         nameColumn.addView(status)
         header.addView(nameColumn, LinearLayout.LayoutParams(0, -2, 1f))
+        if (otherUserId.isNotBlank()) loadHeaderAvatar()
         val refresh = TextView(this).apply {
             text = "↻"; textSize = 28f; gravity = Gravity.CENTER
             setTextColor(green); setOnClickListener { loadMessages() }
@@ -182,6 +201,48 @@ class DirectChatActivity : Activity() {
         })
     }
 
+    private fun loadHeaderAvatar() {
+        if (avatarUrlLoaded || otherUserId.isBlank() || destroyed) return
+        val auth = token() ?: return
+        avatarUrlLoaded = true
+        worker.execute {
+            try {
+                val profile = AuthApi.get("/api/users/$otherUserId", auth)
+                val user = profile.body.optJSONObject("user")
+                    ?: profile.body.optJSONObject("profile")
+                    ?: profile.body
+                val url = user.optString("avatar_url").takeIf {
+                    it.startsWith("https://") || it.startsWith("http://")
+                } ?: user.optString("profile_image").takeIf {
+                    it.startsWith("https://") || it.startsWith("http://")
+                } ?: user.optString("image_url").takeIf {
+                    it.startsWith("https://") || it.startsWith("http://")
+                }
+                if (url != null) {
+                    var connection: HttpURLConnection? = null
+                    try {
+                        connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 8000
+                            readTimeout = 8000
+                            instanceFollowRedirects = true
+                        }
+                        val bitmap = connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                        if (bitmap != null) runOnUiThread {
+                            if (!destroyed && ::headerAvatar.isInitialized) {
+                                headerAvatar.setImageBitmap(bitmap)
+                                avatarFallback.visibility = View.GONE
+                            }
+                        }
+                    } finally {
+                        connection?.disconnect()
+                    }
+                }
+            } catch (_: Exception) {
+                avatarUrlLoaded = false
+            }
+        }
+    }
+
     private fun updateSendButton() {
         if (!::sendButton.isInitialized) return
         val enabled = input.text.toString().isNotBlank() && verified && !sending
@@ -243,6 +304,8 @@ class DirectChatActivity : Activity() {
                         otherUserId = recipient
                         if (otherName == "محادثة" && recipientName.isNotBlank()) otherName = recipientName
                         headerName.text = otherName
+                        avatarFallback.text = otherName.trim().firstOrNull()?.toString() ?: "؟"
+                        loadHeaderAvatar()
                         showStatus("محادثة خاصة")
                         updateSendButton()
                         loadMessages()
