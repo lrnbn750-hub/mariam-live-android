@@ -192,7 +192,41 @@ module.exports = function(app, db, authenticateToken) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      return res.json({ user: result.rows[0] });
+      const user = result.rows[0];
+      const [followStats, giftStats, levelResult] = await Promise.all([
+        db.query(
+          `SELECT
+             (SELECT COUNT(*)::bigint FROM user_follows WHERE followed_id=$1) AS followers_count,
+             (SELECT COUNT(*)::bigint FROM user_follows WHERE follower_id=$1) AS following_count`,
+          [req.params.id]
+        ),
+        db.query(
+          `SELECT
+             COALESCE((SELECT SUM(total_coins) FROM voice_room_gift_events WHERE sender_id=$1),0)::text AS diamonds_sent,
+             COALESCE((SELECT SUM(diamonds_awarded) FROM voice_room_gift_events WHERE recipient_id=$1),0)::text AS diamonds_received`,
+          [req.params.id]
+        ),
+        db.query(
+          "SELECT total_xp FROM user_levels WHERE user_id=$1",
+          [req.params.id]
+        )
+      ]);
+      const follows = followStats.rows[0] || {};
+      const gifts = giftStats.rows[0] || {};
+      const totalXp = Number(levelResult.rows[0]?.total_xp || 0);
+      let level = 1;
+      let nextLevelXp = 100;
+      while (level < 100 && totalXp >= nextLevelXp) {
+        level += 1;
+        nextLevelXp = level * level * 100;
+      }
+      user.total_xp = totalXp;
+      user.level = level;
+      user.followers_count = Number(follows.followers_count || 0);
+      user.following_count = Number(follows.following_count || 0);
+      user.diamonds_sent = gifts.diamonds_sent || "0";
+      user.diamonds_received = gifts.diamonds_received || "0";
+      return res.json({ user });
     } catch (error) {
       console.error("Public profile error:", error.message);
       return res.status(500).json({ error: "Could not load user profile" });
