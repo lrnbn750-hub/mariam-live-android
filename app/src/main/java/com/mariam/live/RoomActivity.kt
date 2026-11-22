@@ -2842,7 +2842,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    val value=item.opt(key)
    if(value!=null && value!=JSONObject.NULL){
     val text=value.toString()
-    if(text.isNotBlank() && text!="null" && text!="0")return text
+    if(text.isNotBlank() && text!="null")return text
    }
   }
   return "—"
