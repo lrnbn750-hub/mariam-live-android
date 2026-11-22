@@ -2955,12 +2955,23 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   avatar.isFocusable=true
   avatar.contentDescription="فتح الملف الشخصي الكامل"
   avatar.setOnClickListener{
-   // Keep the room underneath this Activity; its LiveKit session and seat remain active.
-   dialog.dismiss()
-   startActivity(
-    Intent(this@RoomActivity,ProfileActivity::class.java)
-     .putExtra("profile_user_id",uid)
-   )
+   if(uid.isBlank() || uid=="null"){
+    Toast.makeText(this@RoomActivity,"معرّف المستخدم غير متوفر",Toast.LENGTH_SHORT).show()
+    return@setOnClickListener
+   }
+   try{
+    // Launch first while the mini-profile is still attached. The room Activity stays
+    // underneath in the same task, preserving its LiveKit room and seat.
+    startActivity(
+     Intent(this@RoomActivity,ProfileActivity::class.java)
+      .putExtra("profile_user_id",uid)
+      .putExtra("room_profile_source",true)
+    )
+    dialog.dismiss()
+   }catch(e:Exception){
+    android.util.Log.e("BAK_ROOM_PROFILE","Unable to open full profile for $uid",e)
+    Toast.makeText(this@RoomActivity,"تعذر فتح الملف الشخصي",Toast.LENGTH_SHORT).show()
+   }
   }
   root.addView(avatar,FrameLayout.LayoutParams(dp(104),dp(104),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
   val nameLabel=label(name,21f,Color.rgb(28,29,33),true).apply{gravity=Gravity.CENTER}
