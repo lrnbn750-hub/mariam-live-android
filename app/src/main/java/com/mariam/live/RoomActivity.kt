@@ -1915,62 +1915,48 @@ class RoomActivity : Activity() {
   }
  }
  private fun openSeatProfile(uid:String,seat:JSONObject,fallbackName:String,fallbackAvatar:String){
-  val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null)
-  if(token.isNullOrBlank())return
-  val loading=AlertDialog.Builder(this,android.R.style.Theme_DeviceDefault_Dialog_Alert).setMessage("جارٍ تحميل الملف الشخصي...").setNegativeButton("إغلاق",null).create()
+  if(uid.isBlank()||uid=="null")return
+  val loading=AlertDialog.Builder(this,android.R.style.Theme_DeviceDefault_Dialog_Alert)
+   .setMessage("جارٍ تحميل الملف الشخصي...")
+   .setNegativeButton("إغلاق",null).create()
   loading.show()
   scope.launch{
    try{
-    val response=withContext(Dispatchers.IO){AuthApi.get("/api/users/$uid",token)}
+    val response=withContext(Dispatchers.IO){AuthApi.get("/api/users/$uid",authToken)}
     if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحميل الملف الشخصي"))
-    val user=response.body.optJSONObject("user")?:response.body
-    val name=user.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
-     ?:user.optString("username").takeIf{it.isNotBlank()&&it!="null"}?:fallbackName
-    val avatarUrl=user.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}?:fallbackAvatar
-    val publicId=user.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
-     ?:seat.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?: "—"
-    val level=(user.optInt("level",seat.optInt("level",seat.optInt("user_level",1)))).coerceIn(1,100)
-    val bio=user.optString("bio").takeIf{it.isNotBlank()&&it!="null"}?:"لا توجد نبذة شخصية"
+    val user=response.body.optJSONObject("user")
+     ?:response.body.optJSONObject("profile")
+     ?:response.body
+    val merged=JSONObject(seat.toString())
+    merged.put("user_id",uid)
+    val keys=listOf(
+     "display_name","username","public_id","account_id","avatar_url","profile_image",
+     "total_xp","level","user_level","bio",
+     "fans_count","fans","followers_count","followersCount",
+     "following_count","following","follow_count","followings_count",
+     "diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent",
+     "diamonds_received","total_diamonds_received","received_diamonds","total_received"
+    )
+    for(key in keys){
+     if(user.has(key)&&user.opt(key)!=JSONObject.NULL)merged.put(key,user.opt(key))
+    }
+    val stats=user.optJSONObject("stats")
+     ?:user.optJSONObject("statistics")
+     ?:user.optJSONObject("profile_stats")
+    if(stats!=null){
+     for(key in keys)if(stats.has(key)&&stats.opt(key)!=JSONObject.NULL)merged.put(key,stats.opt(key))
+    }
+    if(merged.optString("display_name").isBlank()||merged.optString("display_name")=="null")
+     merged.put("display_name",fallbackName)
+    if(merged.optString("avatar_url").isBlank()||merged.optString("avatar_url")=="null")
+     merged.put("avatar_url",fallbackAvatar)
+    if(merged.optString("public_id").isBlank()||merged.optString("public_id")=="null"){
+     val publicId=seat.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
+      ?:seat.optString("account_id").takeIf{it.isNotBlank()&&it!="null"}
+     if(publicId!=null)merged.put("public_id",publicId)
+    }
     loading.dismiss()
-    val gold=Color.rgb(224,184,98)
-    val root=LinearLayout(this@RoomActivity).apply{
-     orientation=LinearLayout.VERTICAL
-     gravity=Gravity.CENTER_HORIZONTAL
-     setPadding(dp(22),dp(22),dp(22),dp(18))
-     background=sheetBg()
-    }
-    val avatarFrame=FrameLayout(this@RoomActivity).apply{clipChildren=false;clipToPadding=false}
-    val photo=ImageView(this@RoomActivity).apply{
-     scaleType=ImageView.ScaleType.CENTER_CROP
-     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(60,60,60));setStroke(dp(2),gold)}
-     clipToOutline=true
-     if(avatarUrl.isNotBlank()){tag=avatarUrl;loadAvatarInto(this,avatarUrl)}
-     else setImageDrawable(VectorIcon("user",Color.LTGRAY,dp(40)))
-    }
-    avatarFrame.addView(photo,FrameLayout.LayoutParams(dp(88),dp(88),Gravity.CENTER))
-    root.addView(avatarFrame,LinearLayout.LayoutParams(dp(96),dp(96)))
-    root.addView(TextView(this@RoomActivity).apply{
-     text=name;textSize=19f;gravity=Gravity.CENTER
-     setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-     setPadding(0,dp(10),0,dp(3))
-    },LinearLayout.LayoutParams(-1,-2))
-    root.addView(TextView(this@RoomActivity).apply{
-     text="ID: $publicId";textSize=12f;gravity=Gravity.CENTER
-     setTextColor(Color.rgb(191,191,191))
-    },LinearLayout.LayoutParams(-1,-2))
-    val levelBadge=TextView(this@RoomActivity).apply{
-     text="LV $level";textSize=13f;gravity=Gravity.CENTER
-     setTextColor(Color.rgb(255,226,159));typeface=android.graphics.Typeface.DEFAULT_BOLD
-     setPadding(dp(14),dp(6),dp(14),dp(6))
-     background=GradientDrawable().apply{cornerRadius=dp(14).toFloat();setColor(Color.argb(80,220,172,66));setStroke(dp(1),gold)}
-    }
-    root.addView(levelBadge,LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(10)})
-    root.addView(TextView(this@RoomActivity).apply{
-     text=bio;textSize=13f;gravity=Gravity.CENTER
-     setTextColor(Color.rgb(224,217,233));maxLines=3
-     setPadding(0,dp(12),0,dp(4))
-    },LinearLayout.LayoutParams(-1,-2))
-    showSheet(root)
+    renderMemberProfile(merged)
    }catch(e:Exception){
     loading.dismiss()
     Toast.makeText(this@RoomActivity,e.message?:"تعذر تحميل الملف الشخصي",Toast.LENGTH_SHORT).show()
