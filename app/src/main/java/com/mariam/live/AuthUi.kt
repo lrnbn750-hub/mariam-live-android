@@ -2,11 +2,13 @@ package com.mariam.live
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.view.ViewOutlineProvider
 import android.widget.*
 
 object AuthUi {
@@ -47,19 +49,10 @@ object AuthUi {
             gravity = Gravity.CENTER
             setPadding(0, dp(activity, 18), 0, dp(activity, 24))
         }
-        val mascot = ImageView(activity).apply {
-            setImageResource(R.drawable.bak_live_penguin_mascot)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = "BAK LIVE"
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.WHITE)
-                setStroke(dp(activity, 2), 0xFFE8DFFF.toInt())
-            }
-            clipToOutline = true
-            outlineProvider = ViewOutlineProvider.BACKGROUND
-            layoutParams = LinearLayout.LayoutParams(dp(activity, 150), dp(activity, 150))
-            elevation = dp(activity, 8).toFloat()
+        val mascot = PenguinLogoView(activity).apply {
+            contentDescription = "شعار البطريق BAK LIVE"
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 108), dp(activity, 108))
+            elevation = dp(activity, 5).toFloat()
         }
         val title = TextView(activity).apply {
             text = "BAK LIVE"
@@ -79,6 +72,48 @@ object AuthUi {
         wrap.addView(title)
         wrap.addView(sub)
         return wrap
+    }
+
+    private class PenguinLogoView(activity: Activity) : View(activity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private fun fill(color: Int) { paint.style = Paint.Style.FILL; paint.color = color; paint.strokeWidth = 3f }
+        private fun stroke(color: Int, width: Float = 3f) { paint.style = Paint.Style.STROKE; paint.color = color; paint.strokeWidth = width; paint.strokeJoin = Paint.Join.ROUND; paint.strokeCap = Paint.Cap.ROUND }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val save = canvas.save()
+            canvas.scale(width / 120f, height / 120f)
+            // Small friendly cartoon penguin, drawn directly in code (no bitmap background).
+            fill(0xFFFFB52E.toInt())
+            canvas.drawOval(20f, 86f, 52f, 108f, paint)
+            canvas.drawOval(68f, 86f, 100f, 108f, paint)
+            fill(0xFF20202A.toInt())
+            canvas.drawOval(17f, 14f, 103f, 105f, paint)
+            fill(Color.WHITE)
+            canvas.drawOval(31f, 39f, 89f, 99f, paint)
+            fill(0xFF20202A.toInt())
+            canvas.drawOval(34f, 31f, 53f, 55f, paint)
+            canvas.drawOval(67f, 31f, 86f, 55f, paint)
+            fill(Color.WHITE)
+            canvas.drawCircle(44f, 40f, 5f, paint)
+            canvas.drawCircle(77f, 40f, 5f, paint)
+            fill(0xFF20202A.toInt())
+            canvas.drawCircle(45f, 41f, 2.5f, paint)
+            canvas.drawCircle(78f, 41f, 2.5f, paint)
+            fill(0xFFFFA928.toInt())
+            val beak = Path().apply { moveTo(49f, 53f); quadTo(60f, 47f, 71f, 53f); quadTo(61f, 70f, 49f, 53f); close() }
+            canvas.drawPath(beak, paint)
+            fill(0xFF292933.toInt())
+            canvas.drawOval(4f, 55f, 28f, 83f, paint)
+            canvas.drawOval(92f, 55f, 116f, 83f, paint)
+            fill(Color.WHITE)
+            canvas.drawOval(9f, 57f, 27f, 78f, paint)
+            canvas.drawOval(93f, 57f, 111f, 78f, paint)
+            stroke(0xFF171720.toInt(), 3f)
+            canvas.drawOval(17f, 14f, 103f, 105f, paint)
+            canvas.drawOval(31f, 39f, 89f, 99f, paint)
+            canvas.restoreToCount(save)
+        }
     }
 
     fun card(activity: Activity): LinearLayout =
