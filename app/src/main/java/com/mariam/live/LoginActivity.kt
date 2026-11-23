@@ -241,7 +241,12 @@ class LoginActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(0, AuthUi.dp(this@LoginActivity, 18), 0, AuthUi.dp(this@LoginActivity, 8))
+            setPadding(AuthUi.dp(this@LoginActivity, 8), AuthUi.dp(this@LoginActivity, 6),
+                AuthUi.dp(this@LoginActivity, 8), AuthUi.dp(this@LoginActivity, 6))
+            background = GradientDrawable().apply {
+                setColor(0x33100D20)
+                cornerRadius = AuthUi.dp(this@LoginActivity, 18).toFloat()
+            }
         }
         val privacyLink = AuthUi.link(this, "سياسة الخصوصية").apply {
             setTextColor(Color.WHITE)
@@ -263,7 +268,6 @@ class LoginActivity : Activity() {
         legalLinks.addView(privacyLink)
         legalLinks.addView(separator)
         legalLinks.addView(termsLink)
-        page.addView(legalLinks)
 
         val root = FrameLayout(this).apply { setBackgroundColor(0xFF17152B.toInt()) }
         val videoId = resources.getIdentifier("login_background", "raw", packageName)
@@ -311,6 +315,16 @@ class LoginActivity : Activity() {
             background = ColorDrawable(Color.TRANSPARENT)
         }
         root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        // Keep legal links anchored near the bottom, matching the reference login screen.
+        root.addView(legalLinks, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        ).apply {
+            leftMargin = AuthUi.dp(this@LoginActivity, 26)
+            rightMargin = AuthUi.dp(this@LoginActivity, 26)
+            bottomMargin = AuthUi.dp(this@LoginActivity, 30)
+        })
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = 0xFF17152B.toInt()
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
