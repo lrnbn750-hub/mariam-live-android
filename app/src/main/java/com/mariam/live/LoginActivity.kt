@@ -26,7 +26,7 @@ class LoginActivity : Activity() {
 
     private fun actionButton(text: String, colors: IntArray): TextView = TextView(this).apply {
         this.text = text
-        textSize = 18f
+        textSize = 16f
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
         setTextColor(Color.WHITE)
@@ -34,8 +34,10 @@ class LoginActivity : Activity() {
             cornerRadius = AuthUi.dp(this@LoginActivity, 28).toFloat()
         }
         elevation = AuthUi.dp(this@LoginActivity, 3).toFloat()
-        layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 62)).apply {
-            topMargin = AuthUi.dp(this@LoginActivity, 12)
+        layoutParams = LinearLayout.LayoutParams(-1, AuthUi.dp(this@LoginActivity, 54)).apply {
+            leftMargin = AuthUi.dp(this@LoginActivity, 8)
+            rightMargin = AuthUi.dp(this@LoginActivity, 8)
+            topMargin = AuthUi.dp(this@LoginActivity, 9)
         }
     }
 
@@ -74,7 +76,7 @@ class LoginActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setShadowLayer(5f, 0f, 2f, 0x99000000.toInt())
-            setPadding(0, 0, 0, AuthUi.dp(this@LoginActivity, 22))
+            setPadding(0, 0, 0, AuthUi.dp(this@LoginActivity, 16))
         }
         page.addView(intro)
 
@@ -217,6 +219,8 @@ class LoginActivity : Activity() {
 
         page.addView(form)
         val create = AuthUi.link(this, "ليس لديك حساب؟ أنشئ حساباً جديداً").apply {
+            textSize = 13f
+            setPadding(0, AuthUi.dp(this@LoginActivity, 3), 0, AuthUi.dp(this@LoginActivity, 2))
             setTextColor(Color.WHITE)
             setOnClickListener {
                 startActivity(Intent(this@LoginActivity, RegisterActivity::class.java).apply {
@@ -225,6 +229,8 @@ class LoginActivity : Activity() {
             }
         }
         val forgot = AuthUi.link(this, "نسيت كلمة المرور؟").apply {
+            textSize = 13f
+            setPadding(0, AuthUi.dp(this@LoginActivity, 2), 0, AuthUi.dp(this@LoginActivity, 2))
             setTextColor(0xFFE0D9F5.toInt())
             setOnClickListener { Toast.makeText(this@LoginActivity, "استعادة كلمة المرور ستُضاف بعد ربط التحقق", Toast.LENGTH_LONG).show() }
         }
