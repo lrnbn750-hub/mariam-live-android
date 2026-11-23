@@ -44,20 +44,14 @@ object AuthUi {
         val wrap = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(activity, 24), 0, dp(activity, 30))
+            setPadding(0, dp(activity, 18), 0, dp(activity, 24))
         }
-        val mark = TextView(activity).apply {
-            text = "B"
-            textSize = 34f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(PURPLE, PINK)
-            ).apply { shape = GradientDrawable.OVAL }
-            layoutParams = LinearLayout.LayoutParams(dp(activity, 82), dp(activity, 82))
-            elevation = dp(activity, 12).toFloat()
+        val mascot = ImageView(activity).apply {
+            setImageResource(R.drawable.bak_live_penguin_mascot)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "BAK LIVE"
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 150), dp(activity, 150))
+            elevation = dp(activity, 8).toFloat()
         }
         val title = TextView(activity).apply {
             text = "BAK LIVE"
@@ -65,7 +59,7 @@ object AuthUi {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(0, dp(activity, 12), 0, dp(activity, 4))
+            setPadding(0, dp(activity, 10), 0, dp(activity, 4))
         }
         val sub = TextView(activity).apply {
             text = tagline
@@ -73,7 +67,9 @@ object AuthUi {
             setTextColor(0xFFD0CBE6.toInt())
             gravity = Gravity.CENTER
         }
-        wrap.addView(mark); wrap.addView(title); wrap.addView(sub)
+        wrap.addView(mascot)
+        wrap.addView(title)
+        wrap.addView(sub)
         return wrap
     }
 
