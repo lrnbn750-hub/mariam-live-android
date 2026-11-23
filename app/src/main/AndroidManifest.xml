@@ -13,8 +13,8 @@
     <application
         android:name=".BanSessionMonitor"
         android:allowBackup="true"
-        android:icon="@drawable/file_00000000a958820aadff0ef5caa10bba"
-        android:roundIcon="@drawable/file_00000000a958820aadff0ef5caa10bba"
+        android:icon="@drawable/BAK_LIVE_penguin_mascot"
+        android:roundIcon="@drawable/BAK_LIVE_penguin_mascot"
         android:label="BAK LIVE"
         tools:replace="android:label"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
