@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.bak.live"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 36
         versionCode = 5
         versionName = "2.3"
