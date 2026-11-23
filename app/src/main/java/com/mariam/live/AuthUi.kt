@@ -50,6 +50,13 @@ object AuthUi {
             setImageResource(R.drawable.bak_live_penguin_mascot)
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "BAK LIVE"
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
+                setStroke(dp(activity, 2), 0xFFE8DFFF.toInt())
+            }
+            clipToOutline = true
+            outlineProvider = ViewOutlineProvider.BACKGROUND
             layoutParams = LinearLayout.LayoutParams(dp(activity, 150), dp(activity, 150))
             elevation = dp(activity, 8).toFloat()
         }
