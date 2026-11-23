@@ -356,7 +356,15 @@ class ProfileActivity : Activity() {
             clipToOutline = true
         }
         serviceRow(services, "المساعدة والدعم", R.drawable.ic_profile_help_color, rounded(Color.rgb(226, 247, 243), 14f, Color.TRANSPARENT), dp(8f)) { openAction("help") }
-        serviceRow(services, "سياسة الخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f), last = true) { openAction("privacy") }
+        serviceRow(services, "سياسة الخصوصية", R.drawable.ic_profile_security_color, rounded(Color.rgb(230, 242, 255), 14f, Color.TRANSPARENT), dp(8f)) { openAction("privacy") }
+        serviceRow(
+            services,
+            "تسجيل الخروج",
+            R.drawable.ic_profile_security_color,
+            rounded(Color.rgb(255, 235, 237), 14f, Color.TRANSPARENT),
+            dp(8f),
+            last = true
+        ) { confirmLogout() }
         body.addView(services, LinearLayout.LayoutParams(-1, -2))
 
         // لا نعرض قسم الإدارة إلا بعد تأكيد الصلاحية من الخادم.
@@ -982,6 +990,30 @@ class ProfileActivity : Activity() {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("BAK ID", publicId))
         Toast.makeText(this, "تم نسخ المعرّف", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmLogout() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("تسجيل الخروج")
+            .setMessage("هل تريد تسجيل الخروج من حسابك في BAK LIVE؟")
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("تسجيل الخروج") { _, _ ->
+                // Remove authentication/session data only; preserve unrelated app preferences.
+                getSharedPreferences("MariamLive", MODE_PRIVATE).edit()
+                    .remove("token")
+                    .remove("user_id")
+                    .remove("username")
+                    .remove("phone")
+                    .remove("email")
+                    .remove("active_room_id")
+                    .apply()
+                val intent = Intent(this, LoginActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                startActivity(intent)
+                finish()
+            }
+            .show()
     }
 
     private fun openAction(action: String) {
