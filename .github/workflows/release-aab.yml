@@ -1,9 +1,6 @@
 name: BAK LIVE Signed Release AAB
 
 on:
-  push:
-    branches:
-      - feature/bak-live-camera-modes-on-build465
   workflow_dispatch:
 
 permissions:
