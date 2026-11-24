@@ -449,16 +449,32 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun refreshPictureInPictureParams(){
+  if(Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return
+  try{
+   val builder=PictureInPictureParams.Builder().setAspectRatio(Rational(16,9))
+   // Android 12+ needs auto-enter armed before the Home gesture starts.
+   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.S){
+    builder.setAutoEnterEnabled(connected && !leaving)
+    builder.setSeamlessResizeEnabled(true)
+   }
+   setPictureInPictureParams(builder.build())
+  }catch(_:Exception){}
+ }
+
  override fun onResume(){
   super.onResume()
   hidePhoneNavigation()
+  refreshPictureInPictureParams()
   watchPlayer?.onHostResume()
  }
 
  @Suppress("DEPRECATION")
  override fun onUserLeaveHint(){
   super.onUserLeaveHint()
-  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O && connected && !leaving && !isInPictureInPictureMode){
+  // Keep the manual fallback only for Android 8–11.
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O && Build.VERSION.SDK_INT<Build.VERSION_CODES.S &&
+   connected && !leaving && !isInPictureInPictureMode){
    try{enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16,9)).build())}catch(_:Exception){}
   }
  }
@@ -2191,6 +2207,7 @@ class RoomActivity : Activity() {
     microphoneEnabled=r.body.optBoolean("canPublish",false)
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     connected=true
+    refreshPictureInPictureParams()
     status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
     startRoomMembershipWatch()
