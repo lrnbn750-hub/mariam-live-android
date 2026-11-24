@@ -329,6 +329,24 @@ class ProfileActivity : Activity() {
         shortcutCard.addView(shortcut("العائلة", R.drawable.ic_shortcut_family, Color.rgb(166, 124, 255), Color.rgb(106, 63, 224)) { openAction("family") }, weighted())
         body.addView(shortcutCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
 
+        // ---- Entertainment games entry ----------------------------------------------------
+        val gamesCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = cardBackground(22f)
+            elevation = dp(2f).toFloat()
+            clipToOutline = true
+        }
+        serviceRow(
+            gamesCard,
+            "الألعاب الترفيهية",
+            R.drawable.ic_profile_tasks,
+            rounded(Color.rgb(255, 242, 220), 14f, Color.TRANSPARENT),
+            dp(8f),
+            last = true
+        ) { openAction("games") }
+        body.addView(gamesCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
+
         // ---- Account settings & services ---------------------------------------------------
         val settingsTitle = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1027,6 +1045,7 @@ class ProfileActivity : Activity() {
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
             "family" -> showInfo("العائلة")
+            "games" -> startActivity(Intent(this, GamesActivity::class.java))
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
         }
