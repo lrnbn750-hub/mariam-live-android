@@ -2048,7 +2048,7 @@ class RoomActivity : Activity() {
      if(::grid.isInitialized)applyAvatarBitmapToTree(grid,url,bitmap)
      if(::memberAvatars.isInitialized)applyAvatarBitmapToTree(memberAvatars,url,bitmap)
      if(::ownerAvatarView.isInitialized && ownerAvatarView.tag==url)ownerAvatarView.setImageBitmap(bitmap)
-     if(pipModeActive && ::pipMiniLayer.isInitialized)applyAvatarBitmapToTree(pipMiniLayer?:return,url,bitmap)
+     pipMiniLayer?.let{applyAvatarBitmapToTree(it,url,bitmap)}
      if(view.tag==url)view.setImageBitmap(bitmap)
     }
    }catch(_:Exception){}finally{avatarLoading.remove(url)}
