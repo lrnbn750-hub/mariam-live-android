@@ -7,6 +7,8 @@ import android.app.PictureInPictureParams
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
+import android.view.WindowManager
 import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -69,6 +71,9 @@ class RoomActivity : Activity() {
  private var watchLayer:FrameLayout?=null
  private var pipMiniLayer:LinearLayout?=null
  private var pipModeActive=false
+ private var floatingRoomOverlay:FrameLayout?=null
+ private var pendingFloatingRoomLaunch=false
+ private val floatingOverlayRequestCode=7319
  private var watchPlayer:RoomWatchPlayer?=null
  private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
@@ -286,17 +291,7 @@ class RoomActivity : Activity() {
   topRow.addView(label("⌂",22f,Color.WHITE,true).apply{
    background=ctrlBg();isClickable=true;isFocusable=true
    contentDescription="تصغير الغرفة والعودة للرئيسية مع استمرار الصوت والمقعد"
-   setOnClickListener{
-    // The in-room Home button is an app navigation event, not a system Home gesture.
-    // Explicitly enter PiP first so the floating room remains visible over HomeActivity.
-    if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O && connected && !leaving && !isInPictureInPictureMode){
-     try{
-      refreshPictureInPictureParams()
-      enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(1,1)).build())
-     }catch(_:Exception){}
-    }
-    startActivity(Intent(this@RoomActivity,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-   }
+   setOnClickListener{minimizeRoomToFloatingWindow()}
   },LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(topRow,LinearLayout.LayoutParams(-1,dp(48)))
@@ -457,6 +452,146 @@ class RoomActivity : Activity() {
   }
  }
 
+ private fun minimizeRoomToFloatingWindow(){
+  if(!connected || leaving){
+   Toast.makeText(this,"انتظر حتى يتم الاتصال بالغرفة",Toast.LENGTH_SHORT).show()
+   return
+  }
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)){
+   pendingFloatingRoomLaunch=true
+   try{
+    val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:$packageName"))
+    startActivityForResult(intent,floatingOverlayRequestCode)
+   }catch(_:Exception){
+    pendingFloatingRoomLaunch=false
+    Toast.makeText(this,"تعذر فتح إعداد السماح بالظهور فوق التطبيقات",Toast.LENGTH_LONG).show()
+   }
+   return
+  }
+  showFloatingRoomOverlay()
+  startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+ }
+
+ @Suppress("DEPRECATION")
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
+  super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode==floatingOverlayRequestCode){
+   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
+    pendingFloatingRoomLaunch=false
+    showFloatingRoomOverlay()
+    startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   }else{
+    pendingFloatingRoomLaunch=false
+    Toast.makeText(this,"فعّل السماح بالظهور فوق التطبيقات حتى تظهر نافذة الغرفة مثل Bigo",Toast.LENGTH_LONG).show()
+   }
+  }
+ }
+
+ private fun showFloatingRoomOverlay(){
+  if(Build.VERSION.SDK_INT<Build.VERSION_CODES.M || !Settings.canDrawOverlays(this))return
+  val wm=getSystemService(WINDOW_SERVICE) as WindowManager
+  floatingRoomOverlay?.let{try{wm.removeView(it)}catch(_:Exception){}}
+  val root=FrameLayout(this).apply{
+   background=GradientDrawable().apply{
+    setColor(Color.rgb(112,61,205));cornerRadius=dp(12).toFloat()
+    setStroke(dp(1),Color.argb(190,225,205,255))
+   }
+   clipToOutline=true
+   elevation=dp(10).toFloat()
+  }
+  val board=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL
+   setPadding(dp(5),dp(5),dp(5),dp(5))
+  }
+  val positions=intArrayOf(0,1,2,3,5,6,7,8)
+  for(rowIndex in 0..2){
+   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+   for(col in 0..2){
+    val pos=rowIndex*3+col
+    val tile=FrameLayout(this).apply{
+     background=GradientDrawable().apply{
+      setColor(Color.rgb(128,83,220));cornerRadius=dp(6).toFloat()
+      setStroke(dp(1),Color.argb(90,255,255,255))
+     }
+     clipChildren=false;clipToPadding=false
+    }
+    if(pos!=4){
+     tile.addView(CircularAudioWaveView(this).apply{tag="floating_wave_$pos"},FrameLayout.LayoutParams(-1,-1))
+     tile.addView(ImageView(this).apply{
+      tag="floating_avatar_$pos";scaleType=ImageView.ScaleType.CENTER_CROP
+      clipToOutline=true
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(78,58,120))}
+     },FrameLayout.LayoutParams(dp(43),dp(43),Gravity.CENTER))
+    }
+    row.addView(tile,LinearLayout.LayoutParams(0,dp(54),1f).apply{setMargins(dp(2),dp(2),dp(2),dp(2))})
+   }
+   board.addView(row,LinearLayout.LayoutParams(-1,dp(58)))
+  }
+  root.addView(board,FrameLayout.LayoutParams(-1,-1))
+  val close=TextView(this).apply{
+   text="×";textSize=21f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(205,35,22,58))}
+   setOnClickListener{removeFloatingRoomOverlay()}
+  }
+  root.addView(close,FrameLayout.LayoutParams(dp(27),dp(27),Gravity.TOP or Gravity.END).apply{setMargins(0,dp(2),dp(2),0)})
+  board.setOnClickListener{
+   removeFloatingRoomOverlay()
+   startActivity(Intent(this,RoomActivity::class.java).putExtra("room_id",roomId).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+  }
+  root.setOnClickListener{
+   removeFloatingRoomOverlay()
+   startActivity(Intent(this,RoomActivity::class.java).putExtra("room_id",roomId).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+  }
+  val type=if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O)WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
+  val params=WindowManager.LayoutParams(dp(184),dp(184),type,
+   WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+   PixelFormat.TRANSLUCENT).apply{
+   gravity=Gravity.TOP or Gravity.END;x=dp(12);y=dp(170)
+  }
+  try{
+   wm.addView(root,params)
+   floatingRoomOverlay=root
+   renderFloatingRoomOverlay()
+  }catch(e:Exception){
+   floatingRoomOverlay=null
+   Toast.makeText(this,"تعذر إظهار نافذة الغرفة العائمة: ${e.message?: "خطأ"}",Toast.LENGTH_LONG).show()
+  }
+ }
+
+ private fun renderFloatingRoomOverlay(){
+  val root=floatingRoomOverlay?:return
+  val positions=intArrayOf(0,1,2,3,5,6,7,8)
+  for(index in 0 until 8){
+   val seat=seats.optJSONObject(index)?:JSONObject()
+   val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+   val url=resolveSeatAvatarUrl(seat)
+   val pos=positions[index]
+   val board=root.getChildAt(0) as? LinearLayout?:continue
+   val row=board.getChildAt(pos/3) as? LinearLayout?:continue
+   val tile=row.getChildAt(pos%3) as? FrameLayout?:continue
+   val wave=tile.getChildAt(0) as? CircularAudioWaveView
+   val photo=tile.getChildAt(1) as? ImageView?:continue
+   val level=if(uid!=null)(activeSpeakerLevels[uid]?:0f) else 0f
+   wave?.setLevel(if(level>0.02f)level.coerceAtLeast(0.78f) else 0f)
+   if(url.isNotBlank()){
+    if(photo.tag!=url){photo.tag=url;photo.setImageDrawable(null)}
+    loadAvatarInto(photo,url)
+   }else{
+    photo.tag="floating_avatar_$pos";photo.setImageDrawable(null)
+   }
+   tile.background=GradientDrawable().apply{
+    setColor(Color.rgb(128,83,220));cornerRadius=dp(6).toFloat()
+    setStroke(dp(2),if(level>0.02f)Color.rgb(255,220,95) else Color.argb(90,255,255,255))
+   }
+  }
+ }
+
+ private fun removeFloatingRoomOverlay(){
+  val root=floatingRoomOverlay?:return
+  try{(getSystemService(WINDOW_SERVICE) as WindowManager).removeView(root)}catch(_:Exception){}
+  floatingRoomOverlay=null
+ }
+
  private fun refreshPictureInPictureParams(){
   if(Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return
   try{
@@ -475,6 +610,11 @@ class RoomActivity : Activity() {
   hidePhoneNavigation()
   refreshPictureInPictureParams()
   watchPlayer?.onHostResume()
+  if(pendingFloatingRoomLaunch && Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
+   pendingFloatingRoomLaunch=false
+   showFloatingRoomOverlay()
+   startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+  }
  }
 
  @Suppress("DEPRECATION")
@@ -2056,6 +2196,7 @@ class RoomActivity : Activity() {
      if(::grid.isInitialized)applyAvatarBitmapToTree(grid,url,bitmap)
      if(::memberAvatars.isInitialized)applyAvatarBitmapToTree(memberAvatars,url,bitmap)
      if(::ownerAvatarView.isInitialized && ownerAvatarView.tag==url)ownerAvatarView.setImageBitmap(bitmap)
+     floatingRoomOverlay?.let{applyAvatarBitmapToTree(it,url,bitmap)}
      pipMiniLayer?.let{applyAvatarBitmapToTree(it,url,bitmap)}
      if(view.tag==url)view.setImageBitmap(bitmap)
     }
@@ -2288,6 +2429,7 @@ class RoomActivity : Activity() {
       activeSpeakerLevels.putAll(fresh)
       for((userId,wave) in speakerWaveViews){wave.setLevel(activeSpeakerLevels[userId]?:0f)}
       if(pipModeActive)renderPipMiniLayer()
+     renderFloatingRoomOverlay()
       }
       else->{ /* Ignore unrelated LiveKit room events. */ }
      }
@@ -4258,7 +4400,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
 
- override fun onDestroy(){trendRefreshJob?.cancel();trendRefreshJob=null;trendHeartbeatJob?.cancel();trendHeartbeatJob=null;trendAnimator?.cancel();trendAnimator=null;try{giftSound?.stop()}catch(_:Exception){};giftSound=null
+ override fun onDestroy(){removeFloatingRoomOverlay();trendRefreshJob?.cancel();trendRefreshJob=null;trendHeartbeatJob?.cancel();trendHeartbeatJob=null;trendAnimator?.cancel();trendAnimator=null;try{giftSound?.stop()}catch(_:Exception){};giftSound=null
   stopRoomMusic(restoreMic=false)
   watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
