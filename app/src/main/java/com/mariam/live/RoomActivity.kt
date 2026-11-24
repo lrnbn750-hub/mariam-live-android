@@ -452,7 +452,7 @@ class RoomActivity : Activity() {
  private fun refreshPictureInPictureParams(){
   if(Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return
   try{
-   val builder=PictureInPictureParams.Builder().setAspectRatio(Rational(16,9))
+   val builder=PictureInPictureParams.Builder().setAspectRatio(Rational(1,1))
    // Android 12+ needs auto-enter armed before the Home gesture starts.
    if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.S){
     builder.setAutoEnterEnabled(connected && !leaving)
@@ -490,22 +490,46 @@ class RoomActivity : Activity() {
 
  private fun buildPipMiniLayer():LinearLayout{
   val root=LinearLayout(this).apply{
-   orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-   setPadding(dp(7),dp(7),dp(7),dp(7))
-   background=GradientDrawable().apply{setColor(Color.rgb(20,22,28));cornerRadius=dp(13).toFloat()}
+   orientation=LinearLayout.VERTICAL
+   gravity=Gravity.CENTER
+   setPadding(dp(5),dp(5),dp(5),dp(5))
+   background=GradientDrawable().apply{
+    setColor(Color.rgb(105,54,205))
+    cornerRadius=dp(12).toFloat()
+    setStroke(dp(1),Color.argb(150,220,190,255))
+   }
   }
-  for(rowIndex in 0..1){
+  // Eight picture-only tiles arranged around an empty center, like the reference.
+  for(rowIndex in 0..2){
    val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER}
-   for(col in 0..3){
-    val index=rowIndex*4+col
-    val tile=LinearLayout(this).apply{
-     orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
-     setPadding(dp(2),dp(3),dp(2),dp(3))
-     background=GradientDrawable().apply{cornerRadius=dp(8).toFloat();setColor(Color.rgb(42,46,55));setStroke(dp(1),Color.argb(45,255,255,255))}
+   for(col in 0..2){
+    val index=rowIndex*3+col
+    val tile=FrameLayout(this).apply{
+     background=GradientDrawable().apply{
+      cornerRadius=dp(7).toFloat()
+      setColor(Color.rgb(125,78,220))
+      setStroke(dp(1),Color.argb(85,255,255,255))
+     }
+     clipChildren=false
+     clipToPadding=false
     }
-    tile.addView(label("＋",17f,Color.LTGRAY,true),LinearLayout.LayoutParams(-1,0,1f))
-    tile.addView(label("مقعد "+(index+1),8.5f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(17)))
-    row.addView(tile,LinearLayout.LayoutParams(0,dp(66),1f).apply{setMargins(dp(2),dp(2),dp(2),dp(2))})
+    if(index!=4){
+     val wave=CircularAudioWaveView(this@RoomActivity).apply{setLevel(0f)}
+     tile.addView(wave,FrameLayout.LayoutParams(-1,-1))
+     val photo=ImageView(this).apply{
+      scaleType=ImageView.ScaleType.CENTER_CROP
+      clipToOutline=true
+      background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(75,55,125))}
+      tag="pip_avatar_$index"
+     }
+     val photoSize=dp(48)
+     tile.addView(photo,FrameLayout.LayoutParams(photoSize,photoSize,Gravity.CENTER))
+    }
+    row.addView(tile,LinearLayout.LayoutParams(0,0,1f).apply{
+     width=0;height=0
+     setMargins(dp(2),dp(2),dp(2),dp(2))
+     weight=1f
+    })
    }
    root.addView(row,LinearLayout.LayoutParams(-1,0,1f))
   }
@@ -514,25 +538,32 @@ class RoomActivity : Activity() {
 
  private fun renderPipMiniLayer(){
   val root=pipMiniLayer?:return
+  val positions=intArrayOf(0,1,2,3,5,6,7,8)
   for(index in 0 until 8){
    val seat=seats.optJSONObject(index)?:JSONObject()
    val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
-   val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid!=null)"متحدث" else "مقعد "+(index+1)
-   val row=root.getChildAt(index/4) as? LinearLayout?:continue
-   val tile=row.getChildAt(index%4) as? LinearLayout?:continue
-   val avatar=tile.getChildAt(0) as? TextView?:continue
-   val nameView=tile.getChildAt(1) as? TextView?:continue
+   val url=resolveSeatAvatarUrl(seat)
+   val position=positions[index]
+   val row=root.getChildAt(position/3) as? LinearLayout?:continue
+   val tile=row.getChildAt(position%3) as? FrameLayout?:continue
+   val wave=tile.getChildAt(0) as? CircularAudioWaveView
+   val photo=tile.getChildAt(1) as? ImageView?:continue
    val speaking=uid!=null && (activeSpeakerLevels[uid]?:0f)>0.02f
-   avatar.text=if(uid==null)"＋" else "●"
-   avatar.setTextColor(if(speaking)Color.rgb(91,235,150) else Color.rgb(190,198,210))
-   nameView.text=name.take(12)
+   wave?.setLevel(if(speaking)(activeSpeakerLevels[uid]?:0.7f).coerceAtLeast(0.72f) else 0f)
+   if(url.isNotBlank()){
+    if(photo.tag!=url){photo.tag=url;photo.setImageDrawable(null)}
+    loadAvatarInto(photo,url)
+   }else{
+    photo.tag="pip_avatar_$index"
+    photo.setImageDrawable(null)
+   }
    tile.background=GradientDrawable().apply{
-    cornerRadius=dp(8).toFloat();setColor(if(speaking)Color.rgb(37,72,58) else Color.rgb(42,46,55))
-    setStroke(dp(1),if(speaking)Color.rgb(91,235,150) else Color.argb(45,255,255,255))
+    cornerRadius=dp(7).toFloat()
+    setColor(Color.rgb(125,78,220))
+    setStroke(dp(2),if(speaking)Color.rgb(255,220,95) else Color.argb(85,255,255,255))
    }
   }
  }
-
  override fun onPause(){
   watchPlayer?.onHostPause()
   window.decorView.systemUiVisibility =
@@ -2017,6 +2048,7 @@ class RoomActivity : Activity() {
      if(::grid.isInitialized)applyAvatarBitmapToTree(grid,url,bitmap)
      if(::memberAvatars.isInitialized)applyAvatarBitmapToTree(memberAvatars,url,bitmap)
      if(::ownerAvatarView.isInitialized && ownerAvatarView.tag==url)ownerAvatarView.setImageBitmap(bitmap)
+     if(pipModeActive && ::pipMiniLayer.isInitialized)applyAvatarBitmapToTree(pipMiniLayer?:return,url,bitmap)
      if(view.tag==url)view.setImageBitmap(bitmap)
     }
    }catch(_:Exception){}finally{avatarLoading.remove(url)}
