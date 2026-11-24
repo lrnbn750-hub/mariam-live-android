@@ -3,6 +3,7 @@ package com.mariam.live
 
 import android.Manifest
 import android.app.Activity
+import android.app.PictureInPictureParams
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,6 +20,7 @@ import android.os.Build
 import android.os.Bundle
 import android.net.Uri
 import android.util.Base64
+import android.util.Rational
 import java.io.ByteArrayOutputStream
 import android.view.Gravity
 import android.view.MotionEvent
@@ -65,6 +67,8 @@ class RoomActivity : Activity() {
  private lateinit var roomBackgroundView:ImageView
  private lateinit var roomOverlayLayer:FrameLayout
  private var watchLayer:FrameLayout?=null
+ private var pipMiniLayer:LinearLayout?=null
+ private var pipModeActive=false
  private var watchPlayer:RoomWatchPlayer?=null
  private lateinit var roomBackgroundFillView:ImageView
  private lateinit var ownerAvatarView:ImageView
@@ -394,6 +398,8 @@ class RoomActivity : Activity() {
   },FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomOverlayLayer,FrameLayout.LayoutParams(-1,-1))
+  pipMiniLayer=buildPipMiniLayer().apply{visibility=View.GONE}
+  roomRoot.addView(pipMiniLayer,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Respect the real status-bar inset so the header never sits under the clock/battery icons.
   roomPage.setOnApplyWindowInsetsListener{v,insets->
@@ -446,6 +452,68 @@ class RoomActivity : Activity() {
   super.onResume()
   hidePhoneNavigation()
   watchPlayer?.onHostResume()
+ }
+
+ @Suppress("DEPRECATION")
+ override fun onUserLeaveHint(){
+  super.onUserLeaveHint()
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O && connected && !leaving && !isInPictureInPictureMode){
+   try{enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16,9)).build())}catch(_:Exception){}
+  }
+ }
+
+ override fun onPictureInPictureModeChanged(isInPictureInPictureMode:Boolean,newConfig:android.content.res.Configuration){
+  super.onPictureInPictureModeChanged(isInPictureInPictureMode,newConfig)
+  pipModeActive=isInPictureInPictureMode
+  roomPage.visibility=if(pipModeActive)View.GONE else View.VISIBLE
+  roomOverlayLayer.visibility=if(pipModeActive)View.GONE else View.VISIBLE
+  pipMiniLayer?.visibility=if(pipModeActive)View.VISIBLE else View.GONE
+  if(pipModeActive)renderPipMiniLayer() else hidePhoneNavigation()
+ }
+
+ private fun buildPipMiniLayer():LinearLayout{
+  val root=LinearLayout(this).apply{
+   orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+   setPadding(dp(7),dp(7),dp(7),dp(7))
+   background=GradientDrawable().apply{setColor(Color.rgb(20,22,28));cornerRadius=dp(13).toFloat()}
+  }
+  for(rowIndex in 0..1){
+   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER}
+   for(col in 0..3){
+    val index=rowIndex*4+col
+    val tile=LinearLayout(this).apply{
+     orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+     setPadding(dp(2),dp(3),dp(2),dp(3))
+     background=GradientDrawable().apply{cornerRadius=dp(8).toFloat();setColor(Color.rgb(42,46,55));setStroke(dp(1),Color.argb(45,255,255,255))}
+    }
+    tile.addView(label("＋",17f,Color.LTGRAY,true),LinearLayout.LayoutParams(-1,0,1f))
+    tile.addView(label("مقعد "+(index+1),8.5f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(17)))
+    row.addView(tile,LinearLayout.LayoutParams(0,dp(66),1f).apply{setMargins(dp(2),dp(2),dp(2),dp(2))})
+   }
+   root.addView(row,LinearLayout.LayoutParams(-1,0,1f))
+  }
+  return root
+ }
+
+ private fun renderPipMiniLayer(){
+  val root=pipMiniLayer?:return
+  for(index in 0 until 8){
+   val seat=seats.optJSONObject(index)?:JSONObject()
+   val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
+   val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}?:if(uid!=null)"متحدث" else "مقعد "+(index+1)
+   val row=root.getChildAt(index/4) as? LinearLayout?:continue
+   val tile=row.getChildAt(index%4) as? LinearLayout?:continue
+   val avatar=tile.getChildAt(0) as? TextView?:continue
+   val nameView=tile.getChildAt(1) as? TextView?:continue
+   val speaking=uid!=null && (activeSpeakerLevels[uid]?:0f)>0.02f
+   avatar.text=if(uid==null)"＋" else "●"
+   avatar.setTextColor(if(speaking)Color.rgb(91,235,150) else Color.rgb(190,198,210))
+   nameView.text=name.take(12)
+   tile.background=GradientDrawable().apply{
+    cornerRadius=dp(8).toFloat();setColor(if(speaking)Color.rgb(37,72,58) else Color.rgb(42,46,55))
+    setStroke(dp(1),if(speaking)Color.rgb(91,235,150) else Color.argb(45,255,255,255))
+   }
+  }
  }
 
  override fun onPause(){
@@ -1385,6 +1453,7 @@ class RoomActivity : Activity() {
      lastSeatRenderSignature=seatRenderSignature
      drawSeats()
     }
+    if(pipModeActive)renderPipMiniLayer()
    }catch(_:Exception){status.text="تعذر تحديث الغرفة"}
   }
  }
