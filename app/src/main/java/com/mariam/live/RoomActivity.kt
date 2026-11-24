@@ -2363,8 +2363,6 @@ class RoomActivity : Activity() {
  }
  private fun connect(){
   status.text="جارٍ الاتصال بخادم الصوت..."
-  val service=Intent(this,VoiceForegroundService::class.java)
-  if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
   scope.launch {
    try {
     val r=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/token",JSONObject(),authToken)}
@@ -2382,12 +2380,20 @@ class RoomActivity : Activity() {
     microphoneEnabled=r.body.optBoolean("canPublish",false)
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     connected=true
+    try {
+     val service=Intent(this@RoomActivity,VoiceForegroundService::class.java).apply {
+      putExtra(VoiceForegroundService.EXTRA_ROOM_ID,roomId)
+      putExtra(VoiceForegroundService.EXTRA_AUTH_TOKEN,authToken)
+     }
+     if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
+    } catch(e:Exception) {
+     android.util.Log.e("BAK_VOICE","Could not start voice presence service",e)
+    }
     refreshPictureInPictureParams()
     status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
     startRoomMembershipWatch()
     startAccountBanWatch()
-    startRoomPresenceWatch()
     startRoomGiftWatch()
     startTrendRefresh()
     startTrendHeartbeat()
@@ -2434,7 +2440,6 @@ class RoomActivity : Activity() {
  }
  private var membershipWatch:Job?=null
  private var accountBanWatch:Job?=null
- private var roomPresenceWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
   pendingJoinToasts.add(notice)
@@ -3483,39 +3488,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   }
  }
 
- // Global account bans must terminate an already-running voice publication too.
- private fun startRoomPresenceWatch(){
-  roomPresenceWatch?.cancel()
-  roomPresenceWatch=scope.launch{
-   while(isActive && connected && !leaving){
-    try{
-     val response=withContext(Dispatchers.IO){
-      AuthApi.post("/api/voice-rooms/$roomId/presence/heartbeat",JSONObject(),authToken)
-     }
-     if(response.status==403){
-      // A 403 from presence means the server no longer recognizes this room membership.
-      if(!leaving){
-       leaving=true
-       try{if(connected)room.disconnect()}catch(_:Exception){}
-       connected=false
-       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
-       val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
-       if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
-       runOnUiThread{
-        if(!isFinishing)AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
-         .setTitle("انتهى اتصالك بالغرفة")
-         .setMessage("تم إنهاء عضويتك في هذه الغرفة.")
-         .setPositiveButton("العودة للرئيسية"){_,_->finish()}
-         .setCancelable(false).show()
-       }
-      }
-      break
-     }
-    }catch(_:CancellationException){break}catch(_:Exception){}
-    delay(750)
-   }
-  }
- }
 
  private fun startAccountBanWatch(){
   accountBanWatch?.cancel()
@@ -3531,8 +3503,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       membershipWatch?.cancel()
       seatRefreshJob?.cancel()
       chatPoll?.cancel()
-      roomPresenceWatch?.cancel()
-      roomPresenceWatch=null
       try{
        withContext(Dispatchers.IO){
         AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
@@ -4411,8 +4381,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   speakerEventsJob?.cancel()
   accountBanWatch?.cancel()
   accountBanWatch=null
-  roomPresenceWatch?.cancel()
-  roomPresenceWatch=null
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
   disposeCameraRenderers()
