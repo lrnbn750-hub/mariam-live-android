@@ -472,21 +472,6 @@ class RoomActivity : Activity() {
   startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
  }
 
- @Suppress("DEPRECATION")
- override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
-  super.onActivityResult(requestCode,resultCode,data)
-  if(requestCode==floatingOverlayRequestCode){
-   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
-    pendingFloatingRoomLaunch=false
-    showFloatingRoomOverlay()
-    startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-   }else{
-    pendingFloatingRoomLaunch=false
-    Toast.makeText(this,"فعّل السماح بالظهور فوق التطبيقات حتى تظهر نافذة الغرفة مثل Bigo",Toast.LENGTH_LONG).show()
-   }
-  }
- }
-
  private fun showFloatingRoomOverlay(){
   if(Build.VERSION.SDK_INT<Build.VERSION_CODES.M || !Settings.canDrawOverlays(this))return
   val wm=getSystemService(WINDOW_SERVICE) as WindowManager
@@ -3993,6 +3978,17 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  @Deprecated("Deprecated in Android")
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode==floatingOverlayRequestCode){
+   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
+    pendingFloatingRoomLaunch=false
+    showFloatingRoomOverlay()
+    startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   }else{
+    pendingFloatingRoomLaunch=false
+    Toast.makeText(this,"فعّل السماح بالظهور فوق التطبيقات حتى تظهر نافذة الغرفة مثل Bigo",Toast.LENGTH_LONG).show()
+   }
+   return
+  }
   if(resultCode!=Activity.RESULT_OK)return
   if(requestCode==4302){
    loadSeats()
