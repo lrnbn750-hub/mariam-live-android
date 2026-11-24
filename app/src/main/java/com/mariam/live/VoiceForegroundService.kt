@@ -9,8 +9,24 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class VoiceForegroundService : Service() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var heartbeatJob: Job? = null
+    private var activeRoomId: String = ""
+    private var authToken: String = ""
+
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -28,10 +44,20 @@ class VoiceForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            stopPresenceAndService()
             return START_NOT_STICKY
         }
+
+        val roomId = intent?.getStringExtra(EXTRA_ROOM_ID).orEmpty()
+        val token = intent?.getStringExtra(EXTRA_AUTH_TOKEN).orEmpty()
+        if (roomId.isBlank() || token.isBlank()) {
+            Log.w(TAG, "Missing room credentials; refusing to run presence heartbeat")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
+        activeRoomId = roomId
+        authToken = token
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -65,18 +91,52 @@ class VoiceForegroundService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
-        // Do not resurrect an audio session after Android kills the app process.
+
+        heartbeatJob?.cancel()
+        heartbeatJob = serviceScope.launch {
+            while (isActive && activeRoomId == roomId && authToken == token) {
+                try {
+                    val response = AuthApi.post(
+                        "/api/voice-rooms/$roomId/presence/heartbeat",
+                        JSONObject(),
+                        token
+                    )
+                    if (response.status == 401 || response.status == 403 || response.status == 404) {
+                        Log.w(TAG, "Room presence rejected (HTTP ${response.status}); stopping service")
+                        stopPresenceAndService()
+                        break
+                    }
+                } catch (_: CancellationException) {
+                    break
+                } catch (error: Exception) {
+                    Log.w(TAG, "Room presence heartbeat failed; will retry", error)
+                }
+                delay(2500L)
+            }
+        }
+
+        // Never resurrect an audio session after Android kills the app process.
         return START_NOT_STICKY
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        // Swiping BAK LIVE away from Recents means the user ended the session.
+    private fun stopPresenceAndService() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        activeRoomId = ""
+        authToken = ""
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Removing BAK LIVE from Recents ends the session; ordinary minimization keeps this service alive.
+        stopPresenceAndService()
         super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
+        heartbeatJob?.cancel()
+        serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -85,7 +145,10 @@ class VoiceForegroundService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.mariam.live.action.STOP_VOICE"
+        const val EXTRA_ROOM_ID = "com.mariam.live.extra.ROOM_ID"
+        const val EXTRA_AUTH_TOKEN = "com.mariam.live.extra.AUTH_TOKEN"
         private const val CHANNEL_ID = "mariam_live_voice"
         private const val NOTIFICATION_ID = 4103
+        private const val TAG = "BAK_VOICE"
     }
 }
