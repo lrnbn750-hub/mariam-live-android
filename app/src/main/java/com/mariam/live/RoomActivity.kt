@@ -287,6 +287,14 @@ class RoomActivity : Activity() {
    background=ctrlBg();isClickable=true;isFocusable=true
    contentDescription="تصغير الغرفة والعودة للرئيسية مع استمرار الصوت والمقعد"
    setOnClickListener{
+    // The in-room Home button is an app navigation event, not a system Home gesture.
+    // Explicitly enter PiP first so the floating room remains visible over HomeActivity.
+    if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O && connected && !leaving && !isInPictureInPictureMode){
+     try{
+      refreshPictureInPictureParams()
+      enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(1,1)).build())
+     }catch(_:Exception){}
+    }
     startActivity(Intent(this@RoomActivity,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
    }
   },LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
