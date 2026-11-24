@@ -2121,6 +2121,7 @@ class RoomActivity : Activity() {
     status.text=if(isSeated && microphoneEnabled) "متصل • أنت على المقعد والمايك جاهز" else "متصل كمستمع • اضغط على مقعد فارغ للجلوس"
     loadSeats()
     startRoomMembershipWatch()
+    startAccountBanWatch()
     startRoomGiftWatch()
     startTrendRefresh()
     startTrendHeartbeat()
@@ -2164,6 +2165,7 @@ class RoomActivity : Activity() {
   }
  }
  private var membershipWatch:Job?=null
+ private var accountBanWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
   pendingJoinToasts.add(notice)
@@ -3211,6 +3213,41 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
  }
+
+ // Global account bans must terminate an already-running voice publication too.
+ private fun startAccountBanWatch(){
+  accountBanWatch?.cancel()
+  accountBanWatch=scope.launch{
+   while(isActive && connected && !leaving){
+    delay(10000)
+    try{
+     val response=withContext(Dispatchers.IO){AuthApi.get("/api/auth/me",authToken)}
+     val banned=response.body.optBoolean("banned") ||
+      response.body.optString("code")=="ACCOUNT_BANNED"
+     if((response.status==401 || response.status==403) && banned){
+      leaving=true
+      membershipWatch?.cancel()
+      seatRefreshJob?.cancel()
+      chatPoll?.cancel()
+      try{if(connected)room.disconnect()}catch(_:Exception){}
+      connected=false
+      stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+      val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+      if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+      startActivity(Intent(this@RoomActivity,AccountBannedActivity::class.java).apply{
+       putExtra("reason",response.body.optString("reason"))
+       putExtra("ban_type",response.body.optString("ban_type"))
+       putExtra("started_at",response.body.optString("created_at"))
+       putExtra("expires_at",response.body.optString("expires_at"))
+       flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+      })
+      finish()
+      break
+     }
+    }catch(_:CancellationException){break}catch(_:Exception){}
+   }
+  }
+ }
  private fun showRoomTools(){
   val dialog=android.app.Dialog(this)
   val root=whiteSheetRoot()
@@ -4051,6 +4088,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   stopRoomMusic(restoreMic=false)
   watchPlayer?.release();watchPlayer=null
   speakerEventsJob?.cancel()
+  accountBanWatch?.cancel()
+  accountBanWatch=null
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
   disposeCameraRenderers()
