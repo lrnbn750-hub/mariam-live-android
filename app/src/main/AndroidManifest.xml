@@ -51,7 +51,6 @@
         <activity android:name=".RoomActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
-        <activity android:name=".GamesActivity" android:exported="false" />
         <activity android:name=".FollowListActivity" android:exported="false" />
         <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".AdminLiveMonitorActivity" android:exported="false" />
