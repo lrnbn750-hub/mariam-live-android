@@ -171,7 +171,9 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     const roomId = req.params.roomId;
     if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
     try {
-      if (!(await isMember(roomId, req.userId)) || !(await getRoom(roomId))?.status === "active") {
+      const member = await isMember(roomId, req.userId);
+      const room = await getRoom(roomId);
+      if (!member || !room || room.status !== "active") {
         return res.status(403).json({ error: "Room membership is no longer active" });
       }
       await db.query(
