@@ -1,9 +1,55 @@
-const { AccessToken } = require("livekit-server-sdk");
+const { AccessToken, RoomServiceClient } = require("livekit-server-sdk");
 
 module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
   const liveKitUrl = process.env.LIVEKIT_URL || "wss://voicenokiraq.duckdns.org";
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
+  const roomService = apiKey && apiSecret ? new RoomServiceClient(liveKitUrl, apiKey, apiSecret) : null;
+
+  // A killed app cannot send /leave. Reclaim its seats and membership from
+  // server-side presence, then disconnect the stale identity from LiveKit.
+  let stalePresenceCleanupRunning = false;
+  const cleanupStaleRoomPresence = async () => {
+    if (stalePresenceCleanupRunning) return;
+    stalePresenceCleanupRunning = true;
+    try {
+      const stale = await db.query(
+        `DELETE FROM voice_room_presence p
+         USING room_members m
+         WHERE p.room_id=m.room_id AND p.user_id=m.user_id
+           AND p.last_seen_at < NOW()-INTERVAL '45 seconds'
+         RETURNING p.room_id,p.user_id`
+      );
+      for (const item of stale.rows) {
+        await db.query(
+          "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
+          [item.room_id,item.user_id]
+        );
+        await db.query(
+          "UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
+          [item.room_id,item.user_id]
+        );
+        await db.query("DELETE FROM room_members WHERE room_id=$1 AND user_id=$2",[item.room_id,item.user_id]);
+        if (roomService) {
+          try { await roomService.removeParticipant(String(item.room_id),String(item.user_id)); }
+          catch (error) {
+            // A participant may already have disconnected; DB presence is authoritative.
+            if (!/not found|does not exist|participant/i.test(String(error.message||""))) {
+              console.warn("Stale LiveKit participant cleanup:",error.message);
+            }
+          }
+        }
+      }
+      if (stale.rows.length) console.log("Released stale BAK LIVE room sessions:",stale.rows.length);
+    } catch (error) {
+      // During startup the presence migration may not have run yet; retry next tick.
+      console.error("Stale room presence cleanup:",error.message);
+    } finally {
+      stalePresenceCleanupRunning = false;
+    }
+  };
+  const stalePresenceCleanupTimer=setInterval(cleanupStaleRoomPresence,15000);
+  if (typeof stalePresenceCleanupTimer.unref==="function") stalePresenceCleanupTimer.unref();
 
   // Tables are installed by the privileged deployment migration. The API role
   // only performs normal DML here; it must not need CREATE privileges.
