@@ -6,81 +6,100 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const roomService = apiKey && apiSecret ? new RoomServiceClient(liveKitUrl, apiKey, apiSecret) : null;
 
-  // A killed app cannot send /leave. Reclaim its seats and membership from
-  // server-side presence, then disconnect the stale identity from LiveKit.
+  // Server-authoritative room session cleanup. Heartbeats are leases, not proof
+  // that a participant is alive forever. A 90-second lease allows brief network
+  // recovery; the database transaction decides exactly once who loses membership.
   let stalePresenceCleanupRunning = false;
   const cleanupStaleRoomPresence = async () => {
     if (stalePresenceCleanupRunning) return;
     stalePresenceCleanupRunning = true;
     try {
-      const stale = await db.query(
-        `DELETE FROM voice_room_presence p
-         USING room_members m
-         WHERE p.room_id=m.room_id AND p.user_id=m.user_id
-           AND p.last_seen_at < NOW()-INTERVAL '45 seconds'
-         RETURNING p.room_id,p.user_id`
+      const candidates = await db.query(
+        `SELECT p.room_id,p.user_id
+         FROM voice_room_presence p
+         JOIN room_members m ON m.room_id=p.room_id AND m.user_id=p.user_id
+         WHERE p.last_seen_at < NOW()-INTERVAL '90 seconds'
+         ORDER BY p.last_seen_at
+         LIMIT 100`
       );
-      for (const item of stale.rows) {
-        const roomOwner = await db.query(
-          "SELECT owner_id,status FROM voice_rooms WHERE id=$1 LIMIT 1",
-          [item.room_id]
-        );
-        const isStaleOwner = roomOwner.rows.length && String(roomOwner.rows[0].owner_id) === String(item.user_id);
 
-        if (isStaleOwner) {
-          // The host's app was cleared/uninstalled: close the whole room so it
-          // disappears from discovery instead of leaving a dead "return to room".
-          await db.query(
-            "UPDATE voice_rooms SET status='closed' WHERE id=$1 AND status='active'",
-            [item.room_id]
+      for (const candidate of candidates.rows) {
+        const client = await db.connect();
+        let closedRoom = false;
+        let removedMember = false;
+        try {
+          await client.query("BEGIN");
+          const lease = await client.query(
+            `SELECT last_seen_at FROM voice_room_presence
+             WHERE room_id=$1 AND user_id=$2 FOR UPDATE`,
+            [candidate.room_id,candidate.user_id]
           );
-          await db.query(
-            "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
-            [item.room_id]
+          if (!lease.rows.length ||
+              new Date(lease.rows[0].last_seen_at).getTime() > Date.now()-90000) {
+            await client.query("ROLLBACK");
+            continue;
+          }
+
+          const room = await client.query(
+            "SELECT owner_id,status FROM voice_rooms WHERE id=$1 FOR UPDATE",
+            [candidate.room_id]
           );
-          await db.query(
-            "UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
-            [item.room_id]
-          );
-          await db.query("DELETE FROM room_members WHERE room_id=$1",[item.room_id]);
-          await db.query("DELETE FROM voice_room_presence WHERE room_id=$1",[item.room_id]);
-          if (roomService) {
-            try {
-              const participants = await roomService.listParticipants(String(item.room_id));
+          if (!room.rows.length || room.rows[0].status !== "active") {
+            await client.query("DELETE FROM room_members WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            await client.query("DELETE FROM voice_room_presence WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            await client.query("COMMIT");
+            continue;
+          }
+
+          const isOwner = String(room.rows[0].owner_id) === String(candidate.user_id);
+          if (isOwner) {
+            await client.query("UPDATE voice_rooms SET status='closed' WHERE id=$1",[candidate.room_id]);
+            await client.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",[candidate.room_id]);
+            await client.query("UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",[candidate.room_id]);
+            await client.query("DELETE FROM room_members WHERE room_id=$1",[candidate.room_id]);
+            await client.query("DELETE FROM voice_room_presence WHERE room_id=$1",[candidate.room_id]);
+            closedRoom = true;
+          } else {
+            await client.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            await client.query("UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            await client.query("DELETE FROM room_members WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            await client.query("DELETE FROM voice_room_presence WHERE room_id=$1 AND user_id=$2",[candidate.room_id,candidate.user_id]);
+            removedMember = true;
+          }
+          await client.query("COMMIT");
+        } catch (error) {
+          try { await client.query("ROLLBACK"); } catch (_) {}
+          throw error;
+        } finally {
+          client.release();
+        }
+
+        // LiveKit operations happen after the DB commit and are safe to retry.
+        if (roomService && (closedRoom || removedMember)) {
+          try {
+            if (closedRoom) {
+              const participants = await roomService.listParticipants(String(candidate.room_id));
               for (const participant of participants) {
-                try { await roomService.removeParticipant(String(item.room_id),participant.identity); }
-                catch (error) { console.warn("Close stale host LiveKit participant:",error.message); }
+                try { await roomService.removeParticipant(String(candidate.room_id),participant.identity); }
+                catch (error) { console.warn("Remove participant from closed room:",error.message); }
               }
-            } catch (error) {
-              console.warn("List stale host LiveKit participants:",error.message);
+            } else {
+              try { await roomService.removeParticipant(String(candidate.room_id),String(candidate.user_id)); }
+              catch (error) {
+                if (!/not found|does not exist|participant/i.test(String(error.message||""))) {
+                  console.warn("Remove stale LiveKit participant:",error.message);
+                }
+              }
             }
-          }
-          console.log("Closed BAK LIVE room after stale host disconnect:",String(item.room_id));
-          continue;
-        }
-
-        await db.query(
-          "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
-          [item.room_id,item.user_id]
-        );
-        await db.query(
-          "UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
-          [item.room_id,item.user_id]
-        );
-        await db.query("DELETE FROM room_members WHERE room_id=$1 AND user_id=$2",[item.room_id,item.user_id]);
-        if (roomService) {
-          try { await roomService.removeParticipant(String(item.room_id),String(item.user_id)); }
-          catch (error) {
-            if (!/not found|does not exist|participant/i.test(String(error.message||""))) {
-              console.warn("Stale LiveKit participant cleanup:",error.message);
-            }
+          } catch (error) {
+            console.warn("LiveKit stale-session cleanup will retry on reconciliation:",error.message);
           }
         }
+        if (closedRoom) console.log("Closed room after host lease expired:",String(candidate.room_id));
+        else if (removedMember) console.log("Released expired room member:",String(candidate.room_id),String(candidate.user_id));
       }
-      if (stale.rows.length) console.log("Released stale BAK LIVE room sessions:",stale.rows.length);
     } catch (error) {
-      // During startup the presence migration may not have run yet; retry next tick.
-      console.error("Stale room presence cleanup:",error.message);
+      console.error("Stale room session cleanup:",error.message);
     } finally {
       stalePresenceCleanupRunning = false;
     }
