@@ -398,8 +398,9 @@ class RoomActivity : Activity() {
   },FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomPage,FrameLayout.LayoutParams(-1,-1))
   roomRoot.addView(roomOverlayLayer,FrameLayout.LayoutParams(-1,-1))
-  pipMiniLayer=buildPipMiniLayer().apply{visibility=View.GONE}
-  roomRoot.addView(pipMiniLayer,FrameLayout.LayoutParams(-1,-1))
+  val pipView=buildPipMiniLayer().apply{visibility=View.GONE}
+  pipMiniLayer=pipView
+  roomRoot.addView(pipView,FrameLayout.LayoutParams(-1,-1))
   setContentView(roomRoot)
   // Respect the real status-bar inset so the header never sits under the clock/battery icons.
   roomPage.setOnApplyWindowInsetsListener{v,insets->
@@ -2226,6 +2227,7 @@ class RoomActivity : Activity() {
       activeSpeakerLevels.clear()
       activeSpeakerLevels.putAll(fresh)
       for((userId,wave) in speakerWaveViews){wave.setLevel(activeSpeakerLevels[userId]?:0f)}
+      if(pipModeActive)renderPipMiniLayer()
       }
       else->{ /* Ignore unrelated LiveKit room events. */ }
      }
