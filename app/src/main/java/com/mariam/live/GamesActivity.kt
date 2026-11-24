@@ -71,6 +71,7 @@ class GamesActivity : Activity() {
     private var todayWin = 0L
     private var bettingOpen = false
     private var lastWin = -1
+    private var round = 221
     private var timer: CountDownTimer? = null
     private val io = Executors.newSingleThreadExecutor()
 
@@ -190,6 +191,14 @@ class GamesActivity : Activity() {
         }
         body.addView(grid, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
+        // ---------- Basket (group) bets ----------
+        val baskets = LinearLayout(this)
+        baskets.addView(basketCard("🧺 سلة الخضار", 0, 3),
+            LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4); marginStart = dp(4) })
+        baskets.addView(basketCard("🍖 سلة اللحوم", 4, 7),
+            LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(4); marginEnd = dp(4) })
+        body.addView(baskets, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+
         // ---------- Chips tray ----------
         val tray = LinearLayout(this).apply {
             gravity = Gravity.CENTER
@@ -269,6 +278,44 @@ class GamesActivity : Activity() {
         refreshAll()
     }
 
+    /** Payout multiplier when betting a whole basket: 1 / sum(1/mult). */
+    private fun basketMult(from: Int, to: Int): Double =
+        1.0 / (from..to).sumOf { 1.0 / items[it].mult }
+
+    private fun basketCard(title: String, from: Int, to: Int): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(10), dp(6), dp(10))
+            background = panel(16, GOLD, 1, Color.argb(70, 245, 196, 81), Color.argb(25, 245, 196, 81))
+            addView(label(title, 14f, GOLD_LIGHT, true))
+            addView(label("x" + String.format(Locale.US, "%.2f", basketMult(from, to)), 13f, Color.WHITE, true),
+                LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(2) })
+            setOnClickListener { placeBasket(from, to, it) }
+        }
+
+    /** Splits the chip across the basket so every item in it pays the same total. */
+    private fun placeBasket(from: Int, to: Int, v: View) {
+        if (!bettingOpen) return
+        val amount = chipValues[chipIndex]
+        if (points < amount) {
+            Toast.makeText(this, "نقاطك غير كافية", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val weights = (from..to).map { 1.0 / items[it].mult }
+        val total = weights.sum()
+        val parts = weights.map { (amount * it / total).toLong() }
+        val spent = parts.sum()
+        if (spent <= 0L) {
+            Toast.makeText(this, "اختر فيشة أكبر لرهان السلة", Toast.LENGTH_SHORT).show()
+            return
+        }
+        parts.forEachIndexed { k, p -> bets[from + k] += p }
+        points -= spent
+        v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        refreshAll()
+    }
+
     private fun clearBets() {
         if (!bettingOpen) return
         points += bets.sum()
@@ -279,7 +326,14 @@ class GamesActivity : Activity() {
     private fun spin() {
         bettingOpen = false
         center.set("تدور", "•••", 24f, 1f)
-        val winning = Random.nextInt(items.size)
+        // Probability proportional to 1/multiplier -> fair odds (small built-in margin).
+        val weights = items.map { 1.0 / it.mult }
+        var pick = Random.nextDouble() * weights.sum()
+        var winning = items.lastIndex
+        for (k in weights.indices) {
+            pick -= weights[k]
+            if (pick <= 0) { winning = k; break }
+        }
         // Sector i is centred at (i*45 - 67.5) deg; the pointer sits at -90 deg.
         val current = ((wheel.rotation % 360f) + 360f) % 360f
         val target = ((-22.5f - winning * 45f - current) % 360f + 360f) % 360f
@@ -296,6 +350,8 @@ class GamesActivity : Activity() {
 
     private fun showResult(winning: Int) {
         val win = bets[winning] * items[winning].mult
+        showRoundDialog(winning, win, bets.sum())
+        round++
         points += win
         todayWin += win
         history.add(0, winning)
@@ -305,6 +361,32 @@ class GamesActivity : Activity() {
         center.set(items[winning].name, if (win > 0) "+${fmt(win)}" else "—", if (win > 0) 20f else 28f, 1f)
         refreshAll()
         window.decorView.postDelayed({ if (!isFinishing) startBetting() }, 3200)
+    }
+
+    private fun showRoundDialog(winning: Int, win: Long, staked: Long) {
+        if (isFinishing) return
+        val d = android.app.Dialog(this)
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(30), dp(22), dp(30), dp(22))
+            background = panel(26, GOLD, 2, PANEL, BG_BOTTOM)
+        }
+        box.addView(label(items[winning].emoji, 64f, Color.WHITE))
+        box.addView(label("نتيجة الجولة رقم $round", 15f, GOLD_LIGHT, true),
+            LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
+        box.addView(label("الفائز: ${items[winning].name}  •  x${items[winning].mult}", 13f, Color.rgb(185, 195, 225)),
+            LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
+        box.addView(label("رهانك: ${fmt(staked)}", 14f, Color.WHITE),
+            LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
+        box.addView(label("ربحك: ${fmt(win)}", 20f, if (win > 0) Color.rgb(120, 240, 160) else Color.rgb(150, 160, 200), true),
+            LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(4) })
+        d.setContentView(box)
+        d.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        d.show()
+        box.postDelayed({ if (!isFinishing && d.isShowing) d.dismiss() }, 2800)
     }
 
     // ---------- UI refresh ----------
