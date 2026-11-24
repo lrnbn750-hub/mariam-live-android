@@ -166,9 +166,58 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
     }catch(error){console.error("Trending rooms:",error.message);return res.status(500).json({error:"تعذر تحميل بثوث الترند"});}
   });
 
+  // Presence heartbeat: seats are released only after a generous disconnect grace period.
+  app.post("/api/voice-rooms/:roomId/presence/heartbeat", authenticateToken, async (req, res) => {
+    const roomId = req.params.roomId;
+    if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+    try {
+      if (!(await isMember(roomId, req.userId)) || !(await getRoom(roomId))?.status === "active") {
+        return res.status(403).json({ error: "Room membership is no longer active" });
+      }
+      await db.query(
+        `INSERT INTO voice_room_presence(room_id,user_id,last_seen_at)
+         VALUES($1,$2,NOW())
+         ON CONFLICT(room_id,user_id) DO UPDATE SET last_seen_at=NOW()`,
+        [roomId, req.userId]
+      );
+      return res.json({ ok: true, server_time: new Date().toISOString() });
+    } catch (error) {
+      console.error("Room presence heartbeat:", error.message);
+      return res.status(500).json({ error: "Could not update room presence" });
+    }
+  });
+
   app.get("/api/voice-rooms/:roomId/seats", authenticateToken, async (req, res) => {
     try {
       await ensureVoiceSchema();
+      // Clear seats for users whose heartbeat has been absent for 90 seconds.
+      // Legacy rows without a presence record get a longer 3-minute grace period.
+      await db.query(`
+        UPDATE voice_room_seats s SET user_id=NULL,is_muted=FALSE,assigned_at=NULL
+        WHERE s.room_id=$1 AND s.user_id IS NOT NULL
+          AND (
+            EXISTS (SELECT 1 FROM voice_room_presence p
+                    WHERE p.room_id=s.room_id AND p.user_id=s.user_id
+                      AND p.last_seen_at < NOW()-INTERVAL '90 seconds')
+            OR
+            (NOT EXISTS (SELECT 1 FROM voice_room_presence p
+                         WHERE p.room_id=s.room_id AND p.user_id=s.user_id)
+             AND s.assigned_at < NOW()-INTERVAL '3 minutes')
+          )
+      `, [req.params.roomId]);
+      await db.query(`
+        UPDATE voice_room_camera_seats s SET user_id=NULL,is_muted=FALSE,assigned_at=NULL
+        WHERE s.room_id=$1 AND s.user_id IS NOT NULL
+          AND (
+            EXISTS (SELECT 1 FROM voice_room_presence p
+                    WHERE p.room_id=s.room_id AND p.user_id=s.user_id
+                      AND p.last_seen_at < NOW()-INTERVAL '90 seconds')
+            OR
+            (NOT EXISTS (SELECT 1 FROM voice_room_presence p
+                         WHERE p.room_id=s.room_id AND p.user_id=s.user_id)
+             AND s.assigned_at < NOW()-INTERVAL '3 minutes')
+          )
+      `, [req.params.roomId]);
       const roomId = req.params.roomId;
       if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
       if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
