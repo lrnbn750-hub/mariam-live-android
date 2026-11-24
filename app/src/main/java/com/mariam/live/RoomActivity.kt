@@ -3512,7 +3512,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       break
      }
     }catch(_:CancellationException){break}catch(_:Exception){}
-    delay(15000)
+    delay(750)
    }
   }
  }
