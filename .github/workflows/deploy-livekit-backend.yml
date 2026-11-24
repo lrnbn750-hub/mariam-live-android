@@ -48,11 +48,20 @@ jobs:
           set -euo pipefail
           cd /opt/mariam-live/backend
 
-          echo "Reading database configuration"
-          DB_NAME="$(node -e 'require("dotenv").config({quiet:true}); process.stdout.write(process.env.DB_NAME || "")')"
-          DB_USER="$(node -e 'require("dotenv").config({quiet:true}); process.stdout.write(process.env.DB_USER || "")')"
-          test -n "$DB_NAME" || { echo "DB_NAME is missing in backend .env"; exit 21; }
-          test -n "$DB_USER" || { echo "DB_USER is missing in backend .env"; exit 22; }
+          echo "Locating the existing backend environment file"
+          ENV_FILE=""
+          for candidate in /opt/mariam-live/backend/.env /opt/mariam-live/.env /opt/mariam-live/backend/.env.production /opt/mariam-live/.env.production; do
+            if [ -f "$candidate" ] && grep -qE '^[[:space:]]*DB_NAME=' "$candidate" && grep -qE '^[[:space:]]*DB_USER=' "$candidate"; then
+              ENV_FILE="$candidate"
+              break
+            fi
+          done
+          test -n "$ENV_FILE" || { echo "Could not locate an environment file containing DB_NAME and DB_USER"; find /opt/mariam-live -maxdepth 3 -type f -name '.env*' -print; exit 21; }
+          echo "Using environment file: $ENV_FILE"
+          DB_NAME="$(node -e 'const p=require("dotenv").parse(require("fs").readFileSync(process.argv[1])); process.stdout.write(p.DB_NAME || "")' "$ENV_FILE")"
+          DB_USER="$(node -e 'const p=require("dotenv").parse(require("fs").readFileSync(process.argv[1])); process.stdout.write(p.DB_USER || "")' "$ENV_FILE")"
+          test -n "$DB_NAME" || { echo "DB_NAME is missing from $ENV_FILE"; exit 22; }
+          test -n "$DB_USER" || { echo "DB_USER is missing from $ENV_FILE"; exit 23; }
 
           echo "Applying room presence migration"
           sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/bak-live-room-presence.sql
