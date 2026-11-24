@@ -1,4 +1,26 @@
+const { RoomServiceClient } = require("livekit-server-sdk");
+
 module.exports = (app, db, authenticateToken) => {
+  const liveKitHttpUrl = (process.env.LIVEKIT_URL || "wss://voicenokiraq.duckdns.org")
+    .replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+  const liveKitApiKey = process.env.LIVEKIT_API_KEY;
+  const liveKitApiSecret = process.env.LIVEKIT_API_SECRET;
+  const roomService = liveKitApiKey && liveKitApiSecret
+    ? new RoomServiceClient(liveKitHttpUrl, liveKitApiKey, liveKitApiSecret)
+    : null;
+
+  const disconnectRoomParticipants = async (roomId) => {
+    if (!roomService) return;
+    try {
+      const participants = await roomService.listParticipants(String(roomId));
+      for (const participant of participants) {
+        try { await roomService.removeParticipant(String(roomId), participant.identity); }
+        catch (error) { console.warn("LiveKit participant removal:", error.message); }
+      }
+    } catch (error) {
+      console.warn("LiveKit room participant listing:", error.message);
+    }
+  };
 
   // Automatically close rooms that have had no occupied audio or camera seat for 3 minutes.
   // The timestamp is persisted so the countdown survives backend restarts.
@@ -340,10 +362,24 @@ module.exports = (app, db, authenticateToken) => {
         [req.params.roomId, req.userId]
       );
 
+      await db.query(
+        "DELETE FROM voice_room_presence WHERE room_id=$1 AND user_id=$2",
+        [req.params.roomId, req.userId]
+      );
       if (!result.rows.length) {
         return res.status(404).json({ error: "Membership not found" });
       }
 
+      // Explicit leave must stop the published microphone immediately, not just
+      // clear the database seat.
+      if (roomService) {
+        try { await roomService.removeParticipant(String(req.params.roomId), String(req.userId)); }
+        catch (error) {
+          if (!/not found|does not exist|participant/i.test(String(error.message || ""))) {
+            console.warn("Leave room LiveKit disconnect:", error.message);
+          }
+        }
+      }
       res.json({ message: "Left room successfully" });
 
     } catch (error) {
@@ -355,20 +391,34 @@ module.exports = (app, db, authenticateToken) => {
   // Close room (owner only)
   app.delete("/api/voice-rooms/:roomId", authenticateToken, async (req, res) => {
     try {
-      const result = await db.query(
-        `UPDATE voice_rooms
-         SET status = 'closed'
-         WHERE id = $1 AND owner_id = $2
-         RETURNING id`,
-        [req.params.roomId, req.userId]
-      );
-
-      if (!result.rows.length) {
-        return res.status(404).json({
-          error: "Room not found or you are not the owner"
-        });
+      const client = await db.connect();
+      let roomId = null;
+      try {
+        await client.query("BEGIN");
+        const result = await client.query(
+          `UPDATE voice_rooms
+           SET status = 'closed'
+           WHERE id = $1 AND owner_id = $2
+           RETURNING id`,
+          [req.params.roomId, req.userId]
+        );
+        if (!result.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(404).json({ error: "Room not found or you are not the owner" });
+        }
+        roomId = result.rows[0].id;
+        await client.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",[roomId]);
+        await client.query("UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",[roomId]);
+        await client.query("DELETE FROM room_members WHERE room_id=$1",[roomId]);
+        await client.query("DELETE FROM voice_room_presence WHERE room_id=$1",[roomId]);
+        await client.query("COMMIT");
+      } catch (error) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
+        throw error;
+      } finally {
+        client.release();
       }
-
+      await disconnectRoomParticipants(roomId);
       res.json({ message: "Room closed successfully" });
 
     } catch (error) {
