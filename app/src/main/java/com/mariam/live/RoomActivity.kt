@@ -2122,6 +2122,7 @@ class RoomActivity : Activity() {
     loadSeats()
     startRoomMembershipWatch()
     startAccountBanWatch()
+    startRoomPresenceWatch()
     startRoomGiftWatch()
     startTrendRefresh()
     startTrendHeartbeat()
@@ -2166,6 +2167,7 @@ class RoomActivity : Activity() {
  }
  private var membershipWatch:Job?=null
  private var accountBanWatch:Job?=null
+ private var roomPresenceWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
   pendingJoinToasts.add(notice)
@@ -3215,6 +3217,39 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  }
 
  // Global account bans must terminate an already-running voice publication too.
+ private fun startRoomPresenceWatch(){
+  roomPresenceWatch?.cancel()
+  roomPresenceWatch=scope.launch{
+   while(isActive && connected && !leaving){
+    try{
+     val response=withContext(Dispatchers.IO){
+      AuthApi.post("/api/voice-rooms/$roomId/presence/heartbeat",JSONObject(),authToken)
+     }
+     if(response.status==403){
+      // A 403 from presence means the server no longer recognizes this room membership.
+      if(!leaving){
+       leaving=true
+       try{if(connected)room.disconnect()}catch(_:Exception){}
+       connected=false
+       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
+       val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+       if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+       runOnUiThread{
+        if(!isFinishing)AlertDialog.Builder(this@RoomActivity,android.R.style.Theme_DeviceDefault_Dialog_Alert)
+         .setTitle("انتهى اتصالك بالغرفة")
+         .setMessage("تم إنهاء عضويتك في هذه الغرفة.")
+         .setPositiveButton("العودة للرئيسية"){_,_->finish()}
+         .setCancelable(false).show()
+       }
+      }
+      break
+     }
+    }catch(_:CancellationException){break}catch(_:Exception){}
+    delay(15000)
+   }
+  }
+ }
+
  private fun startAccountBanWatch(){
   accountBanWatch?.cancel()
   accountBanWatch=scope.launch{
@@ -4090,6 +4125,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   speakerEventsJob?.cancel()
   accountBanWatch?.cancel()
   accountBanWatch=null
+  roomPresenceWatch?.cancel()
+  roomPresenceWatch=null
   activeSpeakerLevels.clear()
   speakerWaveViews.clear()
   disposeCameraRenderers()
