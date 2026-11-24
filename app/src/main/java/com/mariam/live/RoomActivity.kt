@@ -3335,8 +3335,16 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
       membershipWatch?.cancel()
       seatRefreshJob?.cancel()
       chatPoll?.cancel()
+      roomPresenceWatch?.cancel()
+      roomPresenceWatch=null
+      try{
+       withContext(Dispatchers.IO){
+        AuthApi.post("/api/voice-rooms/$roomId/leave",JSONObject().put("keep_open",true),authToken)
+       }
+      }catch(_:Exception){}
       try{if(connected)room.disconnect()}catch(_:Exception){}
       connected=false
+      microphoneEnabled=false
       stopService(Intent(this@RoomActivity,VoiceForegroundService::class.java))
       val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
       if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
