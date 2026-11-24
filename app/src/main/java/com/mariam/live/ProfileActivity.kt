@@ -1045,7 +1045,7 @@ class ProfileActivity : Activity() {
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
             "family" -> showInfo("العائلة")
-            "games" -> startActivity(Intent(this, GamesActivity::class.java))
+            "games" -> showInfo("الألعاب الترفيهية")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
         }
