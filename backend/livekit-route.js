@@ -21,6 +21,44 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
          RETURNING p.room_id,p.user_id`
       );
       for (const item of stale.rows) {
+        const roomOwner = await db.query(
+          "SELECT owner_id,status FROM voice_rooms WHERE id=$1 LIMIT 1",
+          [item.room_id]
+        );
+        const isStaleOwner = roomOwner.rows.length && String(roomOwner.rows[0].owner_id) === String(item.user_id);
+
+        if (isStaleOwner) {
+          // The host's app was cleared/uninstalled: close the whole room so it
+          // disappears from discovery instead of leaving a dead "return to room".
+          await db.query(
+            "UPDATE voice_rooms SET status='closed' WHERE id=$1 AND status='active'",
+            [item.room_id]
+          );
+          await db.query(
+            "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
+            [item.room_id]
+          );
+          await db.query(
+            "UPDATE voice_room_camera_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1",
+            [item.room_id]
+          );
+          await db.query("DELETE FROM room_members WHERE room_id=$1",[item.room_id]);
+          await db.query("DELETE FROM voice_room_presence WHERE room_id=$1",[item.room_id]);
+          if (roomService) {
+            try {
+              const participants = await roomService.listParticipants(String(item.room_id));
+              for (const participant of participants) {
+                try { await roomService.removeParticipant(String(item.room_id),participant.identity); }
+                catch (error) { console.warn("Close stale host LiveKit participant:",error.message); }
+              }
+            } catch (error) {
+              console.warn("List stale host LiveKit participants:",error.message);
+            }
+          }
+          console.log("Closed BAK LIVE room after stale host disconnect:",String(item.room_id));
+          continue;
+        }
+
         await db.query(
           "UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND user_id=$2",
           [item.room_id,item.user_id]
@@ -33,7 +71,6 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         if (roomService) {
           try { await roomService.removeParticipant(String(item.room_id),String(item.user_id)); }
           catch (error) {
-            // A participant may already have disconnected; DB presence is authoritative.
             if (!/not found|does not exist|participant/i.test(String(error.message||""))) {
               console.warn("Stale LiveKit participant cleanup:",error.message);
             }
