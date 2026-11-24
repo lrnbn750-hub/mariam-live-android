@@ -1338,6 +1338,21 @@ class RoomActivity : Activity() {
      if(loadedBackgroundUrl!="__fixed_audio_backdrop__") applyAudioRoomBackdrop()
     }else if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=if(roomMode=="camera") (0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()} else (0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
+    // Enforce server moderation on the local publisher as soon as the seat snapshot changes.
+    // A database mute alone does not stop an already-published LiveKit microphone track.
+    val mySeatMuted=if(roomMode=="camera"){
+     (0 until cameraSeats.length()).mapNotNull{cameraSeats.optJSONObject(it)}
+      .firstOrNull{it.optString("user_id")==currentUserId}?.optBoolean("is_muted",false)==true
+    }else{
+     (0 until seats.length()).mapNotNull{seats.optJSONObject(it)}
+      .firstOrNull{it.optString("user_id")==currentUserId}?.optBoolean("is_muted",false)==true
+    }
+    if(!isOwner && connected && (mySeatMuted || !isSeated) && microphoneEnabled){
+     microphoneEnabled=false
+     try{room.localParticipant.setMicrophoneEnabled(false)}catch(_:Exception){}
+     refreshMicControl()
+     status.text=if(mySeatMuted)"تم كتم صوتك من إدارة الغرفة" else "تم إنزالك من المقعد؛ أنت الآن مستمع"
+    }
     // Owner identity comes from the room record, never from seat 1.
     // This keeps the creator's profile visible even after they leave the room or seat.
     val roomOwner=r.body.optJSONObject("owner")
