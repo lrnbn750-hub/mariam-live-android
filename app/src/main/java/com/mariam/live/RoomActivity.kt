@@ -1973,8 +1973,10 @@ class RoomActivity : Activity() {
    }
    return
   }
-  showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
-  return
+  if(!isOwner){
+   showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
+   return
+  }
   val muted=s.optBoolean("is_muted")
   showActionSheet(name,listOf(if(muted)"إلغاء الكتم" else "كتم المتحدث","إزالة من المقعد")){which->
     scope.launch {
@@ -2016,8 +2018,10 @@ class RoomActivity : Activity() {
    }
    return
   }
-  showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
-  return
+  if(!isOwner){
+   showMemberProfile(JSONObject(s.toString()).put("user_id",uid).put("display_name",name))
+   return
+  }
   showActionSheet(name,listOf(if(muted)"إلغاء كتم المايك" else "كتم المايك", "إزالة من مقعد الكاميرا", if(isOpen)"إغلاق المقعد" else "فتح المقعد", "تعيين كاميرته رئيسية")){which->
    scope.launch{
     try{
