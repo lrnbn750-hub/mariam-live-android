@@ -1,23 +1,21 @@
-name: Deploy Mariam Live audio token API
+name: Deploy BAK LIVE room session manager
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - feature/mariam-live-development
       - feature/bak-live-camera-modes-on-build465
     paths:
       - .github/workflows/deploy-livekit-backend.yml
       - backend/livekit-route.js
       - backend/voice-rooms.js
-      - backend/profile-id-migration.sql
       - backend/room-presence-migration.sql
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
+  deploy-room-session-manager:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,126 +34,42 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 185.174.252.118 >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Upload authenticated LiveKit token route
+      - name: Upload room session backend files
         run: |
           set -euo pipefail
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/livekit-route.js mariam-admin@185.174.252.118:/tmp/mariam-livekit-route.js
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/livekit-route.js mariam-admin@185.174.252.118:/tmp/bak-live-livekit-route.js
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/voice-rooms.js mariam-admin@185.174.252.118:/tmp/bak-live-voice-rooms.js
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/room-presence-migration.sql mariam-admin@185.174.252.118:/tmp/bak-live-room-presence.sql
 
-
-      - name: Upload room API and account ID migration
-        run: |
-          set -euo pipefail
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/voice-rooms.js mariam-admin@185.174.252.118:/tmp/mariam-voice-rooms.js
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/profile-id-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-profile-id.sql
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes backend/room-presence-migration.sql mariam-admin@185.174.252.118:/tmp/mariam-room-presence.sql
-
-      - name: Deploy room images and numeric account IDs
+      - name: Install, migrate, validate and restart
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
           set -euo pipefail
           cd /opt/mariam-live/backend
-          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
-          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
-          test -n "$DB_NAME"; test -n "$DB_USER"
-          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/mariam-profile-id.sql
-          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/mariam-room-presence.sql
-          install -m 640 /tmp/mariam-voice-rooms.js src/routes/voice-rooms.js
-          rm -f /tmp/mariam-voice-rooms.js /tmp/mariam-profile-id.sql /tmp/mariam-room-presence.sql
-          mkdir -p /opt/mariam-live/uploads/rooms
-          chown -R mariam-admin:mariam-admin /opt/mariam-live/uploads
-          chmod 750 /opt/mariam-live/uploads /opt/mariam-live/uploads/rooms
-          node <<'NODE'
-          const fs=require("fs");
-          const file="src/server.js";
-          let s=fs.readFileSync(file,"utf8");
-          s=s.replace('express.json({ limit: "2mb" })','express.json({ limit: "8mb" })');
-          const staticLine='app.use("/uploads", express.static("/opt/mariam-live/uploads", { maxAge: "7d", immutable: true }));';
-          if(!s.includes(staticLine)) s=s.replace('app.use(cors());','app.use(cors());\n'+staticLine);
-          const publicId="u.public_id";
-          s=s.replace('         u.id,\n         u.username,','         u.id,\n         u.public_id,\n         u.username,');
-          s=s.replace('        id: user.id,\n        username: user.username,','        id: user.id,\n        public_id: user.public_id,\n        username: user.username,');
-          s=s.replace("RETURNING id, username, email, created_at","RETURNING id, public_id, username, email, created_at");
-          s=s.replace("SELECT id, username, email, password_hash, status","SELECT id, public_id, username, email, password_hash, status");
-          s=s.replace("          u.id,\\n         u.username,","          u.id,\\n         u.public_id,\\n         u.username,");
-          fs.writeFileSync(file,s);
-          NODE
+
+          echo "Reading database configuration"
+          DB_NAME="$(node -e 'require("dotenv").config({quiet:true}); process.stdout.write(process.env.DB_NAME || "")')"
+          DB_USER="$(node -e 'require("dotenv").config({quiet:true}); process.stdout.write(process.env.DB_USER || "")')"
+          test -n "$DB_NAME" || { echo "DB_NAME is missing in backend .env"; exit 21; }
+          test -n "$DB_USER" || { echo "DB_USER is missing in backend .env"; exit 22; }
+
+          echo "Applying room presence migration"
+          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" -f /tmp/bak-live-room-presence.sql
+
+          echo "Installing room routes"
+          install -m 640 /tmp/bak-live-livekit-route.js src/routes/livekit.js
+          install -m 640 /tmp/bak-live-voice-rooms.js src/routes/voice-rooms.js
+          rm -f /tmp/bak-live-livekit-route.js /tmp/bak-live-voice-rooms.js /tmp/bak-live-room-presence.sql
+
+          echo "Checking JavaScript syntax"
+          node --check src/routes/livekit.js
+          node --check src/routes/voice-rooms.js
+
+          echo "Restarting BAK LIVE API"
           sudo -n /usr/local/sbin/restart-mariam-live
-          curl -fsS https://nokiraq.duckdns.org/api/health
-          REMOTE
-
-      - name: Install route, keep existing LiveKit key, and restart API service
-        run: |
-          set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes mariam-admin@185.174.252.118 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          cd /opt/mariam-live
-
-          mkdir -p /opt/mariam-live/backend/src/routes
-          install -m 640 /tmp/mariam-livekit-route.js /opt/mariam-live/backend/src/routes/livekit.js
-          rm -f /tmp/mariam-livekit-route.js
-
-          cd /opt/mariam-live/backend
-          npm install --save livekit-server-sdk
-
-          # Install room-seat tables with the PostgreSQL administrator. The API
-          # database role intentionally does not need CREATE privileges.
-          DB_NAME="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_NAME || "")')"
-          DB_USER="$(node -e 'require("dotenv").config(); process.stdout.write(process.env.DB_USER || "")')"
-          test -n "$DB_NAME"
-          test -n "$DB_USER"
-          sudo -n -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -v app_role="$DB_USER" <<'SQL'
-          ALTER TABLE public.voice_rooms ADD COLUMN IF NOT EXISTS room_background_url TEXT;
-          CREATE TABLE IF NOT EXISTS public.voice_room_seats (
-            room_id UUID NOT NULL REFERENCES public.voice_rooms(id) ON DELETE CASCADE,
-            seat_number SMALLINT NOT NULL CHECK (seat_number BETWEEN 1 AND 8),
-            user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
-            is_muted BOOLEAN NOT NULL DEFAULT FALSE,
-            assigned_at TIMESTAMPTZ,
-            PRIMARY KEY (room_id, seat_number),
-            UNIQUE (room_id, user_id)
-          );
-          CREATE TABLE IF NOT EXISTS public.voice_room_hand_raises (
-            room_id UUID NOT NULL REFERENCES public.voice_rooms(id) ON DELETE CASCADE,
-            user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-            requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            PRIMARY KEY (room_id, user_id)
-          );
-          GRANT USAGE ON SCHEMA public TO :"app_role";
-          GRANT SELECT, INSERT, UPDATE, DELETE ON public.voice_room_seats, public.voice_room_hand_raises TO :"app_role";
-          INSERT INTO public.voice_room_seats(room_id, seat_number, user_id, assigned_at)
-          SELECT id, 1, owner_id, NOW() FROM public.voice_rooms
-          ON CONFLICT (room_id, seat_number) DO NOTHING;
-          SQL
-
-          if ! grep -q '^LIVEKIT_API_KEY=' .env; then
-            printf '\nLIVEKIT_API_KEY=mariam_live\n' >> .env
-          fi
-          if ! grep -q '^LIVEKIT_API_SECRET=' .env; then
-            LIVEKIT_SECRET="$(sed -n 's/^[[:space:]]*mariam_live:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' /opt/livekit/livekit.yaml | head -n 1)"
-            test -n "$LIVEKIT_SECRET"
-            printf 'LIVEKIT_API_SECRET=%s\n' "$LIVEKIT_SECRET" >> .env
-            unset LIVEKIT_SECRET
-          fi
-          if ! grep -q '^LIVEKIT_URL=' .env; then
-            printf 'LIVEKIT_URL=wss://voicenokiraq.duckdns.org\n' >> .env
-          fi
-          chmod 600 .env
-
-          node <<'NODE'
-          const fs = require("fs");
-          const file = "src/server.js";
-          let source = fs.readFileSync(file, "utf8");
-          const registration = 'require("./routes/livekit")(app, db, authenticateToken);';
-          if (!source.includes(registration)) {
-            const listen = source.search(/\bapp\.listen\s*\(/);
-            if (listen < 0) throw new Error("Could not find app.listen() in src/server.js");
-            source = source.slice(0, listen) + registration + "\n\n" + source.slice(listen);
-            fs.writeFileSync(file, source);
-          }
-          NODE
-
-          # Mariam Live API is managed by the root-owned PM2 daemon (process ID 0).
-          sudo -n /usr/local/sbin/restart-mariam-live
-          echo "Restarted Mariam Live API through root PM2."
+          echo "Checking API health"
+          curl --retry 5 --retry-delay 2 --retry-connrefused -fsS https://nokiraq.duckdns.org/api/health
+          echo
+          echo "BAK LIVE room session manager deployed successfully"
           REMOTE
