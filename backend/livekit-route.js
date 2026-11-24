@@ -18,7 +18,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         `SELECT p.room_id,p.user_id
          FROM voice_room_presence p
          JOIN room_members m ON m.room_id=p.room_id AND m.user_id=p.user_id
-         WHERE p.last_seen_at < NOW()-INTERVAL '90 seconds'
+         WHERE p.last_seen_at < NOW()-INTERVAL '2500 milliseconds'
          ORDER BY p.last_seen_at
          LIMIT 100`
       );
@@ -35,7 +35,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
             [candidate.room_id,candidate.user_id]
           );
           if (!lease.rows.length ||
-              new Date(lease.rows[0].last_seen_at).getTime() > Date.now()-90000) {
+              new Date(lease.rows[0].last_seen_at).getTime() > Date.now()-2500) {
             await client.query("ROLLBACK");
             continue;
           }
@@ -104,7 +104,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       stalePresenceCleanupRunning = false;
     }
   };
-  const stalePresenceCleanupTimer=setInterval(cleanupStaleRoomPresence,15000);
+  const stalePresenceCleanupTimer=setInterval(cleanupStaleRoomPresence,500);
   if (typeof stalePresenceCleanupTimer.unref==="function") stalePresenceCleanupTimer.unref();
 
   // Tables are installed by the privileged deployment migration. The API role
