@@ -1597,7 +1597,10 @@ class RoomActivity : Activity() {
      },LinearLayout.LayoutParams(-1,dp(16)))
     }
     if(occupied){
-     tile.setOnClickListener{openSeatProfile(uid!!,seat,name,avatarUrl)}
+     tile.setOnClickListener{
+      if(isOwner)seatClick(seat,seatNumber,uid,name)
+      else openSeatProfile(uid!!,seat,name,avatarUrl)
+     }
      tile.setOnLongClickListener{
       seatClick(seat,seatNumber,uid,name)
       true
