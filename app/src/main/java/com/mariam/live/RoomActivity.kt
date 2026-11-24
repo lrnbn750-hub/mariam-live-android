@@ -438,8 +438,17 @@ class RoomActivity : Activity() {
     }
     if(joined.status !in 200..299){
      val reason=joined.body.optString("error","تعذر دخول الغرفة")
+     // A stale local return-room shortcut must disappear when the server says
+     // this room is closed or this user is no longer a member.
+     if(joined.status==403 || joined.status==404 || joined.status==410){
+      val prefs=getSharedPreferences("MariamLive",MODE_PRIVATE)
+      if(prefs.getString("active_room_id",null)==roomId)prefs.edit().remove("active_room_id").apply()
+     }
      status.text=reason
      Toast.makeText(this@RoomActivity,reason,Toast.LENGTH_LONG).show()
+     if(joined.status==403 || joined.status==404 || joined.status==410){
+      finish()
+     }
      return@launch
     }
     if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)connect()
