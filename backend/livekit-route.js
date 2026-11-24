@@ -294,34 +294,9 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
   app.get("/api/voice-rooms/:roomId/seats", authenticateToken, async (req, res) => {
     try {
       await ensureVoiceSchema();
-      // Clear seats for users whose heartbeat has been absent for 90 seconds.
-      // Legacy rows without a presence record get a longer 3-minute grace period.
-      await db.query(`
-        UPDATE voice_room_seats s SET user_id=NULL,is_muted=FALSE,assigned_at=NULL
-        WHERE s.room_id=$1 AND s.user_id IS NOT NULL
-          AND (
-            EXISTS (SELECT 1 FROM voice_room_presence p
-                    WHERE p.room_id=s.room_id AND p.user_id=s.user_id
-                      AND p.last_seen_at < NOW()-INTERVAL '90 seconds')
-            OR
-            (NOT EXISTS (SELECT 1 FROM voice_room_presence p
-                         WHERE p.room_id=s.room_id AND p.user_id=s.user_id)
-             AND s.assigned_at < NOW()-INTERVAL '3 minutes')
-          )
-      `, [req.params.roomId]);
-      await db.query(`
-        UPDATE voice_room_camera_seats s SET user_id=NULL,is_muted=FALSE,assigned_at=NULL
-        WHERE s.room_id=$1 AND s.user_id IS NOT NULL
-          AND (
-            EXISTS (SELECT 1 FROM voice_room_presence p
-                    WHERE p.room_id=s.room_id AND p.user_id=s.user_id
-                      AND p.last_seen_at < NOW()-INTERVAL '90 seconds')
-            OR
-            (NOT EXISTS (SELECT 1 FROM voice_room_presence p
-                         WHERE p.room_id=s.room_id AND p.user_id=s.user_id)
-             AND s.assigned_at < NOW()-INTERVAL '3 minutes')
-          )
-      `, [req.params.roomId]);
+      // Session expiry is handled centrally by cleanupStaleRoomPresence.
+      // This read endpoint must never clear seats without also ending membership
+      // and disconnecting the matching LiveKit participant.
       const roomId = req.params.roomId;
       if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
       if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
