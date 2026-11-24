@@ -46,7 +46,7 @@ class HomeActivity : Activity() {
     private var searchQuery = ""
     private var pendingRoomName = ""
     private val roomImagePicker = 7314
-    private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف", 3 to "الألعاب")
+    private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف")
     private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
     private val liveRooms= mutableListOf<RoomItem>()
     private var roomsLoadInFlight = false
@@ -294,7 +294,7 @@ class HomeActivity : Activity() {
             val col=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
                 isClickable=true;isFocusable=true
-                setOnClickListener{                    if(mode==3){Toast.makeText(this@HomeActivity,"قريباً",Toast.LENGTH_SHORT).show();return@setOnClickListener}
+                setOnClickListener{
                     tabMode=mode;buildTabs();buildCards()
                 }
             }
