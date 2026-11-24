@@ -47,7 +47,7 @@ class HomeActivity : Activity() {
     private var pendingRoomName = ""
     private val roomImagePicker = 7314
     private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف")
-    private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?)
+    private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?,val roomMode:String="audio")
     private val liveRooms= mutableListOf<RoomItem>()
     private var roomsLoadInFlight = false
     private var roomsReloadPending = false
@@ -363,7 +363,24 @@ class HomeActivity : Activity() {
                 FrameLayout.LayoutParams(dp(84),dp(24),Gravity.TOP or Gravity.LEFT).apply{setMargins(dp(10),dp(8),0,0)})
             frame.addView(SignalBarsView(this),
                 FrameLayout.LayoutParams(dp(18),dp(16),Gravity.TOP or Gravity.RIGHT).apply{setMargins(0,dp(10),dp(10),0)})
-            // اسم الغرفة
+            // نوع البث يظهر فوق صورة الغرفة مثل بطاقات BIGO LIVE.
+            val modeLabel=label(
+                if(room.roomMode=="camera" || room.roomMode=="camera6" || room.roomMode=="video") "غرفة الفيديو" else "غرفة صوتية",
+                10.5f,Color.WHITE,true
+            ).apply{
+                gravity=Gravity.CENTER
+                setPadding(dp(7),dp(3),dp(7),dp(3))
+                background=GradientDrawable().apply{
+                    setColor(Color.argb(175,18,16,24))
+                    cornerRadius=dp(10).toFloat()
+                    setStroke(dp(1),Color.argb(65,255,255,255))
+                }
+                setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
+            }
+            frame.addView(modeLabel,FrameLayout.LayoutParams(-2,dp(25),Gravity.TOP or Gravity.RIGHT).apply{
+                setMargins(0,dp(8),dp(9),0)
+            })
+            // اسم الغرفة يبقى ظاهراً أسفل الصورة.
             frame.addView(label(room.name,14f,Color.WHITE,true).apply{
                 maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
                 gravity=Gravity.CENTER_VERTICAL or Gravity.START
@@ -425,7 +442,8 @@ class HomeActivity : Activity() {
                             item.optString("name","غرفة صوتية"),
                             item.optInt("member_count",0),
                             item.optInt("max_members",8),
-                            roomImageUrl(item)
+                            roomImageUrl(item),
+                            item.optString("room_mode","audio").lowercase()
                         ))
                     }
                 } else errorMessage=result.body.optString("error","تعذر تحميل الغرف")
