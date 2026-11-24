@@ -1915,7 +1915,10 @@ class RoomActivity : Activity() {
 
   // ---- same interactions as before ----
   if(occupied){
-   tile.setOnClickListener{openSeatProfile(uid!!,seat,name,avatarUrl)}
+   tile.setOnClickListener{
+    if(isOwner)seatClick(seat,seatNumber,uid,name)
+    else openSeatProfile(uid!!,seat,name,avatarUrl)
+   }
    tile.setOnLongClickListener{seatClick(seat,seatNumber,uid,name);true}
   }else{
    tile.setOnClickListener{claimCameraSeat(seatNumber)}
