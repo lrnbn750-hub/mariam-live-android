@@ -4027,8 +4027,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun leaveRoom(){
   if(leaving)return
   if(isOwner){
-   showChoiceSheet("إدارة الغرفة","هل تريد إبقاء الغرفة مفتوحة والعودة إليها لاحقاً، أم إغلاقها نهائياً؟",listOf(
-    SheetOption("إبقاء الغرفة",0){leaveRoomNow(false)},
+   showChoiceSheet("إدارة الغرفة","اختر تصغير الغرفة لمواصلة البث بالخلفية، أو إغلاقها نهائياً.",listOf(
+    SheetOption("تصغير إلى نافذة عائمة",0){minimizeRoomToFloatingWindow()},
     SheetOption("إغلاق الغرفة نهائياً",1){closeRoomNow()},
     SheetOption("إلغاء",2){}))
   }else{
