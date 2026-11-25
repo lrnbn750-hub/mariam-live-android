@@ -1239,13 +1239,18 @@ class RoomActivity : Activity() {
  private fun drawSeats(){
   grid.removeAllViews()
   speakerWaveViews.clear()
-  for(row in 0..1){
+  val capacity=seats.length().coerceAtLeast(8)
+  val columns=if(capacity>8)5 else 4
+  val compact=capacity>8
+  val rows=(capacity+columns-1)/columns
+  for(row in 0 until rows){
    val line=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
     gravity=Gravity.CENTER
    }
-   for(col in 0..3){
-    val i=row*4+col
+   for(col in 0 until columns){
+    val i=row*columns+col
+    if(i>=capacity)break
     val seat=seats.optJSONObject(i)?:JSONObject()
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
@@ -1255,7 +1260,7 @@ class RoomActivity : Activity() {
     val tile=LinearLayout(this).apply{
      orientation=LinearLayout.VERTICAL
      gravity=Gravity.CENTER_HORIZONTAL
-     setPadding(dp(2),dp(7),dp(2),dp(6))
+     setPadding(dp(if(compact)1 else 2),dp(if(compact)3 else 7),dp(if(compact)1 else 2),dp(if(compact)3 else 6))
      isClickable=true
      isFocusable=true
      background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -1273,7 +1278,7 @@ class RoomActivity : Activity() {
      elevation=dp(2).toFloat()
     }
     // Caption: golden crown chip for the host, small seat number for the others.
-    val seatCaption=label(if(isHost)"♛ المضيف" else "${i+1}",if(isHost)9f else 10f,
+    val seatCaption=label(if(isHost)"♛ المضيف" else "${i+1}",if(isHost)8f else if(compact)8f else 10f,
      if(isHost)Color.rgb(60,38,4) else Color.argb(190,235,240,248),true).apply{
      includeFontPadding=false
      maxLines=1
@@ -1290,7 +1295,7 @@ class RoomActivity : Activity() {
       addView(label(name.take(1).uppercase(),18f,Color.rgb(205,210,225),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
-      addView(label("+",26f,Color.argb(230,255,255,255),true),
+      addView(label("+",if(compact)20f else 26f,Color.argb(230,255,255,255),true),
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
     }
@@ -1319,7 +1324,7 @@ class RoomActivity : Activity() {
      avatar.addView(photo,FrameLayout.LayoutParams(-1,-1))
      loadAvatarInto(photo,avatarUrl)
     }
-    val avatarSize=if(occupied)dp(52) else dp(50)
+    val avatarSize=if(compact){if(occupied)dp(39) else dp(37)}else{if(occupied)dp(52) else dp(50)}
     val avatarStage=FrameLayout(this).apply{
      clipChildren=false
      clipToPadding=false
@@ -1346,7 +1351,7 @@ class RoomActivity : Activity() {
       }
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
-     addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
+     addView(photoFrame,FrameLayout.LayoutParams(dp(if(compact)46 else 60),dp(if(compact)46 else 60),Gravity.CENTER))
      val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -1355,12 +1360,12 @@ class RoomActivity : Activity() {
        visibility=View.VISIBLE
        tag=frameUrl
       }
-      addView(frameView,FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER))
+      addView(frameView,FrameLayout.LayoutParams(dp(if(compact)54 else 70),dp(if(compact)54 else 70),Gravity.CENTER))
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
     }
-    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(70),dp(70)))
+    tile.addView(avatarStage,LinearLayout.LayoutParams(dp(if(compact)56 else 70),dp(if(compact)56 else 70)))
     if(occupied){
      val seatLevel=(if(seat.has("level"))seat.optInt("level",1) else seat.optInt("user_level",1)).coerceIn(1,100)
      val nameLine=LinearLayout(this).apply{
@@ -1368,7 +1373,7 @@ class RoomActivity : Activity() {
       gravity=Gravity.CENTER
       layoutDirection=View.LAYOUT_DIRECTION_LTR
      }
-     nameLine.addView(label(name,10f,if(seatLevel>=100)Color.rgb(255,220,142) else Color.WHITE,true).apply{
+     nameLine.addView(label(name,if(compact)8f else 10f,if(seatLevel>=100)Color.rgb(255,220,142) else Color.WHITE,true).apply{
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
@@ -1384,9 +1389,9 @@ class RoomActivity : Activity() {
        setPadding(dp(3),0,dp(3),0)
       },LinearLayout.LayoutParams(-2,dp(14)))
      }
-     tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(15)))
+     tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(if(compact)12 else 15)))
     }else{
-     tile.addView(label("متاح",10f,Color.argb(190,225,235,245),false).apply{
+     tile.addView(label("متاح",if(compact)8f else 10f,Color.argb(190,225,235,245),false).apply{
       includeFontPadding=false
      },LinearLayout.LayoutParams(-1,dp(15)))
     }
@@ -1399,8 +1404,8 @@ class RoomActivity : Activity() {
     }else{
      tile.setOnClickListener{claimSeat(i+1)}
     }
-    line.addView(tile,LinearLayout.LayoutParams(0,dp(112),1f).apply{
-     setMargins(dp(3),dp(3),dp(3),dp(3))
+    line.addView(tile,LinearLayout.LayoutParams(0,dp(if(compact)82 else 112),1f).apply{
+     setMargins(dp(if(compact)1 else 3),dp(if(compact)2 else 3),dp(if(compact)1 else 3),dp(if(compact)2 else 3))
      })
    }
    grid.addView(line,LinearLayout.LayoutParams(-1,-2))
