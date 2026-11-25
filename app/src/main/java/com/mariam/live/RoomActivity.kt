@@ -1234,7 +1234,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=View.VISIBLE
-  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+  cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -1258,7 +1258,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
-  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+  cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -2977,7 +2977,6 @@ class RoomActivity : Activity() {
   for(i in 0 until roomMembers.length()){
    val member=roomMembers.optJSONObject(i)?:continue
    val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
-   val username=member.optString("username")
    val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
    val isOwnerMember=member.optBoolean("is_owner")
    val seat=member.optInt("seat_number",0)
@@ -3007,7 +3006,7 @@ class RoomActivity : Activity() {
    if(url.isNotBlank())loadAvatarInto(avatar,url)
    val info=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
    info.addView(label(name,14f,Color.WHITE,true).apply{gravity=Gravity.START;maxLines=1})
-   info.addView(label("@$username  •  ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
+   info.addView(label("ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
    row.addView(label(role,10f,roleColor,true).apply{
     background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
