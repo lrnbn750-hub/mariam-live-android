@@ -119,10 +119,10 @@ class RoomSetupActivity : Activity() {
         content.addView(titleInput,LinearLayout.LayoutParams(-1,dp(52)))
         content.addView(caption("عدد مقاعد المتحدثين"))
         val capacities=LinearLayout(this).apply{gravity=Gravity.CENTER;orientation=0}
-        listOf(4,6,8).forEach{count->
-            val chip=text("$count مقاعد",13f,if(count==8)Color.WHITE else dark,true).apply{
+        listOf(8,15).forEach{count->
+            val chip=text(if(count==15)"15 مقعداً" else "8 مقاعد",13f,if(count==selectedCapacity)Color.WHITE else dark,true).apply{
                 setPadding(dp(12),dp(11),dp(12),dp(11))
-                background=rounded(if(count==8)green else Color.WHITE,14,if(count==8)green else Color.rgb(218,226,215))
+                background=rounded(if(count==selectedCapacity)green else Color.WHITE,14,if(count==selectedCapacity)green else Color.rgb(218,226,215))
                 setOnClickListener{
                     selectedCapacity=count
                     for(i in 0 until capacities.childCount){
@@ -137,6 +137,7 @@ class RoomSetupActivity : Activity() {
             capacities.addView(chip,LinearLayout.LayoutParams(0,dp(44),1f).apply{setMargins(dp(4),0,dp(4),0)})
         }
         content.addView(capacities,LinearLayout.LayoutParams(-1,-2))
+        content.addView(text("8 مقاعد بحجم أكبر، أو 15 مقعداً بتوزيع 5 × 3 داخل الغرفة.",11f,muted).apply{gravity=Gravity.CENTER;setPadding(0,dp(7),0,0)})
         val info=LinearLayout(this).apply{
             orientation=1;setPadding(dp(14),dp(12),dp(14),dp(12))
             background=rounded(Color.rgb(237,243,234),16)
