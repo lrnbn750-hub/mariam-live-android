@@ -518,11 +518,14 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       const { roomId, seatNumber } = req.params;
       const room = await getRoom(roomId);
       if (!room) return res.status(404).json({ error: "Room not found" });
-      if (String(room.owner_id) !== String(req.userId)) return res.status(403).json({ error: "Only the room owner can mute speakers" });
+      const isOwner = String(room.owner_id) === String(req.userId);
       const seat = Number(seatNumber);
       if (!Number.isInteger(seat) || seat < 1 || seat > Number(room.max_members || 8)) return res.status(400).json({ error: "Invalid seat" });
       const muted = Boolean(req.body && req.body.muted);
-      const result = await db.query("UPDATE voice_room_seats SET is_muted=$3 WHERE room_id=$1 AND seat_number=$2 AND user_id IS NOT NULL RETURNING seat_number", [roomId, seat, muted]);
+      // Owners may moderate any occupied seat; speakers may only sync their own mic state.
+      const result = isOwner
+        ? await db.query("UPDATE voice_room_seats SET is_muted=$3 WHERE room_id=$1 AND seat_number=$2 AND user_id IS NOT NULL RETURNING seat_number", [roomId, seat, muted])
+        : await db.query("UPDATE voice_room_seats SET is_muted=$4 WHERE room_id=$1 AND seat_number=$2 AND user_id=$3 RETURNING seat_number", [roomId, seat, req.userId, muted]);
       if (!result.rows.length) return res.status(404).json({ error: "Occupied seat not found" });
       return res.json({ message: muted ? "Speaker muted" : "Speaker unmuted" });
     } catch (error) {
