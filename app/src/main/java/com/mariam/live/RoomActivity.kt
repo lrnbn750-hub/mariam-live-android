@@ -1239,7 +1239,7 @@ class RoomActivity : Activity() {
  private fun drawSeats(){
   grid.removeAllViews()
   speakerWaveViews.clear()
-  val capacity=seats.length().coerceAtLeast(8)
+  val capacity=seats.length().coerceAtLeast(8).coerceAtMost(15)
   val columns=if(capacity>8)5 else 4
   val compact=capacity>8
   val rows=(capacity+columns-1)/columns
