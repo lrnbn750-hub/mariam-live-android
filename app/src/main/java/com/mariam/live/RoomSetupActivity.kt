@@ -1131,13 +1131,33 @@ class RoomSetupActivity : Activity() {
         }
     }
 
+    private fun showAudioSeatCapacityDialog() {
+        if (selectedBroadcastMode != "audio") {
+            toast("مقاعد الكاميرا تبقى 4 أو 6")
+            return
+        }
+        val options = arrayOf("8 مقاعد — التوزيع العادي", "15 مقعداً — 5 أعمدة × 3 صفوف")
+        val selectedIndex = if (selectedCapacity == 15) 1 else 0
+        AlertDialog.Builder(this)
+            .setTitle("عدد مقاعد الغرفة الصوتية")
+            .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
+                selectedCapacity = if (which == 1) 15 else 8
+                dialog.dismiss()
+                toast(if (selectedCapacity == 15) "تم اختيار 15 مقعداً" else "تم اختيار 8 مقاعد")
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
     private fun toolItem(kind: String, title: String, dot: Boolean): View {
         val item = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             isClickable = true
             pressable(0.92f)
-            setOnClickListener { toast("قريباً") }
+            setOnClickListener {
+                if (kind == "seat") showAudioSeatCapacityDialog() else toast("قريباً")
+            }
         }
         val wrap = FrameLayout(this).apply { clipChildren = false }
         wrap.addView(icon(kind, Color.WHITE, 1.7f), FrameLayout.LayoutParams(u(44f), u(44f), Gravity.CENTER))
