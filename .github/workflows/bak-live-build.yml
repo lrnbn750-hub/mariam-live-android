@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - bak-live
+      - feature/bak-live-8-20-voice-seats
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
