@@ -1719,6 +1719,7 @@ class RoomActivity : Activity() {
     val seatNumber=seat.optInt("seat_number",i+1)
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
+    val seatLocked=!cameraMode && seat.optBoolean("is_locked",false)
     val isHost=if(cameraMode)false else i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
      ?:if(occupied)"متحدث" else "مقعد فارغ"
@@ -1739,7 +1740,7 @@ class RoomActivity : Activity() {
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
       addView(ImageView(this@RoomActivity).apply{
-       setImageDrawable(VectorIcon("plus",Color.argb(215,255,255,255),dp(22)))
+       setImageDrawable(VectorIcon(if(seatLocked)"lock" else "plus",if(seatLocked)Color.rgb(255,205,105) else Color.argb(215,255,255,255),dp(if(seatLocked)20 else 22)))
        scaleType=ImageView.ScaleType.CENTER
       },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
@@ -1790,7 +1791,8 @@ class RoomActivity : Activity() {
       }).apply{
        shape=GradientDrawable.OVAL
        // Dashed ring invites people to take an empty seat.
-       if(!occupied)setStroke(dp(1),Color.argb(150,255,255,255),dp(4).toFloat(),dp(3).toFloat())
+       if(!occupied && !seatLocked)setStroke(dp(1),Color.argb(150,255,255,255),dp(4).toFloat(),dp(3).toFloat())
+        if(seatLocked)setStroke(dp(1),Color.rgb(255,205,105))
       }
       addView(avatar,FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
@@ -1852,7 +1854,7 @@ class RoomActivity : Activity() {
      }
      tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(16)))
     }else{
-     tile.addView(label("اجلس",10f,Color.argb(170,225,235,245),false).apply{
+     tile.addView(label(if(seatLocked)"مقفل" else "اجلس",10f,if(seatLocked)Color.rgb(255,205,105) else Color.argb(170,225,235,245),false).apply{
       includeFontPadding=false
      },LinearLayout.LayoutParams(-1,dp(16)))
     }
@@ -1866,7 +1868,7 @@ class RoomActivity : Activity() {
       true
      }
     }else{
-     tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else claimSeat(seatNumber)}
+     tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else if(isOwner)showAudioSeatLockMenu(seatNumber,seatLocked) else if(seatLocked)Toast.makeText(this@RoomActivity,"هذا المقعد مقفل من صاحب الغرفة",Toast.LENGTH_SHORT).show() else claimSeat(seatNumber)}
     }
     line.addView(tile,LinearLayout.LayoutParams(0,dp(96),1f).apply{
      setMargins(dp(3),dp(2),dp(3),dp(2))
@@ -2262,7 +2264,8 @@ class RoomActivity : Activity() {
 
   private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
   if(roomMode=="camera"){cameraSeatClick(s,n,uid,name);return}
-  if(uid==null){claimSeat(n);return}
+  if(uid==null){if(isOwner)showAudioSeatLockMenu(n,s.optBoolean("is_locked",false)) else if(s.optBoolean("is_locked",false))Toast.makeText(this,"هذا المقعد مقفل من صاحب الغرفة",Toast.LENGTH_SHORT).show() else claimSeat(n);return}
+  if(uid==currentUserId && isOwner && n==1)return
   if(uid==currentUserId){
    showActionSheet("إدارة مقعدك",listOf(if(microphoneEnabled)"كتم صوت المايك" else "تشغيل المايك","مغادرة المقعد")){which->
     if(which==0)toggleMic() else leaveSeat(n)
