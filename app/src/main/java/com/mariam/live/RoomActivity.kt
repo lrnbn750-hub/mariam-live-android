@@ -3014,7 +3014,8 @@ class RoomActivity : Activity() {
    })
    row.setOnClickListener{
     dialog.dismiss()
-    showMemberProfile(member)
+    if(isOwner && !isOwnerMember) showMemberModeration(member)
+    else showMemberProfile(member)
    }
    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
   }
