@@ -2247,7 +2247,20 @@ class RoomActivity : Activity() {
    }
   }
  }
- private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
+ private fun showAudioSeatLockMenu(seatNumber:Int,isLocked:Boolean){
+   if(!isOwner || seatNumber<=1)return
+   showActionSheet("إدارة المقعد $seatNumber",listOf(if(isLocked)"فتح المقعد" else "قفل المقعد")){
+    scope.launch{
+     try{
+      val result=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/seats/$seatNumber/lock",JSONObject().put("locked",!isLocked),authToken)}
+      if(result.status in 200..299){loadSeats();Toast.makeText(this@RoomActivity,if(isLocked)"تم فتح المقعد" else "تم قفل المقعد",Toast.LENGTH_SHORT).show()}
+      else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تغيير حالة المقعد"),Toast.LENGTH_SHORT).show()
+     }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+    }
+   }
+  }
+
+  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
   if(roomMode=="camera"){cameraSeatClick(s,n,uid,name);return}
   if(uid==null){claimSeat(n);return}
   if(uid==currentUserId){
