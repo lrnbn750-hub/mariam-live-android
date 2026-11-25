@@ -1816,20 +1816,18 @@ class RoomActivity : Activity() {
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
-     // Show a subtle mute badge over occupied audio-seat avatars.
-     // The is_muted value comes from the shared seat snapshot, so everyone sees it.
+     // Place the mute badge INSIDE the avatar image, centered and translucent.
+     // All viewers receive the same is_muted state from the shared seat snapshot.
      if(occupied && seatMuted){
-      addView(label("🔇",10f,Color.WHITE).apply{
+      addView(label("🔇",11f,Color.WHITE).apply{
        includeFontPadding=false
        gravity=Gravity.CENTER
        background=GradientDrawable().apply{
         shape=GradientDrawable.OVAL
-        setColor(Color.argb(150,0,0,0))
-        setStroke(dp(1),Color.argb(110,255,255,255))
+        setColor(Color.argb(165,0,0,0))
+        setStroke(dp(1),Color.argb(105,255,255,255))
        }
-      },FrameLayout.LayoutParams(dp(19),dp(19),Gravity.TOP or Gravity.START).apply{
-       setMargins(dp(1),dp(1),0,0)
-      })
+      },FrameLayout.LayoutParams(dp(23),dp(23),Gravity.CENTER))
      }
      if(isHost){
       addView(label("المضيف",8.5f,Color.rgb(60,38,4),true).apply{
