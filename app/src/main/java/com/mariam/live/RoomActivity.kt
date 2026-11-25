@@ -1702,8 +1702,10 @@ class RoomActivity : Activity() {
   val cameraMode=roomMode=="camera"
   if(cameraMode){drawCameraSeats();return}
   val visibleSeats=if(cameraMode)cameraSeats else seats
-  val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else 8
-  val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else 4
+  // Render the authoritative audio-seat array returned by the server.
+  // This preserves legacy 4/6/8-seat rooms and supports 15-seat rooms.
+  val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else visibleSeats.length().coerceIn(2,15)
+  val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else if(visibleCount>8)5 else 4
   val rows=(visibleCount+columns-1)/columns
   for(row in 0 until rows){
    val line=LinearLayout(this).apply{
