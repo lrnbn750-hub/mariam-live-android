@@ -3836,6 +3836,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    mixer.microphoneEnabled=microphoneEnabled
    status.text=if(microphoneEnabled)"المايك يعمل مع الموسيقى" else "المايك مكتوم والموسيقى مستمرة"
    refreshMicControl()
+   syncMySeatMuteState(!microphoneEnabled)
    return
   }
   refreshMicControl()
@@ -3843,7 +3844,31 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    try{
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"
+    syncMySeatMuteState(!microphoneEnabled)
    }catch(_:Exception){}
+  }
+ }
+
+ private fun syncMySeatMuteState(muted:Boolean){
+  if(roomMode!="audio" || !isSeated || roomId.isBlank())return
+  val mySeat=(0 until seats.length()).mapNotNull{seats.optJSONObject(it)}
+   .firstOrNull{it.optString("user_id")==currentUserId} ?: return
+  val seatNumber=mySeat.optInt("seat_number",0)
+  if(seatNumber<1)return
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/seats/$seatNumber/mute",JSONObject().put("muted",muted),authToken)
+    }
+    if(result.status in 200..299){
+     // Refresh the shared seat snapshot so every viewer sees the mute badge.
+     loadSeats()
+    }else{
+     android.util.Log.w("BAK_LIVE_MUTE","Could not sync seat mute state: ${result.status}")
+    }
+   }catch(e:Exception){
+    android.util.Log.w("BAK_LIVE_MUTE","Seat mute sync failed",e)
+   }
   }
  }
 
