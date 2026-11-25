@@ -1719,6 +1719,7 @@ class RoomActivity : Activity() {
     val seatNumber=seat.optInt("seat_number",i+1)
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
+    val seatMuted=seat.optBoolean("is_muted",false)
     val seatLocked=!cameraMode && seat.optBoolean("is_locked",false)
     val isHost=if(cameraMode)false else i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
@@ -1814,6 +1815,21 @@ class RoomActivity : Activity() {
       addView(frameView,FrameLayout.LayoutParams(dp(65),dp(65),Gravity.CENTER))
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
+     }
+     // Show a subtle mute badge over occupied audio-seat avatars.
+     // The is_muted value comes from the shared seat snapshot, so everyone sees it.
+     if(occupied && seatMuted){
+      addView(label("🔇",10f,Color.WHITE).apply{
+       includeFontPadding=false
+       gravity=Gravity.CENTER
+       background=GradientDrawable().apply{
+        shape=GradientDrawable.OVAL
+        setColor(Color.argb(150,0,0,0))
+        setStroke(dp(1),Color.argb(110,255,255,255))
+       }
+      },FrameLayout.LayoutParams(dp(19),dp(19),Gravity.TOP or Gravity.START).apply{
+       setMargins(dp(1),dp(1),0,0)
+      })
      }
      if(isHost){
       addView(label("المضيف",8.5f,Color.rgb(60,38,4),true).apply{
