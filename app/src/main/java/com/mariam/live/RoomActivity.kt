@@ -1591,10 +1591,9 @@ class RoomActivity : Activity() {
     val seatsNeedRedraw=seatRenderSignature!=lastSeatRenderSignature
     isOwner=currentUserId.isNotBlank()&&currentUserId==r.body.optString("ownerId")
     val backgroundUrl=r.body.optString("backgroundUrl").takeIf{it.isNotBlank() && it!="null"}.orEmpty()
-    // Audio rooms always use the fixed supplied artwork; camera rooms keep their uploaded background.
-    if(roomMode=="audio"){
-     if(loadedBackgroundUrl!="__fixed_audio_backdrop__") applyAudioRoomBackdrop()
-    }else if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
+    // The room background is shared by audio and camera modes.
+    // Never replace an uploaded background with the default audio artwork.
+    if(backgroundUrl!=loadedBackgroundUrl) applyRoomBackground(backgroundUrl)
     isSeated=if(roomMode=="camera") (0 until cameraSeats.length()).any{cameraSeats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()} else (0 until seats.length()).any{seats.optJSONObject(it)?.optString("user_id")==currentUserId&&currentUserId.isNotBlank()}
     // Enforce server moderation on the local publisher as soon as the seat snapshot changes.
     // A database mute alone does not stop an already-published LiveKit microphone track.
