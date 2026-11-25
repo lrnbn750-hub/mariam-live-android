@@ -400,7 +400,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       }
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [roomId]);
-      const room = await client.query("SELECT id, max_members, room_mode FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
+      const room = await client.query("SELECT id, owner_id, max_members, room_mode FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
       if (!room.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Room not found" });
