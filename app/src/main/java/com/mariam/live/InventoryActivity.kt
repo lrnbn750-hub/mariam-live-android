@@ -79,7 +79,7 @@ class InventoryActivity : Activity() {
     private data class Item(
         val id: String, val name: String, val type: String,
         val url: String, val owned: Boolean, val equipped: Boolean,
-        val expiresAt: String, val remainingSeconds: Long?
+        val priceCoins: Long, val expiresAt: String, val remainingSeconds: Long?
     )
 
     private val tabs = listOf(
@@ -222,7 +222,7 @@ class InventoryActivity : Activity() {
                 Item(
                     o.optString("item_id"), o.optString("name", "عنصر"), o.optString("item_type"),
                     o.optString("asset_url"), o.optBoolean("owned"), o.optBoolean("equipped"),
-                    o.optString("expires_at"),
+                    o.optLong("price_coins", 0L), o.optString("expires_at"),
                     if (o.isNull("remaining_seconds")) null else o.optLong("remaining_seconds")
                 )
             )
@@ -248,6 +248,34 @@ class InventoryActivity : Activity() {
                     if (isFinishing) return@runOnUiThread
                     if (silent) toast(e.message ?: "تعذر الاتصال بالخادم")
                     else showError(e.message ?: "تعذر الاتصال بالخادم")
+                }
+            }
+        }
+    }
+
+    private fun purchaseItem(item: Item, button: TextView) {
+        button.isEnabled = false
+        button.text = "جارٍ الشراء..."
+        apiExecutor.execute {
+            try {
+                val response = AuthApi.post(
+                    "/api/inventory/purchase",
+                    JSONObject().put("item_id", item.id),
+                    token
+                )
+                if (response.status !in 200..299) {
+                    throw Exception(response.body.optString("error", "تعذر إتمام عملية الشراء"))
+                }
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    toast("تم شراء العنصر بنجاح، صالح لمدة 30 يوماً")
+                    loadInventory(silent = true)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    toast(e.message ?: "تعذر الاتصال بالخادم")
+                    render()
                 }
             }
         }
@@ -446,14 +474,26 @@ class InventoryActivity : Activity() {
                         rounded(Color.WHITE, 12)
                     )
                 }
+                item.priceCoins > 0L -> {
+                    text = "شراء • ${NumberFormat.getIntegerInstance(Locale.US).format(item.priceCoins)} عملة"
+                    background = RippleDrawable(
+                        ColorStateList.valueOf(Color.argb(60, 255, 255, 255)),
+                        GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(18, 160, 112), Color.rgb(28, 190, 132)))
+                            .apply { cornerRadius = dp(12).toFloat() },
+                        rounded(Color.WHITE, 12)
+                    )
+                }
                 else -> {
-                    text = "غير متوفر"
+                    text = "غير متوفر حالياً"
                     setTextColor(Color.rgb(150, 146, 168))
                     background = rounded(Color.rgb(241, 240, 246), 12)
                 }
             }
-            isEnabled = item.owned
-            if (item.owned) setOnClickListener { toggleItem(item, this) }
+            isEnabled = item.owned || item.priceCoins > 0L
+            when {
+                item.owned -> setOnClickListener { toggleItem(item, this) }
+                item.priceCoins > 0L -> setOnClickListener { purchaseItem(item, this) }
+            }
         }
 
         return LinearLayout(this).apply {
@@ -473,6 +513,13 @@ class InventoryActivity : Activity() {
                 text = itemKind(t); maxLines = 1
                 setPadding(dp(2), dp(2), dp(2), dp(4))
             })
+            if (!item.owned && item.priceCoins > 0L) {
+                addView(label(11.5f, fMedium, Color.rgb(24, 145, 105)).apply {
+                    text = "الصلاحية بعد الشراء: 30 يوماً"
+                    maxLines = 1
+                    setPadding(dp(2), 0, dp(2), dp(8))
+                })
+            }
             if (item.remainingSeconds != null) {
                 addView(label(11.5f, fMedium, Color.rgb(190, 75, 55)).apply {
                     val days = item.remainingSeconds / 86400
