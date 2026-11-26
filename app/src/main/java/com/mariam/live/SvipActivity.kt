@@ -149,12 +149,12 @@ class SvipActivity : Activity() {
                     ?: levelsResult.body.optJSONArray("data")
                     ?: JSONArray()
                 val subscription = extractSubscription(meResult.body)
-                val level = subscription?.optInt("level",
-                    subscription.optInt("svip_level", 0)) ?: 0
+                val level = if (subscription == null) 0
+                    else subscription.optInt("level", subscription.optInt("svip_level", 0))
                 val status = subscription?.optString("status").orEmpty()
                 val active = subscription != null && level in 1..7 &&
-                    if (subscription.has("active")) subscription.optBoolean("active")
-                    else status.equals("active", true)
+                    (if (subscription.has("active")) subscription.optBoolean("active")
+                    else status.equals("active", true))
                 val expiry = subscription?.optString("expires_at").orEmpty()
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
