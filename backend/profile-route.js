@@ -194,7 +194,7 @@ module.exports = function(app, db, authenticateToken) {
       }
 
       const user = result.rows[0];
-      const [followStats, giftStats, levelResult] = await Promise.all([
+      const [followStats, giftStats, levelResult, profileBackground] = await Promise.all([
         db.query(
           `SELECT
              (SELECT COUNT(*)::bigint FROM user_follows WHERE followed_id=$1) AS followers_count,
@@ -209,6 +209,16 @@ module.exports = function(app, db, authenticateToken) {
         ),
         db.query(
           "SELECT total_xp FROM user_levels WHERE user_id=$1",
+          [req.params.id]
+        ),
+        db.query(
+          `SELECT si.asset_url
+           FROM user_equipped_items e
+           JOIN store_items si ON si.item_id=e.item_id AND si.active=TRUE
+           JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+           WHERE e.user_id=$1 AND e.item_type='background'
+             AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+           LIMIT 1`,
           [req.params.id]
         )
       ]);
@@ -227,6 +237,7 @@ module.exports = function(app, db, authenticateToken) {
       user.following_count = Number(follows.following_count || 0);
       user.diamonds_sent = gifts.diamonds_sent || "0";
       user.diamonds_received = gifts.diamonds_received || "0";
+      user.profile_background_url = profileBackground.rows[0]?.asset_url || "";
       return res.json({ user });
     } catch (error) {
       console.error("Public profile error:", error.message);
@@ -342,15 +353,149 @@ module.exports = function(app, db, authenticateToken) {
     }
   });
 
+  // Store catalog and secure 30-day cosmetic purchase using wallet diamonds.
+  app.get("/api/store/items", authenticateToken, async (req, res) => {
+    try {
+      await db.query(
+        "DELETE FROM user_inventory WHERE user_id=$1 AND expires_at IS NOT NULL AND expires_at <= NOW()",
+        [req.userId]
+      );
+      const result = await db.query(
+        `SELECT i.item_id, i.name, i.item_type, i.asset_url,
+                i.price_diamonds,
+                (ui.item_id IS NOT NULL) AS owned,
+                ui.expires_at,
+                CASE WHEN ui.expires_at IS NULL THEN NULL
+                     ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (ui.expires_at-NOW()))))::bigint
+                END AS remaining_seconds
+         FROM store_items i
+         LEFT JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+         WHERE i.active=TRUE AND i.price_diamonds > 0
+         ORDER BY i.item_type, i.price_diamonds, i.name`,
+        [req.userId]
+      );
+      const wallet = await db.query(
+        "SELECT diamonds_balance FROM wallet_accounts WHERE user_id=$1",
+        [req.userId]
+      );
+      return res.json({ items: result.rows, diamonds_balance: Number(wallet.rows[0]?.diamonds_balance || 0) });
+    } catch (error) {
+      console.error("Load store items:", error.message);
+      return res.status(500).json({ error: "تعذر تحميل المتجر" });
+    }
+  });
+
+  app.post("/api/store/purchase", authenticateToken, async (req, res) => {
+    const itemId = String(req.body?.item_id || "").trim();
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(itemId)) {
+      return res.status(400).json({ error: "العنصر غير صالح" });
+    }
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const itemResult = await client.query(
+        "SELECT item_id, name, item_type, price_diamonds FROM store_items WHERE item_id=$1 AND active=TRUE FOR UPDATE",
+        [itemId]
+      );
+      if (!itemResult.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "العنصر غير متوفر" });
+      }
+      const item = itemResult.rows[0];
+      const price = Number(item.price_diamonds);
+      if (!Number.isSafeInteger(price) || price <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "سعر هذا العنصر غير مضبوط حالياً" });
+      }
+
+      // Remove an expired ownership record first, allowing repurchase only after expiry.
+      await client.query(
+        "DELETE FROM user_equipped_items WHERE user_id=$1 AND item_id=$2",
+        [req.userId, itemId]
+      );
+      await client.query(
+        "DELETE FROM user_inventory WHERE user_id=$1 AND item_id=$2 AND expires_at IS NOT NULL AND expires_at <= NOW()",
+        [req.userId, itemId]
+      );
+      const activeOwnership = await client.query(
+        "SELECT 1 FROM user_inventory WHERE user_id=$1 AND item_id=$2 AND (expires_at IS NULL OR expires_at > NOW()) FOR UPDATE",
+        [req.userId, itemId]
+      );
+      if (activeOwnership.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "هذا العنصر موجود بحقيبتك ولا يمكن شراؤه قبل انتهاء مدته" });
+      }
+
+      await client.query(
+        "INSERT INTO wallet_accounts(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING",
+        [req.userId]
+      );
+      const wallet = await client.query(
+        "SELECT diamonds_balance FROM wallet_accounts WHERE user_id=$1 FOR UPDATE",
+        [req.userId]
+      );
+      const balance = Number(wallet.rows[0]?.diamonds_balance || 0);
+      if (balance < price) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "رصيد الماسات غير كافٍ", required: price, balance });
+      }
+
+      await client.query(
+        "UPDATE wallet_accounts SET diamonds_balance=diamonds_balance-$2, updated_at=NOW() WHERE user_id=$1",
+        [req.userId, price]
+      );
+      const granted = await client.query(
+        `INSERT INTO user_inventory(user_id,item_id,obtained_from,obtained_at,expires_at)
+         VALUES($1,$2,'purchase',NOW(),NOW() + INTERVAL '30 days')
+         RETURNING obtained_at, expires_at`,
+        [req.userId, itemId]
+      );
+      await client.query(
+        `INSERT INTO wallet_transactions(user_id,transaction_type,currency,amount,status,description,reference_id)
+         VALUES($1,'store_purchase','diamonds',$2,'completed',$3,$4)`,
+        [req.userId, price, "شراء " + item.name, itemId]
+      );
+      await client.query("COMMIT");
+      return res.status(201).json({
+        purchased: true, item_id: itemId, price_diamonds: price,
+        diamonds_balance: balance - price,
+        obtained_at: granted.rows[0].obtained_at,
+        expires_at: granted.rows[0].expires_at,
+        validity_days: 30
+      });
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      console.error("Store purchase:", error.message);
+      return res.status(500).json({ error: "تعذر إتمام عملية الشراء" });
+    } finally {
+      client.release();
+    }
+  });
+
   // Persistent inventory: equipping is allowed only for items owned by this account.
   app.get("/api/inventory", authenticateToken, async (req, res) => {
     try {
-      // Seven launch chat-bubble skins are free starter inventory items.
+      // Expired temporary cosmetics are removed server-side before inventory is returned.
+      await db.query(
+        `DELETE FROM user_equipped_items e
+         USING user_inventory ui
+         WHERE e.user_id=ui.user_id AND e.item_id=ui.item_id
+           AND ui.user_id=$1 AND ui.expires_at IS NOT NULL AND ui.expires_at <= NOW()`,
+        [req.userId]
+      );
+      await db.query(
+        "DELETE FROM user_inventory WHERE user_id=$1 AND expires_at IS NOT NULL AND expires_at <= NOW()",
+        [req.userId]
+      );
+      // Paid chat-bubble skins are no longer granted automatically.
+      // Existing owners keep their inventory; new users must purchase them for diamonds.
       await db.query(
         `INSERT INTO user_inventory(user_id,item_id,obtained_from)
          SELECT $1, item_id, 'offer'
          FROM store_items
-         WHERE active=TRUE AND item_type='chat_bubble' AND price_iqd=0
+         WHERE active=TRUE AND item_type='chat_bubble'
+           AND COALESCE(price_diamonds,0)=0
          ON CONFLICT(user_id,item_id) DO NOTHING`,
         [req.userId]
       );
@@ -372,13 +517,18 @@ module.exports = function(app, db, authenticateToken) {
       );
       const result = await db.query(
         `SELECT i.item_id, i.name, i.item_type, i.asset_url, i.source_type, i.price_iqd,
-                (ui.user_id IS NOT NULL) AS owned,
+                TRUE AS owned,
                 (e.item_id IS NOT NULL) AS equipped,
-                ui.obtained_from, ui.obtained_at
-         FROM store_items i
-         LEFT JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
-         LEFT JOIN user_equipped_items e ON e.item_id=i.item_id AND e.user_id=$1
-         WHERE i.active=TRUE ORDER BY owned DESC, i.item_type, i.name`,
+                ui.obtained_from, ui.obtained_at, ui.expires_at,
+                CASE WHEN ui.expires_at IS NULL THEN NULL
+                     ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (ui.expires_at-NOW()))))::bigint
+                END AS remaining_seconds
+         FROM user_inventory ui
+         JOIN store_items i ON i.item_id=ui.item_id AND i.active=TRUE
+         LEFT JOIN user_equipped_items e ON e.item_id=i.item_id AND e.user_id=ui.user_id
+         WHERE ui.user_id=$1
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+         ORDER BY i.item_type, i.name`,
         [req.userId]
       );
       return res.json({ items: result.rows });
@@ -397,7 +547,9 @@ module.exports = function(app, db, authenticateToken) {
       const owned = await client.query(
         `SELECT i.item_id, i.item_type FROM store_items i
          JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
-         WHERE i.item_id=$2 AND i.active=TRUE FOR UPDATE OF ui`,
+         WHERE i.item_id=$2 AND i.active=TRUE
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+         FOR UPDATE OF ui`,
         [req.userId, itemId]
       );
       if (!owned.rows.length) {
@@ -433,6 +585,8 @@ module.exports = function(app, db, authenticateToken) {
         `SELECT e.user_id, e.item_id
          FROM user_equipped_items e
          JOIN store_items i ON i.item_id=e.item_id AND i.active=TRUE
+         JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
          WHERE e.item_type='chat_bubble' AND e.user_id=ANY($1::uuid[])`,
         [userIds]
       );

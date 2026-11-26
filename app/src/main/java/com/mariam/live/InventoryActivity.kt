@@ -78,7 +78,8 @@ class InventoryActivity : Activity() {
     // ───────── Model ─────────
     private data class Item(
         val id: String, val name: String, val type: String,
-        val url: String, val owned: Boolean, val equipped: Boolean
+        val url: String, val owned: Boolean, val equipped: Boolean,
+        val expiresAt: String, val remainingSeconds: Long?
     )
 
     private val tabs = listOf(
@@ -220,7 +221,9 @@ class InventoryActivity : Activity() {
             out.add(
                 Item(
                     o.optString("item_id"), o.optString("name", "عنصر"), o.optString("item_type"),
-                    o.optString("asset_url"), o.optBoolean("owned"), o.optBoolean("equipped")
+                    o.optString("asset_url"), o.optBoolean("owned"), o.optBoolean("equipped"),
+                    o.optString("expires_at"),
+                    if (o.isNull("remaining_seconds")) null else o.optLong("remaining_seconds")
                 )
             )
         }
@@ -468,8 +471,19 @@ class InventoryActivity : Activity() {
             })
             addView(label(12f, fRegular, muted).apply {
                 text = itemKind(t); maxLines = 1
-                setPadding(dp(2), dp(2), dp(2), dp(10))
+                setPadding(dp(2), dp(2), dp(2), dp(4))
             })
+            if (item.remainingSeconds != null) {
+                addView(label(11.5f, fMedium, Color.rgb(190, 75, 55)).apply {
+                    val days = item.remainingSeconds / 86400
+                    val hours = (item.remainingSeconds % 86400) / 3600
+                    text = if (days > 0) "متبقي $days يوم و$hours ساعة" else "متبقي $hours ساعة"
+                    maxLines = 1
+                    setPadding(dp(2), 0, dp(2), dp(8))
+                })
+            } else {
+                addView(View(this@InventoryActivity), LinearLayout.LayoutParams(1, dp(8)))
+            }
             addView(button, LinearLayout.LayoutParams(-1, dp(38)))
         }
     }

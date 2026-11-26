@@ -71,6 +71,7 @@ class ProfileActivity : Activity() {
     private var publicFriendsButton: LinearLayout? = null
     private var publicFriendsLabel: TextView? = null
     private var publicInfoBox: LinearLayout? = null
+    private var publicProfileBackdropTarget: View? = null
     private var publicFriendsCount = -1
     private var isFollowingPublic = false
     private var isFollowedByPublic = false
@@ -492,6 +493,7 @@ class ProfileActivity : Activity() {
         }
         val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE) }
+        publicProfileBackdropTarget = content
         val sub = Color.rgb(120, 128, 142)
 
         // ---- Hero photo ----
@@ -558,7 +560,7 @@ class ProfileActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10f), dp(10f), dp(10f), dp(9f))
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(Color.TRANSPARENT)
         }
         fun statPair(caption: String, setter: (TextView) -> Unit, onClick: (() -> Unit)?): View {
             val pair = LinearLayout(this).apply {
@@ -617,7 +619,7 @@ class ProfileActivity : Activity() {
         }
         badges.addView(publicLevel, LinearLayout.LayoutParams(-2, -2))
         content.addView(badges)
-        content.addView(View(this).apply { setBackgroundColor(Color.rgb(246, 247, 250)) }, LinearLayout.LayoutParams(-1, dp(8f)))
+        content.addView(View(this).apply { setBackgroundColor(0x22000000) }, LinearLayout.LayoutParams(-1, dp(8f)))
 
         // ---- Tab ----
         val tabRow = LinearLayout(this).apply {
@@ -792,6 +794,7 @@ class ProfileActivity : Activity() {
                         .put("level", user.optInt("level", 1).coerceAtLeast(1))
                         .put("avatarUrl", user.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
                             ?: user.optString("profile_image"))
+                        .put("profileBackgroundUrl", user.optString("profile_background_url"))
                         .put("visitors", JSONObject.NULL)
                         .put("publicFans", user.optLong("followers_count", user.optLong("fans_count", 0L)))
                         .put("publicFollowing", user.optLong("following_count", 0L))
@@ -903,6 +906,20 @@ class ProfileActivity : Activity() {
             publicName?.text = data.optString("name")
             publicIdView?.text = "ID: " + publicId
             publicLevel?.text = "◆  " + data.optInt("level", 1)
+            val backgroundUrl = data.optString("profileBackgroundUrl").trim()
+            if (backgroundUrl.startsWith("https://")) executor.execute {
+                try {
+                    val bitmap = URL(backgroundUrl).openStream().use { BitmapFactory.decodeStream(it) }
+                    if (bitmap != null) runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            publicProfileBackdropTarget?.background =
+                                android.graphics.drawable.BitmapDrawable(resources, bitmap)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("BAKPublicProfile", "Profile background load failed", e)
+                }
+            }
             publicFans?.text = compactPublicCount(data.optLong("publicFans", 0L))
             publicFollowing?.text = compactPublicCount(data.optLong("publicFollowing", 0L))
             publicSent?.text = compactPublicCount(data.optLong("publicSent", 0L))
