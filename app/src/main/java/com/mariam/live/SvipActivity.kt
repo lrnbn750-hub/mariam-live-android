@@ -190,8 +190,8 @@ class SvipActivity : Activity() {
     }
 
     private fun renderLevels(levels: JSONArray) {
-        if (content.childCount > 2) {
-            content.removeViews(2, content.childCount - 2)
+        if (content.childCount > 3) {
+            content.removeViews(3, content.childCount - 3)
         }
         if (levels.length() == 0) {
             content.addView(label("لا توجد مستويات متاحة حالياً. يرجى المحاولة لاحقاً.", 13f, muted))
