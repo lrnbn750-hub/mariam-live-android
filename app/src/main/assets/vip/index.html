@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#161b27">
-<title>BAK LIVE | VIP</title>
+<title>BAK LIVE | SVIP</title>
 <style>
 :root{
   --ink:#161b27;
@@ -215,13 +215,13 @@ svg{display:block}
   <div class="top">
     <div class="head">
       <button class="back" aria-label="رجوع" id="backBtn"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-      <div class="title">VIP</div>
+      <div class="title">SVIP</div>
       <div class="wallet" aria-label="رصيد الألماس">
         <svg viewBox="0 0 24 24"><path d="M6 4h12l4 6-10 11L2 10z"/><path d="M2 10h20M9 4l-2 6 5 11 5-11-2-6"/></svg>
         <span id="balance">30,000</span>
       </div>
     </div>
-    <div class="tabs" id="tabs" role="tablist" aria-label="مستويات VIP"></div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="مستويات SVIP"></div>
   </div>
 
   <section class="hero" id="hero" aria-live="polite">
@@ -241,9 +241,8 @@ svg{display:block}
     <div class="grid" id="grid"></div>
 
     <section class="split" aria-labelledby="splitTitle">
-      <h3 id="splitTitle">تفاصيل الخصم</h3>
+      <h3 id="splitTitle">تفاصيل العضوية</h3>
       <div class="row"><span>سعر الباقة</span><b id="sPrice"></b></div>
-      <div class="row"><span>مدة العضوية</span><b>30 يوماً</b></div>
       <div class="row"><span>مدة العضوية</span><b>30 يوماً</b></div>
       <p class="note">يتم التحقق من السعر والرصيد وتنفيذ الاشتراك من خادم BAK LIVE. مدة العضوية 30 يوماً.</p>
     </section>
@@ -309,7 +308,7 @@ const IC = {
 const PRIVS = [
   {ic:'entry',  min:1, label:n=>'مؤثرات الدخول'},
   {ic:'frame',  min:2, label:n=>'براويز مميزة'},
-  {ic:'vip',    min:1, label:n=>'أيقونة VIP'+n},
+  {ic:'vip',    min:1, label:n=>'شارة SVIP'+n},
   {ic:'follow', min:1, label:n=>'المتابعة *'+(n*100)+'%'},
   {ic:'friends',min:2, label:n=>'مزيد من الاصدقاء'},
   {ic:'car',    min:3, label:n=>'احصل/ي على هذه السيارة'},
@@ -321,7 +320,7 @@ const PRIVS = [
   {ic:'shield', min:3, label:n=>'منع الطرد'},
   {ic:'mute',   min:3, label:n=>'منع الكتم من التعليقات'},
   {ic:'star',   min:6, label:n=>'أولوية الظهور'},
-  {ic:'door',   min:6, label:n=>'غرف VIP حصرية'},
+  {ic:'door',   min:6, label:n=>'غرف SVIP حصرية'},
   {ic:'seat',   min:8, label:n=>'مقعد VIP في الغرفة'},
   {ic:'eyeoff', min:8, label:n=>'زيارة خفية'},
   {ic:'gift',   min:10,label:n=>'هدية حصرية'},
@@ -444,7 +443,7 @@ function renderTabs(){
     const frag=document.createDocumentFragment();
     PACKAGES.forEach(p=>{
       const b=document.createElement('button');b.className='tab';b.id='tab'+p.level;
-      b.setAttribute('role','tab');b.textContent='VIP'+p.level;b.onclick=()=>select(p.level);
+      b.setAttribute('role','tab');b.textContent='SSVIP'+p.level;b.onclick=()=>select(p.level);
       frag.appendChild(b);
     });
     box.appendChild(frag);box.dataset.ready='1';
@@ -463,7 +462,7 @@ function select(n,scroll=true){
   if(scroll){const t=$('tab'+state.selected);t&&t.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}
 }
 function render(animate=false){
-  const n=state.selected,p=pkg(),{fee,back}=calc(p.price);
+  const n=state.selected,p=pkg(); if(!p){$('buyBtn').disabled=true;return;} const {fee,back}=calc(p.price);
   $('app').style.setProperty('--tier',TIERS[n-1][1]);
 
   const bd=$('badge');
@@ -490,7 +489,7 @@ function render(animate=false){
     card.classList.toggle('on',ok);
     card.querySelector('.circ > .lk').hidden=ok;
     card.querySelector('.circ + span').textContent=v.label(n);
-    card.querySelector('small').textContent=ok?'':'من VIP'+v.min;
+    card.querySelector('small').textContent=ok?'':'من SVIP'+v.min;
   });
 
   const dia=DIA;
@@ -499,8 +498,9 @@ function render(animate=false){
   $('bPrice').textContent=fmt(p.price); $('bUsd').textContent='';
   const st=$('bState');
   if(state.owned===n){st.textContent='عضويتك فعّالة · '+DURATION_DAYS+' يوماً';st.className='l2 ok'}
-  else{st.textContent='أنت لست VIP'+n;st.className='l2'}
+  else{st.textContent='أنت لست SVIP'+n;st.className='l2'}
   $('buyBtn').textContent=state.owned===n?'تجديد':'شراء';
+  $('buyBtn').disabled=!p.active || p.price<=0;
   $('balance').textContent=fmt(state.balance);
 }
 
@@ -523,7 +523,7 @@ function breakdownHTML(p,fee,back,afterBal){
 function openBuy(){
   const p=pkg(); if(!p){toast('لم يتم تحميل باقات VIP بعد');return;} const {fee,back}=calc(p.price),enough=state.balance>=p.price && p.active!==false;
   const renew=state.owned===p.level;
-  openSheet(`<h2>${renew?'تجديد':'شراء'} VIP ${p.level}</h2>
+  openSheet(`<h2>${renew?'تجديد':'شراء'} SVIP ${p.level}</h2>
     <p class="sub">رصيدك الحالي ${fmt(state.balance)} ماسة</p>
     ${breakdownHTML(p,fee,back,state.balance>=p.price?state.balance-fee:null)}
     ${enough?'':`<p class="err">رصيدك لا يكفي. تحتاج إلى ${fmt(p.price-state.balance)} ماسة إضافية.</p>`}
