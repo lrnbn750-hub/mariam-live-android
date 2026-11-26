@@ -312,7 +312,10 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
           LEFT JOIN user_profiles p ON p.user_id = u.id
           LEFT JOIN user_levels ul ON ul.user_id = u.id
           LEFT JOIN user_equipped_items e ON e.user_id = u.id AND e.item_type = 'frame'
+          LEFT JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+            AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
           LEFT JOIN store_items si ON si.item_id = e.item_id AND si.active = TRUE
+            AND ui.user_id IS NOT NULL
           WHERE s.room_id = $1 ORDER BY s.seat_number
         `, [roomId]),
         db.query(`
