@@ -313,7 +313,24 @@ class ProfileActivity : Activity() {
         walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5f) })
         body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        // Premium membership system removed. Wallet and general store remain available.
+        // ---- SVIP membership entry ------------------------------------------------------
+        val svipCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = cardBackground(22f)
+            elevation = dp(2f).toFloat()
+            clipToOutline = true
+        }
+        serviceRow(
+            svipCard,
+            "عضوية SVIP",
+            R.drawable.ic_profile_svip_color,
+            rounded(Color.rgb(255, 246, 220), 14f, Color.rgb(239, 211, 143)),
+            dp(8f),
+            last = true
+        ) { openAction("svip") }
+        body.addView(svipCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
+
 
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
@@ -1056,10 +1073,27 @@ class ProfileActivity : Activity() {
             "store" -> startActivity(Intent(this, InventoryActivity::class.java).putExtra("inventory_mode", "store"))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
+            "svip" -> showSVIPLevels()
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
         }
+    }
+
+    private fun showSVIPLevels() {
+        val levels = (1..12).map { "SVIP $it" }.toTypedArray()
+        android.app.AlertDialog.Builder(this)
+            .setTitle("عضوية SVIP")
+            .setMessage("استكشف مستويات العضوية المميزة من SVIP 1 إلى SVIP 12.\n\nاختر مستوى لمعرفة تفاصيله.")
+            .setItems(levels) { dialog, which ->
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("SVIP ${which + 1}")
+                    .setMessage("مستوى عضوية مميز. تفاصيل السعر والامتيازات والشراء تحتاج ربطاً مؤكداً بخدمة SVIP على الخادم.")
+                    .setPositiveButton("حسناً", null)
+                    .show()
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
     }
 
     private fun showInfo(title: String) {
