@@ -110,18 +110,27 @@ class SvipActivity : Activity() {
                     throw IllegalStateException(walletResult.body.optString("error", "تعذر تحميل رصيد المحفظة"))
                 }
 
-                val rawLevels = levelsResult.body.optJSONArray("levels") ?: JSONArray()
+                // Accept both current and legacy SVIP API field names. Some deployed
+                // backend revisions used vip_level/price_diamonds or returned packages.
+                val rawLevels = levelsResult.body.optJSONArray("levels")
+                    ?: levelsResult.body.optJSONArray("packages")
+                    ?: JSONArray()
                 val packages = JSONArray()
                 for (i in 0 until rawLevels.length()) {
                     val level = rawLevels.optJSONObject(i) ?: continue
-                    val number = level.optInt("level", 0)
-                    val price = level.optLong("price_coins", 0)
+                    val number = level.optInt("level", level.optInt("vip_level", 0))
+                    val price = level.optLong(
+                        "price_coins",
+                        level.optLong("price_diamonds", level.optLong("price", 0))
+                    )
+                    val active = level.optBoolean("active", true) &&
+                        level.optBoolean("is_active", true) && price > 0
                     if (number in 1..7) {
                         packages.put(JSONObject()
                             .put("level", number)
                             .put("name", level.optString("name", "SVIP " + number))
                             .put("price", price)
-                            .put("active", level.optBoolean("active", true) && price > 0)
+                            .put("active", active)
                             .put("badge_asset_url", level.optString("badge_asset_url", ""))
                             .put("frame_asset_url", level.optString("frame_asset_url", ""))
                             .put("chat_bubble_asset_url", level.optString("chat_bubble_asset_url", ""))
