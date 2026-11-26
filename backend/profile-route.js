@@ -477,12 +477,14 @@ module.exports = function(app, db, authenticateToken) {
         "DELETE FROM user_inventory WHERE user_id=$1 AND expires_at IS NOT NULL AND expires_at <= NOW()",
         [req.userId]
       );
-      // Seven launch chat-bubble skins are free starter inventory items.
+      // Paid chat-bubble skins are no longer granted automatically.
+      // Existing owners keep their inventory; new users must purchase them for diamonds.
       await db.query(
         `INSERT INTO user_inventory(user_id,item_id,obtained_from)
          SELECT $1, item_id, 'offer'
          FROM store_items
-         WHERE active=TRUE AND item_type='chat_bubble' AND price_iqd=0
+         WHERE active=TRUE AND item_type='chat_bubble'
+           AND COALESCE(price_diamonds,0)=0
          ON CONFLICT(user_id,item_id) DO NOTHING`,
         [req.userId]
       );
