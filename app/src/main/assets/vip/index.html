@@ -243,13 +243,9 @@ svg{display:block}
     <section class="split" aria-labelledby="splitTitle">
       <h3 id="splitTitle">تفاصيل الخصم</h3>
       <div class="row"><span>سعر الباقة</span><b id="sPrice"></b></div>
-      <div class="row"><span>القيمة بالدولار</span><b id="sUsd"></b></div>
-      <div class="row"><span>حصة BAK LIVE <bdi dir="ltr">(35%)</bdi></span><b id="sFee"></b></div>
-      <div class="row ret"><span>يعود إلى محفظتك <bdi dir="ltr">(65%)</bdi></span><b id="sBack"></b></div>
       <div class="row"><span>مدة العضوية</span><b>30 يوماً</b></div>
-      <div class="bar2" aria-hidden="true"><i class="a" style="width:35%"></i><i class="b" style="width:65%"></i></div>
-      <div class="legend"><span>35% للتطبيق</span><span>65% لمحفظتك</span></div>
-      <p class="note">يُخصم سعر الباقة عند تأكيد الشراء، ثم تُعاد 65% منه إلى محفظتك. التنفيذ النهائي يتم من الخادم.</p>
+      <div class="row"><span>مدة العضوية</span><b>30 يوماً</b></div>
+      <p class="note">يتم التحقق من السعر والرصيد وتنفيذ الاشتراك من خادم BAK LIVE. مدة العضوية 30 يوماً.</p>
     </section>
   </main>
 
@@ -273,8 +269,6 @@ svg{display:block}
 
 <script>
 /* ===================== Config (do not change rates) ===================== */
-const FEE_RATE = 0.35;          // BAK LIVE share
-const BACK_RATE = 0.65;         // returned to user wallet
 const DURATION_DAYS = 30;
 const PACKAGES = [];
 
@@ -282,7 +276,7 @@ const PACKAGES = [];
 const state = { balance:0, selected:1, owned:0 };
 const fmt = n => n.toLocaleString('en-US');
 const $ = id => document.getElementById(id);
-const calc = price => { const fee = Math.round(price*FEE_RATE); return {fee, back:price-fee}; };
+const calc = price => ({fee:price, back:0});
 const pkg = () => PACKAGES.find(p => p.level===state.selected);
 
 /* ===================== Icons ===================== */
@@ -461,7 +455,7 @@ function renderTabs(){
   });
 }
 function select(n,scroll=true){
-  const next=Math.max(1,Math.min(12,n));
+  const next=Math.max(1,Math.min(7,n));
   if(next===state.selected){if(scroll){const same=$('tab'+next);same&&same.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}return;}
   state.selected=next;
   renderTabs();
@@ -500,13 +494,9 @@ function render(animate=false){
   });
 
   const dia=DIA;
-  const usd = p.price / 1000 * 5;
   $('sPrice').innerHTML=fmt(p.price)+' '+dia;
-  $('sUsd').textContent='$'+usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  $('sFee').innerHTML=fmt(fee)+' '+dia;
-  $('sBack').innerHTML=fmt(back)+' '+dia;
-  $('bPrice').textContent=fmt(p.price);
-  $('bUsd').textContent='ما يعادل $'+usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  $('sUsd').textContent='—'; $('sFee').textContent='—'; $('sBack').textContent='—';
+  $('bPrice').textContent=fmt(p.price); $('bUsd').textContent='';
   const st=$('bState');
   if(state.owned===n){st.textContent='عضويتك فعّالة · '+DURATION_DAYS+' يوماً';st.className='l2 ok'}
   else{st.textContent='أنت لست VIP'+n;st.className='l2'}
@@ -524,10 +514,9 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show')
 function breakdownHTML(p,fee,back,afterBal){
   return `<div class="split">
     <div class="row"><span>سعر الباقة</span><b>${fmt(p.price)} ${DIA}</b></div>
-    <div class="row"><span>حصة BAK LIVE <bdi dir="ltr">(35%)</bdi></span><b>${fmt(fee)} ${DIA}</b></div>
-    <div class="row ret"><span>يعود إلى محفظتك <bdi dir="ltr">(65%)</bdi></span><b>${fmt(back)} ${DIA}</b></div>
+    
     <div class="row"><span>مدة العضوية</span><b>${DURATION_DAYS} يوماً</b></div>
-    <div class="row"><span>رصيدك بعد العملية</span><b>${afterBal===null?'—':fmt(afterBal)+' '+DIA}</b></div>
+    
   </div>`;
 }
 
@@ -594,12 +583,15 @@ window.applyNativeData=function(data){
     }
     state.balance=Number(d.balance||0);
     const m=d.membership||{};
-    state.owned=Number(m.vip_level||0);
+    state.owned=Number(m.vip_level||m.level||0);
+    if(PACKAGES.length===0){toast('لا توجد مستويات SVIP متاحة حالياً');$('buyBtn').disabled=true;return;}
+    $('buyBtn').disabled=false;
     if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
     $('sendBtn').style.display='none'; // gifting is hidden until a real server gifting endpoint exists
     renderTabs(); render();
   }catch(e){toast('تعذر قراءة بيانات VIP');}
 };
+window.onNativeLoadError=function(message){toast(message||'تعذر تحميل بيانات SVIP');};
 window.addEventListener('load',()=>{
   $('sendBtn').style.display='none';
   if(window.AndroidVip) window.AndroidVip.onPageReady();
