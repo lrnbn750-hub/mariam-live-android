@@ -14,3 +14,15 @@ WHERE e.user_id=ui.user_id
   AND e.item_id=ui.item_id
   AND ui.expires_at IS NOT NULL
   AND ui.expires_at <= NOW();
+
+-- Store purchases use diamonds, not withdrawable IQD earnings.
+ALTER TABLE store_items
+  ADD COLUMN IF NOT EXISTS price_diamonds BIGINT NOT NULL DEFAULT 0
+  CHECK (price_diamonds >= 0);
+
+-- Record diamond spending separately in the wallet ledger.
+ALTER TABLE wallet_transactions
+  DROP CONSTRAINT IF EXISTS wallet_transactions_transaction_type_check;
+ALTER TABLE wallet_transactions
+  ADD CONSTRAINT wallet_transactions_transaction_type_check
+  CHECK (transaction_type IN ('topup','gift_sent','gift_received','cashout','adjustment','store_purchase'));
