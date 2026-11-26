@@ -57,7 +57,6 @@ class ProfileActivity : Activity() {
     private var requestedProfileUserId = ""
     private var isOwnProfile = true
     private lateinit var adminEntry: LinearLayout
-    private lateinit var svipMemberEntry: LinearLayout
     private var publicAvatar: ImageView? = null
     private var publicName: TextView? = null
     private var publicIdView: TextView? = null
@@ -330,47 +329,6 @@ class ProfileActivity : Activity() {
             dp(8f),
             last = true
         ) { openAction("svip") }
-        val memberCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = cardBackground(22f)
-            elevation = dp(2f).toFloat()
-            setPadding(dp(8f), dp(8f), dp(8f), dp(8f))
-            visibility = View.GONE
-        }
-        svipMemberEntry = memberCard
-        val memberTap = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(6f), dp(8f), dp(6f), dp(8f))
-            isClickable = true
-            isFocusable = true
-            background = ripple(null, 0f)
-            setOnClickListener { openAction("svip_member") }
-        }
-        val memberIcon = ImageView(this).apply {
-            setImageResource(R.drawable.ic_profile_svip_color)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = rounded(Color.rgb(255, 246, 220), 14f, Color.rgb(239, 211, 143))
-            setPadding(dp(8f), dp(8f), dp(8f), dp(8f))
-        }
-        memberTap.addView(memberIcon, LinearLayout.LayoutParams(dp(42f), dp(42f)))
-        memberTap.addView(text("عضويتي SVIP", 13f, ink, true).apply {
-            gravity = Gravity.CENTER
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-        }, LinearLayout.LayoutParams(-1, dp(38f)))
-        memberCard.addView(memberTap, LinearLayout.LayoutParams(-1, -2))
-
-        val svipEntries = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-        }
-        svipEntries.addView(svipCard, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6f) })
-        svipEntries.addView(memberCard, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6f) })
-        body.addView(svipEntries, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
-
-
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -920,7 +878,6 @@ class ProfileActivity : Activity() {
                 val followsFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/follows/me", token) }.getOrNull() } else null
                 val walletFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/wallet", token) }.getOrNull() } else null
                 val adminFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/admin/v2/me", token) }.getOrNull() } else null
-                val svipFuture = if (isOwnProfile) executor.submit<AuthApi.Result?> { runCatching { AuthApi.get("/api/svip/me", token) }.getOrNull() } else null
 
                 val level = levelFuture?.get()
                 if (level != null && level.status in 200..299) {
@@ -956,19 +913,10 @@ class ProfileActivity : Activity() {
                 val isAdmin = adminCheck != null && adminCheck.status in 200..299 &&
                     adminCheck.body.optBoolean("success", false) &&
                     adminCheck.body.optJSONObject("admin") != null
-                val svipResult = svipFuture?.get()
-                val subscription = svipResult?.takeIf { it.status in 200..299 && it.body.optBoolean("success", false) }
-                    ?.body?.optJSONObject("subscription")
-                val isSvipActive = subscription != null &&
-                    subscription.optBoolean("active", true) &&
-                    subscription.optInt("level", 0) in 1..7
                 profileData = data
                 runOnUiThread {
                     bindProfile(data, token)
                     if (::adminEntry.isInitialized) adminEntry.visibility = if (isOwnProfile && isAdmin) View.VISIBLE else View.GONE
-                    if (::svipMemberEntry.isInitialized) {
-                        svipMemberEntry.visibility = if (isOwnProfile && isSvipActive) View.VISIBLE else View.GONE
-                    }
                 }
             } catch (e: Exception) {
                 Log.e("BAKProfileNative", "Profile load failed", e)
@@ -1123,7 +1071,6 @@ class ProfileActivity : Activity() {
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
             "svip" -> startActivity(Intent(this, SvipActivity::class.java))
-            "svip_member" -> startActivity(Intent(this, SvipMemberActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
