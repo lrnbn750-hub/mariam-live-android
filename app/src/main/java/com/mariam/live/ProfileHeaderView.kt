@@ -3,6 +3,8 @@ package com.mariam.live
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -37,7 +39,8 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         layoutDirection = View.LAYOUT_DIRECTION_LTR
         clipChildren = false
         clipToPadding = false
-        background = HeroBackdropDrawable(context)
+        val profileBackdrop = BitmapFactory.decodeResource(resources, R.drawable.bak_live_profile_background_10x9)
+        background = BitmapDrawable(resources, profileBackdrop).mutate()
         LayoutInflater.from(context).inflate(R.layout.view_profile_header, this, true)
         avatarView = findViewById(R.id.profileHeaderAvatar)
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
