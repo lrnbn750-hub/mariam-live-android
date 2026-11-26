@@ -442,7 +442,7 @@ function renderTabs(){
     const frag=document.createDocumentFragment();
     PACKAGES.forEach(p=>{
       const b=document.createElement('button');b.className='tab';b.id='tab'+p.level;
-      b.setAttribute('role','tab');b.textContent='SSVIP'+p.level;b.onclick=()=>select(p.level);
+      b.setAttribute('role','tab');b.textContent='SVIP '+p.level;b.onclick=()=>select(p.level);
       frag.appendChild(b);
     });
     box.appendChild(frag);box.dataset.ready='1';
@@ -523,10 +523,10 @@ function breakdownHTML(p,fee,back,afterBal){
 }
 
 function openBuy(){
-  const p=pkg(); if(!p){toast('لم يتم تحميل باقات VIP بعد');return;} const {fee,back}=calc(p.price),enough=state.balance>=p.price && p.active!==false;
+  const p=pkg(); if(!p){toast('لم يتم تحميل باقات SVIP بعد');return;} const {fee,back}=calc(p.price),enough=state.balance>=p.price && p.active!==false;
   const renew=state.owned===p.level;
   openSheet(`<h2>${renew?'تجديد':'شراء'} SVIP ${p.level}</h2>
-    <p class="sub">رصيدك الحالي ${fmt(state.balance)} ماسة</p>
+    <p class="sub">رصيدك الحالي ${fmt(state.balance)} ماسة. كل ترقية تُحاسب بالسعر الكامل للمستوى الجديد وتبدأ مدة 30 يوماً جديدة.</p>
     ${breakdownHTML(p,fee,back,state.balance>=p.price?state.balance-fee:null)}
     ${enough?'':`<p class="err">رصيدك لا يكفي. تحتاج إلى ${fmt(p.price-state.balance)} ماسة إضافية.</p>`}
     <div class="acts"><button class="btn ghost" onclick="closeSheet()">إلغاء</button>
@@ -572,7 +572,7 @@ window.applyNativeData=function(data){
     $('buyBtn').disabled=false;
     if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
     renderTabs(); render();
-  }catch(e){toast('تعذر قراءة بيانات VIP');}
+  }catch(e){toast('تعذر قراءة بيانات SVIP');}
 };
 window.onNativeLoadError=function(message){toast(message||'تعذر تحميل بيانات SVIP');};
 window.addEventListener('load',()=>{
