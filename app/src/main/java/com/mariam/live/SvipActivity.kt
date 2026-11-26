@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -67,6 +69,19 @@ class SvipActivity : Activity() {
         @JavascriptInterface
         fun close() {
             runOnUiThread { finish() }
+        }
+
+        @JavascriptInterface
+        fun openWhatsApp(message: String) {
+            runOnUiThread {
+                try {
+                    val url = "https://wa.me/9647715588869?text=" +
+                        java.net.URLEncoder.encode(message, "UTF-8")
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {
+                    Toast.makeText(this@SvipActivity, "تعذر فتح واتساب. تأكد من تثبيته أو جرّب واتساب ويب.", Toast.LENGTH_LONG).show()
+                }
+            }
         }
 
         @JavascriptInterface
