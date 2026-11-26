@@ -1109,8 +1109,9 @@ class RoomActivity : Activity() {
     if(svipResponse.status in 200..299){
      val subscription=activeSvipObject(svipResponse.body)
      currentUserSvipLevel=subscription?.optInt("level",subscription.optInt("svip_level",0))?.coerceIn(0,7)?:0
-     currentUserSvipFrameUrl=(subscription?.optString("frame_asset_url")
-      ?:svipResponse.body.optString("svip_frame_asset_url")).takeIf{it.startsWith("https://")}.orEmpty()
+     val svipFrame=(subscription?.optString("frame_asset_url").orEmpty())
+      .ifBlank{svipResponse.body.optString("svip_frame_asset_url")}
+     currentUserSvipFrameUrl=svipFrame.takeIf{it.startsWith("https://")}.orEmpty()
     }
    }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
