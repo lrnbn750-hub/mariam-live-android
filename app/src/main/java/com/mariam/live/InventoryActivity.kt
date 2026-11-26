@@ -475,7 +475,7 @@ class InventoryActivity : Activity() {
                     )
                 }
                 item.priceCoins > 0L -> {
-                    text = "شراء • ${NumberFormat.getIntegerInstance(Locale.US).format(item.priceCoins)} عملة"
+                    text = "شراء • ${item.priceCoins} عملة"
                     background = RippleDrawable(
                         ColorStateList.valueOf(Color.argb(60, 255, 255, 255)),
                         GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(18, 160, 112), Color.rgb(28, 190, 132)))
