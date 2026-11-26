@@ -1600,7 +1600,8 @@ class RoomActivity : Activity() {
        val member=source.optJSONObject(index)?:continue
        val uid=member.optString("user_id")
        if(uid.isBlank() || uid=="null")continue
-       val level=member.optInt("svip_level",0).coerceIn(0,7)
+       val svipLevel=member.optInt("svip_level",0).coerceIn(0,7)
+   val level=member.optInt("svip_level",0).coerceIn(0,7)
        if(level>0)svipLevelsByUser[uid]=level
        val bubble=member.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[uid]=bubble
        val entry=member.optString("svip_entry_effect_asset_url");if(entry.startsWith("https://"))svipEntryEffectsByUser[uid]=entry
@@ -1866,6 +1867,14 @@ class RoomActivity : Activity() {
        background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,226,138),Color.rgb(240,172,60))).apply{cornerRadius=dp(8).toFloat()}
       },FrameLayout.LayoutParams(-2,dp(14),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
      }else{
+      if(occupied){
+       addView(label("جالس",7.5f,Color.rgb(45,34,18),true).apply{
+        includeFontPadding=false;gravity=Gravity.CENTER;setPadding(dp(5),0,dp(5),0)
+        background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,232,185),Color.rgb(222,184,116))).apply{
+         cornerRadius=dp(7).toFloat();setStroke(dp(1),Color.rgb(255,244,211))
+        }
+       },FrameLayout.LayoutParams(-2,dp(14),Gravity.BOTTOM or Gravity.START).apply{leftMargin=dp(1)})
+      }
       addView(label("$seatNumber",9f,Color.WHITE,true).apply{
        includeFontPadding=false
        background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(215,22,14,48));setStroke(dp(1),Color.argb(130,255,255,255))}
@@ -2269,7 +2278,7 @@ class RoomActivity : Activity() {
     merged.put("user_id",uid)
     val keys=listOf(
      "display_name","username","public_id","account_id","avatar_url","profile_image",
-     "total_xp","level","user_level","bio",
+     "total_xp","level","user_level","bio","svip_level",
      "fans_count","fans","followers_count","followersCount",
      "following_count","following","follow_count","followings_count",
      "diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent",
@@ -3403,6 +3412,18 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    addView(label("LV $level",14f,levelColors[4],true))
   }
   badges.addView(levelBadge)
+  if(svipLevel in 1..7){
+   val svipBadge=LinearLayout(this).apply{
+    orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER
+    setPadding(dp(12),dp(7),dp(12),dp(7))
+    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(73,52,27),Color.rgb(112,76,35),Color.rgb(73,52,27))).apply{
+     cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(218,174,78))
+    }
+    addView(label("♛",14f,Color.rgb(255,226,151),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(5)})
+    addView(label("SVIP $svipLevel",12f,Color.rgb(255,226,151),true))
+   }
+   badges.addView(svipBadge,LinearLayout.LayoutParams(-2,dp(36)).apply{marginStart=dp(8)})
+  }
   card.addView(badges,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(2);bottomMargin=dp(10)})
   val stats=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
