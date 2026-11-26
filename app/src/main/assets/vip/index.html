@@ -272,7 +272,7 @@ const DURATION_DAYS = 30;
 const PACKAGES = [];
 
 /* ===================== State ===================== */
-const state = { balance:0, selected:1, owned:0 };
+const state = { balance:0, selected:1, owned:0, expiresAt:'' };
 const fmt = n => n.toLocaleString('en-US');
 const $ = id => document.getElementById(id);
 const calc = price => ({fee:price, back:0});
@@ -327,7 +327,7 @@ const PRIVS = [
   {ic:'boost',  min:10,label:n=>'تسريع رفع المستوى'},
   {ic:'spark',  min:11,label:n=>'وصول مبكر للمزايا الجديدة'},
   {ic:'frame',  min:12,label:n=>'إطار ملكي متحرك'}
-];
+].filter(v=>v.min<=7);
 const ELITE_MIN = 4;
 
 /* ===================== Badge generator (one hue per tier) ===================== */
@@ -497,7 +497,11 @@ function render(animate=false){
   $('sUsd').textContent='—'; $('sFee').textContent='—'; $('sBack').textContent='—';
   $('bPrice').textContent=fmt(p.price); $('bUsd').textContent='';
   const st=$('bState');
-  if(state.owned===n){st.textContent='عضويتك فعّالة · '+DURATION_DAYS+' يوماً';st.className='l2 ok'}
+  if(state.owned===n){
+    const expiry=state.expiresAt?new Date(state.expiresAt):null;
+    const dateText=expiry&&!Number.isNaN(expiry.getTime())?' · تنتهي '+expiry.toLocaleDateString('ar-IQ'):'';
+    st.textContent='عضويتك فعّالة'+dateText;st.className='l2 ok'
+  }
   else{st.textContent='أنت لست SVIP'+n;st.className='l2'}
   $('buyBtn').textContent=state.owned===n?'تجديد':'شراء';
   $('buyBtn').disabled=!p.active || p.price<=0;
@@ -584,6 +588,7 @@ window.applyNativeData=function(data){
     state.balance=Number(d.balance||0);
     const m=d.membership||{};
     state.owned=Number(m.vip_level||m.level||0);
+    state.expiresAt=String(m.expires_at||'');
     if(PACKAGES.length===0){toast('لا توجد مستويات SVIP متاحة حالياً');$('buyBtn').disabled=true;return;}
     $('buyBtn').disabled=false;
     if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
