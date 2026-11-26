@@ -62,7 +62,7 @@ class AdminActivity : Activity() {
     private val blue = Color.rgb(48, 108, 208)
 
     // ===== التبويبات =====
-    private val tabNames = listOf("نظرة عامة", "البلاغات", "المستخدمون", "الوكالات", "طلبات السحب", "السجل")
+    private val tabNames = listOf("نظرة عامة", "البلاغات", "المستخدمون", "الوكالات", "طلبات السحب", "السجل", "SVIP")
     private val sections = ArrayList<LinearLayout>()
     private val tabViews = ArrayList<TextView>()
     private val loadedTabs = HashSet<Int>()
@@ -76,6 +76,7 @@ class AdminActivity : Activity() {
     private lateinit var agenciesBox: LinearLayout
     private lateinit var withdrawalsBox: LinearLayout
     private lateinit var reportsBox: LinearLayout
+    private lateinit var svipBox: LinearLayout
 
     private var agencyStatus = "pending"
     private var withdrawalStatus = "pending"
@@ -107,7 +108,7 @@ class AdminActivity : Activity() {
         content.setPadding(dp(18), dp(18), dp(18), dp(40))
         listOf(
             buildOverview(), buildReports(), buildUsers(),
-            buildAgencies(), buildWithdrawals(), buildAudit()
+            buildAgencies(), buildWithdrawals(), buildAudit(), buildSvip()
         ).forEach { section ->
             sections.add(section)
             content.addView(section, lp())
@@ -185,6 +186,7 @@ class AdminActivity : Activity() {
                 3 -> loadAgencies()
                 4 -> loadAgencyWithdrawals()
                 5 -> loadAudit()
+                6 -> loadSvipPackages()
             }
         }
     }
@@ -280,6 +282,93 @@ class AdminActivity : Activity() {
         withdrawalsBox.orientation = LinearLayout.VERTICAL
         s.addView(withdrawalsBox, lp(top = 4))
         return s
+    }
+
+    private fun buildSvip(): LinearLayout {
+        val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        section.addView(sectionHeader("إدارة عضويات SVIP", "حدد سعر كل مستوى بالماسات ثم فعّله أو اتركه غير متاح", ::loadSvipPackages))
+        section.addView(infoRow("سياسة الاشتراك", "شراء مباشر من الماسات فقط • 30 يوماً • الترقية بالسعر الكامل وتبدأ مدة جديدة"), lp(top = 12))
+        svipBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        section.addView(svipBox, lp(top = 8))
+        return section
+    }
+
+    private fun loadSvipPackages() {
+        if (!::svipBox.isInitialized) return
+        val token = tokenOrClose() ?: return
+        svipBox.removeAllViews()
+        svipBox.addView(loadingView("جارٍ تحميل أسعار SVIP…"))
+        executor.execute {
+            try {
+                val response = AuthApi.get("/api/admin/svip/packages", token)
+                if (response.status !in 200..299 || !response.body.optBoolean("success", false)) {
+                    throw Exception(response.body.optString("error", "تعذر تحميل إعدادات SVIP"))
+                }
+                val rows = response.body.optJSONArray("packages")
+                val packages = ArrayList<JSONObject>()
+                if (rows != null) for (i in 0 until rows.length()) rows.optJSONObject(i)?.let(packages::add)
+                runOnUiThread {
+                    svipBox.removeAllViews()
+                    if (packages.isEmpty()) svipBox.addView(emptyView("لا توجد مستويات SVIP في قاعدة البيانات"))
+                    packages.forEach { item ->
+                        val level = item.optInt("level")
+                        val price = item.optLong("price_diamonds")
+                        val active = item.optBoolean("active")
+                        val card = newCard()
+                        card.addView(headRow("SVIP $level", if (active) "مفعّل" else "متوقف", if (active) green else orange))
+                        val priceInput = input("السعر بالماسات")
+                        priceInput.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                        priceInput.setText(if (price > 0) price.toString() else "")
+                        card.addView(line("السعر الشهري • مدة ثابتة 30 يوماً", 12, false, muted), lp(top = 10))
+                        card.addView(priceInput, lp(-1, dp(50), top = 6))
+                        val actions = actionRow()
+                        val enable = btn("حفظ وتفعيل", SUCCESS)
+                        enable.setOnClickListener { saveSvipPackage(level, priceInput, true, enable) }
+                        val disable = btn("حفظ وإيقاف", TONAL)
+                        disable.setOnClickListener { saveSvipPackage(level, priceInput, false, disable) }
+                        actions.addView(enable, LinearLayout.LayoutParams(0, dp(44), 1f))
+                        actions.addView(disable, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(8) })
+                        card.addView(actions, lp(top = 10))
+                        svipBox.addView(card, lp(top = 10))
+                    }
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    svipBox.removeAllViews()
+                    svipBox.addView(errorView(error.message ?: "تعذر تحميل أسعار SVIP"))
+                }
+            }
+        }
+    }
+
+    private fun saveSvipPackage(level: Int, priceInput: EditText, active: Boolean, button: Button) {
+        val token = tokenOrClose() ?: return
+        val price = priceInput.text.toString().trim().toLongOrNull()
+        if (price == null || price < 0 || (active && price <= 0)) {
+            Toast.makeText(this, "أدخل سعراً صحيحاً أكبر من صفر لتفعيل المستوى", Toast.LENGTH_LONG).show()
+            return
+        }
+        button.isEnabled = false
+        executor.execute {
+            try {
+                val payload = JSONObject()
+                    .put("price_diamonds", price)
+                    .put("active", active)
+                val response = AuthApi.put("/api/admin/svip/packages/$level", payload, token)
+                if (response.status !in 200..299 || !response.body.optBoolean("success", false)) {
+                    throw Exception(response.body.optString("error", "تعذر حفظ سعر SVIP"))
+                }
+                runOnUiThread {
+                    Toast.makeText(this, "تم حفظ SVIP $level", Toast.LENGTH_SHORT).show()
+                    loadSvipPackages()
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    button.isEnabled = true
+                    Toast.makeText(this, error.message ?: "تعذر حفظ سعر SVIP", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun buildAudit(): LinearLayout {
