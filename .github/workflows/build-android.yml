@@ -1,4 +1,4 @@
-name: Mariam Live Android CI
+name: Mariam Live Android CI # Also validate SVIP room changes
 
 on:
   push:
