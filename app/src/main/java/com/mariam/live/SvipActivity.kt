@@ -134,7 +134,7 @@ class SvipActivity : Activity() {
                     .put("starts_at", rawSubscription.optString("starts_at", ""))
                     .put("expires_at", rawSubscription.optString("expires_at", ""))
                 val wallet = walletResult.body.optJSONObject("wallet") ?: walletResult.body
-                val balance = wallet.optLong("recharge_coins", 0)
+                val balance = wallet.optLong("diamonds_balance", 0)
                 val data = JSONObject()
                     .put("packages", packages)
                     .put("membership", membership)
