@@ -38,6 +38,7 @@
         <activity android:name=".WatchTogetherActivity" android:exported="false" />
         <activity android:name=".RoomActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".HomeActivity" android:exported="false" />
+        <activity android:name=".SvipActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
         <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".AgencyActivity" android:exported="false" />
