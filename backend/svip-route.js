@@ -1,4 +1,51 @@
 module.exports = function registerSvipRoutes(app, db, authenticateToken) {
+  // SVIP pricing is editable only by explicitly allowlisted administrator UUIDs.
+  const requireSvipAdmin = (req, res, next) => {
+    const allowed = String(process.env.SVIP_ADMIN_USER_IDS || "")
+      .split(",").map(value => value.trim()).filter(Boolean);
+    if (!allowed.includes(String(req.userId || ""))) {
+      return res.status(403).json({ success: false, error: "غير مصرح بإدارة أسعار SVIP" });
+    }
+    next();
+  };
+
+  app.get("/api/admin/svip/packages", authenticateToken, requireSvipAdmin, async (_req, res) => {
+    try {
+      const result = await db.query(
+        `SELECT level, name, price_diamonds, duration_days, active, updated_at
+         FROM public.svip_packages ORDER BY level ASC`
+      );
+      res.json({ success: true, packages: result.rows });
+    } catch (error) {
+      console.error("Admin SVIP packages:", error.message);
+      res.status(500).json({ success: false, error: "تعذر تحميل أسعار SVIP" });
+    }
+  });
+
+  app.put("/api/admin/svip/packages/:level", authenticateToken, requireSvipAdmin, async (req, res) => {
+    const level = Number(req.params.level);
+    const price = Number(req.body.price_diamonds);
+    const active = req.body.active === true;
+    if (!Number.isInteger(level) || level < 1 || level > 7 ||
+        !Number.isSafeInteger(price) || price < 0 || (active && price <= 0)) {
+      return res.status(400).json({ success: false, error: "السعر أو المستوى غير صالح. يجب أن يكون السعر أكبر من صفر لتفعيل الباقة." });
+    }
+    try {
+      const result = await db.query(
+        `UPDATE public.svip_packages
+         SET price_diamonds=$2, active=$3, updated_at=NOW()
+         WHERE level=$1
+         RETURNING level, name, price_diamonds, duration_days, active, updated_at`,
+        [level, price, active]
+      );
+      if (!result.rows.length) return res.status(404).json({ success: false, error: "المستوى غير موجود" });
+      res.json({ success: true, package: result.rows[0] });
+    } catch (error) {
+      console.error("Update SVIP package:", error.message);
+      res.status(500).json({ success: false, error: "تعذر حفظ إعدادات SVIP" });
+    }
+  });
+
   app.get("/api/svip/levels", authenticateToken, async (_req, res) => {
     try {
       const result = await db.query(
