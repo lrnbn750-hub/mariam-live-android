@@ -153,8 +153,8 @@ class SvipActivity : Activity() {
                     subscription.optInt("svip_level", 0)) ?: 0
                 val status = subscription?.optString("status").orEmpty()
                 val active = subscription != null && level in 1..7 &&
-                    (subscription.optBoolean("active", status.equals("active", true)) ||
-                        status.equals("active", true))
+                    if (subscription.has("active")) subscription.optBoolean("active")
+                    else status.equals("active", true)
                 val expiry = subscription?.optString("expires_at").orEmpty()
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
@@ -190,9 +190,9 @@ class SvipActivity : Activity() {
     }
 
     private fun renderLevels(levels: JSONArray) {
-        val oldStatus = statusText
-        content.removeViews(2, (content.childCount - 2).coerceAtLeast(0))
-        content.addView(oldStatus, 1)
+        if (content.childCount > 2) {
+            content.removeViews(2, content.childCount - 2)
+        }
         if (levels.length() == 0) {
             content.addView(label("لا توجد مستويات متاحة حالياً. يرجى المحاولة لاحقاً.", 13f, muted))
             return
