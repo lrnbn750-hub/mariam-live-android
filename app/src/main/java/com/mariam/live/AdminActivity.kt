@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -17,6 +18,7 @@ import android.widget.Toast
 import androidx.core.view.WindowCompat
 import org.json.JSONObject
 import java.net.URLEncoder
+import android.text.InputType
 import java.util.concurrent.Executors
 
 /** Native administration screen. All authority is checked by Admin V2 on the server. */
@@ -30,6 +32,7 @@ class AdminActivity : Activity() {
     private lateinit var usersBox: LinearLayout
     private lateinit var auditBox: LinearLayout
     private lateinit var agenciesBox: LinearLayout
+    private lateinit var svipBox: LinearLayout
     private var agencyStatus = "pending"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +70,13 @@ class AdminActivity : Activity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))
         }
         page.addView(statsBox)
+
+        page.addView(title("إدارة مستويات SVIP", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
+        val refreshSvip = actionButton("تحديث مستويات SVIP")
+        page.addView(refreshSvip, LinearLayout.LayoutParams(-1, dp(46)))
+        refreshSvip.setOnClickListener { loadSvipLevels() }
+        svipBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        page.addView(svipBox)
 
         page.addView(title("إدارة المستخدمين", 18).apply { setPadding(0, dp(22), 0, dp(10)) })
         searchInput = EditText(this).apply {
@@ -125,12 +135,135 @@ class AdminActivity : Activity() {
                     statsBox.addView(line("إجمالي المستخدمين: ${data.optString("total_users", "—")}", 15))
                     statsBox.addView(line("المستخدمون النشطون: ${data.optString("active_users", "—")}", 15))
                     statsBox.addView(line("المديرون النشطون: ${data.optString("active_admins", "—")}", 15))
+                    loadSvipLevels()
                 }
             } catch (e: Exception) {
                 runOnUiThread { Toast.makeText(this, e.message ?: "تعذر الاتصال بلوحة الإدارة", Toast.LENGTH_LONG).show(); finish() }
             }
         }
     }
+
+    private fun loadSvipLevels() {
+        val token = tokenOrClose() ?: return
+        svipBox.removeAllViews()
+        svipBox.addView(line("جارٍ تحميل إعدادات SVIP...", 14, false, muted))
+        executor.execute {
+            try {
+                val response = AuthApi.get("/api/admin/v2/svip/levels", token)
+                if (response.status !in 200..299) {
+                    throw Exception(response.body.optString("error", "لا توجد صلاحية لإدارة SVIP"))
+                }
+                val levels = response.body.optJSONArray("levels")
+                    ?: response.body.optJSONArray("items")
+                    ?: org.json.JSONArray()
+                runOnUiThread {
+                    if (!isFinishing) renderSvipLevels(levels, token)
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    if (!isFinishing) {
+                        svipBox.removeAllViews()
+                        svipBox.addView(line(error.message ?: "تعذر تحميل إعدادات SVIP", 13, false, Color.rgb(190, 55, 65)))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun renderSvipLevels(levels: org.json.JSONArray, token: String) {
+        svipBox.removeAllViews()
+        if (levels.length() == 0) {
+            svipBox.addView(line("لا توجد مستويات SVIP في الخادم.", 13, false, muted))
+            return
+        }
+        for (index in 0 until levels.length()) {
+            val item = levels.optJSONObject(index) ?: continue
+            val level = item.optInt("level", index + 1)
+            if (level !in 1..7) continue
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = rounded(Color.WHITE)
+                setPadding(dp(14), dp(12), dp(14), dp(14))
+            }
+            card.addView(line("SVIP " + level, 17, true, Color.rgb(145, 103, 34)))
+            val nameField = adminInput(item.optString("name").takeIf { it != "null" }.orEmpty(), "اسم المستوى")
+            val priceValue = if (item.isNull("price_coins")) "" else item.optLong("price_coins").toString()
+            val priceField = adminInput(priceValue, "السعر بالعملات", numeric = true)
+            val badgeField = adminInput(item.optString("badge_asset_url").takeIf { it != "null" }.orEmpty(), "رابط شارة SVIP")
+            val frameField = adminInput(item.optString("frame_asset_url").takeIf { it != "null" }.orEmpty(), "رابط إطار الصورة")
+            val bubbleField = adminInput(item.optString("chat_bubble_asset_url").takeIf { it != "null" }.orEmpty(), "رابط فقاعة الدردشة")
+            val entryField = adminInput(item.optString("entry_effect_asset_url").takeIf { it != "null" }.orEmpty(), "رابط مؤثر الدخول")
+            listOf(nameField, priceField, badgeField, frameField, bubbleField, entryField).forEach { field ->
+                card.addView(field, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(7) })
+            }
+            val active = CheckBox(this).apply {
+                text = "المستوى متاح للشراء"
+                isChecked = item.optBoolean("active", true)
+                setTextColor(ink)
+            }
+            card.addView(active, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+            val save = actionButton("حفظ إعدادات SVIP " + level)
+            card.addView(save, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(7) })
+            save.setOnClickListener {
+                val priceText = priceField.text.toString().trim()
+                val price = if (priceText.isBlank()) null else priceText.toLongOrNull()
+                if (priceText.isNotBlank() && (price == null || price <= 0L)) {
+                    priceField.error = "أدخل سعراً صحيحاً أكبر من صفر أو اتركه فارغاً"
+                    return@setOnClickListener
+                }
+                val payload = JSONObject()
+                    .put("name", nameField.text.toString().trim().ifBlank { "SVIP " + level })
+                    .put("active", active.isChecked)
+                    .put("price_coins", price ?: JSONObject.NULL)
+                    .put("badge_asset_url", nullableAdminValue(badgeField))
+                    .put("frame_asset_url", nullableAdminValue(frameField))
+                    .put("chat_bubble_asset_url", nullableAdminValue(bubbleField))
+                    .put("entry_effect_asset_url", nullableAdminValue(entryField))
+                save.isEnabled = false
+                executor.execute {
+                    try {
+                        val result = AuthApi.put("/api/admin/v2/svip/levels/" + level, payload, token)
+                        if (result.status !in 200..299) {
+                            throw Exception(result.body.optString("error", "تعذر حفظ إعدادات SVIP"))
+                        }
+                        runOnUiThread {
+                            if (!isFinishing) {
+                                Toast.makeText(this, "تم حفظ SVIP " + level, Toast.LENGTH_SHORT).show()
+                                loadSvipLevels()
+                            }
+                        }
+                    } catch (error: Exception) {
+                        runOnUiThread {
+                            if (!isFinishing) {
+                                save.isEnabled = true
+                                Toast.makeText(this, error.message ?: "فشل الحفظ", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                }
+            }
+            svipBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        }
+    }
+
+    private fun nullableAdminValue(field: EditText): Any {
+        val value = field.text.toString().trim()
+        return if (value.isBlank()) JSONObject.NULL else value
+    }
+
+    private fun adminInput(value: String, hintText: String, numeric: Boolean = false) =
+        EditText(this).apply {
+            hint = hintText
+            setText(value)
+            textSize = 13f
+            isSingleLine = true
+            inputType = if (numeric) InputType.TYPE_CLASS_NUMBER
+                else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            setTextColor(ink)
+            setHintTextColor(muted)
+            background = rounded(Color.rgb(248, 249, 252))
+            setPadding(dp(12), 0, dp(12), 0)
+        }
 
     private fun searchUsers() {
         val query = searchInput.text.toString().trim()

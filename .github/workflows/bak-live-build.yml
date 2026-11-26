@@ -17,6 +17,10 @@ on:
       - feature/bak-live-wealth-level-redesign
       - feature/bak-live-youtube-watch-together-original
       - fix/vip-display-youtube-base
+      - feature/bak-live-svip-1-7
+  pull_request:
+    branches:
+      - bak-live
 
 permissions:
   contents: read
