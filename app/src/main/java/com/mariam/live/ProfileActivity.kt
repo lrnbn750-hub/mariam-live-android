@@ -572,7 +572,7 @@ class ProfileActivity : Activity() {
         }
         publicGender = text("♂", 11f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(84, 170, 235), 10f, Color.TRANSPARENT)
+            background = rounded(Color.rgb(110, 72, 168), 10f, Color.TRANSPARENT)
         }
         nameRow.addView(publicGender, LinearLayout.LayoutParams(dp(30f), dp(20f)).apply { marginEnd = dp(8f) })
         publicName = text("مستخدم BAK LIVE", 22f, Color.WHITE, true).apply {
@@ -617,7 +617,7 @@ class ProfileActivity : Activity() {
                     setOnClickListener { onClick() }
                 }
             }
-            val value = text("—", 16f, ink, true).apply {
+            val value = text("—", 16f, Color.WHITE, true).apply {
                 gravity = Gravity.CENTER
                 setSingleLine(true)
                 includeFontPadding = false
@@ -626,7 +626,7 @@ class ProfileActivity : Activity() {
             }
             setter(value)
             pair.addView(value, LinearLayout.LayoutParams(-2, -2))
-            pair.addView(text(caption, 10.5f, sub, false).apply {
+            pair.addView(text(caption, 10.5f, Color.rgb(245, 237, 255), false).apply {
                 gravity = Gravity.CENTER
                 textDirection = View.TEXT_DIRECTION_RTL
                 setSingleLine(true)
@@ -656,7 +656,8 @@ class ProfileActivity : Activity() {
         }
         publicLevel = text("◆  1", 12f, Color.rgb(70, 100, 140), true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(222, 236, 250), 12f, Color.TRANSPARENT)
+            background = rounded(Color.rgb(112, 76, 35), 12f, Color.rgb(255, 220, 145))
+            setTextColor(Color.rgb(255, 235, 190))
             setPadding(dp(11f), dp(3f), dp(11f), dp(3f))
         }
         badges.addView(publicLevel, LinearLayout.LayoutParams(-2, -2))
