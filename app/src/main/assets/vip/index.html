@@ -43,6 +43,9 @@ svg{display:block}
   font-size:13px;font-weight:600;
 }
 .wallet svg{width:16px;height:16px;fill:none;stroke:#7fd8ff;stroke-width:1.6;stroke-linejoin:round}
+.member-entry{display:none;align-items:center;gap:6px;margin-inline-start:6px;padding:7px 10px;border:1px solid #806d48;border-radius:999px;background:linear-gradient(135deg,#3b3440,#292d3d);color:#f2dfb7;font-size:12px;font-weight:700;white-space:nowrap}
+.member-entry.show{display:flex}
+.member-entry svg{width:15px;height:15px;fill:none;stroke:#f2d89e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .wallet small{color:var(--muted);font-weight:500;font-size:11px}
 .tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:3px 7px 3px;gap:1px;scroll-snap-type:x proximity;overscroll-behavior-x:contain;touch-action:pan-x}
 .tabs::-webkit-scrollbar{display:none}
@@ -216,10 +219,14 @@ svg{display:block}
     <div class="head">
       <button class="back" aria-label="رجوع" id="backBtn"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       <div class="title">SVIP</div>
-      <div class="wallet" aria-label="رصيد الألماس">
+      <div class="wallet" aria-label="رصيد المحفظة">
         <svg viewBox="0 0 24 24"><path d="M6 4h12l4 6-10 11L2 10z"/><path d="M2 10h20M9 4l-2 6 5 11 5-11-2-6"/></svg>
         <span id="balance">30,000</span>
       </div>
+      <button class="member-entry" id="memberEntry" type="button" aria-label="عضويتي SVIP">
+        <svg viewBox="0 0 24 24"><path d="M3 8l4 3 5-7 5 7 4-3-2 11H5z"/><path d="M7 21h10"/></svg>
+        <span>عضويتي</span>
+      </button>
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="مستويات SVIP"></div>
   </div>
@@ -561,6 +568,7 @@ function onNativePurchaseResult(ok,message){
     toast(message || 'تعذر إتمام الشراء');
   }
 }
+$('memberEntry').onclick=()=>{if(window.AndroidVip)window.AndroidVip.openMemberCenter();};
 window.applyNativeData=function(data){
   try{
     const d=typeof data==='string'?JSON.parse(data):data;
@@ -575,6 +583,7 @@ window.applyNativeData=function(data){
     const m=d.membership||{};
     state.owned=Number(m.vip_level||m.level||0);
     state.expiresAt=String(m.expires_at||'');
+    $('memberEntry').classList.toggle('show',state.owned>0);
     if(PACKAGES.length===0){toast('لا توجد مستويات SVIP متاحة حالياً');$('buyBtn').disabled=true;return;}
     $('buyBtn').disabled=false;
     if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
