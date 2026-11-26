@@ -92,6 +92,7 @@ class InventoryActivity : Activity() {
     private var items: List<Item> = emptyList()
     private var selectedTab = "all"
     private var token = ""
+    private val isStoreMode: Boolean get() = intent.getStringExtra("inventory_mode") == "store"
 
     private lateinit var chipsRow: LinearLayout
     private lateinit var content: LinearLayout
@@ -180,7 +181,7 @@ class InventoryActivity : Activity() {
         }
         addView(back, LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(label(19f, fBold, ink).apply {
-            text = "حقيبتي"
+            text = if (isStoreMode) "المتجر" else "مظهري"
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@InventoryActivity), LinearLayout.LayoutParams(dp(44), dp(44)))
@@ -237,6 +238,7 @@ class InventoryActivity : Activity() {
                 val response = AuthApi.get("/api/inventory", token)
                 if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل الحقيبة"))
                 val parsed = parseItems(response.body.optJSONArray("items") ?: JSONArray())
+                    .filter { if (isStoreMode) !it.owned && it.priceCoins > 0L else it.owned }
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
                     items = parsed
@@ -353,10 +355,10 @@ class InventoryActivity : Activity() {
 
     private fun emptyState(): View {
         val (title, desc) = when (selectedTab) {
-            "frame" -> "لا توجد إطارات بعد" to "الإطارات التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            "background" -> "لا توجد خلفيات بعد" to "خلفيات الحساب التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            "chat_bubble" -> "لا توجد فقاعات بعد" to "فقاعات الدردشة التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            else -> "حقيبتك فارغة حالياً" to "ستظهر هنا الإطارات والخلفيات والفقاعات التي تحصل عليها من الإدارة أو العروض أو المتجر."
+            "frame" -> if (isStoreMode) "لا توجد إطارات متاحة للشراء" to "ستظهر هنا الإطارات التي يمكنك شراؤها من المتجر." else "لا توجد إطارات مملوكة" to "الإطارات التي تملكها ستظهر هنا بعد الحصول عليها من المتجر أو الإدارة."
+            "background" -> if (isStoreMode) "لا توجد خلفيات متاحة للشراء" to "ستظهر هنا خلفيات الملف الشخصي المتاحة للشراء." else "لا توجد خلفيات مملوكة" to "الخلفيات التي تملكها ستظهر هنا بعد الحصول عليها."
+            "chat_bubble" -> if (isStoreMode) "لا توجد فقاعات متاحة للشراء" to "ستظهر هنا فقاعات الدردشة المتاحة للشراء." else "لا توجد فقاعات مملوكة" to "فقاعات الدردشة التي تملكها ستظهر هنا."
+            else -> if (isStoreMode) "لا توجد عناصر متاحة للشراء" to "سيتم عرض العناصر الجديدة هنا عند إضافتها إلى المتجر." else "مظهرك فارغ حالياً" to "ستظهر هنا الإطارات والخلفيات والفقاعات التي تملكها."
         }
         return stateView(Icon.BAG, title, desc)
     }
@@ -428,7 +430,7 @@ class InventoryActivity : Activity() {
         val holder = FrameLayout(this)
         holder.addView(preview, FrameLayout.LayoutParams(-1, -1))
 
-        if (!item.owned) {
+        if (!item.owned && !isStoreMode) {
             holder.addView(View(this).apply { background = rounded(Color.argb(130, 255, 255, 255), 14) },
                 FrameLayout.LayoutParams(-1, -1))
             holder.addView(FrameLayout(this).apply {
