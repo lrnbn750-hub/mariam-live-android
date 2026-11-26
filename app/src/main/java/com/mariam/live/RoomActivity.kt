@@ -3234,8 +3234,32 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    gravity=Gravity.CENTER_HORIZONTAL
    layoutDirection=View.LAYOUT_DIRECTION_RTL
    setPadding(dp(18),dp(12),dp(18),dp(20))
-   // Royal background is applied only to the in-room member mini-profile sheet.
-   background=BitmapDrawable(resources,BitmapFactory.decodeResource(resources,R.drawable.bak_live_profile_background_10x9))
+   // Draw the royal art inside the sheet without exposing the bitmap's
+   // 1620px intrinsic height to Android measurement (which made the sheet huge).
+   val royalBitmap=BitmapFactory.decodeResource(resources,R.drawable.bak_live_profile_background_10x9)
+   background=object:Drawable(){
+    private val imagePaint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val shape=Path()
+    private val rect=RectF()
+    override fun onBoundsChange(bounds:Rect){
+     rect.set(bounds)
+     shape.reset()
+     val radius=dp(28).toFloat()
+     shape.addRoundRect(rect,floatArrayOf(radius,radius,radius,radius,0f,0f,0f,0f),Path.Direction.CW)
+    }
+    override fun draw(canvas:Canvas){
+     val save=canvas.save()
+     canvas.clipPath(shape)
+     canvas.drawBitmap(royalBitmap,null,rect,imagePaint)
+     canvas.restoreToCount(save)
+    }
+    override fun setAlpha(alpha:Int){imagePaint.alpha=alpha}
+    override fun setColorFilter(colorFilter:ColorFilter?){imagePaint.colorFilter=colorFilter}
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun getOpacity():Int=android.graphics.PixelFormat.TRANSLUCENT
+    override fun getIntrinsicWidth():Int=-1
+    override fun getIntrinsicHeight():Int=-1
+   }
    clipChildren=true
    clipToPadding=true
    elevation=dp(8).toFloat()
