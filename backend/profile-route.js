@@ -345,6 +345,18 @@ module.exports = function(app, db, authenticateToken) {
   // Persistent inventory: equipping is allowed only for items owned by this account.
   app.get("/api/inventory", authenticateToken, async (req, res) => {
     try {
+      // Expired temporary cosmetics are removed server-side before inventory is returned.
+      await db.query(
+        `DELETE FROM user_equipped_items e
+         USING user_inventory ui
+         WHERE e.user_id=ui.user_id AND e.item_id=ui.item_id
+           AND ui.user_id=$1 AND ui.expires_at IS NOT NULL AND ui.expires_at <= NOW()`,
+        [req.userId]
+      );
+      await db.query(
+        "DELETE FROM user_inventory WHERE user_id=$1 AND expires_at IS NOT NULL AND expires_at <= NOW()",
+        [req.userId]
+      );
       // Seven launch chat-bubble skins are free starter inventory items.
       await db.query(
         `INSERT INTO user_inventory(user_id,item_id,obtained_from)
@@ -372,13 +384,18 @@ module.exports = function(app, db, authenticateToken) {
       );
       const result = await db.query(
         `SELECT i.item_id, i.name, i.item_type, i.asset_url, i.source_type, i.price_iqd,
-                (ui.user_id IS NOT NULL) AS owned,
+                TRUE AS owned,
                 (e.item_id IS NOT NULL) AS equipped,
-                ui.obtained_from, ui.obtained_at
-         FROM store_items i
-         LEFT JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
-         LEFT JOIN user_equipped_items e ON e.item_id=i.item_id AND e.user_id=$1
-         WHERE i.active=TRUE ORDER BY owned DESC, i.item_type, i.name`,
+                ui.obtained_from, ui.obtained_at, ui.expires_at,
+                CASE WHEN ui.expires_at IS NULL THEN NULL
+                     ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (ui.expires_at-NOW()))))::bigint
+                END AS remaining_seconds
+         FROM user_inventory ui
+         JOIN store_items i ON i.item_id=ui.item_id AND i.active=TRUE
+         LEFT JOIN user_equipped_items e ON e.item_id=i.item_id AND e.user_id=ui.user_id
+         WHERE ui.user_id=$1
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+         ORDER BY i.item_type, i.name`,
         [req.userId]
       );
       return res.json({ items: result.rows });
@@ -397,7 +414,9 @@ module.exports = function(app, db, authenticateToken) {
       const owned = await client.query(
         `SELECT i.item_id, i.item_type FROM store_items i
          JOIN user_inventory ui ON ui.item_id=i.item_id AND ui.user_id=$1
-         WHERE i.item_id=$2 AND i.active=TRUE FOR UPDATE OF ui`,
+         WHERE i.item_id=$2 AND i.active=TRUE
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+         FOR UPDATE OF ui`,
         [req.userId, itemId]
       );
       if (!owned.rows.length) {
@@ -433,6 +452,8 @@ module.exports = function(app, db, authenticateToken) {
         `SELECT e.user_id, e.item_id
          FROM user_equipped_items e
          JOIN store_items i ON i.item_id=e.item_id AND i.active=TRUE
+         JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+           AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
          WHERE e.item_type='chat_bubble' AND e.user_id=ANY($1::uuid[])`,
         [userIds]
       );
