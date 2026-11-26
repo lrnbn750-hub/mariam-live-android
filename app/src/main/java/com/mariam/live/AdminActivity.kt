@@ -215,10 +215,10 @@ class AdminActivity : Activity() {
                     .put("name", nameField.text.toString().trim().ifBlank { "SVIP " + level })
                     .put("active", active.isChecked)
                     .put("price_coins", price ?: JSONObject.NULL)
-                    .put("badge_asset_url", badgeField.text.toString().trim().ifBlank { null } ?: JSONObject.NULL)
-                    .put("frame_asset_url", frameField.text.toString().trim().ifBlank { null } ?: JSONObject.NULL)
-                    .put("chat_bubble_asset_url", bubbleField.text.toString().trim().ifBlank { null } ?: JSONObject.NULL)
-                    .put("entry_effect_asset_url", entryField.text.toString().trim().ifBlank { null } ?: JSONObject.NULL)
+                    .put("badge_asset_url", nullableAdminValue(badgeField))
+                    .put("frame_asset_url", nullableAdminValue(frameField))
+                    .put("chat_bubble_asset_url", nullableAdminValue(bubbleField))
+                    .put("entry_effect_asset_url", nullableAdminValue(entryField))
                 save.isEnabled = false
                 executor.execute {
                     try {
@@ -244,6 +244,11 @@ class AdminActivity : Activity() {
             }
             svipBox.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
         }
+    }
+
+    private fun nullableAdminValue(field: EditText): Any {
+        val value = field.text.toString().trim()
+        return if (value.isBlank()) JSONObject.NULL else value
     }
 
     private fun adminInput(value: String, hintText: String, numeric: Boolean = false) =
