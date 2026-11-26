@@ -258,7 +258,6 @@ svg{display:block}
       <div class="l2" id="bState"></div>
       <div class="l2" id="bUsd"></div>
     </div>
-    <button class="btn send" id="sendBtn" style="display:none">إرسال</button>
     <button class="btn main" id="buyBtn">شراء</button>
   </div>
 </div>
@@ -539,25 +538,6 @@ function openBuy(){
   };
 }
 
-function openSend(){
-  const p=pkg(); if(!p){toast('لم يتم تحميل باقات VIP بعد');return;} const {fee,back}=calc(p.price),enough=state.balance>=p.price && p.active!==false;
-  openSheet(`<h2>إرسال VIP ${p.level} كهدية</h2>
-    <p class="sub">أدخل معرّف المستلم. تُحتسب النسب نفسها: 35% للتطبيق و65% تعود إلى محفظتك.</p>
-    <label class="field"><span>معرّف المستخدم (ID)</span><input id="rid" inputmode="numeric" autocomplete="off" placeholder="مثال: 10458237"></label>
-    ${breakdownHTML(p,fee,back,state.balance>=p.price?state.balance-fee:null)}
-    <p class="err" id="sErr" style="display:${enough?'none':'block'}">${enough?'':'رصيدك لا يكفي. تحتاج إلى '+fmt(p.price-state.balance)+' ماسة إضافية.'}</p>
-    <div class="acts"><button class="btn ghost" onclick="closeSheet()">إلغاء</button>
-    <button class="btn main" id="okSend" ${enough?'':'disabled'}>إرسال</button></div>`);
-  $('okSend').onclick=async()=>{
-    const id=$('rid').value.trim();
-    if(!/^\d{4,}$/.test(id)){const e=$('sErr');e.style.display='block';e.textContent='أدخل معرّفاً صحيحاً من 4 أرقام على الأقل.';$('rid').focus();return}
-    $('okSend').disabled=true;
-    const r=await submitPurchase({level:p.level,price:p.price,fee,back,recipient:id});
-    if(r.ok){state.balance=state.balance-p.price+back;closeSheet();render();toast('تم إرسال SVIP '+p.level+' إلى '+id)}
-    else{toast('تعذّر الإرسال. حاول مرة أخرى.');closeSheet()}
-  };
-}
-
 function openInfo(){
   openSheet(`<h2>امتيازات النخبة</h2>
     <p class="sub">تبدأ من VIP${ELITE_MIN}. عند دخولك الغرفة يظهر اسمك كرجل غامض بدل ظهور الإشعار المعتاد، فتدخل دون لفت الانتباه.</p>
@@ -591,13 +571,11 @@ window.applyNativeData=function(data){
     if(PACKAGES.length===0){toast('لا توجد مستويات SVIP متاحة حالياً');$('buyBtn').disabled=true;return;}
     $('buyBtn').disabled=false;
     if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
-    $('sendBtn').style.display='none'; // gifting is hidden until a real server gifting endpoint exists
     renderTabs(); render();
   }catch(e){toast('تعذر قراءة بيانات VIP');}
 };
 window.onNativeLoadError=function(message){toast(message||'تعذر تحميل بيانات SVIP');};
 window.addEventListener('load',()=>{
-  $('sendBtn').style.display='none';
   if(window.AndroidVip) window.AndroidVip.onPageReady();
 });
 
