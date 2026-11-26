@@ -246,6 +246,11 @@ svg{display:block}
       <div class="row"><span>مدة العضوية</span><b>30 يوماً</b></div>
       <p class="note">يتم التحقق من السعر والرصيد وتنفيذ الاشتراك من خادم BAK LIVE. مدة العضوية 30 يوماً.</p>
     </section>
+    <section class="split" id="svipSupport" style="margin-top:16px;padding:16px">
+      <h3 style="padding:0 0 8px;border:0">مركز خدمة كبار الشخصيات</h3>
+      <p class="note" style="padding:0 0 12px">للتبليغ عن إساءة أو طلب المساعدة، تواصل مباشرة مع الدعم الموحد عبر واتساب وأرفق صورة توضح الحالة.</p>
+      <button class="btn main" id="whatsappBtn" style="width:100%;height:46px;background:#1fae68;border-color:#1fae68;color:#fff">بلاغات ودعم SVIP عبر واتساب</button>
+    </section>
   </main>
 
   <div class="buy">
@@ -582,6 +587,11 @@ window.addEventListener('load',()=>{
 });
 
 /* ===================== Events ===================== */
+$('whatsappBtn').onclick=()=>{
+  if(state.owned<1){toast('هذه الخدمة متاحة لأعضاء SVIP الفعّالين فقط');return;}
+  const msg='مرحباً، أنا عضو SVIP في تطبيق BAK LIVE. أحتاج إلى تقديم بلاغ أو طلب مساعدة.\\nمستوى SVIP: '+state.owned+'\\nتاريخ انتهاء العضوية: '+(state.expiresAt||'غير ظاهر')+'\\nرقم المستخدم: أضيفه هنا\\nرقم الغرفة: أضيفه هنا\\nتفاصيل البلاغ: أضيفها هنا\\nسأرفق صورة أو دليلاً يوضح الحالة.';
+  if(window.AndroidVip) window.AndroidVip.openWhatsApp(msg); else toast('تعذر فتح واتساب');
+};
 $('buyBtn').onclick=openBuy;
 $('infoBtn').onclick=openInfo;
 $('backBtn').onclick=()=>{ if(window.AndroidVip) AndroidVip.close(); else if(history.length>1) history.back(); };
