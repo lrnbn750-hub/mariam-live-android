@@ -1073,7 +1073,7 @@ class ProfileActivity : Activity() {
             "store" -> startActivity(Intent(this, InventoryActivity::class.java).putExtra("inventory_mode", "store"))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
-            "svip" -> startActivity(Intent(this, SvipActivity::class.java))
+            "svip" -> startActivity(Intent(this, SvipMemberActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
