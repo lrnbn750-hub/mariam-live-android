@@ -16,6 +16,7 @@ set +a
 : "${DB_NAME:?DB_NAME missing}"
 : "${DB_USER:?DB_USER missing}"
 : "${DB_PASSWORD:?DB_PASSWORD missing}"
+: "${SVIP_ADMIN_USER_IDS:?Set SVIP_ADMIN_USER_IDS to comma-separated internal UUIDs of authorized SVIP administrators}"
 
 export PGPASSWORD="$DB_PASSWORD"
 psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" \
@@ -43,4 +44,4 @@ sleep 2
 curl -fsS https://nokiraq.duckdns.org/api/health
 echo
 echo "SVIP routes and database migration installed."
-echo "SVIP prices are intentionally inactive until configured in public.svip_packages."
+echo "SVIP prices are intentionally inactive until configured in the Admin > SVIP screen."
