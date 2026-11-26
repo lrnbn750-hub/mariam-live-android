@@ -521,46 +521,11 @@ class ProfileActivity : Activity() {
         })
         content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 9 / 10))
 
-        // Royal identity backdrop: only behind the name, ID, statistics and level.
-        // The custom drawable has no intrinsic size so the artwork cannot enlarge this panel.
-        val identityPanel = FrameLayout(this)
+        // Plain white identity section, matching the original BAK LIVE profile design.
+        val identityPanel = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
         val identityContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.TRANSPARENT)
-        }
-        val royalIdentityBitmap = BitmapFactory.decodeResource(resources, R.drawable.bak_live_profile_background_10x9)
-        identityPanel.background = object : Drawable() {
-            private val imagePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
-            private val shadePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.argb(72, 35, 18, 78)
-            }
-            private val destination = android.graphics.RectF()
-            private val source = android.graphics.Rect()
-            override fun onBoundsChange(bounds: android.graphics.Rect) {
-                destination.set(bounds)
-                // CENTER_CROP while preserving the artwork's original aspect ratio.
-                val viewRatio = bounds.width().toFloat() / bounds.height().coerceAtLeast(1)
-                val imageRatio = royalIdentityBitmap.width.toFloat() / royalIdentityBitmap.height.coerceAtLeast(1)
-                if (imageRatio > viewRatio) {
-                    val cropWidth = (royalIdentityBitmap.height * viewRatio).toInt().coerceAtLeast(1)
-                    val left = (royalIdentityBitmap.width - cropWidth) / 2
-                    source.set(left, 0, left + cropWidth, royalIdentityBitmap.height)
-                } else {
-                    val cropHeight = (royalIdentityBitmap.width / viewRatio).toInt().coerceAtLeast(1)
-                    val top = (royalIdentityBitmap.height - cropHeight) / 2
-                    source.set(0, top, royalIdentityBitmap.width, top + cropHeight)
-                }
-            }
-            override fun draw(canvas: android.graphics.Canvas) {
-                canvas.drawBitmap(royalIdentityBitmap, source, destination, imagePaint)
-                canvas.drawRect(destination, shadePaint)
-            }
-            override fun setAlpha(alpha: Int) { imagePaint.alpha = alpha; shadePaint.alpha = alpha }
-            override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { imagePaint.colorFilter = colorFilter }
-            @Suppress("OVERRIDE_DEPRECATION")
-            override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
-            override fun getIntrinsicWidth(): Int = -1
-            override fun getIntrinsicHeight(): Int = -1
+            setBackgroundColor(Color.WHITE)
         }
 
         // ---- Name + gender ----
@@ -572,10 +537,10 @@ class ProfileActivity : Activity() {
         }
         publicGender = text("♂", 11f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(110, 72, 168), 10f, Color.TRANSPARENT)
+            background = rounded(Color.rgb(84, 170, 235), 10f, Color.TRANSPARENT)
         }
         nameRow.addView(publicGender, LinearLayout.LayoutParams(dp(30f), dp(20f)).apply { marginEnd = dp(8f) })
-        publicName = text("مستخدم BAK LIVE", 22f, Color.WHITE, true).apply {
+        publicName = text("مستخدم BAK LIVE", 22f, ink, true).apply {
             textDirection = View.TEXT_DIRECTION_RTL
             setSingleLine(true)
         }
@@ -591,8 +556,8 @@ class ProfileActivity : Activity() {
         }
         publicLocation = text("", 13f, sub).apply { visibility = View.GONE; textDirection = View.TEXT_DIRECTION_RTL }
         idRow.addView(publicLocation)
-        idRow.addView(text("⧉", 13f, Color.rgb(245, 237, 255)).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(5f), 0) })
-        publicIdView = text("ID: —", 14f, Color.rgb(245, 237, 255)).apply { setOnClickListener { copyId() } }
+        idRow.addView(text("⧉", 13f, sub).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(5f), 0) })
+        publicIdView = text("ID: —", 14f, sub).apply { setOnClickListener { copyId() } }
         idRow.addView(publicIdView)
         identityContent.addView(idRow)
 
@@ -617,7 +582,7 @@ class ProfileActivity : Activity() {
                     setOnClickListener { onClick() }
                 }
             }
-            val value = text("—", 16f, Color.WHITE, true).apply {
+            val value = text("—", 16f, ink, true).apply {
                 gravity = Gravity.CENTER
                 setSingleLine(true)
                 includeFontPadding = false
@@ -626,7 +591,7 @@ class ProfileActivity : Activity() {
             }
             setter(value)
             pair.addView(value, LinearLayout.LayoutParams(-2, -2))
-            pair.addView(text(caption, 10.5f, Color.rgb(245, 237, 255), false).apply {
+            pair.addView(text(caption, 10.5f, sub, false).apply {
                 gravity = Gravity.CENTER
                 textDirection = View.TEXT_DIRECTION_RTL
                 setSingleLine(true)
@@ -656,8 +621,8 @@ class ProfileActivity : Activity() {
         }
         publicLevel = text("◆  1", 12f, Color.rgb(70, 100, 140), true).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(112, 76, 35), 12f, Color.rgb(255, 220, 145))
-            setTextColor(Color.rgb(255, 235, 190))
+            background = rounded(Color.rgb(222, 236, 250), 12f, Color.TRANSPARENT)
+            setTextColor(Color.rgb(70, 100, 140))
             setPadding(dp(11f), dp(3f), dp(11f), dp(3f))
         }
         badges.addView(publicLevel, LinearLayout.LayoutParams(-2, -2))
