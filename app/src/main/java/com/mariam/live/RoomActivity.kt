@@ -64,6 +64,8 @@ class RoomActivity : Activity() {
  private var roomOwnerUserId=""
  private var currentUserLevel=1
  private var currentUserVipLevel=0
+ private var currentUserSvipLevel=0
+ private var currentUserSvipFrameUrl=""
  private var followRequestSent=false
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
@@ -1101,6 +1103,16 @@ class RoomActivity : Activity() {
      currentUserVipLevel=readActiveVipLevel(vipResponse.body)
     }
    }catch(_:Exception){}
+   // Load the signed-in user's active SVIP level and optional frame decoration.
+   try{
+    val svipResponse=withContext(Dispatchers.IO){AuthApi.get("/api/svip/me",authToken)}
+    if(svipResponse.status in 200..299){
+     val subscription=activeSvipObject(svipResponse.body)
+     currentUserSvipLevel=subscription?.optInt("level",subscription.optInt("svip_level",0))?.coerceIn(0,7)?:0
+     currentUserSvipFrameUrl=(subscription?.optString("frame_asset_url")
+      ?:svipResponse.body.optString("svip_frame_asset_url")).takeIf{it.startsWith("https://")}.orEmpty()
+    }
+   }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
    try{
     val inventory=withContext(Dispatchers.IO){AuthApi.get("/api/inventory",authToken)}
@@ -1236,6 +1248,21 @@ class RoomActivity : Activity() {
    .coerceIn(0,12)
  }
 
+ private fun activeSvipObject(payload:JSONObject?):JSONObject?{
+  if(payload==null)return null
+  val nested=payload.optJSONObject("subscription")
+   ?:payload.optJSONObject("active_subscription")
+   ?:payload.optJSONObject("current_subscription")
+   ?:payload.optJSONObject("membership")
+   ?:payload.optJSONObject("svip")
+  val source=nested?:payload
+  val level=source.optInt("level",source.optInt("svip_level",payload.optInt("svip_level",0)))
+  val status=source.optString("status",payload.optString("status",""))
+  val active=if(source.has("active"))source.optBoolean("active")
+   else status.equals("active",true)||level in 1..7
+  return if(active && level in 1..7)source else null
+ }
+
  private fun drawSeats(){
   grid.removeAllViews()
   speakerWaveViews.clear()
@@ -1309,6 +1336,8 @@ class RoomActivity : Activity() {
      payloadVipLevel>0 -> payloadVipLevel
      else -> 0
     }
+    val seatSvipLevel=if(uid==currentUserId && currentUserSvipLevel>0)
+     currentUserSvipLevel else seat.optInt("svip_level",0).coerceIn(0,7)
     if(occupied && avatarUrl.isNotBlank()){
      val photo=ImageView(this).apply{
       scaleType=ImageView.ScaleType.CENTER_CROP
@@ -1347,9 +1376,9 @@ class RoomActivity : Activity() {
       addView(avatar,FrameLayout.LayoutParams(avatarSize,avatarSize,Gravity.CENTER))
      }
      addView(photoFrame,FrameLayout.LayoutParams(dp(60),dp(60),Gravity.CENTER))
-     val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+     val frameUrl=sequenceOf("svip_frame_asset_url","equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
-      ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
+      ?:if(uid==currentUserId)currentUserSvipFrameUrl.takeIf{it.startsWith("https://")}?:currentUserEquippedFrameUrl else null
      if(occupied && !frameUrl.isNullOrBlank()){
       val frameView=RoyalGifFrame(this@RoomActivity).apply{
        visibility=View.VISIBLE
@@ -1374,6 +1403,16 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(15),1f))
+     if(seatSvipLevel in 1..7){
+      nameLine.addView(label("SVIP "+seatSvipLevel,8f,Color.rgb(255,224,151),true).apply{
+       background=GradientDrawable().apply{
+        cornerRadius=dp(7).toFloat()
+        setColor(Color.argb(175,75,53,20))
+        setStroke(dp(1),Color.rgb(226,184,91))
+       }
+       setPadding(dp(3),0,dp(3),0)
+      },LinearLayout.LayoutParams(-2,dp(14)).apply{marginEnd=dp(3)})
+     }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
@@ -1461,6 +1500,7 @@ class RoomActivity : Activity() {
     val publicId=user.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}
      ?:seat.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?: "—"
     val level=(user.optInt("level",seat.optInt("level",seat.optInt("user_level",1)))).coerceIn(1,100)
+    val svipLevel=user.optInt("svip_level",seat.optInt("svip_level",0)).coerceIn(0,7)
     val bio=user.optString("bio").takeIf{it.isNotBlank()&&it!="null"}?:"لا توجد نبذة شخصية"
     loading.dismiss()
     val gold=Color.rgb(224,184,98)
@@ -1496,6 +1536,14 @@ class RoomActivity : Activity() {
      background=GradientDrawable().apply{cornerRadius=dp(14).toFloat();setColor(Color.argb(80,220,172,66));setStroke(dp(1),gold)}
     }
     root.addView(levelBadge,LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(10)})
+    if(svipLevel>0){
+     root.addView(TextView(this@RoomActivity).apply{
+      text="✦ SVIP "+svipLevel;textSize=12f;gravity=Gravity.CENTER
+      setTextColor(Color.rgb(255,224,151));typeface=android.graphics.Typeface.DEFAULT_BOLD
+      setPadding(dp(12),dp(5),dp(12),dp(5))
+      background=GradientDrawable().apply{cornerRadius=dp(12).toFloat();setColor(Color.argb(90,145,101,35));setStroke(dp(1),gold)}
+     },LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(8)})
+    }
     root.addView(TextView(this@RoomActivity).apply{
      text=bio;textSize=13f;gravity=Gravity.CENTER
      setTextColor(Color.rgb(224,217,233));maxLines=3
