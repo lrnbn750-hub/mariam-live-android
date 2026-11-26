@@ -1073,27 +1073,11 @@ class ProfileActivity : Activity() {
             "store" -> startActivity(Intent(this, InventoryActivity::class.java).putExtra("inventory_mode", "store"))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
-            "svip" -> showSVIPLevels()
+            "svip" -> startActivity(Intent(this, SvipActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
         }
-    }
-
-    private fun showSVIPLevels() {
-        val levels = (1..12).map { "SVIP $it" }.toTypedArray()
-        android.app.AlertDialog.Builder(this)
-            .setTitle("عضوية SVIP")
-            .setMessage("استكشف مستويات العضوية المميزة من SVIP 1 إلى SVIP 12.\n\nاختر مستوى لمعرفة تفاصيله.")
-            .setItems(levels) { dialog, which ->
-                android.app.AlertDialog.Builder(this)
-                    .setTitle("SVIP ${which + 1}")
-                    .setMessage("مستوى عضوية مميز. تفاصيل السعر والامتيازات والشراء تحتاج ربطاً مؤكداً بخدمة SVIP على الخادم.")
-                    .setPositiveButton("حسناً", null)
-                    .show()
-            }
-            .setNegativeButton("إغلاق", null)
-            .show()
     }
 
     private fun showInfo(title: String) {
