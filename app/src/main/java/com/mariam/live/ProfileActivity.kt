@@ -956,16 +956,16 @@ class ProfileActivity : Activity() {
                 val isAdmin = adminCheck != null && adminCheck.status in 200..299 &&
                     adminCheck.body.optBoolean("success", false) &&
                     adminCheck.body.optJSONObject("admin") != null
+                val svipResult = svipFuture?.get()
+                val subscription = svipResult?.takeIf { it.status in 200..299 && it.body.optBoolean("success", false) }
+                    ?.body?.optJSONObject("subscription")
+                val isSvipActive = subscription != null &&
+                    subscription.optBoolean("active", true) &&
+                    subscription.optInt("level", 0) in 1..7
                 profileData = data
                 runOnUiThread {
                     bindProfile(data, token)
                     if (::adminEntry.isInitialized) adminEntry.visibility = if (isOwnProfile && isAdmin) View.VISIBLE else View.GONE
-                    val svipResult = svipFuture?.get()
-                    val subscription = svipResult?.takeIf { it.status in 200..299 && it.body.optBoolean("success", false) }
-                        ?.body?.optJSONObject("subscription")
-                    val isSvipActive = subscription != null &&
-                        subscription.optBoolean("active", true) &&
-                        subscription.optInt("level", 0) in 1..7
                     if (::svipMemberEntry.isInitialized) {
                         svipMemberEntry.visibility = if (isOwnProfile && isSvipActive) View.VISIBLE else View.GONE
                     }
