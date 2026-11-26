@@ -194,7 +194,7 @@ module.exports = function(app, db, authenticateToken) {
       }
 
       const user = result.rows[0];
-      const [followStats, giftStats, levelResult, profileBackground] = await Promise.all([
+      const [followStats, giftStats, levelResult, profileBackground, svipMembership] = await Promise.all([
         db.query(
           `SELECT
              (SELECT COUNT(*)::bigint FROM user_follows WHERE followed_id=$1) AS followers_count,
@@ -209,6 +209,11 @@ module.exports = function(app, db, authenticateToken) {
         ),
         db.query(
           "SELECT total_xp FROM user_levels WHERE user_id=$1",
+          [req.params.id]
+        ),
+        db.query(
+          `SELECT level FROM public.user_svip_memberships
+           WHERE user_id=$1 AND expires_at > NOW() LIMIT 1`,
           [req.params.id]
         ),
         db.query(
@@ -238,6 +243,7 @@ module.exports = function(app, db, authenticateToken) {
       user.diamonds_sent = gifts.diamonds_sent || "0";
       user.diamonds_received = gifts.diamonds_received || "0";
       user.profile_background_url = profileBackground.rows[0]?.asset_url || "";
+      user.svip_level = Number(svipMembership.rows[0]?.level || 0);
       return res.json({ user });
     } catch (error) {
       console.error("Public profile error:", error.message);
