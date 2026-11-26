@@ -66,6 +66,7 @@ class RoomActivity : Activity() {
  private var currentUserVipLevel=0
  private var currentUserSvipLevel=0
  private var currentUserSvipFrameUrl=""
+ private var currentUserSvipBadgeUrl=""
  private var followRequestSent=false
  private var ownerFollowButton:TextView?=null
  private var loadedBackgroundUrl=""
@@ -1112,6 +1113,9 @@ class RoomActivity : Activity() {
      val svipFrame=(subscription?.optString("frame_asset_url").orEmpty())
       .ifBlank{svipResponse.body.optString("svip_frame_asset_url")}
      currentUserSvipFrameUrl=svipFrame.takeIf{it.startsWith("https://")}.orEmpty()
+     val svipBadge=(subscription?.optString("badge_asset_url").orEmpty())
+      .ifBlank{svipResponse.body.optString("svip_badge_asset_url")}
+     currentUserSvipBadgeUrl=svipBadge.takeIf{it.startsWith("https://")}.orEmpty()
     }
    }catch(_:Exception){}
    // Read the same equipped avatar frame selected in Profile > Inventory.
@@ -1405,14 +1409,27 @@ class RoomActivity : Activity() {
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(15),1f))
      if(seatSvipLevel in 1..7){
-      nameLine.addView(label("SVIP "+seatSvipLevel,8f,Color.rgb(255,224,151),true).apply{
-       background=GradientDrawable().apply{
-        cornerRadius=dp(7).toFloat()
-        setColor(Color.argb(175,75,53,20))
-        setStroke(dp(1),Color.rgb(226,184,91))
+      val badgeUrl=seat.optString("svip_badge_asset_url")
+       .takeIf{it.startsWith("https://")}
+       ?:if(uid==currentUserId)currentUserSvipBadgeUrl.takeIf{it.startsWith("https://")} else null
+      if(!badgeUrl.isNullOrBlank()){
+       val badgeView=ImageView(this).apply{
+        scaleType=ImageView.ScaleType.FIT_CENTER
+        tag=badgeUrl
+        contentDescription="SVIP "+seatSvipLevel
        }
-       setPadding(dp(3),0,dp(3),0)
-      },LinearLayout.LayoutParams(-2,dp(14)).apply{marginEnd=dp(3)})
+       nameLine.addView(badgeView,LinearLayout.LayoutParams(dp(25),dp(16)).apply{marginEnd=dp(3)})
+       loadAvatarInto(badgeView,badgeUrl)
+      }else{
+       nameLine.addView(label("SVIP "+seatSvipLevel,8f,Color.rgb(255,224,151),true).apply{
+        background=GradientDrawable().apply{
+         cornerRadius=dp(7).toFloat()
+         setColor(Color.argb(175,75,53,20))
+         setStroke(dp(1),Color.rgb(226,184,91))
+        }
+        setPadding(dp(3),0,dp(3),0)
+       },LinearLayout.LayoutParams(-2,dp(14)).apply{marginEnd=dp(3)})
+      }
      }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
@@ -1502,6 +1519,9 @@ class RoomActivity : Activity() {
      ?:seat.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?: "—"
     val level=(user.optInt("level",seat.optInt("level",seat.optInt("user_level",1)))).coerceIn(1,100)
     val svipLevel=user.optInt("svip_level",seat.optInt("svip_level",0)).coerceIn(0,7)
+    val svipBadgeUrl=user.optString("svip_badge_asset_url")
+     .takeIf{it.startsWith("https://")}
+     ?:seat.optString("svip_badge_asset_url").takeIf{it.startsWith("https://")}.orEmpty()
     val bio=user.optString("bio").takeIf{it.isNotBlank()&&it!="null"}?:"لا توجد نبذة شخصية"
     loading.dismiss()
     val gold=Color.rgb(224,184,98)
@@ -1538,12 +1558,22 @@ class RoomActivity : Activity() {
     }
     root.addView(levelBadge,LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(10)})
     if(svipLevel>0){
-     root.addView(TextView(this@RoomActivity).apply{
-      text="✦ SVIP "+svipLevel;textSize=12f;gravity=Gravity.CENTER
-      setTextColor(Color.rgb(255,224,151));typeface=android.graphics.Typeface.DEFAULT_BOLD
-      setPadding(dp(12),dp(5),dp(12),dp(5))
-      background=GradientDrawable().apply{cornerRadius=dp(12).toFloat();setColor(Color.argb(90,145,101,35));setStroke(dp(1),gold)}
-     },LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(8)})
+     if(svipBadgeUrl.isNotBlank()){
+      val svipBadge=ImageView(this@RoomActivity).apply{
+       scaleType=ImageView.ScaleType.FIT_CENTER
+       tag=svipBadgeUrl
+       contentDescription="SVIP "+svipLevel
+      }
+      root.addView(svipBadge,LinearLayout.LayoutParams(dp(54),dp(30)).apply{topMargin=dp(8)})
+      loadAvatarInto(svipBadge,svipBadgeUrl)
+     }else{
+      root.addView(TextView(this@RoomActivity).apply{
+       text="✦ SVIP "+svipLevel;textSize=12f;gravity=Gravity.CENTER
+       setTextColor(Color.rgb(255,224,151));typeface=android.graphics.Typeface.DEFAULT_BOLD
+       setPadding(dp(12),dp(5),dp(12),dp(5))
+       background=GradientDrawable().apply{cornerRadius=dp(12).toFloat();setColor(Color.argb(90,145,101,35));setStroke(dp(1),gold)}
+      },LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(8)})
+     }
     }
     root.addView(TextView(this@RoomActivity).apply{
      text=bio;textSize=13f;gravity=Gravity.CENTER
