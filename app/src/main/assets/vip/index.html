@@ -589,7 +589,7 @@ window.addEventListener('load',()=>{
 /* ===================== Events ===================== */
 $('whatsappBtn').onclick=()=>{
   if(state.owned<1){toast('هذه الخدمة متاحة لأعضاء SVIP الفعّالين فقط');return;}
-  const msg='مرحباً، أنا عضو SVIP في تطبيق BAK LIVE. أحتاج إلى تقديم بلاغ أو طلب مساعدة.\\nمستوى SVIP: '+state.owned+'\\nتاريخ انتهاء العضوية: '+(state.expiresAt||'غير ظاهر')+'\\nرقم المستخدم: أضيفه هنا\\nرقم الغرفة: أضيفه هنا\\nتفاصيل البلاغ: أضيفها هنا\\nسأرفق صورة أو دليلاً يوضح الحالة.';
+  const msg='مرحباً، أنا عضو SVIP في تطبيق BAK LIVE. أحتاج إلى تقديم بلاغ أو طلب مساعدة.\nمستوى SVIP: '+state.owned+'\nتاريخ انتهاء العضوية: '+(state.expiresAt||'غير ظاهر')+'\nرقم المستخدم: أضيفه هنا\nرقم الغرفة: أضيفه هنا\nتفاصيل البلاغ: أضيفها هنا\nسأرفق صورة أو دليلاً يوضح الحالة.';
   if(window.AndroidVip) window.AndroidVip.openWhatsApp(msg); else toast('تعذر فتح واتساب');
 };
 $('buyBtn').onclick=openBuy;
