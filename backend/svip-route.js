@@ -20,7 +20,7 @@ module.exports = function registerSvipRoutes(app, db, authenticateToken) {
         `SELECT level, starts_at, expires_at,
                 (expires_at > NOW()) AS active
          FROM public.user_svip_memberships
-         WHERE user_id = $1`,
+         WHERE user_id = $1 AND expires_at > NOW()`,
         [req.userId]
       );
       res.json({ success: true, subscription: result.rows[0] || null });
