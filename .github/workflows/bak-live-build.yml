@@ -11,6 +11,7 @@ on:
       - agency-system-ui
       - feature/bak-live-camera-modes-on-build465
       - feature/bak-live-audio-8-15-seats
+      - feature/svip-perks-latest-audio-8-15
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe
