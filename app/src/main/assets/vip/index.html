@@ -274,7 +274,8 @@ const PACKAGES = [];
 const state = { balance:0, selected:1, owned:0, expiresAt:'' };
 const fmt = n => n.toLocaleString('en-US');
 const $ = id => document.getElementById(id);
-const calc = price => ({fee:price, back:0});
+const CASHBACK_PERCENT = 40;
+const calc = price => {const back=Math.floor(price*CASHBACK_PERCENT/100);return {fee:price,back,net:price-back};};
 const pkg = () => PACKAGES.find(p => p.level===state.selected);
 
 /* ===================== Icons ===================== */
@@ -493,7 +494,7 @@ function render(animate=false){
 
   const dia=DIA;
   $('sPrice').innerHTML=fmt(p.price)+' '+dia;
-  $('bPrice').textContent=fmt(p.price); $('bUsd').textContent='';
+  $('bPrice').textContent=fmt(p.price); $('bUsd').textContent='يرجعلك '+fmt(back)+' عملة (40%)';
   const st=$('bState');
   if(state.owned===n){
     const expiry=state.expiresAt?new Date(state.expiresAt):null;
@@ -515,10 +516,11 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show')
 
 function breakdownHTML(p,fee,back,afterBal){
   return `<div class="split">
-    <div class="row"><span>سعر الباقة</span><b>${fmt(p.price)} ${DIA}</b></div>
-    
+    <div class="row"><span>سعر الباقة</span><b>${fmt(fee)} ${DIA}</b></div>
+    <div class="row ret"><span>مردود المحفظة (40%)</span><b>+${fmt(back)} ${DIA}</b></div>
+    <div class="row"><span>الصافي بعد المردود</span><b>${fmt(fee-back)} ${DIA}</b></div>
+    <div class="row"><span>رصيدك بعد الشراء</span><b>${afterBal===null?'—':fmt(afterBal+back)} ${DIA}</b></div>
     <div class="row"><span>مدة العضوية</span><b>${DURATION_DAYS} يوماً</b></div>
-    
   </div>`;
 }
 
