@@ -72,6 +72,13 @@ class SvipActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun openMemberCenter() {
+            runOnUiThread {
+                startActivity(Intent(this@SvipActivity, SvipMemberActivity::class.java))
+            }
+        }
+
+        @JavascriptInterface
         fun openWhatsApp(message: String) {
             runOnUiThread {
                 try {
