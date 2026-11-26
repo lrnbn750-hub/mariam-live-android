@@ -11,14 +11,19 @@ CREATE TABLE IF NOT EXISTS public.svip_packages (
 
 INSERT INTO public.svip_packages(level,name,price_diamonds,duration_days,active)
 VALUES
-  (1,'SVIP 1',0,30,FALSE),
-  (2,'SVIP 2',0,30,FALSE),
-  (3,'SVIP 3',0,30,FALSE),
-  (4,'SVIP 4',0,30,FALSE),
-  (5,'SVIP 5',0,30,FALSE),
-  (6,'SVIP 6',0,30,FALSE),
-  (7,'SVIP 7',0,30,FALSE)
-ON CONFLICT(level) DO NOTHING;
+  (1,'SVIP 1',15000,30,TRUE),
+  (2,'SVIP 2',25000,30,TRUE),
+  (3,'SVIP 3',40000,30,TRUE),
+  (4,'SVIP 4',60000,30,TRUE),
+  (5,'SVIP 5',80000,30,TRUE),
+  (6,'SVIP 6',120000,30,TRUE),
+  (7,'SVIP 7',160000,30,TRUE)
+ON CONFLICT(level) DO UPDATE SET
+  name=EXCLUDED.name,
+  price_diamonds=EXCLUDED.price_diamonds,
+  duration_days=EXCLUDED.duration_days,
+  active=EXCLUDED.active,
+  updated_at=NOW();
 
 CREATE TABLE IF NOT EXISTS public.user_svip_memberships (
   user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
