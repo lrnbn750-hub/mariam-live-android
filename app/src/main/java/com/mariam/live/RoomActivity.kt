@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.view.WindowManager
 import android.graphics.*
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
 import android.media.Ringtone
@@ -3233,12 +3234,10 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    gravity=Gravity.CENTER_HORIZONTAL
    layoutDirection=View.LAYOUT_DIRECTION_RTL
    setPadding(dp(18),dp(12),dp(18),dp(20))
-   background=GradientDrawable().apply{
-    setColor(Color.WHITE)
-    val r=dp(28).toFloat()
-    cornerRadii=floatArrayOf(r,r,r,r,0f,0f,0f,0f)
-    setStroke(dp(1),Color.rgb(235,237,240))
-   }
+   // Royal background is applied only to the in-room member mini-profile sheet.
+   background=BitmapDrawable(resources,BitmapFactory.decodeResource(resources,R.drawable.bak_live_profile_background_10x9))
+   clipChildren=true
+   clipToPadding=true
    elevation=dp(8).toFloat()
   }
   root.addView(card,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM).apply{topMargin=dp(54)})
