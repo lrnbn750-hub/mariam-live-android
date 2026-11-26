@@ -116,12 +116,16 @@ class SvipActivity : Activity() {
                     val level = rawLevels.optJSONObject(i) ?: continue
                     val number = level.optInt("level", 0)
                     val price = level.optLong("price_coins", 0)
-                    if (number in 1..7 && price > 0 && level.optBoolean("active", true)) {
+                    if (number in 1..7) {
                         packages.put(JSONObject()
                             .put("level", number)
                             .put("name", level.optString("name", "SVIP " + number))
                             .put("price", price)
-                            .put("active", true))
+                            .put("active", level.optBoolean("active", true) && price > 0)
+                            .put("badge_asset_url", level.optString("badge_asset_url", ""))
+                            .put("frame_asset_url", level.optString("frame_asset_url", ""))
+                            .put("chat_bubble_asset_url", level.optString("chat_bubble_asset_url", ""))
+                            .put("entry_effect_asset_url", level.optString("entry_effect_asset_url", "")))
                     }
                 }
                 val rawSubscription = meResult.body.optJSONObject("subscription") ?: JSONObject()
