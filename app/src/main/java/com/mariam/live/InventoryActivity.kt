@@ -78,7 +78,8 @@ class InventoryActivity : Activity() {
     // ───────── Model ─────────
     private data class Item(
         val id: String, val name: String, val type: String,
-        val url: String, val owned: Boolean, val equipped: Boolean
+        val url: String, val owned: Boolean, val equipped: Boolean,
+        val priceCoins: Long, val expiresAt: String, val remainingSeconds: Long?
     )
 
     private val tabs = listOf(
@@ -91,6 +92,7 @@ class InventoryActivity : Activity() {
     private var items: List<Item> = emptyList()
     private var selectedTab = "all"
     private var token = ""
+    private val isStoreMode: Boolean get() = intent.getStringExtra("inventory_mode") == "store"
 
     private lateinit var chipsRow: LinearLayout
     private lateinit var content: LinearLayout
@@ -179,7 +181,7 @@ class InventoryActivity : Activity() {
         }
         addView(back, LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(label(19f, fBold, ink).apply {
-            text = "حقيبتي"
+            text = if (isStoreMode) "المتجر" else "مظهري"
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@InventoryActivity), LinearLayout.LayoutParams(dp(44), dp(44)))
@@ -220,7 +222,9 @@ class InventoryActivity : Activity() {
             out.add(
                 Item(
                     o.optString("item_id"), o.optString("name", "عنصر"), o.optString("item_type"),
-                    o.optString("asset_url"), o.optBoolean("owned"), o.optBoolean("equipped")
+                    o.optString("asset_url"), o.optBoolean("owned"), o.optBoolean("equipped"),
+                    o.optLong("price_coins", 0L), o.optString("expires_at"),
+                    if (o.isNull("remaining_seconds")) null else o.optLong("remaining_seconds")
                 )
             )
         }
@@ -234,6 +238,7 @@ class InventoryActivity : Activity() {
                 val response = AuthApi.get("/api/inventory", token)
                 if (response.status !in 200..299) throw Exception(response.body.optString("error", "تعذر تحميل الحقيبة"))
                 val parsed = parseItems(response.body.optJSONArray("items") ?: JSONArray())
+                    .filter { if (isStoreMode) !it.owned && it.priceCoins > 0L else it.owned }
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
                     items = parsed
@@ -245,6 +250,34 @@ class InventoryActivity : Activity() {
                     if (isFinishing) return@runOnUiThread
                     if (silent) toast(e.message ?: "تعذر الاتصال بالخادم")
                     else showError(e.message ?: "تعذر الاتصال بالخادم")
+                }
+            }
+        }
+    }
+
+    private fun purchaseItem(item: Item, button: TextView) {
+        button.isEnabled = false
+        button.text = "جارٍ الشراء..."
+        apiExecutor.execute {
+            try {
+                val response = AuthApi.post(
+                    "/api/inventory/purchase",
+                    JSONObject().put("item_id", item.id),
+                    token
+                )
+                if (response.status !in 200..299) {
+                    throw Exception(response.body.optString("error", "تعذر إتمام عملية الشراء"))
+                }
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    toast("تم شراء العنصر بنجاح، صالح لمدة 30 يوماً")
+                    loadInventory(silent = true)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    toast(e.message ?: "تعذر الاتصال بالخادم")
+                    render()
                 }
             }
         }
@@ -322,10 +355,10 @@ class InventoryActivity : Activity() {
 
     private fun emptyState(): View {
         val (title, desc) = when (selectedTab) {
-            "frame" -> "لا توجد إطارات بعد" to "الإطارات التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            "background" -> "لا توجد خلفيات بعد" to "خلفيات الحساب التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            "chat_bubble" -> "لا توجد فقاعات بعد" to "فقاعات الدردشة التي تحصل عليها من الإدارة أو العروض أو المتجر ستظهر هنا."
-            else -> "حقيبتك فارغة حالياً" to "ستظهر هنا الإطارات والخلفيات والفقاعات التي تحصل عليها من الإدارة أو العروض أو المتجر."
+            "frame" -> if (isStoreMode) "لا توجد إطارات متاحة للشراء" to "ستظهر هنا الإطارات التي يمكنك شراؤها من المتجر." else "لا توجد إطارات مملوكة" to "الإطارات التي تملكها ستظهر هنا بعد الحصول عليها من المتجر أو الإدارة."
+            "background" -> if (isStoreMode) "لا توجد خلفيات متاحة للشراء" to "ستظهر هنا خلفيات الملف الشخصي المتاحة للشراء." else "لا توجد خلفيات مملوكة" to "الخلفيات التي تملكها ستظهر هنا بعد الحصول عليها."
+            "chat_bubble" -> if (isStoreMode) "لا توجد فقاعات متاحة للشراء" to "ستظهر هنا فقاعات الدردشة المتاحة للشراء." else "لا توجد فقاعات مملوكة" to "فقاعات الدردشة التي تملكها ستظهر هنا."
+            else -> if (isStoreMode) "لا توجد عناصر متاحة للشراء" to "سيتم عرض العناصر الجديدة هنا عند إضافتها إلى المتجر." else "مظهرك فارغ حالياً" to "ستظهر هنا الإطارات والخلفيات والفقاعات التي تملكها."
         }
         return stateView(Icon.BAG, title, desc)
     }
@@ -397,7 +430,7 @@ class InventoryActivity : Activity() {
         val holder = FrameLayout(this)
         holder.addView(preview, FrameLayout.LayoutParams(-1, -1))
 
-        if (!item.owned) {
+        if (!item.owned && !isStoreMode) {
             holder.addView(View(this).apply { background = rounded(Color.argb(130, 255, 255, 255), 14) },
                 FrameLayout.LayoutParams(-1, -1))
             holder.addView(FrameLayout(this).apply {
@@ -443,14 +476,26 @@ class InventoryActivity : Activity() {
                         rounded(Color.WHITE, 12)
                     )
                 }
+                item.priceCoins > 0L -> {
+                    text = "شراء • ${item.priceCoins} عملة"
+                    background = RippleDrawable(
+                        ColorStateList.valueOf(Color.argb(60, 255, 255, 255)),
+                        GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(18, 160, 112), Color.rgb(28, 190, 132)))
+                            .apply { cornerRadius = dp(12).toFloat() },
+                        rounded(Color.WHITE, 12)
+                    )
+                }
                 else -> {
-                    text = "غير متوفر"
+                    text = "غير متوفر حالياً"
                     setTextColor(Color.rgb(150, 146, 168))
                     background = rounded(Color.rgb(241, 240, 246), 12)
                 }
             }
-            isEnabled = item.owned
-            if (item.owned) setOnClickListener { toggleItem(item, this) }
+            isEnabled = item.owned || item.priceCoins > 0L
+            when {
+                item.owned -> setOnClickListener { toggleItem(item, this) }
+                item.priceCoins > 0L -> setOnClickListener { purchaseItem(item, this) }
+            }
         }
 
         return LinearLayout(this).apply {
@@ -468,8 +513,26 @@ class InventoryActivity : Activity() {
             })
             addView(label(12f, fRegular, muted).apply {
                 text = itemKind(t); maxLines = 1
-                setPadding(dp(2), dp(2), dp(2), dp(10))
+                setPadding(dp(2), dp(2), dp(2), dp(4))
             })
+            if (!item.owned && item.priceCoins > 0L) {
+                addView(label(11.5f, fMedium, Color.rgb(24, 145, 105)).apply {
+                    text = "الصلاحية بعد الشراء: 30 يوماً"
+                    maxLines = 1
+                    setPadding(dp(2), 0, dp(2), dp(8))
+                })
+            }
+            if (item.remainingSeconds != null) {
+                addView(label(11.5f, fMedium, Color.rgb(190, 75, 55)).apply {
+                    val days = item.remainingSeconds / 86400
+                    val hours = (item.remainingSeconds % 86400) / 3600
+                    text = if (days > 0) "متبقي $days يوم و$hours ساعة" else "متبقي $hours ساعة"
+                    maxLines = 1
+                    setPadding(dp(2), 0, dp(2), dp(8))
+                })
+            } else {
+                addView(View(this@InventoryActivity), LinearLayout.LayoutParams(1, dp(8)))
+            }
             addView(button, LinearLayout.LayoutParams(-1, dp(38)))
         }
     }

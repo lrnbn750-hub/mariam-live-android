@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.view.WindowManager
 import android.graphics.*
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.PorterDuff
 import android.media.Ringtone
@@ -1234,7 +1235,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=View.VISIBLE
-  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+  cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -1258,7 +1259,7 @@ class RoomActivity : Activity() {
   sendButton.visibility=View.GONE
   chatIcon.visibility=View.VISIBLE
   micControl.visibility=if(isSeated)View.VISIBLE else View.GONE
-  cameraControl.visibility=if(isSeated && canPublishVideo)View.VISIBLE else View.GONE
+  cameraControl.visibility=if(roomMode=="camera" && isSeated && canPublishVideo)View.VISIBLE else View.GONE
   roomGiftButton.visibility=View.VISIBLE
   roomToolsButton.visibility=View.VISIBLE
   controlsSpacer.visibility=View.VISIBLE
@@ -1702,8 +1703,10 @@ class RoomActivity : Activity() {
   val cameraMode=roomMode=="camera"
   if(cameraMode){drawCameraSeats();return}
   val visibleSeats=if(cameraMode)cameraSeats else seats
-  val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else 8
-  val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else 4
+  // Render the authoritative audio-seat array returned by the server.
+  // This preserves legacy 4/6/8-seat rooms and supports 15-seat rooms.
+  val visibleCount=if(cameraMode)cameraSeatCount.coerceIn(4,6) else visibleSeats.length().coerceIn(2,15)
+  val columns=if(cameraMode && visibleCount==4)2 else if(cameraMode)3 else if(visibleCount>8)5 else 4
   val rows=(visibleCount+columns-1)/columns
   for(row in 0 until rows){
    val line=LinearLayout(this).apply{
@@ -1717,6 +1720,8 @@ class RoomActivity : Activity() {
     val seatNumber=seat.optInt("seat_number",i+1)
     val uid=seat.optString("user_id").takeIf{it.isNotBlank()&&it!="null"}
     val occupied=uid!=null
+    val seatMuted=seat.optBoolean("is_muted",false)
+    val seatLocked=!cameraMode && seat.optBoolean("is_locked",false)
     val isHost=if(cameraMode)false else i==0
     val name=seat.optString("display_name").takeIf{it.isNotBlank()&&it!="null"}
      ?:if(occupied)"متحدث" else "مقعد فارغ"
@@ -1737,7 +1742,7 @@ class RoomActivity : Activity() {
        FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }else{
       addView(ImageView(this@RoomActivity).apply{
-       setImageDrawable(VectorIcon("plus",Color.argb(215,255,255,255),dp(22)))
+       setImageDrawable(VectorIcon(if(seatLocked)"lock" else "plus",if(seatLocked)Color.rgb(255,205,105) else Color.argb(215,255,255,255),dp(if(seatLocked)20 else 22)))
        scaleType=ImageView.ScaleType.CENTER
       },FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
@@ -1788,7 +1793,8 @@ class RoomActivity : Activity() {
       }).apply{
        shape=GradientDrawable.OVAL
        // Dashed ring invites people to take an empty seat.
-       if(!occupied)setStroke(dp(1),Color.argb(150,255,255,255),dp(4).toFloat(),dp(3).toFloat())
+       if(!occupied && !seatLocked)setStroke(dp(1),Color.argb(150,255,255,255),dp(4).toFloat(),dp(3).toFloat())
+        if(seatLocked)setStroke(dp(1),Color.rgb(255,205,105))
       }
       addView(avatar,FrameLayout.LayoutParams(-1,-1,Gravity.CENTER))
      }
@@ -1810,6 +1816,19 @@ class RoomActivity : Activity() {
       addView(frameView,FrameLayout.LayoutParams(dp(65),dp(65),Gravity.CENTER))
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
+     }
+     // Place the mute badge INSIDE the avatar image, centered and translucent.
+     // All viewers receive the same is_muted state from the shared seat snapshot.
+     if(occupied && seatMuted){
+      addView(label("🔇",11f,Color.WHITE).apply{
+       includeFontPadding=false
+       gravity=Gravity.CENTER
+       background=GradientDrawable().apply{
+        shape=GradientDrawable.OVAL
+        setColor(Color.argb(165,0,0,0))
+        setStroke(dp(1),Color.argb(105,255,255,255))
+       }
+      },FrameLayout.LayoutParams(dp(23),dp(23),Gravity.CENTER))
      }
      if(isHost){
       addView(label("المضيف",8.5f,Color.rgb(60,38,4),true).apply{
@@ -1850,7 +1869,7 @@ class RoomActivity : Activity() {
      }
      tile.addView(nameLine,LinearLayout.LayoutParams(-1,dp(16)))
     }else{
-     tile.addView(label("اجلس",10f,Color.argb(170,225,235,245),false).apply{
+     tile.addView(label(if(seatLocked)"مقفل" else "اجلس",10f,if(seatLocked)Color.rgb(255,205,105) else Color.argb(170,225,235,245),false).apply{
       includeFontPadding=false
      },LinearLayout.LayoutParams(-1,dp(16)))
     }
@@ -1864,7 +1883,7 @@ class RoomActivity : Activity() {
       true
      }
     }else{
-     tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else claimSeat(seatNumber)}
+     tile.setOnClickListener{if(cameraMode)claimCameraSeat(seatNumber) else if(isOwner)showAudioSeatLockMenu(seatNumber,seatLocked) else if(seatLocked)Toast.makeText(this@RoomActivity,"هذا المقعد مقفل من صاحب الغرفة",Toast.LENGTH_SHORT).show() else claimSeat(seatNumber)}
     }
     line.addView(tile,LinearLayout.LayoutParams(0,dp(96),1f).apply{
      setMargins(dp(3),dp(2),dp(3),dp(2))
@@ -2245,9 +2264,23 @@ class RoomActivity : Activity() {
    }
   }
  }
- private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
+ private fun showAudioSeatLockMenu(seatNumber:Int,isLocked:Boolean){
+   if(!isOwner || seatNumber<=1)return
+   showActionSheet("إدارة المقعد $seatNumber",listOf(if(isLocked)"فتح المقعد" else "قفل المقعد")){
+    scope.launch{
+     try{
+      val result=withContext(Dispatchers.IO){AuthApi.post("/api/voice-rooms/$roomId/seats/$seatNumber/lock",JSONObject().put("locked",!isLocked),authToken)}
+      if(result.status in 200..299){loadSeats();Toast.makeText(this@RoomActivity,if(isLocked)"تم فتح المقعد" else "تم قفل المقعد",Toast.LENGTH_SHORT).show()}
+      else Toast.makeText(this@RoomActivity,result.body.optString("error","تعذر تغيير حالة المقعد"),Toast.LENGTH_SHORT).show()
+     }catch(_:Exception){Toast.makeText(this@RoomActivity,"تعذر الاتصال بالخادم",Toast.LENGTH_SHORT).show()}
+    }
+   }
+  }
+
+  private fun seatClick(s:JSONObject,n:Int,uid:String?,name:String){
   if(roomMode=="camera"){cameraSeatClick(s,n,uid,name);return}
-  if(uid==null){claimSeat(n);return}
+  if(uid==null){if(isOwner)showAudioSeatLockMenu(n,s.optBoolean("is_locked",false)) else if(s.optBoolean("is_locked",false))Toast.makeText(this,"هذا المقعد مقفل من صاحب الغرفة",Toast.LENGTH_SHORT).show() else claimSeat(n);return}
+  if(uid==currentUserId && isOwner && n==1)return
   if(uid==currentUserId){
    showActionSheet("إدارة مقعدك",listOf(if(microphoneEnabled)"كتم صوت المايك" else "تشغيل المايك","مغادرة المقعد")){which->
     if(which==0)toggleMic() else leaveSeat(n)
@@ -2975,7 +3008,6 @@ class RoomActivity : Activity() {
   for(i in 0 until roomMembers.length()){
    val member=roomMembers.optJSONObject(i)?:continue
    val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
-   val username=member.optString("username")
    val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
    val isOwnerMember=member.optBoolean("is_owner")
    val seat=member.optInt("seat_number",0)
@@ -3005,7 +3037,7 @@ class RoomActivity : Activity() {
    if(url.isNotBlank())loadAvatarInto(avatar,url)
    val info=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
    info.addView(label(name,14f,Color.WHITE,true).apply{gravity=Gravity.START;maxLines=1})
-   info.addView(label("@$username  •  ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
+   info.addView(label("ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
    row.addView(label(role,10f,roleColor,true).apply{
     background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
@@ -3204,10 +3236,12 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    setPadding(dp(18),dp(12),dp(18),dp(20))
    background=GradientDrawable().apply{
     setColor(Color.WHITE)
-    val r=dp(28).toFloat()
-    cornerRadii=floatArrayOf(r,r,r,r,0f,0f,0f,0f)
+    val radius=dp(28).toFloat()
+    cornerRadii=floatArrayOf(radius,radius,radius,radius,0f,0f,0f,0f)
     setStroke(dp(1),Color.rgb(235,237,240))
    }
+   clipChildren=true
+   clipToPadding=true
    elevation=dp(8).toFloat()
   }
   root.addView(card,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM).apply{topMargin=dp(54)})
@@ -3805,6 +3839,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    mixer.microphoneEnabled=microphoneEnabled
    status.text=if(microphoneEnabled)"المايك يعمل مع الموسيقى" else "المايك مكتوم والموسيقى مستمرة"
    refreshMicControl()
+   syncMySeatMuteState(!microphoneEnabled)
    return
   }
   refreshMicControl()
@@ -3812,7 +3847,31 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    try{
     room.localParticipant.setMicrophoneEnabled(microphoneEnabled)
     status.text=if(microphoneEnabled)"المايك يعمل" else "المايك متوقف"
+    syncMySeatMuteState(!microphoneEnabled)
    }catch(_:Exception){}
+  }
+ }
+
+ private fun syncMySeatMuteState(muted:Boolean){
+  if(roomMode!="audio" || !isSeated || roomId.isBlank())return
+  val mySeat=(0 until seats.length()).mapNotNull{seats.optJSONObject(it)}
+   .firstOrNull{it.optString("user_id")==currentUserId} ?: return
+  val seatNumber=mySeat.optInt("seat_number",0)
+  if(seatNumber<1)return
+  scope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){
+     AuthApi.post("/api/voice-rooms/$roomId/seats/$seatNumber/mute",JSONObject().put("muted",muted),authToken)
+    }
+    if(result.status in 200..299){
+     // Refresh the shared seat snapshot so every viewer sees the mute badge.
+     loadSeats()
+    }else{
+     android.util.Log.w("BAK_LIVE_MUTE","Could not sync seat mute state: ${result.status}")
+    }
+   }catch(e:Exception){
+    android.util.Log.w("BAK_LIVE_MUTE","Seat mute sync failed",e)
+   }
   }
  }
 

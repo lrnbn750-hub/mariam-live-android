@@ -126,7 +126,7 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
 
   async function getRoom(roomId) {
     const result = await db.query(
-      "SELECT id, owner_id, status, room_background_url FROM voice_rooms WHERE id = $1 LIMIT 1",
+      "SELECT id, owner_id, status, max_members, room_mode, room_background_url FROM voice_rooms WHERE id = $1 LIMIT 1",
       [roomId]
     );
     return result.rows[0] || null;
@@ -302,14 +302,20 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       if (!(await isMember(roomId, req.userId))) return res.status(403).json({ error: "Join the room first" });
       const [seats, hands] = await Promise.all([
         db.query(`
-          SELECT s.seat_number, s.user_id, s.is_muted, s.assigned_at,
+          SELECT s.seat_number, s.user_id, s.is_muted, s.is_locked, s.assigned_at,
                  COALESCE(p.display_name, u.username) AS display_name,
                  p.avatar_url, u.username,
-                 COALESCE(ul.total_xp, 0) AS total_xp
+                 COALESCE(ul.total_xp, 0) AS total_xp,
+                 si.asset_url AS equipped_frame_url
           FROM voice_room_seats s
           LEFT JOIN users u ON u.id = s.user_id
           LEFT JOIN user_profiles p ON p.user_id = u.id
           LEFT JOIN user_levels ul ON ul.user_id = u.id
+          LEFT JOIN user_equipped_items e ON e.user_id = u.id AND e.item_type = 'frame'
+          LEFT JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+            AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+          LEFT JOIN store_items si ON si.item_id = e.item_id AND si.active = TRUE
+            AND ui.user_id IS NOT NULL
           WHERE s.room_id = $1 ORDER BY s.seat_number
         `, [roomId]),
         db.query(`
@@ -321,12 +327,13 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
           WHERE h.room_id = $1 ORDER BY h.requested_at
         `, [roomId])
       ]);
-      const occupied = new Map(seats.rows.map(s => [Number(s.seat_number), s]));
-      const eightSeats = Array.from({ length: 8 }, (_, i) =>
-        occupied.get(i + 1) || { seat_number: i + 1, user_id: null, is_muted: false, display_name: null }
-      );
       const room = await getRoom(roomId);
-      return res.json({ seats: eightSeats, handRaises: hands.rows, ownerId: room && room.owner_id, backgroundUrl: room && room.room_background_url });
+      const capacity = Math.max(2, Math.min(15, Number(room && room.max_members) || 8));
+      const occupied = new Map(seats.rows.map(s => [Number(s.seat_number), s]));
+      const activeSeats = Array.from({ length: capacity }, (_, i) =>
+        occupied.get(i + 1) || { seat_number: i + 1, user_id: null, is_muted: false, is_locked: false, display_name: null }
+      );
+      return res.json({ seats: activeSeats, handRaises: hands.rows, ownerId: room && room.owner_id, backgroundUrl: room && room.room_background_url });
     } catch (error) {
       console.error("List voice seats:", error.message);
       return res.status(500).json({ error: "Could not load voice seats" });
@@ -394,22 +401,28 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       await ensureVoiceSchema();
       const { roomId, seatNumber } = req.params;
       const seat = Number(seatNumber);
-      if (!validRoomId(roomId) || !Number.isInteger(seat) || seat < 1 || seat > 8) {
+      if (!validRoomId(roomId) || !Number.isInteger(seat) || seat < 1 || seat > 15) {
         return res.status(400).json({ error: "Invalid room or seat" });
       }
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [roomId]);
-      const room = await client.query("SELECT id FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
+      const room = await client.query("SELECT id, owner_id, max_members, room_mode FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
       if (!room.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Room not found" });
       }
+      if (room.rows[0].room_mode === "camera" || seat > Number(room.rows[0].max_members || 8)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Seat is outside this room's audio capacity" });
+      }
+      if (String(room.rows[0].owner_id || "") === String(req.userId) && seat !== 1) { await client.query("ROLLBACK"); return res.status(403).json({ error: "The room owner must remain on seat 1" }); }
       const member = await client.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2", [roomId, req.userId]);
       if (!member.rows.length) {
         await client.query("ROLLBACK");
         return res.status(403).json({ error: "Join the room first" });
       }
-      const target = await client.query("SELECT user_id FROM voice_room_seats WHERE room_id=$1 AND seat_number=$2 FOR UPDATE", [roomId, seat]);
+      const target = await client.query("SELECT user_id, is_locked FROM voice_room_seats WHERE room_id=$1 AND seat_number=$2 FOR UPDATE", [roomId, seat]);
+      if (target.rows.length && target.rows[0].is_locked) { await client.query("ROLLBACK"); return res.status(423).json({ error: "This seat is locked by the room owner" }); }
       if (target.rows.length && target.rows[0].user_id && String(target.rows[0].user_id) !== String(req.userId)) {
         await client.query("ROLLBACK");
         return res.status(409).json({ error: "This seat is already occupied" });
@@ -436,11 +449,11 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       await ensureVoiceSchema();
       const { roomId, seatNumber } = req.params;
       const seat = Number(seatNumber);
-      if (!validRoomId(roomId) || !Number.isInteger(seat) || seat < 1 || seat > 8) {
+      if (!validRoomId(roomId) || !Number.isInteger(seat) || seat < 1 || seat > 15) {
         return res.status(400).json({ error: "Invalid room or seat" });
       }
       await client.query("BEGIN");
-      const roomResult = await client.query("SELECT owner_id FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
+      const roomResult = await client.query("SELECT owner_id, max_members, room_mode FROM voice_rooms WHERE id=$1 AND status='active' FOR UPDATE", [roomId]);
       if (!roomResult.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Room not found" });
@@ -449,7 +462,12 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
         await client.query("ROLLBACK");
         return res.status(403).json({ error: "Only the room owner can assign seats" });
       }
+      if (roomResult.rows[0].room_mode === "camera" || seat > Number(roomResult.rows[0].max_members || 8)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Seat is outside this room's audio capacity" });
+      }
       const targetUserId = req.body && req.body.userId;
+      if ((String(targetUserId) === String(roomResult.rows[0].owner_id) && seat !== 1) || (seat === 1 && String(targetUserId) !== String(roomResult.rows[0].owner_id))) { await client.query("ROLLBACK"); return res.status(403).json({ error: "The room owner must remain on seat 1" }); }
       if (!targetUserId || !(await isMember(roomId, targetUserId))) {
         await client.query("ROLLBACK");
         return res.status(400).json({ error: "User must be in the room" });
@@ -483,8 +501,9 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       const room = await getRoom(roomId);
       if (!room) return res.status(404).json({ error: "Room not found" });
       const seat = Number(seatNumber);
-      if (!Number.isInteger(seat) || seat < 1 || seat > 8) return res.status(400).json({ error: "Invalid seat" });
+      if (!Number.isInteger(seat) || seat < 1 || seat > Number(room.max_members || 8)) return res.status(400).json({ error: "Invalid seat" });
       const isOwner = String(room.owner_id) === String(req.userId);
+      if (seat === 1) return res.status(403).json({ error: "The host seat cannot be released" });
       // A speaker may leave their own seat; only the owner may release someone else's seat.
       const result = isOwner
         ? await db.query("UPDATE voice_room_seats SET user_id=NULL,is_muted=FALSE,assigned_at=NULL WHERE room_id=$1 AND seat_number=$2 RETURNING seat_number", [roomId, seat])
@@ -505,15 +524,41 @@ module.exports = function registerLiveKitRoutes(app, db, authenticateToken) {
       const { roomId, seatNumber } = req.params;
       const room = await getRoom(roomId);
       if (!room) return res.status(404).json({ error: "Room not found" });
-      if (String(room.owner_id) !== String(req.userId)) return res.status(403).json({ error: "Only the room owner can mute speakers" });
+      const isOwner = String(room.owner_id) === String(req.userId);
       const seat = Number(seatNumber);
+      if (!Number.isInteger(seat) || seat < 1 || seat > Number(room.max_members || 8)) return res.status(400).json({ error: "Invalid seat" });
       const muted = Boolean(req.body && req.body.muted);
-      const result = await db.query("UPDATE voice_room_seats SET is_muted=$3 WHERE room_id=$1 AND seat_number=$2 AND user_id IS NOT NULL RETURNING seat_number", [roomId, seat, muted]);
+      // Owners may moderate any occupied seat; speakers may only sync their own mic state.
+      const result = isOwner
+        ? await db.query("UPDATE voice_room_seats SET is_muted=$3 WHERE room_id=$1 AND seat_number=$2 AND user_id IS NOT NULL RETURNING seat_number", [roomId, seat, muted])
+        : await db.query("UPDATE voice_room_seats SET is_muted=$4 WHERE room_id=$1 AND seat_number=$2 AND user_id=$3 RETURNING seat_number", [roomId, seat, req.userId, muted]);
       if (!result.rows.length) return res.status(404).json({ error: "Occupied seat not found" });
       return res.json({ message: muted ? "Speaker muted" : "Speaker unmuted" });
     } catch (error) {
       console.error("Mute voice speaker:", error.message);
       return res.status(500).json({ error: "Could not update mute state" });
+    }
+  });
+
+  app.post("/api/voice-rooms/:roomId/seats/:seatNumber/lock", authenticateToken, async (req, res) => {
+    try {
+      const { roomId, seatNumber } = req.params;
+      if (!validRoomId(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+      const room = await getRoom(roomId);
+      if (!room) return res.status(404).json({ error: "Room not found" });
+      if (String(room.owner_id) !== String(req.userId)) return res.status(403).json({ error: "Only the room owner can lock seats" });
+      const seat = Number(seatNumber);
+      if (!Number.isInteger(seat) || seat < 2 || seat > Number(room.max_members || 8) || room.room_mode === "camera") return res.status(400).json({ error: "Invalid audio seat" });
+      const locked = Boolean(req.body && req.body.locked);
+      const result = await db.query(
+        "INSERT INTO voice_room_seats(room_id,seat_number,user_id,is_muted,is_locked,assigned_at) VALUES($1,$2,NULL,FALSE,$3,NULL) ON CONFLICT(room_id,seat_number) DO UPDATE SET is_locked=EXCLUDED.is_locked WHERE voice_room_seats.user_id IS NULL RETURNING seat_number,is_locked",
+        [roomId, seat, locked]
+      );
+      if (!result.rows.length) return res.status(409).json({ error: "Release the occupied seat before locking it" });
+      return res.json({ message: locked ? "Seat locked" : "Seat unlocked", seatNumber: seat, is_locked: locked });
+    } catch (error) {
+      console.error("Lock voice seat:", error.message);
+      return res.status(500).json({ error: "Could not update seat lock" });
     }
   });
 

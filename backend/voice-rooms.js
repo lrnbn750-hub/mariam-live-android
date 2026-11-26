@@ -196,11 +196,16 @@ module.exports = (app, db, authenticateToken) => {
       if (!["audio", "camera"].includes(roomMode)) return res.status(400).json({ error: "Invalid room mode" });
       if ((roomMode === "audio" && cameraSeatCount !== 0) || (roomMode === "camera" && ![4, 6].includes(cameraSeatCount))) return res.status(400).json({ error: "Invalid camera seat count" });
       if (roomMode === "camera" && max_members !== cameraSeatCount) return res.status(400).json({ error: "Room capacity must match camera seats" });
+      if (roomMode === "audio" && ![8, 15].includes(max_members)) return res.status(400).json({ error: "Audio room capacity must be 8 or 15" });
       const imageData = String(req.body.image_base64 || "");
       const mimeType = String(req.body.image_mime || "");
       const backgroundData = String(req.body.background_base64 || "");
       if (name.length < 2 || name.length > 100) return res.status(400).json({ error: "Room name must be 2-100 characters" });
-      if (!Number.isInteger(max_members) || max_members < 2 || max_members > 8) return res.status(400).json({ error: "Room capacity must be 2-8" });
+      if (!Number.isInteger(max_members) || max_members < 2 || max_members > 15 ||
+          (roomMode === "audio" && ![8, 15].includes(max_members)) ||
+          (roomMode === "camera" && ![4, 6].includes(max_members))) {
+        return res.status(400).json({ error: "Audio rooms must have 8 or 15 seats; camera rooms must have 4 or 6 seats" });
+      }
       if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType) || !imageData) return res.status(400).json({ error: "Choose a JPG, PNG or WebP room image" });
       const buffer = Buffer.from(imageData, "base64");
       if (!buffer.length || buffer.length > 4 * 1024 * 1024) return res.status(413).json({ error: "Room image must be 4 MB or smaller" });

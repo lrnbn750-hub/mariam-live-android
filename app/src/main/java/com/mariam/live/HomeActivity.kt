@@ -361,21 +361,25 @@ class HomeActivity : Activity() {
             // عدد المتواجدين (يسار) + إشارة البث (يمين)
             frame.addView(RoomCountView(this,room.count),
                 FrameLayout.LayoutParams(dp(84),dp(24),Gravity.TOP or Gravity.LEFT).apply{setMargins(dp(10),dp(8),0,0)})
-            frame.addView(SignalBarsView(this),
-                FrameLayout.LayoutParams(dp(18),dp(16),Gravity.TOP or Gravity.RIGHT).apply{setMargins(0,dp(10),dp(10),0)})
-            // نوع البث يظهر فوق صورة الغرفة مثل بطاقات BIGO LIVE.
-            val modeLabel=label(
-                if(room.roomMode=="camera" || room.roomMode=="camera6" || room.roomMode=="video") "غرفة الفيديو" else "غرفة صوتية",
-                10.5f,Color.WHITE,true
-            ).apply{
+            // نوع البث مع مؤشر صوتي أزرق بجانبه داخل الشارة نفسها.
+            val modeLabel=LinearLayout(this).apply{
+                orientation=LinearLayout.HORIZONTAL
                 gravity=Gravity.CENTER
+                layoutDirection=View.LAYOUT_DIRECTION_RTL
                 setPadding(dp(7),dp(3),dp(7),dp(3))
                 background=GradientDrawable().apply{
                     setColor(Color.argb(175,18,16,24))
                     cornerRadius=dp(10).toFloat()
                     setStroke(dp(1),Color.argb(65,255,255,255))
                 }
-                setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),Color.BLACK)
+                elevation=dp(2).toFloat()
+                addView(label(
+                    if(room.roomMode=="camera" || room.roomMode=="camera6" || room.roomMode=="video") "غرفة الفيديو" else "غرفة صوتية",
+                    10.5f,Color.WHITE,true
+                ).apply{gravity=Gravity.CENTER;includeFontPadding=false},
+                    LinearLayout.LayoutParams(-2,dp(17)))
+                addView(SignalBarsView(this@HomeActivity),
+                    LinearLayout.LayoutParams(dp(18),dp(15)).apply{marginStart=dp(5)})
             }
             frame.addView(modeLabel,FrameLayout.LayoutParams(-2,dp(25),Gravity.TOP or Gravity.RIGHT).apply{
                 setMargins(0,dp(8),dp(9),0)
