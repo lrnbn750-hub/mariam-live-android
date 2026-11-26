@@ -99,6 +99,13 @@ class RoomActivity : Activity() {
  private val seatFrameLoading=HashSet<String>()
  private val seatFrameViews=HashMap<String,MutableList<RoyalGifFrame>>()
  private var currentUserEquippedFrameUrl=""
+  private val svipLevelsByUser=HashMap<String,Int>()
+  private val svipEntryEffectsByUser=HashMap<String,String>()
+  private val svipChatBubbleUrlsByUser=HashMap<String,String>()
+  private val svipChatBubbleBitmaps=HashMap<String,Bitmap>()
+  private val svipChatBubbleLoading=HashSet<String>()
+  private val svipProfileLoading=HashSet<String>()
+  private val svipProfileLoaded=HashSet<String>()
  private val chatBubbleStylesByUser=HashMap<String,String>()
  private var chatBubbleSelectionRefreshAt=0L
  private var lastRenderedChatSignature=""
@@ -136,7 +143,7 @@ class RoomActivity : Activity() {
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
  private var previousMemberIds:MutableSet<String>?=null
- private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0)
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0,val svipLevel:Int=0,val svipEntryEffectUrl:String="")
  private val joinNotices=ArrayList<RoomJoinNotice>()
  private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
  private var joinToastShowing=false
@@ -1280,6 +1287,13 @@ class RoomActivity : Activity() {
      return@launch
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
+     // Fetch SVIP assets for the four visible chat senders once per room session.
+     val svipStart=(messages.length()-4).coerceAtLeast(0)
+     for(index in svipStart until messages.length()){
+      val msg=messages.optJSONObject(index)?:continue
+      val sender=msg.optString("user_id").ifBlank{msg.optString("sender_id").ifBlank{(msg.optJSONObject("user")?:msg.optJSONObject("sender"))?.optString("id").orEmpty()}}
+      if(sender.isNotBlank() && sender!="null" && !svipProfileLoaded.contains(sender) && svipProfileLoading.add(sender))scope.launch{loadSvipPublicProfile(sender)}
+     }
     // Refresh the equipped bubble skins for visible senders at most every 15 seconds.
     val nowForBubbleSync=System.currentTimeMillis()
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
@@ -1345,14 +1359,17 @@ class RoomActivity : Activity() {
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
      val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
+     val svipBubbleUrl=svipChatBubbleUrlsByUser[senderId]
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
-      background=when{
+      tag=svipBubbleUrl
+      background=if(!svipBubbleUrl.isNullOrBlank())null else when{
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
       }
       elevation=dp(2).toFloat()
      }
+     if(!svipBubbleUrl.isNullOrBlank())loadSvipChatBubbleBackground(bubble,svipBubbleUrl)
      val content=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.VERTICAL
       gravity=Gravity.CENTER
@@ -1578,6 +1595,17 @@ class RoomActivity : Activity() {
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
     seats=r.body.optJSONArray("seats")?:JSONArray()
     cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
+     for(source in listOf(seats,cameraSeats)){
+      for(index in 0 until source.length()){
+       val member=source.optJSONObject(index)?:continue
+       val uid=member.optString("user_id")
+       if(uid.isBlank() || uid=="null")continue
+       val level=member.optInt("svip_level",0).coerceIn(0,7)
+       if(level>0)svipLevelsByUser[uid]=level
+       val bubble=member.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[uid]=bubble
+       val entry=member.optString("svip_entry_effect_asset_url");if(entry.startsWith("https://"))svipEntryEffectsByUser[uid]=entry
+      }
+     }
     roomMode=r.body.optString("roomMode","audio").lowercase()
     cameraSeatCount=r.body.optInt("cameraSeatCount",if(cameraSeats.length()>0)cameraSeats.length() else 0)
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
@@ -1805,7 +1833,10 @@ class RoomActivity : Activity() {
       val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
       addView(videoRenderer,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
      }
-     val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+      val svipFrameUrl=seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
      if(occupied && !frameUrl.isNullOrBlank()){
@@ -1857,6 +1888,13 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(16),1f))
+      val seatSvipLevel=seat.optInt("svip_level",svipLevelsByUser[uid]?:0).coerceIn(0,7)
+      if(seatSvipLevel in 1..7){
+       nameLine.addView(label("SVIP $seatSvipLevel",7.5f,Color.rgb(255,226,151),true).apply{
+        background=GradientDrawable().apply{cornerRadius=dp(7).toFloat();setColor(Color.argb(155,95,65,18));setStroke(dp(1),Color.rgb(218,174,78))}
+        setPadding(dp(3),0,dp(3),0)
+       },LinearLayout.LayoutParams(-2,dp(14)))
+      }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
@@ -2027,7 +2065,10 @@ class RoomActivity : Activity() {
     addView(avatarInner,FrameLayout.LayoutParams(innerPx,innerPx,Gravity.CENTER))
    }
    addView(ring,FrameLayout.LayoutParams(ringPx,ringPx,Gravity.CENTER))
-   val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+      val svipFrameUrl=seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
     .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
     ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
    if(occupied && !frameUrl.isNullOrBlank()){
@@ -2474,6 +2515,7 @@ class RoomActivity : Activity() {
  private var accountBanWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
+  if(notice.svipLevel in 1..7 && notice.svipEntryEffectUrl.startsWith("https://"))playSvipEntryEffect(notice.svipEntryEffectUrl)
   pendingJoinToasts.add(notice)
   if(!joinToastShowing)showNextRoomJoinToast()
  }
@@ -2532,6 +2574,13 @@ class RoomActivity : Activity() {
     setStroke(dp(1),if(isLevel100)Color.rgb(230,187,93) else Color.argb(110,202,202,202))
    }
   },LinearLayout.LayoutParams(-2,dp(21)))
+  if(notice.svipLevel in 1..7){
+   line.addView(TextView(this).apply{
+    text="SVIP ${notice.svipLevel}";textSize=8.5f;gravity=Gravity.CENTER;setTextColor(Color.rgb(255,226,151))
+    typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD);setPadding(dp(5),dp(3),dp(5),dp(3))
+    background=GradientDrawable().apply{cornerRadius=dp(8).toFloat();setColor(Color.argb(100,125,83,24));setStroke(dp(1),Color.rgb(226,184,91))}
+   },LinearLayout.LayoutParams(-2,dp(21)).apply{marginStart=dp(4)})
+  }
   info.addView(line)
   info.addView(TextView(this).apply{
    text=if(isLevel100)"انضم إلى الغرفة" else "دخل الغرفة"
@@ -2924,6 +2973,36 @@ class RoomActivity : Activity() {
   }
  }
 
+ private suspend fun loadSvipPublicProfile(userId:String){
+  try{
+   val response=withContext(Dispatchers.IO){AuthApi.get("/api/users/$userId",authToken)}
+   if(response.status in 200..299){
+    val user=response.body.optJSONObject("user")?:response.body
+    val level=user.optInt("svip_level",0).coerceIn(0,7);if(level>0)svipLevelsByUser[userId]=level
+    val bubble=user.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[userId]=bubble
+    val entry=user.optString("svip_entry_effect_asset_url");if(entry.startsWith("https://"))svipEntryEffectsByUser[userId]=entry
+    lastRenderedChatSignature="";loadRoomMessages()
+   }
+  }catch(_:Exception){}finally{svipProfileLoading.remove(userId);svipProfileLoaded.add(userId)}
+ }
+
+ private fun playSvipEntryEffect(url:String){
+  if(!::roomOverlayLayer.isInitialized || !url.startsWith("https://"))return
+  val effect=LottieAnimationView(this).apply{repeatCount=0;scaleType=ImageView.ScaleType.FIT_CENTER;setAnimationFromUrl(url);isClickable=false;isFocusable=false}
+  roomOverlayLayer.addView(effect,FrameLayout.LayoutParams(dp(240),dp(240),Gravity.CENTER))
+  effect.addLottieOnCompositionLoadedListener{effect.playAnimation()}
+  effect.addAnimatorListener(object:android.animation.AnimatorListenerAdapter(){override fun onAnimationEnd(animation:android.animation.Animator){effect.post{if(effect.parent===roomOverlayLayer)roomOverlayLayer.removeView(effect)}}})
+ }
+
+ private fun loadSvipChatBubbleBackground(view:FrameLayout,url:String){
+  val cached=svipChatBubbleBitmaps[url];if(cached!=null){view.background=BitmapDrawable(resources,cached);return}
+  if(!svipChatBubbleLoading.add(url))return
+  scope.launch{try{
+   val bitmap=withContext(Dispatchers.IO){val connection=URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000};connection.getInputStream().use{BitmapFactory.decodeStream(it)}}
+   if(bitmap!=null){svipChatBubbleBitmaps[url]=bitmap;if(view.tag==url && view.isAttachedToWindow)view.background=BitmapDrawable(resources,bitmap)}
+  }catch(_:Exception){}finally{svipChatBubbleLoading.remove(url)}}
+ }
+
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
@@ -2943,7 +3022,7 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12))
+     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12),svipLevel=me?.optInt("svip_level",0)?.coerceIn(0,7)?:0,svipEntryEffectUrl=me?.optString("svip_entry_effect_asset_url").orEmpty())
      joinNotices.add(myNotice)
      // Show the entrance banner for the current user too; initial membership
      // is the first observed state, so it must not be treated as a silent baseline.
@@ -2960,7 +3039,7 @@ class RoomActivity : Activity() {
         if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
        val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
         ?:nested?.optString("avatar_url").orEmpty()
-       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12))
+       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12),svipLevel=member.optInt("svip_level",svipLevelsByUser[id]?:0).coerceIn(0,7),svipEntryEffectUrl=member.optString("svip_entry_effect_asset_url").ifBlank{svipEntryEffectsByUser[id].orEmpty()})
        joinNotices.add(notice)
        showRoomJoinToast(notice)
       }
