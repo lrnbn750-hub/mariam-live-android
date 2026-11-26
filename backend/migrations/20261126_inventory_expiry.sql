@@ -26,3 +26,37 @@ ALTER TABLE wallet_transactions
 ALTER TABLE wallet_transactions
   ADD CONSTRAINT wallet_transactions_transaction_type_check
   CHECK (transaction_type IN ('topup','gift_sent','gift_received','cashout','adjustment','store_purchase'));
+
+
+-- Standard BAK LIVE cosmetic prices, charged in diamonds.
+UPDATE public.store_items
+SET price_diamonds = CASE item_type
+  WHEN 'frame' THEN 1000
+  WHEN 'chat_bubble' THEN 500
+  WHEN 'background' THEN 2000
+  ELSE price_diamonds
+END
+WHERE item_type IN ('frame','chat_bubble','background');
+
+-- Apply the standard price automatically when new catalog items are added.
+CREATE OR REPLACE FUNCTION public.set_bak_store_item_diamond_price()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.item_type = 'frame' THEN
+    NEW.price_diamonds := 1000;
+  ELSIF NEW.item_type = 'chat_bubble' THEN
+    NEW.price_diamonds := 500;
+  ELSIF NEW.item_type = 'background' THEN
+    NEW.price_diamonds := 2000;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_set_bak_store_item_diamond_price ON public.store_items;
+CREATE TRIGGER trg_set_bak_store_item_diamond_price
+BEFORE INSERT OR UPDATE OF item_type ON public.store_items
+FOR EACH ROW
+EXECUTE FUNCTION public.set_bak_store_item_diamond_price();
