@@ -1837,8 +1837,6 @@ class RoomActivity : Activity() {
       val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
        .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
        ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
-      .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
-      ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
      if(occupied && !frameUrl.isNullOrBlank()){
       val frameView=RoyalGifFrame(this@RoomActivity).apply{
        visibility=View.VISIBLE
@@ -2069,8 +2067,6 @@ class RoomActivity : Activity() {
       val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
        .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
        ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
-    .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
-    ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
    if(occupied && !frameUrl.isNullOrBlank()){
     val frameView=RoyalGifFrame(this@RoomActivity).apply{visibility=View.VISIBLE;tag=frameUrl}
     addView(frameView,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
