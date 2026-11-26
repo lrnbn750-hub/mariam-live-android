@@ -521,6 +521,27 @@ class ProfileActivity : Activity() {
         })
         content.addView(hero, LinearLayout.LayoutParams(-1, resources.displayMetrics.widthPixels * 9 / 10))
 
+        // Royal identity backdrop: only behind the name, ID, statistics and level.
+        // The custom drawable has no intrinsic size so the artwork cannot enlarge this panel.
+        val identityPanel = FrameLayout(this)
+        val identityContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+        val royalIdentityBitmap = BitmapFactory.decodeResource(resources, R.drawable.bak_live_profile_background_10x9)
+        identityPanel.background = object : Drawable() {
+            private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
+            private val boundsRect = android.graphics.RectF()
+            override fun onBoundsChange(bounds: android.graphics.Rect) { boundsRect.set(bounds) }
+            override fun draw(canvas: android.graphics.Canvas) { canvas.drawBitmap(royalIdentityBitmap, null, boundsRect, paint) }
+            override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+            override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+            @Suppress("OVERRIDE_DEPRECATION")
+            override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
+            override fun getIntrinsicWidth(): Int = -1
+            override fun getIntrinsicHeight(): Int = -1
+        }
+
         // ---- Name + gender ----
         val nameRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -538,7 +559,7 @@ class ProfileActivity : Activity() {
             setSingleLine(true)
         }
         nameRow.addView(publicName, LinearLayout.LayoutParams(-2, -2))
-        content.addView(nameRow)
+        identityContent.addView(nameRow)
 
         // ---- Location | ID ----
         val idRow = LinearLayout(this).apply {
@@ -552,7 +573,7 @@ class ProfileActivity : Activity() {
         idRow.addView(text("⧉", 13f, sub).apply { setOnClickListener { copyId() }; setPadding(0, 0, dp(5f), 0) })
         publicIdView = text("ID: —", 14f, sub).apply { setOnClickListener { copyId() } }
         idRow.addView(publicIdView)
-        content.addView(idRow)
+        identityContent.addView(idRow)
 
         // ---- Compact stats: value above, caption directly underneath ----
         val stats = LinearLayout(this).apply {
@@ -603,7 +624,7 @@ class ProfileActivity : Activity() {
             LinearLayout.LayoutParams(0, dp(48f), 1f))
         stats.addView(statPair("معجبين", { publicFans = it }) { openFollowList("followers", userId) },
             LinearLayout.LayoutParams(0, dp(48f), 1f))
-        content.addView(stats)
+        identityContent.addView(stats)
 
         // ---- Level badge ----
         val badges = LinearLayout(this).apply {
@@ -618,7 +639,9 @@ class ProfileActivity : Activity() {
             setPadding(dp(11f), dp(3f), dp(11f), dp(3f))
         }
         badges.addView(publicLevel, LinearLayout.LayoutParams(-2, -2))
-        content.addView(badges)
+        identityContent.addView(badges)
+        identityPanel.addView(identityContent, FrameLayout.LayoutParams(-1, -2))
+        content.addView(identityPanel, LinearLayout.LayoutParams(-1, -2))
         content.addView(View(this).apply { setBackgroundColor(0x22000000) }, LinearLayout.LayoutParams(-1, dp(8f)))
 
         // ---- Tab ----
