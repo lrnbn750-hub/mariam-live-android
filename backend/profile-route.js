@@ -194,7 +194,7 @@ module.exports = function(app, db, authenticateToken) {
       }
 
       const user = result.rows[0];
-      const [followStats, giftStats, levelResult] = await Promise.all([
+      const [followStats, giftStats, levelResult, profileBackground] = await Promise.all([
         db.query(
           `SELECT
              (SELECT COUNT(*)::bigint FROM user_follows WHERE followed_id=$1) AS followers_count,
@@ -209,6 +209,16 @@ module.exports = function(app, db, authenticateToken) {
         ),
         db.query(
           "SELECT total_xp FROM user_levels WHERE user_id=$1",
+          [req.params.id]
+        ),
+        db.query(
+          `SELECT si.asset_url
+           FROM user_equipped_items e
+           JOIN store_items si ON si.item_id=e.item_id AND si.active=TRUE
+           JOIN user_inventory ui ON ui.user_id=e.user_id AND ui.item_id=e.item_id
+           WHERE e.user_id=$1 AND e.item_type='background'
+             AND (ui.expires_at IS NULL OR ui.expires_at > NOW())
+           LIMIT 1`,
           [req.params.id]
         )
       ]);
@@ -227,6 +237,7 @@ module.exports = function(app, db, authenticateToken) {
       user.following_count = Number(follows.following_count || 0);
       user.diamonds_sent = gifts.diamonds_sent || "0";
       user.diamonds_received = gifts.diamonds_received || "0";
+      user.profile_background_url = profileBackground.rows[0]?.asset_url || "";
       return res.json({ user });
     } catch (error) {
       console.error("Public profile error:", error.message);
