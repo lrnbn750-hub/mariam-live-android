@@ -1,3 +1,6 @@
+const crypto = require("crypto");
+const SVIP_CASHBACK_PERCENT = 40;
+
 module.exports = function registerSvipRoutes(app, db, authenticateToken) {
   // SVIP pricing is editable only by explicitly allowlisted administrator UUIDs.
   const requireSvipAdmin = (req, res, next) => {
@@ -100,6 +103,14 @@ module.exports = function registerSvipRoutes(app, db, authenticateToken) {
       }
 
       const plan = planResult.rows[0];
+      const price = BigInt(plan.price_diamonds);
+      const cashback = price * BigInt(SVIP_CASHBACK_PERCENT) / 100n;
+      if (price <= 0n || price > BigInt(Number.MAX_SAFE_INTEGER) ||
+          cashback > BigInt(Number.MAX_SAFE_INTEGER)) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ success: false, error: "سعر باقة SVIP غير صالح" });
+      }
+
       await client.query(
         "INSERT INTO public.wallet_accounts(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING",
         [req.userId]
@@ -108,16 +119,17 @@ module.exports = function registerSvipRoutes(app, db, authenticateToken) {
         "SELECT diamonds_balance FROM public.wallet_accounts WHERE user_id=$1 FOR UPDATE",
         [req.userId]
       );
-      const balance = Number(walletResult.rows[0]?.diamonds_balance || 0);
-      const price = Number(plan.price_diamonds);
-      if (!Number.isSafeInteger(price) || balance < price) {
+      const balance = BigInt(walletResult.rows[0]?.diamonds_balance || 0);
+      if (balance < price) {
         await client.query("ROLLBACK");
         return res.status(400).json({ success: false, error: "رصيد الماسات غير كافٍ" });
       }
 
+      // Charge the full package price, then return exactly 40% to the same wallet.
+      // Both movements and the membership activation commit atomically.
       await client.query(
-        "UPDATE public.wallet_accounts SET diamonds_balance=diamonds_balance-$2, updated_at=NOW() WHERE user_id=$1",
-        [req.userId, price]
+        "UPDATE public.wallet_accounts SET diamonds_balance=diamonds_balance-$2+$3, updated_at=NOW() WHERE user_id=$1",
+        [req.userId, price.toString(), cashback.toString()]
       );
       const membership = await client.query(
         `INSERT INTO public.user_svip_memberships(user_id,level,starts_at,expires_at,updated_at)
@@ -134,8 +146,17 @@ module.exports = function registerSvipRoutes(app, db, authenticateToken) {
         `INSERT INTO public.wallet_transactions
           (user_id,transaction_type,currency,amount,status,description,reference_id)
          VALUES($1,'adjustment','diamonds',$2,'completed',$3,$4)`,
-        [req.userId, price, "شراء " + plan.name + " لمدة 30 يوماً", "svip:" + level + ":" + Date.now()]
+        [req.userId, price.toString(), "شراء " + plan.name + " لمدة 30 يوماً", "svip:" + level + ":" + Date.now()]
       );
+
+      if (cashback > 0n) {
+        await client.query(
+          `INSERT INTO public.wallet_transactions
+            (user_id,transaction_type,currency,amount,status,description,reference_id)
+           VALUES($1,'adjustment','diamonds',$2,'completed',$3,$4)`,
+          [req.userId, cashback.toString(), "مردود 40% من شراء " + plan.name, "svip-cashback:" + level + ":" + Date.now()]
+        );
+      }
 
       const updatedWallet = await client.query(
         "SELECT diamonds_balance FROM public.wallet_accounts WHERE user_id=$1",
@@ -144,8 +165,11 @@ module.exports = function registerSvipRoutes(app, db, authenticateToken) {
       await client.query("COMMIT");
       res.json({
         success: true,
-        message: "تم تفعيل " + plan.name + " بنجاح",
+        message: "تم تفعيل " + plan.name + " وإرجاع 40% من العملات إلى محفظتك",
         subscription: membership.rows[0],
+        cashback_diamonds: cashback.toString(),
+        cashback_percent: SVIP_CASHBACK_PERCENT,
+        charged_diamonds: price.toString(),
         wallet: { diamonds_balance: Number(updatedWallet.rows[0].diamonds_balance) }
       });
     } catch (error) {
