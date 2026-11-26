@@ -1837,7 +1837,7 @@ class RoomActivity : Activity() {
    isFocusable=false
   }
   roomOverlayLayer.addView(effect,FrameLayout.LayoutParams(dp(240),dp(240),Gravity.CENTER))
-  effect.addLottieOnCompositionLoadedListener{view->view.playAnimation()}
+  effect.addLottieOnCompositionLoadedListener{effect.playAnimation()}
   effect.addAnimatorListener(object:android.animation.AnimatorListenerAdapter(){
    override fun onAnimationEnd(animation:android.animation.Animator){
     effect.post{if(effect.parent===roomOverlayLayer)roomOverlayLayer.removeView(effect)}
