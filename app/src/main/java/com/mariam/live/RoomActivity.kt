@@ -1888,7 +1888,7 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(16),1f))
-      val seatSvipLevel=seat.optInt("svip_level",svipLevelsByUser[uid]?:0).coerceIn(0,7)
+      val seatSvipLevel=seat.optInt("svip_level",uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
       if(seatSvipLevel in 1..7){
        nameLine.addView(label("SVIP $seatSvipLevel",7.5f,Color.rgb(255,226,151),true).apply{
         background=GradientDrawable().apply{cornerRadius=dp(7).toFloat();setColor(Color.argb(155,95,65,18));setStroke(dp(1),Color.rgb(218,174,78))}
