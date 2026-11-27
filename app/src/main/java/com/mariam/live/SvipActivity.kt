@@ -108,21 +108,21 @@ class SvipActivity : Activity() {
                 insets
             }
         }
-        val head=row().apply{setPadding(dp(8),0,dp(8),0);clipChildren=false;clipToPadding=false}
-        val back=TextView(this).apply{text="‹";textSize=32f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setOnClickListener{finish()}}
-        head.addView(back,lp(dp(34),dp(44)))
-        head.addView(label("SVIP",16f,Color.WHITE,true),lp(0,dp(44),1f).apply{marginStart=dp(2)})
-        val wallet=row().apply{background=bg(deep,30f,line);setPadding(dp(8),dp(5),dp(8),dp(5));gravity=Gravity.CENTER;minimumWidth=dp(104)}
-        wallet.addView(DiamondView(this),lp(dp(16),dp(16)))
-        balanceText=label("0",11.5f,Color.WHITE,true);wallet.addView(balanceText,lp(-2,-2).apply{marginStart=dp(5)})
-        head.addView(wallet)
-        memberEntry=label("♛  عضويتي",12f,0xfff2dfb7.toInt(),true).apply{
-            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(0xff3b3440.toInt(),0xff292d3d.toInt())).apply{cornerRadius=dp(24f).toFloat();setStroke(dp(1),0xff806d48.toInt())}
-            setPadding(dp(10),dp(7),dp(10),dp(7));visibility=View.GONE
-            setOnClickListener{startActivity(Intent(this@SvipActivity,SvipMemberActivity::class.java))}
+        // Header inspired by the supplied reference: title on the right, no wallet balance.
+        val head=row().apply{
+            setPadding(dp(18),0,dp(14),0)
+            gravity=Gravity.END or Gravity.CENTER_VERTICAL
+            clipChildren=false
+            clipToPadding=false
         }
-        head.addView(memberEntry,lp(-2,-2).apply{marginStart=dp(5);marginEnd=dp(2)})
-        root.addView(head,lp(-1,dp(44)))
+        val headerArrow=TextView(this).apply{
+            text="›";textSize=34f;setTextColor(0xffc8cbd4.toInt())
+            gravity=Gravity.CENTER
+            setOnClickListener{finish()}
+        }
+        head.addView(headerArrow,lp(dp(34),dp(48)))
+        head.addView(label("مركز SVIP",17f,0xffd8dbe3.toInt(),true),lp(-2,dp(48)).apply{marginEnd=dp(5)})
+        root.addView(head,lp(-1,dp(54)))
 
         scrollTabs=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;overScrollMode=View.OVER_SCROLL_NEVER}
         tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(6),dp(2),dp(6),dp(2))}
