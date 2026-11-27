@@ -197,15 +197,15 @@ class ProfileActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
                     addView(HomeActivity.NavIcon(this@ProfileActivity, kind, selected),
-                        LinearLayout.LayoutParams(dp(25f), dp(25f)))
+                        LinearLayout.LayoutParams(dp(28f), dp(28f)))
                     addView(TextView(this@ProfileActivity).apply {
                         text = title
-                        textSize = 10.5f
+                        textSize = 11.5f
                         gravity = Gravity.CENTER
                         setSingleLine(true)
                         setTextColor(if (selected) Color.rgb(25, 125, 72) else Color.rgb(110, 118, 114))
                         typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                    }, LinearLayout.LayoutParams(-1, dp(16f)))
+                    }, LinearLayout.LayoutParams(-1, dp(18f)))
                 }
                 addView(column, FrameLayout.LayoutParams(-1, -1))
                 setOnClickListener { action() }
@@ -222,17 +222,17 @@ class ProfileActivity : Activity() {
         val halo = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0x66FFF1C4)
+                setColor(0x3335B77A)
             }
         }
-        createSlot.addView(halo, FrameLayout.LayoutParams(dp(52f), dp(52f), Gravity.CENTER))
+        createSlot.addView(halo, FrameLayout.LayoutParams(dp(58f), dp(58f), Gravity.CENTER))
         val createButton = HomeActivity.CreateRoomButton(this).apply {
             contentDescription = "إنشاء غرفة"
             isClickable = true
             elevation = dp(8f).toFloat()
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
-        createSlot.addView(createButton, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.CENTER))
+        createSlot.addView(createButton, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.CENTER))
         android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.055f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
@@ -250,14 +250,14 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
-        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(54f), Gravity.BOTTOM))
-        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(72f), Gravity.BOTTOM))
+        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(59f), Gravity.BOTTOM))
+        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(78f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
-            view.layoutParams = view.layoutParams.apply { height = dp(72f) + bottomInset }
-            bar.layoutParams = bar.layoutParams.apply { height = dp(54f) + bottomInset }
+            view.layoutParams = view.layoutParams.apply { height = dp(78f) + bottomInset }
+            bar.layoutParams = bar.layoutParams.apply { height = dp(59f) + bottomInset }
             bar.setPadding(dp(5f), dp(2f), dp(5f), bottomInset)
-            page.setPadding(0, 0, 0, dp(110f) + bottomInset)
+            page.setPadding(0, 0, 0, dp(116f) + bottomInset)
             insets
         }
         setContentView(root)
@@ -699,7 +699,7 @@ class ProfileActivity : Activity() {
             setOnClickListener { Toast.makeText(this@ProfileActivity, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show() }
             pressable()
         }
-        val gold = Color.rgb(247, 181, 0)
+        val gold = Color.rgb(37, 166, 112)
         val star = text("☆", 22f, gold, true).apply {
             gravity = Gravity.CENTER
             background = rounded(Color.WHITE, 23f, gold)
