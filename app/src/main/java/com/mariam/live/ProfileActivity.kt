@@ -226,14 +226,14 @@ class ProfileActivity : Activity() {
                 setColor(0x3335B77A)
             }
         }
-        createSlot.addView(halo, FrameLayout.LayoutParams(dp(58f), dp(58f), Gravity.CENTER))
+        createSlot.addView(halo, FrameLayout.LayoutParams(dp(54f), dp(54f), Gravity.CENTER))
         val createButton = HomeActivity.CreateRoomButton(this).apply {
             contentDescription = "إنشاء غرفة"
             isClickable = true
             elevation = dp(16f).toFloat()
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
-        createSlot.addView(createButton, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.CENTER))
+        createSlot.addView(createButton, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.CENTER))
         android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.02f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
@@ -252,7 +252,7 @@ class ProfileActivity : Activity() {
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
         navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(59f), Gravity.BOTTOM))
-        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = -dp(7f) })
+        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = -dp(2f) })
         root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(78f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
