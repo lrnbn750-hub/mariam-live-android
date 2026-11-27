@@ -134,7 +134,7 @@ class SvipActivity : Activity() {
         }
         content.addView(badge,lp(-1,dp(152)))
         val panelWrap=column().apply{
-            background=GradientDrawable().apply{setColor(panel);cornerRadii=floatArrayOf(dp(34f),dp(34f),dp(34f),dp(34f),0f,0f,0f,0f)}
+            background=GradientDrawable().apply{setColor(panel);cornerRadii=floatArrayOf(dp(34f).toFloat(),dp(34f).toFloat(),dp(34f).toFloat(),dp(34f).toFloat(),0f,0f,0f,0f)}
             setPadding(dp(12),dp(16),dp(12),dp(18))
             translationY=-dp(16).toFloat()
         }
@@ -374,7 +374,7 @@ class SvipActivity : Activity() {
     private class BadgeView(c:android.content.Context):View(c){
         var level=1
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
-        private fun shade(c:Int,t:Float):Int=Color.rgb((Color.red(c)+(if(t>0)255 else 0-Color.red(c))*abs(t)).roundToInt().coerceIn(0,255),(Color.green(c)+(if(t>0)255 else 0-Color.green(c))*abs(t)).roundToInt().coerceIn(0,255),(Color.blue(c)+(if(t>0)255 else 0-Color.blue(c))*abs(t)).roundToInt().coerceIn(0,255))
+        private fun shade(c:Int,t:Float):Int { fun ch(v:Int)= (v + ((if(t>0)255 else 0)-v)*abs(t)).roundToInt().coerceIn(0,255); return Color.rgb(ch(Color.red(c)),ch(Color.green(c)),ch(Color.blue(c))) }
         private fun fill(shader:Shader?=null,color:Int=Color.WHITE){p.style=Paint.Style.FILL;p.shader=shader;p.color=color}
         private fun stroke(color:Int,w:Float){p.style=Paint.Style.STROKE;p.shader=null;p.color=color;p.strokeWidth=w;p.strokeJoin=Paint.Join.ROUND;p.strokeCap=Paint.Cap.ROUND}
         override fun onDraw(canvas:Canvas){
@@ -416,7 +416,7 @@ class SvipActivity : Activity() {
             fill(null,rib);val tail=Path().apply{moveTo(54f,190f);lineTo(70f,182f);lineTo(70f,212f);lineTo(54f,212f);lineTo(63f,201f);close()};canvas.drawPath(tail,p);canvas.save();canvas.scale(-1f,1f,120f,0f);canvas.drawPath(tail,p);canvas.restore()
             fill(LinearGradient(66f,178f,66f,208f,intArrayOf(shade(rib,.35f),rib,shade(rib,-.45f)),null,Shader.TileMode.CLAMP));canvas.drawRect(66f,178f,174f,208f,p);stroke(hi,2f);canvas.drawRect(66f,178f,174f,208f,p)
             stroke(hi,1f);canvas.drawLine(71f,183f,169f,183f,p);canvas.drawLine(71f,203f,169f,203f,p)
-            fill(null,0xfffffbe6.toInt());p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.create("serif",Typeface.BOLD);p.textSize=20f;p.letterSpacing=.08f;canvas.drawText("SVIP $level",120f,199.5f,p);p.letterSpacing=0f
+            fill(null,0xfffffbe6.toInt());p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.create("serif",Typeface.BOLD);p.textSize=20f;canvas.drawText("SVIP $level",120f,199.5f,p)
             // rivets and sparkles
             fill(null,hi);listOf(72f to 84f,168f to 84f,120f to 60f,66f to 118f,174f to 118f).forEach{canvas.drawCircle(it.first,it.second,2.4f,p)}
             fill(null,gHi);val points=listOf(44f to 70f,198f to 62f,36f to 170f,206f to 170f,62f to 36f,180f to 36f,28f to 120f,212f to 118f,120f to 12f)
