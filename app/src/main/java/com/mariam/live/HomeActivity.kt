@@ -313,8 +313,9 @@ class HomeActivity : Activity() {
 
     private fun buildCards(){
         val avail=resources.displayMetrics.widthPixels-dp(24)
-        val cardW=avail/2-dp(8)
-        val cardH=(cardW*1.12f).toInt()
+        // Slightly more compact room tiles for a cleaner home feed.
+        val cardW=((avail/2-dp(8))*0.96f).toInt()
+        val cardH=(cardW*1.08f).toInt()
         var list:List<RoomItem> = liveRooms.filter{it.name.contains(searchQuery,true)}
         list=when(tabMode){
             0->list.sortedByDescending{it.count}
