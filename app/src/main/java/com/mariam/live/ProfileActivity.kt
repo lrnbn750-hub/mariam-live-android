@@ -24,7 +24,9 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.FrameLayout
+import android.widget.EditText
 import android.widget.LinearLayout
+import android.text.InputType
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -270,7 +272,7 @@ class ProfileActivity : Activity() {
         header.layoutParams = LinearLayout.LayoutParams(-1, -2)
         avatar = header.avatarView
         avatar.clipToOutline = true
-        header.editAvatarView.setOnClickListener { pickPhoto() }
+        header.editAvatarView.setOnClickListener { showEditProfileDialog() }
         header.copyView.setOnClickListener { copyId() }
         header.settingsView.setOnClickListener { openAction("settings") }
         header.supportView.setOnClickListener { openAction("music") }
@@ -1179,6 +1181,149 @@ class ProfileActivity : Activity() {
                     publicFollowButton?.isEnabled = true
                     publicFriendsButton?.isEnabled = true
                     Toast.makeText(this, e.message ?: "تعذر تحديث المتابعة", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showEditProfileDialog() {
+        if (!isOwnProfile) return
+        val nameInput = EditText(this).apply {
+            setSingleLine(true)
+            textSize = 15f
+            hint = "اكتب اسمك"
+            setText(profileData.optString("name").takeUnless { it == "null" }.orEmpty())
+            filters = arrayOf(android.text.InputFilter.LengthFilter(60))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        val bioInput = EditText(this).apply {
+            textSize = 15f
+            hint = "اكتب نبذة قصيرة عنك"
+            setText(profileData.optString("bio").takeUnless { it == "null" }.orEmpty())
+            filters = arrayOf(android.text.InputFilter.LengthFilter(300))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 2
+            maxLines = 4
+            gravity = Gravity.TOP
+        }
+        val countries = arrayOf(
+            "العراق", "السعودية", "الإمارات", "الكويت", "قطر", "البحرين", "عُمان",
+            "الأردن", "سوريا", "لبنان", "فلسطين", "مصر", "المغرب", "الجزائر", "تونس",
+            "ليبيا", "السودان", "اليمن", "تركيا", "إيران", "أفغانستان", "باكستان",
+            "الهند", "بنغلاديش", "إندونيسيا", "ماليزيا", "الصين", "اليابان", "كوريا الجنوبية",
+            "روسيا", "أوكرانيا", "ألمانيا", "فرنسا", "بريطانيا", "إيطاليا", "إسبانيا",
+            "هولندا", "السويد", "النرويج", "سويسرا", "الولايات المتحدة", "كندا", "أستراليا",
+            "البرازيل", "الأرجنتين", "جنوب أفريقيا", "نيجيريا", "كينيا"
+        )
+        var selectedCountry = profileData.optString("country").takeUnless { it == "null" }.orEmpty()
+        val countryValue = text(
+            if (selectedCountry.isBlank()) "اختر البلد" else selectedCountry,
+            15f, if (selectedCountry.isBlank()) muted else ink, true
+        )
+        val countryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.rgb(247, 248, 250), 12f, Color.rgb(231, 234, 239))
+            setPadding(dp(14f), dp(12f), dp(14f), dp(12f))
+            isClickable = true
+            isFocusable = true
+            addView(countryValue, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(text("⌄", 20f, muted, true))
+            setOnClickListener {
+                val currentIndex = countries.indexOf(selectedCountry).coerceAtLeast(0)
+                android.app.AlertDialog.Builder(this@ProfileActivity)
+                    .setTitle("اختر بلدك")
+                    .setSingleChoiceItems(countries, currentIndex) { dialog, which ->
+                        selectedCountry = countries[which]
+                        countryValue.text = selectedCountry
+                        countryValue.setTextColor(ink)
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            }
+        }
+
+        fun fieldLabel(value: String) = text(value, 13f, Color.rgb(90, 98, 110), true)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20f), dp(8f), dp(20f), dp(4f))
+            addView(fieldLabel("الاسم"))
+            addView(nameInput, LinearLayout.LayoutParams(-1, dp(52f)).apply { topMargin = dp(6f) })
+            addView(fieldLabel("البلد"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(countryRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6f) })
+            addView(fieldLabel("النبذة الشخصية"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(bioInput, LinearLayout.LayoutParams(-1, dp(104f)).apply { topMargin = dp(6f) })
+        }
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("تعديل الملف الشخصي")
+            .setView(scroll)
+            .setNeutralButton("تغيير الصورة", null)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("حفظ", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                dialog.dismiss()
+                pickPhoto()
+            }
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val displayName = nameInput.text.toString().trim()
+                val bio = bioInput.text.toString().trim()
+                if (displayName.isBlank()) {
+                    nameInput.error = "الاسم مطلوب"
+                    return@setOnClickListener
+                }
+                if (selectedCountry.isBlank()) {
+                    Toast.makeText(this, "يرجى اختيار البلد", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                saveProfileDetails(displayName, selectedCountry, bio, dialog)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun saveProfileDetails(displayName: String, country: String, bio: String, dialog: android.app.AlertDialog) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        if (token.isNullOrBlank()) {
+            Toast.makeText(this, "انتهت الجلسة، سجل الدخول مجدداً", Toast.LENGTH_LONG).show()
+            return
+        }
+        val saveButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+        saveButton.isEnabled = false
+        saveButton.text = "جارٍ الحفظ..."
+        executor.execute {
+            try {
+                val payload = JSONObject()
+                    .put("display_name", displayName)
+                    .put("country", country)
+                    .put("bio", bio)
+                val result = AuthApi.put("/api/profile", payload, token)
+                if (result.status !in 200..299) {
+                    throw Exception(result.body.optString("error", "تعذر حفظ بيانات الملف الشخصي"))
+                }
+                profileData.put("name", displayName)
+                    .put("country", country)
+                    .put("bio", bio)
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        header.setUserName(displayName)
+                        dialog.dismiss()
+                        Toast.makeText(this, "تم حفظ بيانات الملف الشخصي", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        saveButton.isEnabled = true
+                        saveButton.text = "حفظ"
+                        Toast.makeText(this, e.message ?: "تعذر حفظ التغييرات", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
