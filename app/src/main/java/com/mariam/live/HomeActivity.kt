@@ -206,7 +206,7 @@ class HomeActivity : Activity() {
         ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=-dp(2)})
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=dp(5)})
 
         root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(78),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
