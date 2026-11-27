@@ -1330,6 +1330,7 @@ class RoomActivity : Activity() {
      append(messages.toString())
      append('|')
      append(chatBubbleStylesByUser.toSortedMap().entries.joinToString(";"){it.key+":"+it.value})
+     append("|svip:").append(svipLevelsByUser.toSortedMap().entries.joinToString(";"){it.key+":"+it.value})
      append('|')
      activeJoinNotices.forEach{append(it.userId).append(':').append(it.createdAt/1000L).append(';')}
     }
@@ -1355,6 +1356,8 @@ class RoomActivity : Activity() {
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
+     val senderSvipLevel=(if(item.has("svip_level"))item.optInt("svip_level",0) else senderUser?.optInt("svip_level",0)?:0)
+      .coerceIn(0,7).takeIf{it>0} ?: (svipLevelsByUser[senderId]?:0)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
@@ -1396,6 +1399,20 @@ class RoomActivity : Activity() {
       if(isMaxLevel)setTextColor(Color.rgb(70,40,4))
      }
      senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(16)).apply{marginEnd=dp(5)})
+     if(senderSvipLevel in 1..7){
+      senderLine.addView(TextView(this@RoomActivity).apply{
+       text="♛ SVIP $senderSvipLevel"
+       textSize=8f
+       gravity=Gravity.CENTER
+       setTextColor(Color.rgb(255,226,151))
+       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+       setPadding(dp(5),dp(1),dp(5),dp(1))
+       background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(73,52,27),Color.rgb(112,76,35))).apply{
+        cornerRadius=dp(8).toFloat()
+        setStroke(dp(1),Color.rgb(218,174,78))
+       }
+      },LinearLayout.LayoutParams(-2,dp(16)).apply{marginEnd=dp(4)})
+     }
      senderLine.addView(TextView(this@RoomActivity).apply{
       text=sender
       textSize=10.5f
