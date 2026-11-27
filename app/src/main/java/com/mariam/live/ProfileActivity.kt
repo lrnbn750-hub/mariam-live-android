@@ -175,6 +175,7 @@ class ProfileActivity : Activity() {
         val navWrap = FrameLayout(this).apply {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             clipChildren = false
+            clipToPadding = false
         }
         val bar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -218,7 +219,7 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this@ProfileActivity, HomeActivity::class.java).putExtra("open_discover", true))
             finish()
         }, LinearLayout.LayoutParams(0, -1, 1f))
-        val createSlot = FrameLayout(this)
+        val createSlot = FrameLayout(this).apply { clipChildren = false; clipToPadding = false }
         val halo = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -233,11 +234,11 @@ class ProfileActivity : Activity() {
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
         createSlot.addView(createButton, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.CENTER))
-        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.055f).apply {
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.02f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
-        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_Y, 1f, 1.055f).apply {
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_Y, 1f, 1.02f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
@@ -245,12 +246,13 @@ class ProfileActivity : Activity() {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
-        bar.addView(createSlot, LinearLayout.LayoutParams(0, -1, 1.25f))
+        bar.addView(View(this), LinearLayout.LayoutParams(0, -1, 1.25f))
         bar.addView(navItem("messages", "رسائلي", false) {
             startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
         navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(59f), Gravity.BOTTOM))
+        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = -dp(7f) })
         root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(78f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
