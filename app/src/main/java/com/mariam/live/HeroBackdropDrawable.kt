@@ -42,24 +42,24 @@ class HeroBackdropDrawable(context: Context) : Drawable() {
 
         fill.shader = LinearGradient(
             0f, box.top, 0f, box.bottom,
-            intArrayOf(0xFFF5FFE9.toInt(), 0xFFDDFBF1.toInt(), 0xFFB8F3EA.toInt()),
+            intArrayOf(0xFFFFFEF8.toInt(), 0xFFF1FCF8.toInt(), 0xFFEAFBF7.toInt()),
             floatArrayOf(0f, 0.52f, 1f), Shader.TileMode.CLAMP
         )
         glowGold.shader = RadialGradient(
             box.left + w * 0.88f, box.top + h * 0.22f, w * 0.60f,
-            0x22FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP
+            0x12FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP
         )
         glowGreen.shader = RadialGradient(
             box.left + w * 0.06f, box.top + h * 0.92f, w * 0.55f,
-            0x3328BE91, 0x0028BE91, Shader.TileMode.CLAMP
+            0x1828BE91, 0x0028BE91, Shader.TileMode.CLAMP
         )
         glowViolet.shader = RadialGradient(
             box.left + w * 0.30f, box.top + h * 0.10f, w * 0.50f,
-            0x22FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP
+            0x10FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP
         )
         line.shader = LinearGradient(
             box.left, 0f, box.right, 0f,
-            intArrayOf(0x00FFFFFF, 0x66FFFFFF, 0x0028BE91),
+            intArrayOf(0x00FFFFFF, 0x22FFFFFF, 0x0028BE91),
             floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
         )
         line.strokeWidth = 1f * d
