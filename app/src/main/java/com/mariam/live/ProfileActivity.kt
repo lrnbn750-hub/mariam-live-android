@@ -1269,6 +1269,7 @@ class ProfileActivity : Activity() {
         }
 
         // Circular live avatar preview with a small camera action badge.
+        var editDialog: android.app.AlertDialog? = null
         val avatarFrame = FrameLayout(this).apply {
             clipChildren = false
             clipToPadding = false
@@ -1299,6 +1300,7 @@ class ProfileActivity : Activity() {
             isFocusable = true
             contentDescription = "تغيير الصورة الشخصية"
             setOnClickListener {
+                editDialog?.dismiss()
                 pickPhoto()
             }
         }
@@ -1348,6 +1350,7 @@ class ProfileActivity : Activity() {
             .setNegativeButton("إلغاء", null)
             .setPositiveButton("حفظ التغييرات", null)
             .create()
+        editDialog = dialog
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setOnShowListener {
             dialog.window?.setBackgroundDrawable(GradientDrawable().apply {
