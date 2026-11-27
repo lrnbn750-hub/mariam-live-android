@@ -1363,16 +1363,20 @@ class RoomActivity : Activity() {
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
      val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
      val svipBubbleUrl=svipChatBubbleUrlsByUser[senderId]
+     val useLocalSvipOneBubble=senderSvipLevel==1
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
-      tag=svipBubbleUrl
-      background=if(!svipBubbleUrl.isNullOrBlank())null else when{
+      tag=if(useLocalSvipOneBubble)"local-svip-1" else svipBubbleUrl
+      background=when{
+       useLocalSvipOneBubble->getDrawable(R.drawable.vip_01_bubble)
+       !svipBubbleUrl.isNullOrBlank()->null
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
       }
+      if(useLocalSvipOneBubble){minimumWidth=dp(190);minimumHeight=dp(48)}
       elevation=dp(2).toFloat()
      }
-     if(!svipBubbleUrl.isNullOrBlank())loadSvipChatBubbleBackground(bubble,svipBubbleUrl)
+     if(!useLocalSvipOneBubble && !svipBubbleUrl.isNullOrBlank())loadSvipChatBubbleBackground(bubble,svipBubbleUrl)
      val content=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.VERTICAL
       gravity=Gravity.CENTER
@@ -1420,7 +1424,7 @@ class RoomActivity : Activity() {
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
-      maxWidth=(maxBubbleWidth*0.72f).toInt()
+      maxWidth=(maxBubbleWidth*(if(useLocalSvipOneBubble)0.58f else 0.72f)).toInt()
       includeFontPadding=false
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-2,dp(18)))
@@ -1433,7 +1437,7 @@ class RoomActivity : Activity() {
       gravity=Gravity.CENTER
       textAlignment=View.TEXT_ALIGNMENT_CENTER
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
-      maxWidth=(maxBubbleWidth*0.76f).toInt()
+      maxWidth=(maxBubbleWidth*(if(useLocalSvipOneBubble)0.60f else 0.76f)).toInt()
       maxLines=4
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
@@ -1443,7 +1447,7 @@ class RoomActivity : Activity() {
      val contentParams=FrameLayout.LayoutParams(
       -2,-2,Gravity.CENTER
      ).apply{
-      leftMargin=dp(10);rightMargin=dp(10)
+      leftMargin=dp(if(useLocalSvipOneBubble)56 else 10);rightMargin=dp(10)
       topMargin=dp(2);bottomMargin=dp(2)
      }
      bubble.addView(content,contentParams)
@@ -1850,7 +1854,10 @@ class RoomActivity : Activity() {
       val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
       addView(videoRenderer,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
      }
-      val svipFrameUrl=seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val seatSvipLevel=(seat.optInt("svip_level",0).takeIf{it>0}
+       ?:seatUser?.optInt("svip_level",0)?.takeIf{it>0}
+       ?:uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
+      val svipFrameUrl=if(seatSvipLevel==1)null else seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
       val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
        .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
        ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -1863,6 +1870,7 @@ class RoomActivity : Activity() {
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
+     if(occupied && seatSvipLevel==1)addLocalSvipOneFrame(this,dp(68))
      // Place the mute badge INSIDE the avatar image, centered and translucent.
      // All viewers receive the same is_muted state from the shared seat snapshot.
      if(occupied && seatMuted){
@@ -2088,7 +2096,10 @@ class RoomActivity : Activity() {
     addView(avatarInner,FrameLayout.LayoutParams(innerPx,innerPx,Gravity.CENTER))
    }
    addView(ring,FrameLayout.LayoutParams(ringPx,ringPx,Gravity.CENTER))
-      val svipFrameUrl=seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val seatSvipLevel=(seat.optInt("svip_level",0).takeIf{it>0}
+       ?:seatUser?.optInt("svip_level",0)?.takeIf{it>0}
+       ?:uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
+      val svipFrameUrl=if(seatSvipLevel==1)null else seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
       val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
        .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
        ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
@@ -2098,6 +2109,7 @@ class RoomActivity : Activity() {
     seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
     loadSeatFrame(frameView,frameUrl)
    }
+   if(occupied && seatSvipLevel==1)addLocalSvipOneFrame(this,stagePx)
   }
   tile.addView(stage,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
 
@@ -2194,6 +2206,17 @@ class RoomActivity : Activity() {
   }
   return tile
  }
+ private fun addLocalSvipOneFrame(target:FrameLayout,sizePx:Int){
+  val frame=ImageView(this).apply{
+   setImageResource(R.drawable.vip_01_frame)
+   scaleType=ImageView.ScaleType.FIT_XY
+   isClickable=false
+   isFocusable=false
+   contentDescription="إطار SVIP 1"
+  }
+  target.addView(frame,FrameLayout.LayoutParams(sizePx,sizePx,Gravity.CENTER))
+ }
+
  private fun loadSeatFrame(view:RoyalGifFrame,url:String){
   val cached=seatFrameBytes[url]
   if(cached!=null){view.setGif(cached);view.startAnimation();return}
@@ -3410,6 +3433,15 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
   root.addView(avatar,FrameLayout.LayoutParams(dp(104),dp(104),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+  if(member.optInt("svip_level",svipLevelsByUser[uid]?:0)==1){
+   root.addView(ImageView(this).apply{
+    setImageResource(R.drawable.vip_01_frame)
+    scaleType=ImageView.ScaleType.FIT_XY
+    isClickable=false
+    isFocusable=false
+    contentDescription="إطار SVIP 1"
+   },FrameLayout.LayoutParams(dp(124),dp(124),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+  }
   val nameLabel=label(name,21f,Color.rgb(28,29,33),true).apply{gravity=Gravity.CENTER}
   val accountLabel=label("ID: $account",13f,Color.rgb(137,140,146)).apply{gravity=Gravity.CENTER}
   card.addView(View(this),LinearLayout.LayoutParams(1,dp(48)))
