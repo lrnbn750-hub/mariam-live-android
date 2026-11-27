@@ -3,6 +3,7 @@ package com.mariam.live
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -79,6 +80,8 @@ class SvipActivity : Activity() {
     private val io = Executors.newSingleThreadExecutor()
     private var token = ""
     private var balance = 0L
+    private var pointsBalance = 0L
+    private var pointsHistory = JSONArray()
     private var owned = 0
     private var expiresAt = ""
     private var selected = 1
@@ -107,6 +110,7 @@ class SvipActivity : Activity() {
     private lateinit var scrollTabs: HorizontalScrollView
     private lateinit var tabRow: LinearLayout
     private lateinit var balanceText: TextView
+    private lateinit var pointsBalanceText: TextView
     private lateinit var memberEntry: TextView
     private lateinit var perksCounter: TextView
     private lateinit var grid: LinearLayout
@@ -308,6 +312,38 @@ class SvipActivity : Activity() {
         // ── Perk grid ──
         grid = column().apply { setPadding(sectionPad - dp(4), 0, sectionPad - dp(4), 0) }
         content.addView(grid, lp(-1, -2))
+
+        // ── SVIP points card ──
+        val pointsCard = column().apply {
+            background = shape(surface, 18f, 0xFF4B4260.toInt())
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        val pointsHead = row()
+        pointsHead.addView(label("نقاط SVIP", 15f, gold, true), lp(0, dp(28), 1f))
+        pointsHead.addView(label("✦", 18f, gold, true))
+        pointsCard.addView(pointsHead, lp(-1, -2))
+        pointsBalanceText = label("0", 28f, textPrimary, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, dp(2))
+        }
+        pointsCard.addView(pointsBalanceText, lp(-1, -2))
+        pointsCard.addView(label("رصيد نقاطك يتراكم مع كل عملية شراء SVIP", 11.5f, textSecondary).apply {
+            gravity = Gravity.CENTER
+        }, lp(-1, -2))
+        val pointsHistoryButton = label("عرض سجل الحركات  ›", 12.5f, gold, true).apply {
+            gravity = Gravity.CENTER
+            background = ripple(shape(surfaceHi, 14f, stroke), 14f)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setOnClickListener { showPointsHistory() }
+            pressable()
+        }
+        pointsCard.addView(pointsHistoryButton, lp(-1, dp(42)).apply { topMargin = dp(12) })
+        content.addView(pointsCard, lp(-1, -2).apply {
+            marginStart = sectionPad
+            marginEnd = sectionPad
+            topMargin = dp(8)
+            bottomMargin = dp(8)
+        })
 
         // ── Details card ──
         val details = column().apply { background = shape(surface, 18f, stroke) }
@@ -616,6 +652,33 @@ class SvipActivity : Activity() {
         }
     }
 
+    private fun showPointsHistory() {
+        val entries = mutableListOf<String>()
+        for (i in 0 until pointsHistory.length()) {
+            val item = pointsHistory.optJSONObject(i) ?: continue
+            val delta = item.optLong("delta", 0L)
+            val type = when (item.optString("transaction_type")) {
+                "purchase_reward" -> "مكافأة شراء SVIP"
+                "trend_support" -> "دعم ترند غرفة"
+                "unban" -> "فك حظر"
+                "unban_review" -> "طلب مراجعة حظر"
+                else -> "حركة نقاط"
+            }
+            val sign = if (delta > 0) "+" else ""
+            val date = item.optString("created_at").replace("T", " ").take(16)
+            entries.add("$type  |  $sign$delta نقطة" + if (date.isNotBlank()) "\n$date" else "")
+        }
+        val builder = AlertDialog.Builder(this)
+            .setTitle("سجل نقاط SVIP")
+            .setPositiveButton("إغلاق", null)
+        if (entries.isEmpty()) {
+            builder.setMessage("لا توجد حركات نقاط حتى الآن. ستحصل على نقاط عند شراء عضوية SVIP.")
+        } else {
+            builder.setItems(entries.toTypedArray(), null)
+        }
+        builder.show()
+    }
+
     // ───────────────────────── In-app toast ─────────────────────────
     private fun showToast(s: String, error: Boolean = false) {
         val tv = toastView ?: TextView(this).also {
@@ -643,7 +706,10 @@ class SvipActivity : Activity() {
                     val msg = r.body.optString("error", r.body.optString("message", "تعذر إتمام شراء SVIP"))
                     runOnUiThread { buying = false; showToast(msg, true); updateBuy() }; return@execute
                 }
-                loadData(r.body.optString("message", "تم تفعيل عضوية SVIP $level بنجاح"))
+                val awarded = r.body.optInt("points_awarded", 0)
+                val message = r.body.optString("message", "تم تفعيل عضوية SVIP $level بنجاح") +
+                    if (awarded > 0) " — حصلت على $awarded نقطة SVIP" else ""
+                loadData(message)
             } catch (e: Exception) {
                 runOnUiThread { buying = false; showToast(e.message ?: "تعذر الاتصال بالخادم", true); updateBuy() }
             }
@@ -680,9 +746,22 @@ class SvipActivity : Activity() {
                 }
                 val sub = mr.body.optJSONObject("subscription") ?: JSONObject()
                 val wallet = wr.body.optJSONObject("wallet") ?: wr.body
+                var latestPointsBalance = pointsBalance
+                var latestPointsHistory = pointsHistory
+                try {
+                    val pointsResult = AuthApi.get("/api/svip/points", token)
+                    if (pointsResult.status in 200..299 && pointsResult.body.optBoolean("success", false)) {
+                        latestPointsBalance = pointsResult.body.optLong("balance", 0L)
+                        latestPointsHistory = pointsResult.body.optJSONArray("history") ?: JSONArray()
+                    }
+                } catch (_: Exception) {
+                    // Keep SVIP membership usable even if the points endpoint is temporarily unavailable.
+                }
                 val data = JSONObject().put("packages", arr)
                     .put("membership", JSONObject().put("vip_level", sub.optInt("level", 0)).put("expires_at", sub.optString("expires_at", "")))
                     .put("balance", wallet.optLong("recharge_coins", 0))
+                    .put("points_balance", latestPointsBalance)
+                    .put("points_history", latestPointsHistory)
                 getSharedPreferences("SVIP_FAST_CACHE", MODE_PRIVATE).edit()
                     .putString("page_data", data.toString()).putLong("saved_at", System.currentTimeMillis()).apply()
                 runOnUiThread {
@@ -712,6 +791,9 @@ class SvipActivity : Activity() {
         }
         packs = next.sortedBy { it.level }.toMutableList()
         balance = data.optLong("balance", 0)
+        pointsBalance = data.optLong("points_balance", pointsBalance)
+        pointsHistory = data.optJSONArray("points_history") ?: pointsHistory
+        pointsBalanceText.text = fmt(pointsBalance)
         val m = data.optJSONObject("membership") ?: JSONObject()
         owned = m.optInt("vip_level", m.optInt("level", 0)); expiresAt = m.optString("expires_at", "")
         if (packs.isNotEmpty()) {
