@@ -83,13 +83,13 @@ class ProfileActivity : Activity() {
     private val border = Color.rgb(238, 240, 244)
     private val white = Color.WHITE
     private val pageBg = Color.WHITE
-    private val heroTop = Color.rgb(20, 10, 48)
+    private val heroTop = Color.rgb(215, 250, 242)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        window.statusBarColor = Color.WHITE
+        window.statusBarColor = heroTop
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
