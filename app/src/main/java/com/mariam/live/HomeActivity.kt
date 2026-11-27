@@ -190,7 +190,7 @@ class HomeActivity : Activity() {
         // الزر المركزي البارز (إنشاء غرفة)
         val createSlot=FrameLayout(this).apply{elevation=dp(14).toFloat();clipChildren=false;clipToPadding=false}
         val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x3335B77A)}}
-        createSlot.addView(halo,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
+        createSlot.addView(halo,FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
             contentDescription="إنشاء غرفة"
             isClickable=true
@@ -200,11 +200,11 @@ class HomeActivity : Activity() {
             }
             setOnClickListener{showCreateRoomDialog()}
         }
-        createSlot.addView(create,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
+        createSlot.addView(create,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER))
         ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=-dp(7)})
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=-dp(2)})
 
         root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(78),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
