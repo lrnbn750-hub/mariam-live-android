@@ -61,6 +61,7 @@ class ProfileActivity : Activity() {
     private var publicName: TextView? = null
     private var publicIdView: TextView? = null
     private var publicLevel: TextView? = null
+    private var publicSvipBadge: TextView? = null
     private var publicFans: TextView? = null
     private var publicFollowing: TextView? = null
     private var publicSent: TextView? = null
@@ -329,6 +330,7 @@ class ProfileActivity : Activity() {
             dp(8f),
             last = true
         ) { openAction("svip") }
+        body.addView(svipCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -559,6 +561,13 @@ class ProfileActivity : Activity() {
             setSingleLine(true)
         }
         nameRow.addView(publicName, LinearLayout.LayoutParams(-2, -2))
+        publicSvipBadge = text("SVIP 1", 10f, Color.rgb(255, 226, 151), true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(91, 62, 24), 10f, Color.rgb(218, 174, 78))
+            setPadding(dp(7f), dp(4f), dp(7f), dp(4f))
+            visibility = View.GONE
+        }
+        nameRow.addView(publicSvipBadge, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f) })
         identityContent.addView(nameRow)
 
         // ---- Location | ID ----
@@ -816,6 +825,7 @@ class ProfileActivity : Activity() {
                             ?: user.optString("username", "مستخدم BAK LIVE"))
                         .put("id", publicId)
                         .put("level", user.optInt("level", 1).coerceAtLeast(1))
+                        .put("svipLevel", user.optInt("svip_level", 0).coerceIn(0, 7))
                         .put("avatarUrl", user.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
                             ?: user.optString("profile_image"))
                         .put("profileBackgroundUrl", user.optString("profile_background_url"))
@@ -856,6 +866,7 @@ class ProfileActivity : Activity() {
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
+                    .put("svipLevel", user.optInt("svip_level", 0).coerceIn(0, 7))
                     .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
                     .put("publicFans", user.optLong("followers_count", 0L))
@@ -930,6 +941,13 @@ class ProfileActivity : Activity() {
             publicName?.text = data.optString("name")
             publicIdView?.text = "ID: " + publicId
             publicLevel?.text = "◆  " + data.optInt("level", 1)
+            val svipLevel = data.optInt("svipLevel", 0).coerceIn(0, 7)
+            publicSvipBadge?.apply {
+                if (svipLevel in 1..7) {
+                    text = "♛ SVIP $svipLevel"
+                    visibility = View.VISIBLE
+                } else visibility = View.GONE
+            }
             val backgroundUrl = data.optString("profileBackgroundUrl").trim()
             if (backgroundUrl.startsWith("https://")) executor.execute {
                 try {
