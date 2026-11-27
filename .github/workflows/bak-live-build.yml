@@ -12,6 +12,7 @@ on:
       - feature/bak-live-camera-modes-on-build465
       - feature/bak-live-audio-8-15-seats
       - feature/svip-perks-latest-audio-8-15
+      - feature/bak-live-svip-points-current-2026-11-28
       - feature/bak-live-white-room-tools-aladdin-svga
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
