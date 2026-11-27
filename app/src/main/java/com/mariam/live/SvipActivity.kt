@@ -99,28 +99,36 @@ class SvipActivity : Activity() {
     private fun column():LinearLayout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
 
     private fun buildNativePage(){
-        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(ink)}
-        val head=row().apply{setPadding(dp(10),0,dp(10),0)}
+        val root=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setBackgroundColor(ink)
+            // Keep all controls below the status bar and above the gesture/navigation area.
+            setOnApplyWindowInsetsListener { v, insets ->
+                v.setPadding(v.paddingLeft, insets.systemWindowInsetTop, v.paddingRight, insets.systemWindowInsetBottom)
+                insets
+            }
+        }
+        val head=row().apply{setPadding(dp(8),0,dp(8),0);clipChildren=false;clipToPadding=false}
         val back=TextView(this).apply{text="‹";textSize=32f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setOnClickListener{finish()}}
         head.addView(back,lp(dp(34),dp(44)))
-        head.addView(label("SVIP",17f,Color.WHITE,true),lp(0,dp(44),1f))
-        val wallet=row().apply{background=bg(deep,30f,line);setPadding(dp(10),dp(5),dp(10),dp(5))}
+        head.addView(label("SVIP",16f,Color.WHITE,true),lp(0,dp(44),1f).apply{marginStart=dp(2)})
+        val wallet=row().apply{background=bg(deep,30f,line);setPadding(dp(8),dp(5),dp(8),dp(5));gravity=Gravity.CENTER;minimumWidth=dp(104)}
         wallet.addView(DiamondView(this),lp(dp(16),dp(16)))
-        balanceText=label("0",12f,Color.WHITE,true);wallet.addView(balanceText,lp(-2,-2).apply{marginStart=dp(7)})
+        balanceText=label("0",11.5f,Color.WHITE,true);wallet.addView(balanceText,lp(-2,-2).apply{marginStart=dp(5)})
         head.addView(wallet)
         memberEntry=label("♛  عضويتي",12f,0xfff2dfb7.toInt(),true).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(0xff3b3440.toInt(),0xff292d3d.toInt())).apply{cornerRadius=dp(24f).toFloat();setStroke(dp(1),0xff806d48.toInt())}
             setPadding(dp(10),dp(7),dp(10),dp(7));visibility=View.GONE
             setOnClickListener{startActivity(Intent(this@SvipActivity,SvipMemberActivity::class.java))}
         }
-        head.addView(memberEntry,lp(-2,-2).apply{marginStart=dp(6)})
+        head.addView(memberEntry,lp(-2,-2).apply{marginStart=dp(5);marginEnd=dp(2)})
         root.addView(head,lp(-1,dp(44)))
 
         scrollTabs=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;overScrollMode=View.OVER_SCROLL_NEVER}
         tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(6),dp(2),dp(6),dp(2))}
         scrollTabs.addView(tabRow);root.addView(scrollTabs,lp(-1,dp(37)))
 
-        val sc=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;clipToPadding=false}
+        val sc=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;clipToPadding=false;setPadding(0,0,0,dp(18))}
         val content=column().apply{setBackgroundColor(ink)}
         badge=BadgeView(this).apply{
             setOnTouchListener(object:View.OnTouchListener{
@@ -168,20 +176,21 @@ class SvipActivity : Activity() {
         content.addView(panelWrap,lp(-1,-2))
         sc.addView(content);root.addView(sc,lp(-1,0,1f))
 
-        val footer=row().apply{background=bg(deep,0f,0xff2c3345.toInt());setPadding(dp(12),dp(9),dp(12),dp(9))}
+        val footer=row().apply{background=bg(deep,0f,0xff2c3345.toInt());setPadding(dp(14),dp(10),dp(14),dp(10));minimumHeight=dp(82);clipChildren=false;clipToPadding=false}
         val priceCol=column()
         val priceLine=row()
-        bottomPrice=label("—",16f,Color.WHITE,true);priceLine.addView(bottomPrice)
+        bottomPrice=label("—",17f,Color.WHITE,true);priceLine.addView(bottomPrice)
         priceLine.addView(DiamondView(this),lp(dp(16),dp(16)).apply{marginStart=dp(5)})
         priceLine.addView(label("/ 30 يوم",13f,0xff8a93a6.toInt()).apply{layoutDirection=View.LAYOUT_DIRECTION_LTR},lp(-2,-2).apply{marginStart=dp(5)})
         priceCol.addView(priceLine)
-        bottomState=label("جارٍ تحميل الباقات…",12f,0xff6c7488.toInt());priceCol.addView(bottomState,lp(-1,-2).apply{topMargin=dp(3)})
-        bottomBack=label("",11f,0xff8a93a6.toInt());priceCol.addView(bottomBack)
+        bottomState=label("جارٍ تحميل الباقات…",12f,0xffaab2c3.toInt());priceCol.addView(bottomState,lp(-1,-2).apply{topMargin=dp(3)})
+        bottomBack=label("",11f,0xffaab2c3.toInt());priceCol.addView(bottomBack)
         footer.addView(priceCol,lp(0,-2,1f))
-        buy=label("شراء",13f,0xff2d2411.toInt(),true).apply{gravity=Gravity.CENTER;background=bg(cream,20f);setPadding(dp(14),0,dp(14),0);setOnClickListener{confirmPurchase()}}
+        buy=label("شراء",14f,0xff2d2411.toInt(),true).apply{gravity=Gravity.CENTER;background=bg(cream,22f);setPadding(dp(17),0,dp(17),0);minWidth=dp(78);minHeight=dp(44);setOnClickListener{confirmPurchase()}}
         footer.addView(buy,lp(-2,dp(36)).apply{marginStart=dp(10)})
         root.addView(footer,lp(-1,-2))
         setContentView(root)
+        root.requestApplyInsets()
     }
 
     private fun renderTabs(){
