@@ -1185,8 +1185,11 @@ class ProfileActivity : Activity() {
     }
 
     private fun pickPhoto() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
+        // Open the device Gallery app directly instead of the system Files document browser.
+        val intent = Intent(
+            Intent.ACTION_PICK,
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        ).apply {
             type = "image/*"
         }
         startActivityForResult(intent, photoPickerCode)
