@@ -63,6 +63,9 @@ class SvipActivity : Activity() {
         fun onPageReady() {
             if (loading) return
             loading = true
+            // Paint the last successful SVIP response immediately while the
+            // network refresh runs in the background (stale-while-revalidate).
+            applyCachedData()
             loadData()
         }
 
@@ -112,6 +115,22 @@ class SvipActivity : Activity() {
                     notifyPurchase(false, error.message ?: "تعذر الاتصال بالخادم")
                 }
             }
+        }
+    }
+
+    private fun applyCachedData() {
+        try {
+            val cached = getSharedPreferences("SVIP_FAST_CACHE", MODE_PRIVATE)
+                .getString("page_data", null) ?: return
+            val data = JSONObject(cached)
+            if (data.optJSONArray("packages") == null) return
+            if (!::webView.isInitialized || isFinishing || isDestroyed) return
+            webView.evaluateJavascript(
+                "window.applyNativeData(" + JSONObject.quote(data.toString()) + ");",
+                null
+            )
+        } catch (_: Exception) {
+            // A bad or outdated cache must never prevent the live refresh.
         }
     }
 
@@ -181,6 +200,14 @@ class SvipActivity : Activity() {
                     .put("packages", packages)
                     .put("membership", membership)
                     .put("balance", balance)
+
+                // Keep a compact local snapshot so the next visit opens with
+                // real account data before the API requests finish.
+                getSharedPreferences("SVIP_FAST_CACHE", MODE_PRIVATE)
+                    .edit()
+                    .putString("page_data", data.toString())
+                    .putLong("saved_at", System.currentTimeMillis())
+                    .apply()
 
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
