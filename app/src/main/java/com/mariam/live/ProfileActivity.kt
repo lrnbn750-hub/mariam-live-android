@@ -1188,24 +1188,47 @@ class ProfileActivity : Activity() {
 
     private fun showEditProfileDialog() {
         if (!isOwnProfile) return
-        val nameInput = EditText(this).apply {
-            setSingleLine(true)
-            textSize = 15f
-            hint = "اكتب اسمك"
-            setText(profileData.optString("name").takeUnless { it == "null" }.orEmpty())
-            filters = arrayOf(android.text.InputFilter.LengthFilter(60))
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+
+        val green = Color.rgb(24, 151, 105)
+        val softGreen = Color.rgb(232, 248, 242)
+        val fieldBg = Color.rgb(247, 249, 250)
+        val line = Color.rgb(230, 235, 238)
+
+        fun sectionLabel(value: String) = text(value, 13f, Color.rgb(91, 102, 111), true).apply {
+            textDirection = View.TEXT_DIRECTION_RTL
         }
-        val bioInput = EditText(this).apply {
-            textSize = 15f
-            hint = "اكتب نبذة قصيرة عنك"
-            setText(profileData.optString("bio").takeUnless { it == "null" }.orEmpty())
-            filters = arrayOf(android.text.InputFilter.LengthFilter(300))
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 2
-            maxLines = 4
-            gravity = Gravity.TOP
-        }
+        fun styledInput(hintText: String, value: String, multiLine: Boolean = false) =
+            EditText(this).apply {
+                textSize = 15f
+                hint = hintText
+                setText(value)
+                setTextColor(ink)
+                setHintTextColor(Color.rgb(160, 168, 174))
+                background = rounded(fieldBg, 15f, line)
+                setPadding(dp(15f), dp(12f), dp(15f), dp(12f))
+                filters = arrayOf(android.text.InputFilter.LengthFilter(if (multiLine) 300 else 60))
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                    (if (multiLine) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0)
+                if (multiLine) {
+                    minLines = 3
+                    maxLines = 4
+                    gravity = Gravity.TOP or Gravity.RIGHT
+                } else {
+                    setSingleLine(true)
+                    gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
+                }
+            }
+
+        val nameInput = styledInput(
+            "اكتب اسمك",
+            profileData.optString("name").takeUnless { it == "null" }.orEmpty()
+        )
+        val bioInput = styledInput(
+            "اكتب نبذة قصيرة عنك",
+            profileData.optString("bio").takeUnless { it == "null" }.orEmpty(),
+            true
+        )
+
         val countries = arrayOf(
             "العراق", "السعودية", "الإمارات", "الكويت", "قطر", "البحرين", "عُمان",
             "الأردن", "سوريا", "لبنان", "فلسطين", "مصر", "المغرب", "الجزائر", "تونس",
@@ -1219,12 +1242,13 @@ class ProfileActivity : Activity() {
         val countryValue = text(
             if (selectedCountry.isBlank()) "اختر البلد" else selectedCountry,
             15f, if (selectedCountry.isBlank()) muted else ink, true
-        )
+        ).apply { textDirection = View.TEXT_DIRECTION_RTL }
         val countryRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
-            background = rounded(Color.rgb(247, 248, 250), 12f, Color.rgb(231, 234, 239))
-            setPadding(dp(14f), dp(12f), dp(14f), dp(12f))
+            background = rounded(fieldBg, 15f, line)
+            setPadding(dp(15f), dp(15f), dp(15f), dp(15f))
             isClickable = true
             isFocusable = true
             addView(countryValue, LinearLayout.LayoutParams(0, -2, 1f))
@@ -1233,57 +1257,125 @@ class ProfileActivity : Activity() {
                 val currentIndex = countries.indexOf(selectedCountry).coerceAtLeast(0)
                 android.app.AlertDialog.Builder(this@ProfileActivity)
                     .setTitle("اختر بلدك")
-                    .setSingleChoiceItems(countries, currentIndex) { dialog, which ->
+                    .setSingleChoiceItems(countries, currentIndex) { picker, which ->
                         selectedCountry = countries[which]
                         countryValue.text = selectedCountry
                         countryValue.setTextColor(ink)
-                        dialog.dismiss()
+                        picker.dismiss()
                     }
                     .setNegativeButton("إلغاء", null)
                     .show()
             }
         }
 
-        fun fieldLabel(value: String) = text(value, 13f, Color.rgb(90, 98, 110), true)
+        // Circular live avatar preview with a small camera action badge.
+        val avatarFrame = FrameLayout(this).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        val avatarPreview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(softGreen)
+                setStroke(dp(3f), green)
+            }
+            clipToOutline = true
+            val current = avatar.drawable
+            if (current != null) setImageDrawable(current.constantState?.newDrawable()?.mutate() ?: current)
+        }
+        avatarFrame.addView(avatarPreview, FrameLayout.LayoutParams(dp(94f), dp(94f), Gravity.CENTER))
+        val cameraBadge = TextView(this).apply {
+            text = "📷"
+            textSize = 15f
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(green)
+                setStroke(dp(2f), Color.WHITE)
+            }
+            elevation = dp(5f).toFloat()
+            isClickable = true
+            isFocusable = true
+            contentDescription = "تغيير الصورة الشخصية"
+            setOnClickListener {
+                pickPhoto()
+            }
+        }
+        avatarFrame.addView(cameraBadge, FrameLayout.LayoutParams(dp(34f), dp(34f), Gravity.BOTTOM or Gravity.END))
+
+        val photoHint = text("اضغط على الكاميرا لتغيير صورتك", 12f, muted).apply {
+            gravity = Gravity.CENTER
+            textDirection = View.TEXT_DIRECTION_RTL
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20f), dp(8f), dp(20f), dp(4f))
-            addView(fieldLabel("الاسم"))
-            addView(nameInput, LinearLayout.LayoutParams(-1, dp(52f)).apply { topMargin = dp(6f) })
-            addView(fieldLabel("البلد"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
-            addView(countryRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6f) })
-            addView(fieldLabel("النبذة الشخصية"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
-            addView(bioInput, LinearLayout.LayoutParams(-1, dp(104f)).apply { topMargin = dp(6f) })
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22f), dp(8f), dp(22f), dp(12f))
+            addView(avatarFrame, LinearLayout.LayoutParams(dp(104f), dp(104f)).apply {
+                gravity = Gravity.CENTER
+            })
+            addView(photoHint, LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(5f)
+                bottomMargin = dp(20f)
+            })
+            addView(sectionLabel("الاسم"))
+            addView(nameInput, LinearLayout.LayoutParams(-1, dp(54f)).apply { topMargin = dp(7f) })
+            addView(sectionLabel("البلد"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(countryRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7f) })
+            addView(sectionLabel("النبذة الشخصية"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(bioInput, LinearLayout.LayoutParams(-1, dp(108f)).apply { topMargin = dp(7f) })
         }
         val scroll = ScrollView(this).apply {
             isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
             addView(content)
         }
+        val titleView = text("تعديل الملف الشخصي", 20f, ink, true).apply {
+            gravity = Gravity.CENTER
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(dp(20f), dp(20f), dp(20f), dp(8f))
+        }
+        val dialogContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.WHITE)
+            addView(titleView, LinearLayout.LayoutParams(-1, -2))
+            addView(scroll, LinearLayout.LayoutParams(-1, -2))
+        }
         val dialog = android.app.AlertDialog.Builder(this)
-            .setTitle("تعديل الملف الشخصي")
-            .setView(scroll)
-            .setNeutralButton("تغيير الصورة", null)
+            .setView(dialogContent)
             .setNegativeButton("إلغاء", null)
-            .setPositiveButton("حفظ", null)
+            .setPositiveButton("حفظ التغييرات", null)
             .create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setOnShowListener {
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                dialog.dismiss()
-                pickPhoto()
-            }
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val displayName = nameInput.text.toString().trim()
-                val bio = bioInput.text.toString().trim()
-                if (displayName.isBlank()) {
-                    nameInput.error = "الاسم مطلوب"
-                    return@setOnClickListener
+            dialog.window?.setBackgroundDrawable(GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = dp(24f).toFloat()
+            })
+            dialog.window?.setLayout(
+                (resources.displayMetrics.widthPixels * 0.92f).toInt(),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(green)
+                typeface = Typeface.DEFAULT_BOLD
+                setOnClickListener {
+                    val displayName = nameInput.text.toString().trim()
+                    val bio = bioInput.text.toString().trim()
+                    if (displayName.isBlank()) {
+                        nameInput.error = "الاسم مطلوب"
+                        return@setOnClickListener
+                    }
+                    if (selectedCountry.isBlank()) {
+                        Toast.makeText(this@ProfileActivity, "يرجى اختيار البلد", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                    saveProfileDetails(displayName, selectedCountry, bio, dialog)
                 }
-                if (selectedCountry.isBlank()) {
-                    Toast.makeText(this, "يرجى اختيار البلد", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                saveProfileDetails(displayName, selectedCountry, bio, dialog)
             }
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)?.setTextColor(muted)
         }
         dialog.show()
     }
