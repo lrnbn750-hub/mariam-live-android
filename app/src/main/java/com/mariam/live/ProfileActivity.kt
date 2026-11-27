@@ -313,7 +313,8 @@ class ProfileActivity : Activity() {
         walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5f) })
         body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        // Premium membership system removed. Wallet and general store remain available.
+        // BAK LIVE SVIP membership and loyalty points.
+        serviceRow(body, "عضوية SVIP ونقاط المكافآت", R.drawable.ic_profile_security_color, rounded(Color.rgb(255, 245, 221), 14f, Color.TRANSPARENT), dp(8f)) { openAction("svip") }
 
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
@@ -1056,6 +1057,7 @@ class ProfileActivity : Activity() {
             "store" -> startActivity(Intent(this, InventoryActivity::class.java).putExtra("inventory_mode", "store"))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
+            "svip" -> startActivity(Intent(this, SvipActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
