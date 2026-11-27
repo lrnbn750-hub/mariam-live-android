@@ -133,25 +133,101 @@ class HomeActivity : Activity() {
         column.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
 
 
-        // Compact SVIP promotional banner above the live-room feed.
-        val svipBanner=ImageView(this).apply{
-            setImageResource(R.drawable.svip_home_banner)
+        // Two-slide promotional carousel: SVIP + iPhone raffle.
+        val promoSlides=FrameLayout(this).apply{
+            clipChildren=true
+            clipToPadding=true
+            background=shape(Color.WHITE,12)
+        }
+        val promoFlipper=ViewFlipper(this).apply{
+            isAutoStart=false
+            flipInterval=2000
+            inAnimation=null
+            outAnimation=null
+        }
+        fun promoImage(resource:Int,description:String,onTap:()->Unit)=ImageView(this).apply{
+            setImageResource(resource)
             scaleType=ImageView.ScaleType.CENTER_CROP
-            contentDescription="كن من كبار الشخصيات - ترقية عضوية SVIP"
+            contentDescription=description
             isClickable=true
             isFocusable=true
-            background=GradientDrawable().apply{
-                setColor(Color.WHITE)
-                cornerRadius=dp(12).toFloat()
-            }
-            clipToOutline=true
-            setOnClickListener{
-                startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
+            setOnClickListener{onTap()}
+        }
+        promoFlipper.addView(promoImage(
+            R.drawable.svip_home_banner,
+            "كن من كبار الشخصيات - ترقية عضوية SVIP"
+        ){
+            startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
+        },FrameLayout.LayoutParams(-1,-1))
+        promoFlipper.addView(promoImage(
+            R.drawable.bak_live_iphone_raffle_banner,
+            "اشحن 5 دولار وادخل سحب آيفون 18 برو ماكس"
+        ){
+            // Open the recharge screen; raffle details can be linked here when its page is ready.
+            startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
+        },FrameLayout.LayoutParams(-1,-1))
+        promoSlides.addView(promoFlipper,FrameLayout.LayoutParams(-1,-1))
+        val promoDots=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER
+            layoutDirection=View.LAYOUT_DIRECTION_LTR
+            setPadding(dp(7),dp(3),dp(7),dp(3))
+            background=shape(0x66000000,20)
+        }
+        val dotViews=(0..1).map { index ->
+            View(this).apply{
+                background=shape(if(index==0)Color.WHITE else 0x88FFFFFF.toInt(),4)
+                promoDots.addView(this,LinearLayout.LayoutParams(dp(if(index==0)14 else 6),dp(6)).apply{
+                    setMargins(dp(3),0,dp(3),0)
+                })
             }
         }
-        content.addView(svipBanner,LinearLayout.LayoutParams(-1,dp(112)).apply{
+        fun updatePromoDots(active:Int){
+            dotViews.forEachIndexed { index,dot ->
+                dot.background=shape(if(index==active)Color.WHITE else 0x88FFFFFF.toInt(),4)
+                val lp=dot.layoutParams as LinearLayout.LayoutParams
+                lp.width=dp(if(index==active)14 else 6)
+                dot.layoutParams=lp
+            }
+        }
+        promoSlides.addView(promoDots,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{
+            bottomMargin=dp(7)
+        })
+        val promoHandler=android.os.Handler(android.os.Looper.getMainLooper())
+        val promoAutoTask=object:Runnable{
+            override fun run(){
+                if(!isFinishing && !isDestroyed && promoSlides.isAttachedToWindow){
+                    promoFlipper.showNext()
+                    updatePromoDots(promoFlipper.displayedChild)
+                    promoHandler.postDelayed(this,2000)
+                }
+            }
+        }
+        var promoDownX=0f
+        promoSlides.setOnTouchListener { _,event ->
+            when(event.action){
+                android.view.MotionEvent.ACTION_DOWN->{promoDownX=event.x;true}
+                android.view.MotionEvent.ACTION_UP->{
+                    val dx=event.x-promoDownX
+                    if(kotlin.math.abs(dx)>dp(35)){
+                        if(dx>0)promoFlipper.showPrevious() else promoFlipper.showNext()
+                        updatePromoDots(promoFlipper.displayedChild)
+                        promoHandler.removeCallbacks(promoAutoTask)
+                        promoHandler.postDelayed(promoAutoTask,2000)
+                    }
+                    true
+                }
+                else->true
+            }
+        }
+        promoSlides.setOnClickListener{
+            if(promoFlipper.displayedChild==0)startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
+            else startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
+        }
+        content.addView(promoSlides,LinearLayout.LayoutParams(-1,dp(112)).apply{
             bottomMargin=dp(10)
         })
+        promoHandler.postDelayed(promoAutoTask,2000)
 
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2))
