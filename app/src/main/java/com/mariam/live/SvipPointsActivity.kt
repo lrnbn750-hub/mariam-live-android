@@ -65,7 +65,7 @@ class SvipPointsActivity : Activity() {
     }
     private fun input(hintText: String): EditText = EditText(this).apply {
         hint = hintText; setHintTextColor(muted); setTextColor(primary); textSize = 14f
-        singleLine = true; textDirection = View.TEXT_DIRECTION_LTR
+        maxLines = 1; textDirection = View.TEXT_DIRECTION_LTR
         gravity = Gravity.CENTER_VERTICAL or Gravity.START
         setPadding(dp(12), 0, dp(12), 0)
         background = GradientDrawable().apply {
