@@ -149,9 +149,8 @@ class HomeActivity : Activity() {
             setImageResource(resource)
             scaleType=ImageView.ScaleType.CENTER_CROP
             contentDescription=description
-            isClickable=true
-            isFocusable=true
-            setOnClickListener{onTap()}
+            isClickable=false
+            isFocusable=false
         }
         promoFlipper.addView(promoImage(
             R.drawable.svip_home_banner,
@@ -204,7 +203,7 @@ class HomeActivity : Activity() {
             }
         }
         var promoDownX=0f
-        promoSlides.setOnTouchListener { _,event ->
+        promoFlipper.setOnTouchListener { _,event ->
             when(event.action){
                 android.view.MotionEvent.ACTION_DOWN->{promoDownX=event.x;true}
                 android.view.MotionEvent.ACTION_UP->{
@@ -214,15 +213,14 @@ class HomeActivity : Activity() {
                         updatePromoDots(promoFlipper.displayedChild)
                         promoHandler.removeCallbacks(promoAutoTask)
                         promoHandler.postDelayed(promoAutoTask,2000)
+                    }else{
+                        if(promoFlipper.displayedChild==0)startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
+                        else startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
                     }
                     true
                 }
                 else->true
             }
-        }
-        promoSlides.setOnClickListener{
-            if(promoFlipper.displayedChild==0)startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
-            else startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
         }
         content.addView(promoSlides,LinearLayout.LayoutParams(-1,dp(112)).apply{
             bottomMargin=dp(10)
