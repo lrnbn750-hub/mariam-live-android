@@ -99,6 +99,13 @@ class RoomActivity : Activity() {
  private val seatFrameLoading=HashSet<String>()
  private val seatFrameViews=HashMap<String,MutableList<RoyalGifFrame>>()
  private var currentUserEquippedFrameUrl=""
+  private val svipLevelsByUser=HashMap<String,Int>()
+  private val svipEntryEffectsByUser=HashMap<String,String>()
+  private val svipChatBubbleUrlsByUser=HashMap<String,String>()
+  private val svipChatBubbleBitmaps=HashMap<String,Bitmap>()
+  private val svipChatBubbleLoading=HashSet<String>()
+  private val svipProfileLoading=HashSet<String>()
+  private val svipProfileLoaded=HashSet<String>()
  private val chatBubbleStylesByUser=HashMap<String,String>()
  private var chatBubbleSelectionRefreshAt=0L
  private var lastRenderedChatSignature=""
@@ -136,12 +143,12 @@ class RoomActivity : Activity() {
  private var giftFeedInitialized=false
  private var giftSound:Ringtone?=null
  private var previousMemberIds:MutableSet<String>?=null
- private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0)
+ private data class RoomJoinNotice(val name:String,val level:Int,val userId:String,val avatarUrl:String="",val createdAt:Long=System.currentTimeMillis(),val vipLevel:Int=0,val svipLevel:Int=0,val svipEntryEffectUrl:String="")
  private val joinNotices=ArrayList<RoomJoinNotice>()
  private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
  private var joinToastShowing=false
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
- private fun defaultBackdrop():Drawable=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(58,40,30),Color.rgb(30,22,18),Color.rgb(12,10,9)))
+ private fun defaultBackdrop():Drawable=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,17,17),Color.rgb(18,13,16),Color.rgb(9,8,12)))
  private fun glassBg(alpha:Int=110,radius:Int=22,strokeAlpha:Int=60)=GradientDrawable().apply{
   setColor(Color.argb(alpha,16,12,30));cornerRadius=dp(radius).toFloat();setStroke(dp(1),Color.argb(strokeAlpha,255,255,255))
  }
@@ -291,8 +298,10 @@ class RoomActivity : Activity() {
   topRow.addView(headerIcon("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(label("⌂",22f,Color.WHITE,true).apply{
    background=ctrlBg();isClickable=true;isFocusable=true
-   contentDescription="تصغير الغرفة والعودة للرئيسية مع استمرار الصوت والمقعد"
-   setOnClickListener{minimizeRoomToFloatingWindow()}
+   contentDescription="العودة إلى الصفحة الرئيسية مع استمرار الغرفة"
+   setOnClickListener{
+    startActivity(Intent(this@RoomActivity,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   }
   },LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(topRow,LinearLayout.LayoutParams(-1,dp(48)))
@@ -467,19 +476,16 @@ class RoomActivity : Activity() {
    Toast.makeText(this,"انتظر حتى يتم الاتصال بالغرفة",Toast.LENGTH_SHORT).show()
    return
   }
-  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)){
-   pendingFloatingRoomLaunch=true
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
    try{
-    val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:$packageName"))
-    startActivityForResult(intent,floatingOverlayRequestCode)
+    val params=PictureInPictureParams.Builder().setAspectRatio(Rational(16,9)).build()
+    enterPictureInPictureMode(params)
    }catch(_:Exception){
-    pendingFloatingRoomLaunch=false
-    Toast.makeText(this,"تعذر فتح إعداد السماح بالظهور فوق التطبيقات",Toast.LENGTH_LONG).show()
+    Toast.makeText(this,"تعذر تصغير نافذة البث على هذا الجهاز",Toast.LENGTH_SHORT).show()
    }
-   return
+  }else{
+   Toast.makeText(this,"تصغير نافذة البث متاح على Android 8 وما بعده",Toast.LENGTH_SHORT).show()
   }
-  showFloatingRoomOverlay()
-  startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
  }
 
  private fun showFloatingRoomOverlay(){
@@ -605,11 +611,6 @@ class RoomActivity : Activity() {
   hidePhoneNavigation()
   refreshPictureInPictureParams()
   watchPlayer?.onHostResume()
-  if(pendingFloatingRoomLaunch && Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
-   pendingFloatingRoomLaunch=false
-   showFloatingRoomOverlay()
-   startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-  }
  }
 
  @Suppress("DEPRECATION")
@@ -1280,6 +1281,13 @@ class RoomActivity : Activity() {
      return@launch
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
+     // Fetch SVIP assets for the four visible chat senders once per room session.
+     val svipStart=(messages.length()-4).coerceAtLeast(0)
+     for(index in svipStart until messages.length()){
+      val msg=messages.optJSONObject(index)?:continue
+      val sender=msg.optString("user_id").ifBlank{msg.optString("sender_id").ifBlank{(msg.optJSONObject("user")?:msg.optJSONObject("sender"))?.optString("id").orEmpty()}}
+      if(sender.isNotBlank() && sender!="null" && !svipProfileLoaded.contains(sender) && svipProfileLoading.add(sender))scope.launch{loadSvipPublicProfile(sender)}
+     }
     // Refresh the equipped bubble skins for visible senders at most every 15 seconds.
     val nowForBubbleSync=System.currentTimeMillis()
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
@@ -1316,6 +1324,7 @@ class RoomActivity : Activity() {
      append(messages.toString())
      append('|')
      append(chatBubbleStylesByUser.toSortedMap().entries.joinToString(";"){it.key+":"+it.value})
+     append("|svip:").append(svipLevelsByUser.toSortedMap().entries.joinToString(";"){it.key+":"+it.value})
      append('|')
      activeJoinNotices.forEach{append(it.userId).append(':').append(it.createdAt/1000L).append(';')}
     }
@@ -1341,18 +1350,27 @@ class RoomActivity : Activity() {
      val senderLevel=if(senderId.isNotBlank() && senderId==currentUserId) currentUserLevel
       else (if(item.has("level"))item.optInt("level",1) else
        if(item.has("user_level"))item.optInt("user_level",1) else senderUser?.optInt("level",1)?:1).coerceIn(1,100)
+     val senderSvipLevel=(if(item.has("svip_level"))item.optInt("svip_level",0) else senderUser?.optInt("svip_level",0)?:0)
+      .coerceIn(0,7).takeIf{it>0} ?: (svipLevelsByUser[senderId]?:0)
      val isMaxLevel=senderLevel>=100
      // Full-width GIF frame with a dedicated text-safe panel over its center.
      val maxBubbleWidth=(resources.displayMetrics.widthPixels*0.82f).toInt()
      val selectedBubbleStyle=chatBubbleStylesByUser[senderId]
+     val svipBubbleUrl=svipChatBubbleUrlsByUser[senderId]
+     val useLocalSvipOneBubble=senderSvipLevel==1
      val bubble=FrameLayout(this@RoomActivity).apply{
       layoutDirection=View.LAYOUT_DIRECTION_LTR
+      tag=if(useLocalSvipOneBubble)"local-svip-1" else svipBubbleUrl
       background=when{
+       useLocalSvipOneBubble->getDrawable(R.drawable.svip1_gold_chat_bubble)
+       !svipBubbleUrl.isNullOrBlank()->null
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
       }
+      if(useLocalSvipOneBubble){minimumWidth=dp(190);minimumHeight=dp(48)}
       elevation=dp(2).toFloat()
      }
+     if(!useLocalSvipOneBubble && !svipBubbleUrl.isNullOrBlank())loadSvipChatBubbleBackground(bubble,svipBubbleUrl)
      val content=LinearLayout(this@RoomActivity).apply{
       orientation=LinearLayout.VERTICAL
       gravity=Gravity.CENTER
@@ -1379,6 +1397,20 @@ class RoomActivity : Activity() {
       if(isMaxLevel)setTextColor(Color.rgb(70,40,4))
      }
      senderLine.addView(levelBadge,LinearLayout.LayoutParams(-2,dp(16)).apply{marginEnd=dp(5)})
+     if(senderSvipLevel in 1..7){
+      senderLine.addView(TextView(this@RoomActivity).apply{
+       text="♛ SVIP $senderSvipLevel"
+       textSize=8f
+       gravity=Gravity.CENTER
+       setTextColor(Color.rgb(255,226,151))
+       typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD)
+       setPadding(dp(5),dp(1),dp(5),dp(1))
+       background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(73,52,27),Color.rgb(112,76,35))).apply{
+        cornerRadius=dp(8).toFloat()
+        setStroke(dp(1),Color.rgb(218,174,78))
+       }
+      },LinearLayout.LayoutParams(-2,dp(16)).apply{marginEnd=dp(4)})
+     }
      senderLine.addView(TextView(this@RoomActivity).apply{
       text=sender
       textSize=10.5f
@@ -1386,7 +1418,7 @@ class RoomActivity : Activity() {
       typeface=android.graphics.Typeface.DEFAULT_BOLD
       maxLines=1
       ellipsize=android.text.TextUtils.TruncateAt.END
-      maxWidth=(maxBubbleWidth*0.72f).toInt()
+      maxWidth=(maxBubbleWidth*(if(useLocalSvipOneBubble)0.58f else 0.72f)).toInt()
       includeFontPadding=false
       setShadowLayer(2f,0f,1f,Color.BLACK)
      },LinearLayout.LayoutParams(-2,dp(18)))
@@ -1399,7 +1431,7 @@ class RoomActivity : Activity() {
       gravity=Gravity.CENTER
       textAlignment=View.TEXT_ALIGNMENT_CENTER
       textDirection=View.TEXT_DIRECTION_FIRST_STRONG_RTL
-      maxWidth=(maxBubbleWidth*0.76f).toInt()
+      maxWidth=(maxBubbleWidth*(if(useLocalSvipOneBubble)0.60f else 0.76f)).toInt()
       maxLines=4
       ellipsize=android.text.TextUtils.TruncateAt.END
       includeFontPadding=false
@@ -1409,7 +1441,7 @@ class RoomActivity : Activity() {
      val contentParams=FrameLayout.LayoutParams(
       -2,-2,Gravity.CENTER
      ).apply{
-      leftMargin=dp(10);rightMargin=dp(10)
+      leftMargin=dp(if(useLocalSvipOneBubble)56 else 10);rightMargin=dp(10)
       topMargin=dp(2);bottomMargin=dp(2)
      }
      bubble.addView(content,contentParams)
@@ -1578,6 +1610,17 @@ class RoomActivity : Activity() {
     if(r.status !in 200..299){status.text=r.body.optString("error","تعذر تحميل المقاعد");return@launch}
     seats=r.body.optJSONArray("seats")?:JSONArray()
     cameraSeats=r.body.optJSONArray("cameraSeats")?:JSONArray()
+     for(source in listOf(seats,cameraSeats)){
+      for(index in 0 until source.length()){
+       val member=source.optJSONObject(index)?:continue
+       val uid=member.optString("user_id")
+       if(uid.isBlank() || uid=="null")continue
+   val level=member.optInt("svip_level",0).coerceIn(0,7)
+       if(level>0)svipLevelsByUser[uid]=level
+       val bubble=member.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[uid]=bubble
+       val entry=member.optString("svip_entry_effect_asset_url");if(entry.startsWith("https://"))svipEntryEffectsByUser[uid]=entry
+      }
+     }
     roomMode=r.body.optString("roomMode","audio").lowercase()
     cameraSeatCount=r.body.optInt("cameraSeatCount",if(cameraSeats.length()>0)cameraSeats.length() else 0)
     cameraMainUserId=r.body.optString("cameraMainUserId").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
@@ -1651,7 +1694,7 @@ class RoomActivity : Activity() {
  private fun applyAudioRoomBackdrop(){
   loadedBackgroundUrl="__fixed_audio_backdrop__"
   roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
-  roomBackgroundView.setImageResource(R.drawable.bg_voice_room)
+  roomBackgroundView.setImageResource(R.drawable.bg_voice_room_gold)
  }
 
  private fun applyRoomBackground(url:String){
@@ -1805,9 +1848,13 @@ class RoomActivity : Activity() {
       val videoRenderer=obtainCameraRenderer(uid!!,liveVideoTrack)
       addView(videoRenderer,FrameLayout.LayoutParams(dp(50),dp(50),Gravity.CENTER))
      }
-     val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
-      .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
-      ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
+      val seatSvipLevel=(seat.optInt("svip_level",0).takeIf{it>0}
+       ?:seatUser?.optInt("svip_level",0)?.takeIf{it>0}
+       ?:uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
+      val svipFrameUrl=if(seatSvipLevel==1)null else seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
      if(occupied && !frameUrl.isNullOrBlank()){
       val frameView=RoyalGifFrame(this@RoomActivity).apply{
        visibility=View.VISIBLE
@@ -1817,6 +1864,7 @@ class RoomActivity : Activity() {
       seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
       loadSeatFrame(frameView,frameUrl)
      }
+     if(occupied && seatSvipLevel==1)addLocalSvipOneFrame(this,dp(68))
      // Place the mute badge INSIDE the avatar image, centered and translucent.
      // All viewers receive the same is_muted state from the shared seat snapshot.
      if(occupied && seatMuted){
@@ -1837,6 +1885,14 @@ class RoomActivity : Activity() {
        background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,226,138),Color.rgb(240,172,60))).apply{cornerRadius=dp(8).toFloat()}
       },FrameLayout.LayoutParams(-2,dp(14),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
      }else{
+      if(occupied){
+       addView(label("جالس",7.5f,Color.rgb(45,34,18),true).apply{
+        includeFontPadding=false;gravity=Gravity.CENTER;setPadding(dp(5),0,dp(5),0)
+        background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,232,185),Color.rgb(222,184,116))).apply{
+         cornerRadius=dp(7).toFloat();setStroke(dp(1),Color.rgb(255,244,211))
+        }
+       },FrameLayout.LayoutParams(-2,dp(14),Gravity.BOTTOM or Gravity.START).apply{leftMargin=dp(1)})
+      }
       addView(label("$seatNumber",9f,Color.WHITE,true).apply{
        includeFontPadding=false
        background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.argb(215,22,14,48));setStroke(dp(1),Color.argb(130,255,255,255))}
@@ -1857,6 +1913,13 @@ class RoomActivity : Activity() {
       includeFontPadding=false
       setShadowLayer(3f,0f,1f,Color.argb(190,0,0,0))
      },LinearLayout.LayoutParams(0,dp(16),1f))
+      val seatSvipLevel=seat.optInt("svip_level",uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
+      if(seatSvipLevel in 1..7){
+       nameLine.addView(label("SVIP $seatSvipLevel",7.5f,Color.rgb(255,226,151),true).apply{
+        background=GradientDrawable().apply{cornerRadius=dp(7).toFloat();setColor(Color.argb(155,95,65,18));setStroke(dp(1),Color.rgb(218,174,78))}
+        setPadding(dp(3),0,dp(3),0)
+       },LinearLayout.LayoutParams(-2,dp(14)))
+      }
      if(seatLevel>=100){
       nameLine.addView(label("♛100",8f,Color.rgb(255,224,151),true).apply{
        background=GradientDrawable().apply{
@@ -2027,15 +2090,20 @@ class RoomActivity : Activity() {
     addView(avatarInner,FrameLayout.LayoutParams(innerPx,innerPx,Gravity.CENTER))
    }
    addView(ring,FrameLayout.LayoutParams(ringPx,ringPx,Gravity.CENTER))
-   val frameUrl=sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
-    .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
-    ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
+      val seatSvipLevel=(seat.optInt("svip_level",0).takeIf{it>0}
+       ?:seatUser?.optInt("svip_level",0)?.takeIf{it>0}
+       ?:uid?.let{svipLevelsByUser[it]}?:0).coerceIn(0,7)
+      val svipFrameUrl=if(seatSvipLevel==1)null else seat.optString("svip_frame_asset_url").takeIf{it.startsWith("https://")}
+      val frameUrl=svipFrameUrl ?: sequenceOf("equipped_frame_url","avatar_frame_url","frame_url","profile_frame_url")
+       .map{seat.optString(it)}.firstOrNull{it.startsWith("https://")}
+       ?:if(uid==currentUserId)currentUserEquippedFrameUrl else null
    if(occupied && !frameUrl.isNullOrBlank()){
     val frameView=RoyalGifFrame(this@RoomActivity).apply{visibility=View.VISIBLE;tag=frameUrl}
     addView(frameView,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
     seatFrameViews.getOrPut(frameUrl){mutableListOf()}.add(frameView)
     loadSeatFrame(frameView,frameUrl)
    }
+   if(occupied && seatSvipLevel==1)addLocalSvipOneFrame(this,stagePx)
   }
   tile.addView(stage,FrameLayout.LayoutParams(stagePx,stagePx,Gravity.CENTER))
 
@@ -2132,6 +2200,17 @@ class RoomActivity : Activity() {
   }
   return tile
  }
+ private fun addLocalSvipOneFrame(target:FrameLayout,sizePx:Int){
+  val frame=ImageView(this).apply{
+   setImageResource(R.drawable.svip1_gold_avatar_frame)
+   scaleType=ImageView.ScaleType.FIT_XY
+   isClickable=false
+   isFocusable=false
+   contentDescription="إطار SVIP 1"
+  }
+  target.addView(frame,FrameLayout.LayoutParams(sizePx,sizePx,Gravity.CENTER))
+ }
+
  private fun loadSeatFrame(view:RoyalGifFrame,url:String){
   val cached=seatFrameBytes[url]
   if(cached!=null){view.setGif(cached);view.startAnimation();return}
@@ -2232,7 +2311,7 @@ class RoomActivity : Activity() {
     merged.put("user_id",uid)
     val keys=listOf(
      "display_name","username","public_id","account_id","avatar_url","profile_image",
-     "total_xp","level","user_level","bio",
+     "total_xp","level","user_level","bio","svip_level",
      "fans_count","fans","followers_count","followersCount",
      "following_count","following","follow_count","followings_count",
      "diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent",
@@ -2474,6 +2553,7 @@ class RoomActivity : Activity() {
  private var accountBanWatch:Job?=null
  private fun showRoomJoinToast(notice:RoomJoinNotice){
   if(!::roomOverlayLayer.isInitialized || isFinishing || leaving)return
+  if(notice.svipLevel in 1..7 && notice.svipEntryEffectUrl.startsWith("https://"))playSvipEntryEffect(notice.svipEntryEffectUrl)
   pendingJoinToasts.add(notice)
   if(!joinToastShowing)showNextRoomJoinToast()
  }
@@ -2532,6 +2612,13 @@ class RoomActivity : Activity() {
     setStroke(dp(1),if(isLevel100)Color.rgb(230,187,93) else Color.argb(110,202,202,202))
    }
   },LinearLayout.LayoutParams(-2,dp(21)))
+  if(notice.svipLevel in 1..7){
+   line.addView(TextView(this).apply{
+    text="SVIP ${notice.svipLevel}";textSize=8.5f;gravity=Gravity.CENTER;setTextColor(Color.rgb(255,226,151))
+    typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD);setPadding(dp(5),dp(3),dp(5),dp(3))
+    background=GradientDrawable().apply{cornerRadius=dp(8).toFloat();setColor(Color.argb(100,125,83,24));setStroke(dp(1),Color.rgb(226,184,91))}
+   },LinearLayout.LayoutParams(-2,dp(21)).apply{marginStart=dp(4)})
+  }
   info.addView(line)
   info.addView(TextView(this).apply{
    text=if(isLevel100)"انضم إلى الغرفة" else "دخل الغرفة"
@@ -2924,6 +3011,36 @@ class RoomActivity : Activity() {
   }
  }
 
+ private suspend fun loadSvipPublicProfile(userId:String){
+  try{
+   val response=withContext(Dispatchers.IO){AuthApi.get("/api/users/$userId",authToken)}
+   if(response.status in 200..299){
+    val user=response.body.optJSONObject("user")?:response.body
+    val level=user.optInt("svip_level",0).coerceIn(0,7);if(level>0)svipLevelsByUser[userId]=level
+    val bubble=user.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[userId]=bubble
+    val entry=user.optString("svip_entry_effect_asset_url");if(entry.startsWith("https://"))svipEntryEffectsByUser[userId]=entry
+    lastRenderedChatSignature="";loadRoomMessages()
+   }
+  }catch(_:Exception){}finally{svipProfileLoading.remove(userId);svipProfileLoaded.add(userId)}
+ }
+
+ private fun playSvipEntryEffect(url:String){
+  if(!::roomOverlayLayer.isInitialized || !url.startsWith("https://"))return
+  val effect=LottieAnimationView(this).apply{repeatCount=0;scaleType=ImageView.ScaleType.FIT_CENTER;setAnimationFromUrl(url);isClickable=false;isFocusable=false}
+  roomOverlayLayer.addView(effect,FrameLayout.LayoutParams(dp(240),dp(240),Gravity.CENTER))
+  effect.addLottieOnCompositionLoadedListener{effect.playAnimation()}
+  effect.addAnimatorListener(object:android.animation.AnimatorListenerAdapter(){override fun onAnimationEnd(animation:android.animation.Animator){effect.post{if(effect.parent===roomOverlayLayer)roomOverlayLayer.removeView(effect)}}})
+ }
+
+ private fun loadSvipChatBubbleBackground(view:FrameLayout,url:String){
+  val cached=svipChatBubbleBitmaps[url];if(cached!=null){view.background=BitmapDrawable(resources,cached);return}
+  if(!svipChatBubbleLoading.add(url))return
+  scope.launch{try{
+   val bitmap=withContext(Dispatchers.IO){val connection=URL(url).openConnection().apply{connectTimeout=10000;readTimeout=15000};connection.getInputStream().use{BitmapFactory.decodeStream(it)}}
+   if(bitmap!=null){svipChatBubbleBitmaps[url]=bitmap;if(view.tag==url && view.isAttachedToWindow)view.background=BitmapDrawable(resources,bitmap)}
+  }catch(_:Exception){}finally{svipChatBubbleLoading.remove(url)}}
+ }
+
  private fun loadRoomMembers(){
   if(roomId.isBlank() || authToken.isBlank())return
   scope.launch{
@@ -2943,7 +3060,7 @@ class RoomActivity : Activity() {
       .firstOrNull{it.optString("user_id")==currentUserId}
      val myName=me?.optString("display_name").orEmpty().ifBlank{me?.optString("username").orEmpty()}.ifBlank{"مستخدم"}
      val myLevel=me?.optInt("level",currentUserLevel)?:currentUserLevel
-     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12))
+     val myNotice=RoomJoinNotice(myName,myLevel.coerceIn(1,100),currentUserId,me?.optString("avatar_url").orEmpty(),vipLevel=(me?.optInt("vip_level",0)?:0).coerceIn(0,12),svipLevel=me?.optInt("svip_level",0)?.coerceIn(0,7)?:0,svipEntryEffectUrl=me?.optString("svip_entry_effect_asset_url").orEmpty())
      joinNotices.add(myNotice)
      // Show the entrance banner for the current user too; initial membership
      // is the first observed state, so it must not be treated as a silent baseline.
@@ -2960,7 +3077,7 @@ class RoomActivity : Activity() {
         if(member.has("user_level"))member.optInt("user_level",1) else nested?.optInt("level",1)?:1).coerceIn(1,100)
        val avatarUrl=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
         ?:nested?.optString("avatar_url").orEmpty()
-       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12))
+       val notice=RoomJoinNotice(name,level,id,avatarUrl,vipLevel=(if(member.has("vip_level"))member.optInt("vip_level",0) else nested?.optInt("vip_level",0)?:0).coerceIn(0,12),svipLevel=member.optInt("svip_level",svipLevelsByUser[id]?:0).coerceIn(0,7),svipEntryEffectUrl=member.optString("svip_entry_effect_asset_url").ifBlank{svipEntryEffectsByUser[id].orEmpty()})
        joinNotices.add(notice)
        showRoomJoinToast(notice)
       }
@@ -2992,77 +3109,89 @@ class RoomActivity : Activity() {
   }
  }
  private fun showRoomMembers(){
-  val dialog=android.app.Dialog(this)
-  val root=sheetRoot()
-  val heading=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-  heading.addView(label("الموجودون في الغرفة",17f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(34),1f))
-  heading.addView(label(roomMembers.length().toString(),12f,Color.rgb(255,226,151),true).apply{
-   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,64,129),Color.rgb(255,140,60))).apply{cornerRadius=dp(14).toFloat()}
-   setPadding(dp(12),dp(5),dp(12),dp(5))
-  })
-  root.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
-  val divider=View(this).apply{setBackgroundColor(Color.argb(30,255,255,255))}
-  root.addView(divider,LinearLayout.LayoutParams(-1,dp(1)).apply{bottomMargin=dp(10)})
-  val list=LinearLayout(this).apply{orientation=1}
-  if(roomMembers.length()==0)list.addView(label("لا يوجد أعضاء لعرضهم حالياً",13f,Color.LTGRAY))
-  for(i in 0 until roomMembers.length()){
-   val member=roomMembers.optJSONObject(i)?:continue
-   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
-   val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
-   val isOwnerMember=member.optBoolean("is_owner")
-   val seat=member.optInt("seat_number",0)
-   val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
-   val roleColor=if(isOwnerMember)Color.rgb(255,213,124) else if(seat>0)Color.rgb(91,221,239) else Color.rgb(196,196,196)
-   val row=LinearLayout(this).apply{
-    orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
-    setPadding(dp(10),dp(9),dp(10),dp(9))
-    background=GradientDrawable().apply{
-     cornerRadius=dp(17).toFloat()
-     setColor(Color.argb(30,255,255,255))
-     setStroke(dp(1),Color.argb(36,255,255,255))
-    }
-    isClickable=true
-   }
-   val avatarFrame=FrameLayout(this).apply{
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(51,51,51));setStroke(dp(1.5f.toInt()),roleColor)}
-    clipToOutline=true
-   }
-   val avatar=ImageView(this).apply{
-    scaleType=ImageView.ScaleType.CENTER_CROP
-    setImageDrawable(VectorIcon("user",Color.WHITE,dp(22)))
-   }
-   avatarFrame.addView(avatar,FrameLayout.LayoutParams(dp(42),dp(42),Gravity.CENTER))
-   row.addView(avatarFrame,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(10)})
-   val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
-   if(url.isNotBlank())loadAvatarInto(avatar,url)
-   val info=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-   info.addView(label(name,14f,Color.WHITE,true).apply{gravity=Gravity.START;maxLines=1})
-   info.addView(label("ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
-   row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-   row.addView(label(role,10f,roleColor,true).apply{
-    background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
-    setPadding(dp(8),dp(5),dp(8),dp(5))
+   val dialog=android.app.Dialog(this)
+   val root=whiteSheetRoot()
+   val titleColor=Color.rgb(34,39,45)
+   val secondaryColor=Color.rgb(122,130,138)
+   val cardColor=Color.rgb(247,248,250)
+   val borderColor=Color.rgb(230,233,237)
+   val heading=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+   heading.addView(label("الموجودون في الغرفة",17f,titleColor,true),LinearLayout.LayoutParams(0,dp(34),1f))
+   heading.addView(label(roomMembers.length().toString(),12f,Color.WHITE,true).apply{
+    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,64,129),Color.rgb(255,140,60))).apply{cornerRadius=dp(14).toFloat()}
+    setPadding(dp(12),dp(5),dp(12),dp(5))
    })
-   row.setOnClickListener{
-    dialog.dismiss()
-    if(isOwner && !isOwnerMember) showMemberModeration(member)
-    else showMemberProfile(member)
+   root.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
+   root.addView(View(this).apply{setBackgroundColor(borderColor)},LinearLayout.LayoutParams(-1,dp(1)).apply{bottomMargin=dp(12)})
+   val list=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+   if(roomMembers.length()==0)list.addView(label("لا يوجد أعضاء لعرضهم حالياً",13f,secondaryColor))
+   for(i in 0 until roomMembers.length()){
+    val member=roomMembers.optJSONObject(i)?:continue
+    val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+    val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
+    val isOwnerMember=member.optBoolean("is_owner")
+    val seat=member.optInt("seat_number",0)
+    val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
+    val roleColor=if(isOwnerMember)Color.rgb(176,130,36) else if(seat>0)Color.rgb(27,139,166) else Color.rgb(111,119,128)
+    val roleBg=if(isOwnerMember)Color.rgb(255,247,224) else if(seat>0)Color.rgb(230,247,251) else Color.rgb(241,243,245)
+    val row=LinearLayout(this).apply{
+     orientation=LinearLayout.HORIZONTAL
+     gravity=Gravity.CENTER_VERTICAL
+     layoutDirection=View.LAYOUT_DIRECTION_LTR
+     setPadding(dp(11),dp(10),dp(11),dp(10))
+     background=GradientDrawable().apply{
+      cornerRadius=dp(17).toFloat()
+      setColor(cardColor)
+      setStroke(dp(1),borderColor)
+     }
+     isClickable=true
+     isFocusable=true
+    }
+    val avatarFrame=FrameLayout(this).apply{
+     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(241,243,245));setStroke(dp(1),roleColor)}
+     clipToOutline=true
+    }
+    val avatar=ImageView(this).apply{
+     scaleType=ImageView.ScaleType.CENTER_CROP
+     setImageDrawable(VectorIcon("user",Color.rgb(150,158,166),dp(22)))
+    }
+    avatarFrame.addView(avatar,FrameLayout.LayoutParams(dp(42),dp(42),Gravity.CENTER))
+    row.addView(avatarFrame,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(11)})
+    val nested=member.optJSONObject("user")?:member.optJSONObject("profile")
+    val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
+     ?:member.optString("profile_image").takeIf{it.isNotBlank()&&it!="null"}
+     ?:nested?.optString("avatar_url")?.takeIf{it.isNotBlank()&&it!="null"}
+     ?:nested?.optString("profile_image")?.takeIf{it.isNotBlank()&&it!="null"}
+    if(!url.isNullOrBlank())loadAvatarInto(avatar,url)
+    val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
+    info.addView(label(name,14f,titleColor,true).apply{gravity=Gravity.START;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
+    info.addView(label("ID: $account",10f,secondaryColor).apply{gravity=Gravity.START;maxLines=1})
+    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+    row.addView(label(role,10f,roleColor,true).apply{
+     background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(roleBg);setStroke(dp(1),Color.argb(110,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
+     setPadding(dp(9),dp(6),dp(9),dp(6))
+    })
+    row.setOnClickListener{
+     dialog.dismiss()
+     if(isOwner && !isOwnerMember) showMemberModeration(member)
+     else showMemberProfile(member)
+    }
+    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
    }
-   list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
+   val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(list)}
+   root.addView(scroll,LinearLayout.LayoutParams(-1,dp(330)))
+   val close=TextView(this).apply{
+    text="إغلاق";textSize=14f;gravity=Gravity.CENTER
+    setTextColor(Color.rgb(52,62,69));typeface=android.graphics.Typeface.DEFAULT_BOLD
+    background=GradientDrawable().apply{cornerRadius=dp(22).toFloat();setColor(Color.rgb(246,247,249));setStroke(dp(1),borderColor)}
+    setPadding(0,dp(11),0,dp(11))
+    isClickable=true
+    setOnClickListener{dialog.dismiss()}
+   }
+   root.addView(close,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(10)})
+   presentSheet(dialog,root)
   }
-  val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(list)}
-  root.addView(scroll,LinearLayout.LayoutParams(-1,dp(330)))
-  val close=TextView(this).apply{
-   text="إغلاق";textSize=14f;gravity=Gravity.CENTER
-   setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   background=GradientDrawable().apply{cornerRadius=dp(22).toFloat();setColor(Color.argb(40,255,255,255));setStroke(dp(1),Color.argb(70,255,255,255))}
-   setPadding(0,dp(11),0,dp(11))
-   setOnClickListener{dialog.dismiss()}
-  }
-  root.addView(close,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(10)})
-  presentSheet(dialog,root)
- }
-   private fun showMemberModeration(member:JSONObject){
+ private fun showMemberModeration(member:JSONObject){
    if(!isOwner)return
    val userId=member.optString("user_id")
    if(userId.isBlank() || userId=="null" || userId==currentUserId)return
@@ -3195,10 +3324,14 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحديث بيانات الملف"))
     val full=response.body.optJSONObject("user")?:response.body.optJSONObject("profile")?:response.body
     val merged=JSONObject(member.toString())
-    val keys=listOf("user_id","display_name","username","public_id","account_id","avatar_url","profile_image","total_xp","level","bio","fans_count","fans","followers_count","followersCount","following_count","following","follow_count","followings_count","diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent","diamonds_received","total_diamonds_received","received_diamonds","total_received")
+    val keys=listOf("user_id","display_name","username","public_id","account_id","avatar_url","profile_image","total_xp","level","bio","svip_level","svip_chat_bubble_asset_url","svip_entry_effect_asset_url","fans_count","fans","followers_count","followersCount","following_count","following","follow_count","followings_count","diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent","diamonds_received","total_diamonds_received","received_diamonds","total_received")
     for(key in keys)if(full.has(key)&&full.opt(key)!=JSONObject.NULL)merged.put(key,full.opt(key))
     val nested=full.optJSONObject("stats")?:full.optJSONObject("statistics")?:full.optJSONObject("profile_stats")
     if(nested!=null)for(key in keys)if(nested.has(key)&&nested.opt(key)!=JSONObject.NULL)merged.put(key,nested.opt(key))
+    // Some room member snapshots omit SVIP fields; fall back to the cached seat membership.
+    val profileSvip=merged.optInt("svip_level",0).coerceIn(0,7)
+    val cachedSvip=svipLevelsByUser[uid]?:0
+    if(profileSvip<=0 && cachedSvip>0)merged.put("svip_level",cachedSvip)
     renderMemberProfile(merged)
    }catch(_:Exception){renderMemberProfile(member)}
   }
@@ -3306,11 +3439,21 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
   root.addView(avatar,FrameLayout.LayoutParams(dp(104),dp(104),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+  if(member.optInt("svip_level",svipLevelsByUser[uid]?:0)==1){
+   root.addView(ImageView(this).apply{
+    setImageResource(R.drawable.svip1_gold_avatar_frame)
+    scaleType=ImageView.ScaleType.FIT_XY
+    isClickable=false
+    isFocusable=false
+    contentDescription="إطار SVIP 1"
+   },FrameLayout.LayoutParams(dp(124),dp(124),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+  }
   val nameLabel=label(name,21f,Color.rgb(28,29,33),true).apply{gravity=Gravity.CENTER}
   val accountLabel=label("ID: $account",13f,Color.rgb(137,140,146)).apply{gravity=Gravity.CENTER}
   card.addView(View(this),LinearLayout.LayoutParams(1,dp(48)))
   card.addView(nameLabel,LinearLayout.LayoutParams(-1,dp(36)))
   card.addView(accountLabel,LinearLayout.LayoutParams(-1,dp(28)))
+  val svipLevel=member.optInt("svip_level",0).coerceIn(0,7)
   val levelColors=memberLevelColors(level)
   val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val levelBadge=LinearLayout(this).apply{
@@ -3328,6 +3471,18 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    addView(label("LV $level",14f,levelColors[4],true))
   }
   badges.addView(levelBadge)
+  if(svipLevel in 1..7){
+   val svipBadge=LinearLayout(this).apply{
+    orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER
+    setPadding(dp(12),dp(7),dp(12),dp(7))
+    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(73,52,27),Color.rgb(112,76,35),Color.rgb(73,52,27))).apply{
+     cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(218,174,78))
+    }
+    addView(label("♛",14f,Color.rgb(255,226,151),true),LinearLayout.LayoutParams(-2,-2).apply{marginEnd=dp(5)})
+    addView(label("SVIP $svipLevel",12f,Color.rgb(255,226,151),true))
+   }
+   badges.addView(svipBadge,LinearLayout.LayoutParams(-2,dp(36)).apply{marginStart=dp(8)})
+  }
   card.addView(badges,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(2);bottomMargin=dp(10)})
   val stats=LinearLayout(this).apply{
     orientation=LinearLayout.HORIZONTAL
@@ -4016,17 +4171,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  @Deprecated("Deprecated in Android")
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
-  if(requestCode==floatingOverlayRequestCode){
-   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
-    pendingFloatingRoomLaunch=false
-    showFloatingRoomOverlay()
-    startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-   }else{
-    pendingFloatingRoomLaunch=false
-    Toast.makeText(this,"فعّل السماح بالظهور فوق التطبيقات حتى تظهر نافذة الغرفة مثل Bigo",Toast.LENGTH_LONG).show()
-   }
-   return
-  }
   if(resultCode!=Activity.RESULT_OK)return
   if(requestCode==4302){
    loadSeats()
@@ -4056,8 +4200,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun leaveRoom(){
   if(leaving)return
   if(isOwner){
-   showChoiceSheet("إدارة الغرفة","اختر تصغير الغرفة لمواصلة البث بالخلفية، أو إغلاقها نهائياً.",listOf(
-    SheetOption("تصغير إلى نافذة عائمة",0){minimizeRoomToFloatingWindow()},
+   showChoiceSheet("إدارة الغرفة","يمكنك العودة إلى الصفحة الرئيسية من زر البيت مع استمرار الغرفة، أو إغلاقها نهائياً.",listOf(
     SheetOption("إغلاق الغرفة نهائياً",1){closeRoomNow()},
     SheetOption("إلغاء",2){}))
   }else{

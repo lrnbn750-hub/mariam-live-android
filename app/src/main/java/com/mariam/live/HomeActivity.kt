@@ -34,21 +34,23 @@ import java.util.concurrent.Executors
 class HomeActivity : Activity() {
     private val executor = Executors.newFixedThreadPool(4)
     private val ink = Color.rgb(35,45,39)
-    private val muted = Color.rgb(150,128,90)
-    private val gold = Color.rgb(224,152,24)
-    private val goldDark = Color.rgb(150,88,10)
+    private val muted = Color.rgb(125,132,140)
+    private val gold = Color.rgb(37,166,112)
+    private val goldDark = Color.rgb(28,139,94)
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
     private lateinit var tabsRow: LinearLayout
     private var messagesBadge: TextView? = null
-    private var tabMode = 0    // 0 شائع | 1 استكشف | 2 المميزات
+    private var tabMode = 0    // 0 شائع | 1 استكشف | 2 المميزات | 3 أتابعهم
     private var chipMode = 0   // 0 الكل | 1 الأكثر مشاهدة | 2 الأكثر تفاعلاً
     private var searchQuery = ""
     private var pendingRoomName = ""
     private val roomImagePicker = 7314
-    private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف")
-    private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?,val roomMode:String="audio")
+    private val tabsData = listOf(0 to "شائع", 2 to "المميزات", 1 to "استكشف", 3 to "أتابعهم")
+    private data class RoomItem(val id:String,val name:String,val count:Int,val max:Int,val imageUrl:String?,val roomMode:String="audio",val ownerId:String="")
     private val liveRooms= mutableListOf<RoomItem>()
+    private val followingUserIds = mutableSetOf<String>()
+    private var followsLoadInFlight = false
     private var roomsLoadInFlight = false
     private var roomsReloadPending = false
     private var lastCardsSignature = ""
@@ -63,9 +65,9 @@ class HomeActivity : Activity() {
         super.onCreate(savedInstanceState)
         // طلب إذن إشعارات Android 13+ بعد دخول المستخدم إلى الصفحة الرئيسية.
         PushTokenManager.requestNotificationPermission(this)
-        val pageBg=Color.rgb(255,253,247)
-        window.statusBarColor=Color.rgb(255,240,200)
-        window.navigationBarColor=Color.rgb(247,210,125)
+        val pageBg=Color.WHITE
+        window.statusBarColor=Color.WHITE
+        window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         val root=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(pageBg)}
@@ -76,19 +78,19 @@ class HomeActivity : Activity() {
         val header=FrameLayout(this).apply{
             layoutDirection=View.LAYOUT_DIRECTION_LTR
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,240,200),Color.rgb(255,250,235)))
+                intArrayOf(Color.WHITE,Color.WHITE))
         }
         val appTitle=TextView(this).apply{
             text="BAK LIVE";textSize=22f;gravity=Gravity.CENTER
             typeface=Typeface.create("sans-serif",Typeface.BOLD_ITALIC)
-            setTextColor(Color.rgb(196,128,16))
+            setTextColor(Color.rgb(35,158,92))
             setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),0x88FFFFFF.toInt())
         }
         header.addView(appTitle,FrameLayout.LayoutParams(-2,-1,Gravity.RIGHT or Gravity.CENTER_VERTICAL).apply{rightMargin=dp(16)})
         appTitle.translationY=dp(18).toFloat()
         val goldLine=View(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(0x00E0A030,0xFFE0A030.toInt(),0x00E0A030))
+                intArrayOf(0x00DDE3E0,0xFFE3E8E5.toInt(),0x00DDE3E0))
         }
         header.addView(goldLine,FrameLayout.LayoutParams(-1,dp(2),Gravity.BOTTOM))
         fun headerIcon(kind:String,description:String)=LineIcon(this,kind,gold).apply{
@@ -139,14 +141,14 @@ class HomeActivity : Activity() {
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(42)))
 
         // ───────────── القائمة السفلية ─────────────
-        val navWrap=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;clipChildren=false}
+        val navWrap=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;clipChildren=false;clipToPadding=false}
         val bar=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,247,224),Color.rgb(247,210,125))).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
-                setStroke(dp(1),0x88E6B450.toInt())
+                intArrayOf(Color.WHITE,Color.WHITE)).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
+                setStroke(dp(1),Color.rgb(235,238,236))
             }
             setPadding(dp(6),dp(4),dp(6),0)
             elevation=dp(8).toFloat()
@@ -154,12 +156,12 @@ class HomeActivity : Activity() {
         fun navItem(kind:String,title:String,selected:Boolean,onTap:()->Unit)=FrameLayout(this).apply{
             isClickable=true;isFocusable=true;contentDescription=title
             val col=LinearLayout(this@HomeActivity).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
-            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(30),dp(30)))
+            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(28),dp(28)))
             col.addView(TextView(this@HomeActivity).apply{
-                text=title;textSize=10.5f;gravity=Gravity.CENTER;setSingleLine(true)
-                setTextColor(if(selected)goldDark else Color.rgb(160,124,66))
+                text=title;textSize=11.5f;gravity=Gravity.CENTER;setSingleLine(true)
+                setTextColor(if(selected)goldDark else Color.rgb(110,118,114))
                 typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium",Typeface.NORMAL)
-            },LinearLayout.LayoutParams(-1,dp(16)))
+            },LinearLayout.LayoutParams(-1,dp(18)))
             addView(col,FrameLayout.LayoutParams(-1,-1))
             setOnClickListener{onTap()}
         }
@@ -185,36 +187,36 @@ class HomeActivity : Activity() {
         bar.addView(navItem("profile","حسابي",false){
             startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))
         },LinearLayout.LayoutParams(0,-1,1f))
-        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(62),Gravity.BOTTOM))
+        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(59),Gravity.BOTTOM))
 
         // الزر المركزي البارز (إنشاء غرفة)
-        val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat()}
-        val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x66FFF1C4)}}
-        createSlot.addView(halo,FrameLayout.LayoutParams(dp(76),dp(76),Gravity.CENTER))
+        val createSlot=FrameLayout(this).apply{elevation=dp(14).toFloat();clipChildren=false;clipToPadding=false}
+        val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x3335B77A)}}
+        createSlot.addView(halo,FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
             contentDescription="إنشاء غرفة"
             isClickable=true
-            elevation=dp(8).toFloat()
+            elevation=dp(16).toFloat()
             outlineProvider=object:android.view.ViewOutlineProvider(){
                 override fun getOutline(v:View,outline:android.graphics.Outline){outline.setOval(0,0,v.width,v.height)}
             }
             setOnClickListener{showCreateRoomDialog()}
         }
         createSlot.addView(create,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER))
-        ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+        ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+        ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(76),dp(76),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=dp(5)})
 
-        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(86),Gravity.BOTTOM))
+        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(78),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
             val b=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val wrapLp=view.layoutParams
-            if(wrapLp.height!=dp(86)+b){wrapLp.height=dp(86)+b;view.layoutParams=wrapLp}
+            if(wrapLp.height!=dp(78)+b){wrapLp.height=dp(78)+b;view.layoutParams=wrapLp}
             val barLp=bar.layoutParams
-            if(barLp.height!=dp(62)+b){barLp.height=dp(62)+b;bar.layoutParams=barLp}
-            bar.setPadding(dp(6),dp(4),dp(6),b)
-            content.setPadding(dp(12),dp(6),dp(12),dp(110)+b)
+            if(barLp.height!=dp(59)+b){barLp.height=dp(59)+b;bar.layoutParams=barLp}
+            bar.setPadding(dp(5),dp(2),dp(5),b)
+            content.setPadding(dp(12),dp(6),dp(12),dp(94)+b)
             insets
         }
         setContentView(root)
@@ -276,7 +278,7 @@ class HomeActivity : Activity() {
         verifyAccount()
         val activeId=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("active_room_id",null)
         window.decorView.findViewWithTag<View>("return_room_button")?.visibility=if(activeId.isNullOrBlank())View.GONE else View.VISIBLE
-        if(::grid.isInitialized && ::roomStatus.isInitialized)loadRooms()
+        if(::grid.isInitialized && ::roomStatus.isInitialized){loadRooms();loadFollowingUsers()}
     }
 
     /** اربطها بعدد الرسائل غير المقروءة (0 = إخفاء الشارة). */
@@ -313,12 +315,14 @@ class HomeActivity : Activity() {
 
     private fun buildCards(){
         val avail=resources.displayMetrics.widthPixels-dp(24)
-        val cardW=avail/2-dp(8)
-        val cardH=(cardW*1.12f).toInt()
+        // Slightly more compact room tiles for a cleaner home feed.
+        val cardW=((avail/2-dp(8))*0.96f).toInt()
+        val cardH=(cardW*1.08f).toInt()
         var list:List<RoomItem> = liveRooms.filter{it.name.contains(searchQuery,true)}
         list=when(tabMode){
             0->list.sortedByDescending{it.count}
             2->list.filter{!it.imageUrl.isNullOrBlank()}.sortedByDescending{it.count}
+            3->list.filter{it.ownerId.isNotBlank() && followingUserIds.contains(it.ownerId)}.sortedByDescending{it.count}
             else->list
         }
         list=when(chipMode){
@@ -332,7 +336,13 @@ class HomeActivity : Activity() {
         grid.removeAllViews()
         if(list.isEmpty()){
             roomStatus.visibility=View.VISIBLE
-            roomStatus.text=if(searchQuery.isNotBlank())"لا توجد غرف تطابق البحث" else "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
+            roomStatus.text=when {
+                searchQuery.isNotBlank() -> "لا توجد غرف تطابق البحث"
+                tabMode==3 && followsLoadInFlight -> "جارٍ تحميل الغرف التي يتابعها أصدقاؤك..."
+                tabMode==3 && followingUserIds.isEmpty() -> "تابع المذيعين لتظهر غرفهم المباشرة هنا"
+                tabMode==3 -> "لا توجد غرف مباشرة للأشخاص الذين تتابعهم حالياً"
+                else -> "لا توجد غرف نشطة حالياً. أنشئ أول غرفة!"
+            }
             return
         }
         roomStatus.visibility=View.GONE
@@ -447,7 +457,8 @@ class HomeActivity : Activity() {
                             item.optInt("member_count",0),
                             item.optInt("max_members",8),
                             roomImageUrl(item),
-                            item.optString("room_mode","audio").lowercase()
+                            item.optString("room_mode","audio").lowercase(),
+                            roomOwnerId(item)
                         ))
                     }
                 } else errorMessage=result.body.optString("error","تعذر تحميل الغرف")
@@ -466,6 +477,57 @@ class HomeActivity : Activity() {
                     loadRooms()
                 }
             }        }
+    }
+    private fun roomOwnerId(item:JSONObject):String {
+        val directKeys=listOf("owner_id","host_id","creator_id","user_id","broadcaster_id","created_by")
+        for(key in directKeys){
+            val value=item.optString(key).trim()
+            if(value.isNotBlank() && value!="null" && value!="0") return value
+        }
+        val nested=item.optJSONObject("owner") ?: item.optJSONObject("host") ?: item.optJSONObject("creator") ?: item.optJSONObject("user")
+        if(nested!=null){
+            for(key in listOf("id","user_id")){
+                val value=nested.optString(key).trim()
+                if(value.isNotBlank() && value!="null" && value!="0") return value
+            }
+        }
+        return ""
+    }
+
+    /** Load followed accounts and refresh the Followed tab. */
+    private fun loadFollowingUsers(){
+        val token=getSharedPreferences("MariamLive",MODE_PRIVATE).getString("token",null) ?: return
+        if(followsLoadInFlight) return
+        followsLoadInFlight=true
+        executor.execute{
+            val ids=mutableSetOf<String>()
+            var ok=false
+            try{
+                val result=AuthApi.get("/api/follows/me",token)
+                if(result.status in 200..299){
+                    val array=result.body.optJSONArray("following") ?: org.json.JSONArray()
+                    for(i in 0 until array.length()){
+                        val entry=array.optJSONObject(i) ?: continue
+                        val nested=entry.optJSONObject("user") ?: entry.optJSONObject("profile")
+                        val id=listOf("id","user_id","following_id","follower_id").firstNotNullOfOrNull{key->
+                            entry.optString(key).trim().takeIf{it.isNotBlank() && it!="null" && it!="0"}
+                        } ?: nested?.optString("id")?.trim()?.takeIf{it.isNotBlank() && it!="null" && it!="0"}
+                        if(id!=null) ids.add(id)
+                    }
+                    ok=true
+                }
+            }catch(_:Exception){}
+            runOnUiThread{
+                followsLoadInFlight=false
+                if(ok && !isFinishing && !isDestroyed){
+                    followingUserIds.clear()
+                    followingUserIds.addAll(ids)
+                    if(tabMode==3) buildCards()
+                } else if(tabMode==3) {
+                    roomStatus.text="تعذر تحميل قائمة المتابعة، حاول مرة أخرى"
+                }
+            }
+        }
     }
     private fun roomImageUrl(item:JSONObject):String?{
         val image=item.optJSONObject("image")
@@ -620,7 +682,7 @@ class HomeActivity : Activity() {
     }
 
     /** أيقونات القائمة السفلية الذهبية: home / discover / messages / profile */
-    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){        private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
+    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){        private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.8f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
         private val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.4f;strokeJoin=Paint.Join.ROUND;strokeCap=Paint.Cap.ROUND}
         private val detail=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(canvas:Canvas){
@@ -630,14 +692,14 @@ class HomeActivity : Activity() {
             canvas.save()
             canvas.translate((width-side)/2f,(height-side)/2f)
             canvas.scale(side/24f,side/24f)
-            val top=if(selected)Color.rgb(255,218,110) else Color.rgb(255,247,226)
-            val bottom=if(selected)Color.rgb(226,142,26) else Color.rgb(236,208,150)
+            val top=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
+            val bottom=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
             fill.shader=LinearGradient(0f,2f,0f,22f,top,bottom,Shader.TileMode.CLAMP)
-            line.color=if(selected)Color.rgb(150,88,10) else Color.rgb(176,138,76)
-            detail.color=if(selected)Color.rgb(255,252,238) else Color.rgb(176,138,76)
+            line.color=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
+            detail.color=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
             if(selected){
                 val glow=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-                    shader=RadialGradient(12f,12f,12f,0x55FFD36E,0x00FFD36E,Shader.TileMode.CLAMP)
+                    shader=RadialGradient(12f,12f,12f,0x2235B77A,0x0035B77A,Shader.TileMode.CLAMP)
                 }
                 canvas.drawCircle(12f,12f,12f,glow)
             }
@@ -696,17 +758,17 @@ class HomeActivity : Activity() {
         override fun onDraw(canvas:Canvas){
             super.onDraw(canvas)
             val cx=width/2f;val cy=height/2f;val r=minOf(width,height)/2f-1f*d
-            ring.shader=LinearGradient(cx-r,cy-r,cx+r,cy+r,Color.rgb(255,240,180),Color.rgb(214,142,30),Shader.TileMode.CLAMP)
+            ring.shader=LinearGradient(cx-r,cy-r,cx+r,cy+r,Color.rgb(220,250,236),Color.rgb(35,166,112),Shader.TileMode.CLAMP)
             canvas.drawCircle(cx,cy,r,ring)
-            inner.shader=LinearGradient(cx,cy-r,cx,cy+r,Color.rgb(255,214,110),Color.rgb(232,150,26),Shader.TileMode.CLAMP)
+            inner.shader=LinearGradient(cx,cy-r,cx,cy+r,Color.rgb(53,190,139),Color.rgb(24,139,94),Shader.TileMode.CLAMP)
             canvas.drawCircle(cx,cy,r*0.82f,inner)
             canvas.drawCircle(cx,cy,r*0.82f,rim)
-            drawMic(canvas,cx-r*0.04f,cy+r*0.02f+1.2f*d,r,Color.rgb(160,96,10))   // ظل
+            drawMic(canvas,cx-r*0.04f,cy+r*0.02f+1.2f*d,r,Color.rgb(18,110,75))   // ظل
             drawMic(canvas,cx-r*0.04f,cy+r*0.02f,r,Color.WHITE)
             // علامة +
             val bx=cx+r*0.40f;val by=cy+r*0.40f;val br=r*0.24f
             iconFill.color=Color.WHITE;canvas.drawCircle(bx,by,br,iconFill)
-            iconLine.color=Color.rgb(214,142,30);iconLine.strokeWidth=r*0.09f
+            iconLine.color=Color.rgb(25,139,94);iconLine.strokeWidth=r*0.09f
             canvas.drawLine(bx-br*0.5f,by,bx+br*0.5f,by,iconLine)
             canvas.drawLine(bx,by-br*0.5f,bx,by+br*0.5f,iconLine)
         }

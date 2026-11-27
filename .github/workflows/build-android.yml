@@ -1,4 +1,4 @@
-name: Mariam Live Android CI
+name: Mariam Live Android CI # Also validate SVIP room changes
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
       - main
       - feature/mariam-live-development
       - feature/bak-live-camera-modes-on-build465
+      - feature/bak-live-audio-8-15-seats
+      - feature/svip-perks-latest-audio-8-15
   pull_request:
     branches:
       - main

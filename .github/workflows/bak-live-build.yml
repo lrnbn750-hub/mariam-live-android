@@ -1,5 +1,5 @@
 name: BAK LIVE Android Build
-# Build BAK LIVE debug APK for test installation.
+# Build BAK LIVE debug APK for test installation, including SVIP room changes.
 # Match mini-profile stat column positions with the full profile.
 # Includes the room mini-profile to full-profile navigation.
 
@@ -11,6 +11,8 @@ on:
       - agency-system-ui
       - feature/bak-live-camera-modes-on-build465
       - feature/bak-live-audio-8-15-seats
+      - feature/svip-perks-latest-audio-8-15
+      - feature/bak-live-white-room-tools-aladdin-svga
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
       - feature/chat-bubble-wardrobe

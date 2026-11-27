@@ -24,7 +24,9 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.FrameLayout
+import android.widget.EditText
 import android.widget.LinearLayout
+import android.text.InputType
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -61,6 +63,7 @@ class ProfileActivity : Activity() {
     private var publicName: TextView? = null
     private var publicIdView: TextView? = null
     private var publicLevel: TextView? = null
+    private var publicSvipBadge: TextView? = null
     private var publicFans: TextView? = null
     private var publicFollowing: TextView? = null
     private var publicSent: TextView? = null
@@ -81,16 +84,16 @@ class ProfileActivity : Activity() {
     private val muted = Color.rgb(143, 151, 164)
     private val border = Color.rgb(238, 240, 244)
     private val white = Color.WHITE
-    private val pageBg = Color.rgb(243, 244, 250)
-    private val heroTop = Color.rgb(20, 10, 48)
+    private val pageBg = Color.WHITE
+    private val heroTop = Color.rgb(215, 250, 242)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        window.statusBarColor = heroTop              // same color as the top of the hero gradient
-        window.navigationBarColor = pageBg
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR // light status icons on the dark hero
+        window.statusBarColor = heroTop
+        window.navigationBarColor = Color.WHITE
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
         isOwnProfile = requestedProfileUserId.isBlank()
         buildNativePage()
@@ -174,15 +177,16 @@ class ProfileActivity : Activity() {
         val navWrap = FrameLayout(this).apply {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             clipChildren = false
+            clipToPadding = false
         }
         val bar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255, 247, 224), Color.rgb(247, 210, 125))).apply {
+                intArrayOf(Color.WHITE, Color.WHITE)).apply {
                 cornerRadii = floatArrayOf(dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), 0f, 0f, 0f, 0f)
-                setStroke(dp(1f), 0x88E6B450.toInt())
+                setStroke(dp(1f), Color.rgb(235, 238, 236))
             }
             setPadding(dp(6f), dp(4f), dp(6f), 0)
             elevation = dp(8f).toFloat()
@@ -196,15 +200,15 @@ class ProfileActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
                     addView(HomeActivity.NavIcon(this@ProfileActivity, kind, selected),
-                        LinearLayout.LayoutParams(dp(30f), dp(30f)))
+                        LinearLayout.LayoutParams(dp(28f), dp(28f)))
                     addView(TextView(this@ProfileActivity).apply {
                         text = title
-                        textSize = 10.5f
+                        textSize = 11.5f
                         gravity = Gravity.CENTER
                         setSingleLine(true)
-                        setTextColor(if (selected) Color.rgb(150, 88, 10) else Color.rgb(160, 124, 66))
+                        setTextColor(if (selected) Color.rgb(25, 125, 72) else Color.rgb(110, 118, 114))
                         typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                    }, LinearLayout.LayoutParams(-1, dp(16f)))
+                    }, LinearLayout.LayoutParams(-1, dp(18f)))
                 }
                 addView(column, FrameLayout.LayoutParams(-1, -1))
                 setOnClickListener { action() }
@@ -217,26 +221,26 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this@ProfileActivity, HomeActivity::class.java).putExtra("open_discover", true))
             finish()
         }, LinearLayout.LayoutParams(0, -1, 1f))
-        val createSlot = FrameLayout(this)
+        val createSlot = FrameLayout(this).apply { elevation = dp(14f).toFloat(); clipChildren = false; clipToPadding = false }
         val halo = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0x66FFF1C4)
+                setColor(0x3335B77A)
             }
         }
-        createSlot.addView(halo, FrameLayout.LayoutParams(dp(76f), dp(76f), Gravity.CENTER))
+        createSlot.addView(halo, FrameLayout.LayoutParams(dp(54f), dp(54f), Gravity.CENTER))
         val createButton = HomeActivity.CreateRoomButton(this).apply {
             contentDescription = "إنشاء غرفة"
             isClickable = true
-            elevation = dp(8f).toFloat()
+            elevation = dp(16f).toFloat()
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
         createSlot.addView(createButton, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.CENTER))
-        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.055f).apply {
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_X, 1f, 1.02f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
-        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_Y, 1f, 1.055f).apply {
+        android.animation.ObjectAnimator.ofFloat(createButton, View.SCALE_Y, 1f, 1.02f).apply {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
@@ -244,19 +248,20 @@ class ProfileActivity : Activity() {
             duration = 1100; repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE; start()
         }
-        bar.addView(createSlot, LinearLayout.LayoutParams(0, -1, 1.25f))
+        bar.addView(View(this), LinearLayout.LayoutParams(0, -1, 1.25f))
         bar.addView(navItem("messages", "رسائلي", false) {
             startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
-        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(62f), Gravity.BOTTOM))
-        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(86f), Gravity.BOTTOM))
+        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(59f), Gravity.BOTTOM))
+        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(5f) })
+        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(78f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
-            view.layoutParams = view.layoutParams.apply { height = dp(86f) + bottomInset }
-            bar.layoutParams = bar.layoutParams.apply { height = dp(62f) + bottomInset }
-            bar.setPadding(dp(6f), dp(4f), dp(6f), bottomInset)
-            page.setPadding(0, 0, 0, dp(110f) + bottomInset)
+            view.layoutParams = view.layoutParams.apply { height = dp(78f) + bottomInset }
+            bar.layoutParams = bar.layoutParams.apply { height = dp(59f) + bottomInset }
+            bar.setPadding(dp(5f), dp(2f), dp(5f), bottomInset)
+            page.setPadding(0, 0, 0, dp(116f) + bottomInset)
             insets
         }
         setContentView(root)
@@ -267,7 +272,7 @@ class ProfileActivity : Activity() {
         header.layoutParams = LinearLayout.LayoutParams(-1, -2)
         avatar = header.avatarView
         avatar.clipToOutline = true
-        header.editAvatarView.setOnClickListener { pickPhoto() }
+        header.editAvatarView.setOnClickListener { showEditProfileDialog() }
         header.copyView.setOnClickListener { copyId() }
         header.settingsView.setOnClickListener { openAction("settings") }
         header.supportView.setOnClickListener { openAction("music") }
@@ -313,8 +318,23 @@ class ProfileActivity : Activity() {
         walletRow.addView(coins, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5f) })
         body.addView(walletRow, LinearLayout.LayoutParams(-1, -2))
 
-        // Premium membership system removed. Wallet and general store remain available.
-
+        // ---- SVIP membership entry ------------------------------------------------------
+        val svipCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = cardBackground(22f)
+            elevation = dp(2f).toFloat()
+            clipToOutline = true
+        }
+        serviceRow(
+            svipCard,
+            "عضوية SVIP",
+            R.drawable.ic_profile_svip_color,
+            rounded(Color.rgb(255, 246, 220), 14f, Color.rgb(239, 211, 143)),
+            dp(8f),
+            last = true
+        ) { openAction("svip") }
+        body.addView(svipCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12f) })
         // ---- Shortcuts: family, store, my look, agency, host -------------------------------
         val shortcutCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -545,6 +565,13 @@ class ProfileActivity : Activity() {
             setSingleLine(true)
         }
         nameRow.addView(publicName, LinearLayout.LayoutParams(-2, -2))
+        publicSvipBadge = text("SVIP 1", 10f, Color.rgb(255, 226, 151), true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(91, 62, 24), 10f, Color.rgb(218, 174, 78))
+            setPadding(dp(7f), dp(4f), dp(7f), dp(4f))
+            visibility = View.GONE
+        }
+        nameRow.addView(publicSvipBadge, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f) })
         identityContent.addView(nameRow)
 
         // ---- Location | ID ----
@@ -676,7 +703,7 @@ class ProfileActivity : Activity() {
             setOnClickListener { Toast.makeText(this@ProfileActivity, "المراسلة غير مربوطة بعد", Toast.LENGTH_SHORT).show() }
             pressable()
         }
-        val gold = Color.rgb(247, 181, 0)
+        val gold = Color.rgb(37, 166, 112)
         val star = text("☆", 22f, gold, true).apply {
             gravity = Gravity.CENTER
             background = rounded(Color.WHITE, 23f, gold)
@@ -802,6 +829,7 @@ class ProfileActivity : Activity() {
                             ?: user.optString("username", "مستخدم BAK LIVE"))
                         .put("id", publicId)
                         .put("level", user.optInt("level", 1).coerceAtLeast(1))
+                        .put("svipLevel", user.optInt("svip_level", 0).coerceIn(0, 7))
                         .put("avatarUrl", user.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
                             ?: user.optString("profile_image"))
                         .put("profileBackgroundUrl", user.optString("profile_background_url"))
@@ -842,6 +870,7 @@ class ProfileActivity : Activity() {
                     .put("name", user.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: user.optString("username", "مستخدم BAK LIVE"))
                     .put("id", publicId)
                     .put("level", 1)
+                    .put("svipLevel", user.optInt("svip_level", 0).coerceIn(0, 7))
                     .put("avatarUrl", user.optString("avatar_url"))
                     .put("visitors", JSONObject.NULL)
                     .put("publicFans", user.optLong("followers_count", 0L))
@@ -916,6 +945,13 @@ class ProfileActivity : Activity() {
             publicName?.text = data.optString("name")
             publicIdView?.text = "ID: " + publicId
             publicLevel?.text = "◆  " + data.optInt("level", 1)
+            val svipLevel = data.optInt("svipLevel", 0).coerceIn(0, 7)
+            publicSvipBadge?.apply {
+                if (svipLevel in 1..7) {
+                    text = "♛ SVIP $svipLevel"
+                    visibility = View.VISIBLE
+                } else visibility = View.GONE
+            }
             val backgroundUrl = data.optString("profileBackgroundUrl").trim()
             if (backgroundUrl.startsWith("https://")) executor.execute {
                 try {
@@ -1056,6 +1092,7 @@ class ProfileActivity : Activity() {
             "store" -> startActivity(Intent(this, InventoryActivity::class.java).putExtra("inventory_mode", "store"))
             "host" -> startActivity(Intent(this, CreatorCenterActivity::class.java))
             "agency" -> startActivity(Intent(this, AgencyActivity::class.java))
+            "svip" -> startActivity(Intent(this, SvipActivity::class.java))
             "family" -> showInfo("العائلة")
             "help" -> showInfo("المساعدة والدعم")
             "post" -> showInfo("أنشر")
@@ -1149,9 +1186,250 @@ class ProfileActivity : Activity() {
         }
     }
 
+    private fun showEditProfileDialog() {
+        if (!isOwnProfile) return
+
+        val green = Color.rgb(24, 151, 105)
+        val softGreen = Color.rgb(232, 248, 242)
+        val fieldBg = Color.rgb(247, 249, 250)
+        val line = Color.rgb(230, 235, 238)
+
+        fun sectionLabel(value: String) = text(value, 13f, Color.rgb(91, 102, 111), true).apply {
+            textDirection = View.TEXT_DIRECTION_RTL
+        }
+        fun styledInput(hintText: String, value: String, multiLine: Boolean = false) =
+            EditText(this).apply {
+                textSize = 15f
+                hint = hintText
+                setText(value)
+                setTextColor(ink)
+                setHintTextColor(Color.rgb(160, 168, 174))
+                background = rounded(fieldBg, 15f, line)
+                setPadding(dp(15f), dp(12f), dp(15f), dp(12f))
+                filters = arrayOf(android.text.InputFilter.LengthFilter(if (multiLine) 300 else 60))
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                    (if (multiLine) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0)
+                if (multiLine) {
+                    minLines = 3
+                    maxLines = 4
+                    gravity = Gravity.TOP or Gravity.RIGHT
+                } else {
+                    setSingleLine(true)
+                    gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
+                }
+            }
+
+        val nameInput = styledInput(
+            "اكتب اسمك",
+            profileData.optString("name").takeUnless { it == "null" }.orEmpty()
+        )
+        val bioInput = styledInput(
+            "اكتب نبذة قصيرة عنك",
+            profileData.optString("bio").takeUnless { it == "null" }.orEmpty(),
+            true
+        )
+
+        val countries = arrayOf(
+            "العراق", "السعودية", "الإمارات", "الكويت", "قطر", "البحرين", "عُمان",
+            "الأردن", "سوريا", "لبنان", "فلسطين", "مصر", "المغرب", "الجزائر", "تونس",
+            "ليبيا", "السودان", "اليمن", "تركيا", "إيران", "أفغانستان", "باكستان",
+            "الهند", "بنغلاديش", "إندونيسيا", "ماليزيا", "الصين", "اليابان", "كوريا الجنوبية",
+            "روسيا", "أوكرانيا", "ألمانيا", "فرنسا", "بريطانيا", "إيطاليا", "إسبانيا",
+            "هولندا", "السويد", "النرويج", "سويسرا", "الولايات المتحدة", "كندا", "أستراليا",
+            "البرازيل", "الأرجنتين", "جنوب أفريقيا", "نيجيريا", "كينيا"
+        )
+        var selectedCountry = profileData.optString("country").takeUnless { it == "null" }.orEmpty()
+        val countryValue = text(
+            if (selectedCountry.isBlank()) "اختر البلد" else selectedCountry,
+            15f, if (selectedCountry.isBlank()) muted else ink, true
+        ).apply { textDirection = View.TEXT_DIRECTION_RTL }
+        val countryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(fieldBg, 15f, line)
+            setPadding(dp(15f), dp(15f), dp(15f), dp(15f))
+            isClickable = true
+            isFocusable = true
+            addView(countryValue, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(text("⌄", 20f, muted, true))
+            setOnClickListener {
+                val currentIndex = countries.indexOf(selectedCountry).coerceAtLeast(0)
+                android.app.AlertDialog.Builder(this@ProfileActivity)
+                    .setTitle("اختر بلدك")
+                    .setSingleChoiceItems(countries, currentIndex) { picker, which ->
+                        selectedCountry = countries[which]
+                        countryValue.text = selectedCountry
+                        countryValue.setTextColor(ink)
+                        picker.dismiss()
+                    }
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            }
+        }
+
+        // Circular live avatar preview with a small camera action badge.
+        var editDialog: android.app.AlertDialog? = null
+        val avatarFrame = FrameLayout(this).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        val avatarPreview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(softGreen)
+                setStroke(dp(3f), green)
+            }
+            clipToOutline = true
+            val current = avatar.drawable
+            if (current != null) setImageDrawable(current.constantState?.newDrawable()?.mutate() ?: current)
+        }
+        avatarFrame.addView(avatarPreview, FrameLayout.LayoutParams(dp(94f), dp(94f), Gravity.CENTER))
+        val cameraBadge = TextView(this).apply {
+            text = "📷"
+            textSize = 15f
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(green)
+                setStroke(dp(2f), Color.WHITE)
+            }
+            elevation = dp(5f).toFloat()
+            isClickable = true
+            isFocusable = true
+            contentDescription = "تغيير الصورة الشخصية"
+            setOnClickListener {
+                editDialog?.dismiss()
+                pickPhoto()
+            }
+        }
+        avatarFrame.addView(cameraBadge, FrameLayout.LayoutParams(dp(34f), dp(34f), Gravity.BOTTOM or Gravity.END))
+
+        val photoHint = text("اضغط على الكاميرا لتغيير صورتك", 12f, muted).apply {
+            gravity = Gravity.CENTER
+            textDirection = View.TEXT_DIRECTION_RTL
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22f), dp(8f), dp(22f), dp(12f))
+            addView(avatarFrame, LinearLayout.LayoutParams(dp(104f), dp(104f)).apply {
+                gravity = Gravity.CENTER
+            })
+            addView(photoHint, LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(5f)
+                bottomMargin = dp(20f)
+            })
+            addView(sectionLabel("الاسم"))
+            addView(nameInput, LinearLayout.LayoutParams(-1, dp(54f)).apply { topMargin = dp(7f) })
+            addView(sectionLabel("البلد"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(countryRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7f) })
+            addView(sectionLabel("النبذة الشخصية"), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16f) })
+            addView(bioInput, LinearLayout.LayoutParams(-1, dp(108f)).apply { topMargin = dp(7f) })
+        }
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(content)
+        }
+        val titleView = text("تعديل الملف الشخصي", 20f, ink, true).apply {
+            gravity = Gravity.CENTER
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(dp(20f), dp(20f), dp(20f), dp(8f))
+        }
+        val dialogContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.WHITE)
+            addView(titleView, LinearLayout.LayoutParams(-1, -2))
+            addView(scroll, LinearLayout.LayoutParams(-1, -2))
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setView(dialogContent)
+            .setNegativeButton("إلغاء", null)
+            .setPositiveButton("حفظ التغييرات", null)
+            .create()
+        editDialog = dialog
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawable(GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = dp(24f).toFloat()
+            })
+            dialog.window?.setLayout(
+                (resources.displayMetrics.widthPixels * 0.92f).toInt(),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(green)
+                typeface = Typeface.DEFAULT_BOLD
+                setOnClickListener {
+                    val displayName = nameInput.text.toString().trim()
+                    val bio = bioInput.text.toString().trim()
+                    if (displayName.isBlank()) {
+                        nameInput.error = "الاسم مطلوب"
+                        return@setOnClickListener
+                    }
+                    if (selectedCountry.isBlank()) {
+                        Toast.makeText(this@ProfileActivity, "يرجى اختيار البلد", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                    saveProfileDetails(displayName, selectedCountry, bio, dialog)
+                }
+            }
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)?.setTextColor(muted)
+        }
+        dialog.show()
+    }
+
+    private fun saveProfileDetails(displayName: String, country: String, bio: String, dialog: android.app.AlertDialog) {
+        val token = getSharedPreferences("MariamLive", MODE_PRIVATE).getString("token", null)
+        if (token.isNullOrBlank()) {
+            Toast.makeText(this, "انتهت الجلسة، سجل الدخول مجدداً", Toast.LENGTH_LONG).show()
+            return
+        }
+        val saveButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+        saveButton.isEnabled = false
+        saveButton.text = "جارٍ الحفظ..."
+        executor.execute {
+            try {
+                val payload = JSONObject()
+                    .put("display_name", displayName)
+                    .put("country", country)
+                    .put("bio", bio)
+                val result = AuthApi.put("/api/profile", payload, token)
+                if (result.status !in 200..299) {
+                    throw Exception(result.body.optString("error", "تعذر حفظ بيانات الملف الشخصي"))
+                }
+                profileData.put("name", displayName)
+                    .put("country", country)
+                    .put("bio", bio)
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        header.setUserName(displayName)
+                        dialog.dismiss()
+                        Toast.makeText(this, "تم حفظ بيانات الملف الشخصي", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        saveButton.isEnabled = true
+                        saveButton.text = "حفظ"
+                        Toast.makeText(this, e.message ?: "تعذر حفظ التغييرات", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
     private fun pickPhoto() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
+        // Open the device Gallery app directly instead of the system Files document browser.
+        val intent = Intent(
+            Intent.ACTION_PICK,
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        ).apply {
             type = "image/*"
         }
         startActivityForResult(intent, photoPickerCode)
