@@ -187,7 +187,7 @@ class SvipActivity : Activity() {
         bottomBack=label("",11f,0xffaab2c3.toInt());priceCol.addView(bottomBack)
         footer.addView(priceCol,lp(0,-2,1f))
         buy=label("شراء",14f,0xff2d2411.toInt(),true).apply{gravity=Gravity.CENTER;background=bg(cream,22f);setPadding(dp(17),0,dp(17),0);minWidth=dp(78);minHeight=dp(44);setOnClickListener{confirmPurchase()}}
-        footer.addView(buy,lp(-2,dp(36)).apply{marginStart=dp(10)})
+        footer.addView(buy,lp(-2,dp(44)).apply{marginStart=dp(10)})
         root.addView(footer,lp(-1,-2))
         setContentView(root)
         root.requestApplyInsets()
