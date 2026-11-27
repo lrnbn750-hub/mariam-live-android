@@ -1600,7 +1600,6 @@ class RoomActivity : Activity() {
        val member=source.optJSONObject(index)?:continue
        val uid=member.optString("user_id")
        if(uid.isBlank() || uid=="null")continue
-       val svipLevel=member.optInt("svip_level",0).coerceIn(0,7)
    val level=member.optInt("svip_level",0).coerceIn(0,7)
        if(level>0)svipLevelsByUser[uid]=level
        val bubble=member.optString("svip_chat_bubble_asset_url");if(bubble.startsWith("https://"))svipChatBubbleUrlsByUser[uid]=bubble
@@ -3395,6 +3394,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   card.addView(View(this),LinearLayout.LayoutParams(1,dp(48)))
   card.addView(nameLabel,LinearLayout.LayoutParams(-1,dp(36)))
   card.addView(accountLabel,LinearLayout.LayoutParams(-1,dp(28)))
+  val svipLevel=member.optInt("svip_level",0).coerceIn(0,7)
   val levelColors=memberLevelColors(level)
   val badges=LinearLayout(this).apply{gravity=Gravity.CENTER;layoutDirection=View.LAYOUT_DIRECTION_LTR}
   val levelBadge=LinearLayout(this).apply{
