@@ -474,19 +474,16 @@ class RoomActivity : Activity() {
    Toast.makeText(this,"انتظر حتى يتم الاتصال بالغرفة",Toast.LENGTH_SHORT).show()
    return
   }
-  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)){
-   pendingFloatingRoomLaunch=true
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
    try{
-    val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:$packageName"))
-    startActivityForResult(intent,floatingOverlayRequestCode)
+    val params=PictureInPictureParams.Builder().setAspectRatio(Rational(16,9)).build()
+    enterPictureInPictureMode(params)
    }catch(_:Exception){
-    pendingFloatingRoomLaunch=false
-    Toast.makeText(this,"تعذر فتح إعداد السماح بالظهور فوق التطبيقات",Toast.LENGTH_LONG).show()
+    Toast.makeText(this,"تعذر تصغير نافذة البث على هذا الجهاز",Toast.LENGTH_SHORT).show()
    }
-   return
+  }else{
+   Toast.makeText(this,"تصغير نافذة البث متاح على Android 8 وما بعده",Toast.LENGTH_SHORT).show()
   }
-  showFloatingRoomOverlay()
-  startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
  }
 
  private fun showFloatingRoomOverlay(){
@@ -612,11 +609,6 @@ class RoomActivity : Activity() {
   hidePhoneNavigation()
   refreshPictureInPictureParams()
   watchPlayer?.onHostResume()
-  if(pendingFloatingRoomLaunch && Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
-   pendingFloatingRoomLaunch=false
-   showFloatingRoomOverlay()
-   startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-  }
  }
 
  @Suppress("DEPRECATION")
@@ -4165,17 +4157,6 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  @Deprecated("Deprecated in Android")
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
-  if(requestCode==floatingOverlayRequestCode){
-   if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M && Settings.canDrawOverlays(this)){
-    pendingFloatingRoomLaunch=false
-    showFloatingRoomOverlay()
-    startActivity(Intent(this,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-   }else{
-    pendingFloatingRoomLaunch=false
-    Toast.makeText(this,"فعّل السماح بالظهور فوق التطبيقات حتى تظهر نافذة الغرفة مثل Bigo",Toast.LENGTH_LONG).show()
-   }
-   return
-  }
   if(resultCode!=Activity.RESULT_OK)return
   if(requestCode==4302){
    loadSeats()
@@ -4206,7 +4187,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   if(leaving)return
   if(isOwner){
    showChoiceSheet("إدارة الغرفة","اختر تصغير الغرفة لمواصلة البث بالخلفية، أو إغلاقها نهائياً.",listOf(
-    SheetOption("تصغير إلى نافذة عائمة",0){minimizeRoomToFloatingWindow()},
+    SheetOption("تصغير البث إلى نافذة صغيرة",0){minimizeRoomToFloatingWindow()},
     SheetOption("إغلاق الغرفة نهائياً",1){closeRoomNow()},
     SheetOption("إلغاء",2){}))
   }else{
