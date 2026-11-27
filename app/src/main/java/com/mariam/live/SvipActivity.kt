@@ -118,9 +118,20 @@ class SvipActivity : Activity() {
     private fun loadData(successMessage: String? = null) {
         io.execute {
             try {
-                val levelsResult = AuthApi.get("/api/svip/levels", token)
-                val meResult = AuthApi.get("/api/svip/me", token)
-                val walletResult = AuthApi.get("/api/wallet", token)
+                // Fetch independent account data concurrently so the SVIP page
+                // does not wait for three network round-trips one after another.
+                val levelsFuture = java.util.concurrent.CompletableFuture.supplyAsync {
+                    AuthApi.get("/api/svip/levels", token)
+                }
+                val meFuture = java.util.concurrent.CompletableFuture.supplyAsync {
+                    AuthApi.get("/api/svip/me", token)
+                }
+                val walletFuture = java.util.concurrent.CompletableFuture.supplyAsync {
+                    AuthApi.get("/api/wallet", token)
+                }
+                val levelsResult = levelsFuture.get()
+                val meResult = meFuture.get()
+                val walletResult = walletFuture.get()
 
                 if (levelsResult.status !in 200..299 || !levelsResult.body.optBoolean("success", false)) {
                     throw IllegalStateException(levelsResult.body.optString("error", "تعذر تحميل مستويات SVIP"))
