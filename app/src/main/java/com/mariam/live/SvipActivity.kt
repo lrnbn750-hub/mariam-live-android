@@ -90,7 +90,7 @@ class SvipActivity : Activity() {
     private fun fmt(v:Long)=java.text.NumberFormat.getNumberInstance(Locale.US).format(v)
     private fun lp(w:Int,h:Int,weight:Float=0f)=LinearLayout.LayoutParams(w,h,weight)
     private fun bg(color:Int,r:Float,stroke:Int=Color.TRANSPARENT):GradientDrawable =
-        GradientDrawable().apply{setColor(color);cornerRadius=dp(r);if(stroke!=Color.TRANSPARENT)setStroke(dp(1),stroke)}
+        GradientDrawable().apply{setColor(color);cornerRadius=dp(r).toFloat();if(stroke!=Color.TRANSPARENT)setStroke(dp(1),stroke)}
     private fun label(s:String,size:Float,color:Int,bold:Boolean=false)=TextView(this).apply{
         text=s;textSize=size;setTextColor(color);gravity=Gravity.CENTER_VERTICAL
         includeFontPadding=true; if(bold)setTypeface(typeface,Typeface.BOLD)
@@ -109,7 +109,7 @@ class SvipActivity : Activity() {
         balanceText=label("0",12f,Color.WHITE,true);wallet.addView(balanceText,lp(-2,-2).apply{marginStart=dp(7)})
         head.addView(wallet)
         memberEntry=label("♛  عضويتي",12f,0xfff2dfb7.toInt(),true).apply{
-            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(0xff3b3440.toInt(),0xff292d3d.toInt())).apply{cornerRadius=dp(24f);setStroke(dp(1),0xff806d48.toInt())}
+            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(0xff3b3440.toInt(),0xff292d3d.toInt())).apply{cornerRadius=dp(24f).toFloat();setStroke(dp(1),0xff806d48.toInt())}
             setPadding(dp(10),dp(7),dp(10),dp(7));visibility=View.GONE
             setOnClickListener{startActivity(Intent(this@SvipActivity,SvipMemberActivity::class.java))}
         }
@@ -146,7 +146,7 @@ class SvipActivity : Activity() {
             setOnClickListener{showEliteInfo()}
         }
         val ribbon=TextView(this).apply{text="امتيازات النخبة";textSize=13f;setTextColor(0xff3a2d12.toInt());setTypeface(typeface,Typeface.BOLD);gravity=Gravity.CENTER
-            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xfff4e5c6.toInt(),0xffd8be8d.toInt())).apply{cornerRadius=dp(4f)}
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xfff4e5c6.toInt(),0xffd8be8d.toInt())).apply{cornerRadius=dp(4f).toFloat()}
             setPadding(dp(29),dp(4),dp(29),dp(8))}
         elite.addView(ribbon,lp(-2,dp(28)))
         val q=TextView(this).apply{text="?";textSize=16f;setTextColor(cream);gravity=Gravity.CENTER;background=bg(0xff212736.toInt(),30f,cream);setOnClickListener{showEliteInfo()}}
@@ -218,7 +218,7 @@ class SvipActivity : Activity() {
                     background=bg(if(active)0xff262c3b.toInt() else 0xff262c3b.toInt(),40f,
                         if(active)mix(tiers[selected-1][1],Color.WHITE,.10f) else 0xff565e72.toInt())
                 }
-                val icon=IconView(this@SvipActivity,perk.icon).apply{active=active}
+                val icon=IconView(this@SvipActivity,perk.icon).apply{this.active=active}
                 circle.addView(icon,FrameLayout.LayoutParams(dp(29),dp(29),Gravity.CENTER))
                 if(!active){
                     val lock=TextView(this@SvipActivity).apply{text="⌑";textSize=12f;gravity=Gravity.CENTER;setTextColor(0xff7a8296.toInt());background=bg(panel,20f,0xff565e72.toInt())}
@@ -254,7 +254,7 @@ class SvipActivity : Activity() {
         val p=packs.firstOrNull{it.level==selected}?:run{showToast("لم يتم تحميل باقات SVIP بعد");return}
         val back=p.price*40/100;val enough=balance>=p.price&&p.active
         val d=Dialog(this);d.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        val box=column().apply{background=GradientDrawable().apply{setColor(0xff202635.toInt());cornerRadii=floatArrayOf(dp(22f),dp(22f),dp(22f),dp(22f),0f,0f,0f,0f)};setPadding(dp(18),dp(10),dp(18),dp(22))}
+        val box=column().apply{background=GradientDrawable().apply{setColor(0xff202635.toInt());cornerRadii=floatArrayOf(dp(22f).toFloat(),dp(22f).toFloat(),dp(22f).toFloat(),dp(22f).toFloat(),0f,0f,0f,0f)};setPadding(dp(18),dp(10),dp(18),dp(22))}
         val grab=TextView(this).apply{text="";background=bg(0xff464e63.toInt(),5f);layoutParams=lp(dp(38),dp(4)).apply{gravity=Gravity.CENTER;bottomMargin=dp(14)}}
         box.addView(grab)
         box.addView(label("${if(owned==p.level)"تجديد" else "شراء"} SVIP ${p.level}",18f,Color.WHITE,true),lp(-1,dp(34)))
@@ -353,7 +353,18 @@ class SvipActivity : Activity() {
                 "entry"->{path.moveTo(13f,3f);path.lineTo(5f,13f);path.lineTo(11f,13f);path.lineTo(10f,21f);path.lineTo(18f,10f);path.lineTo(12f,10f)}
                 "frame"->{c.drawCircle(12f,13.5f,6.5f,p);c.drawCircle(12f,13.5f,2.8f,p);path.moveTo(8f,4.5f);path.lineTo(10f,6.5f);path.lineTo(14f,6.5f);path.lineTo(16f,4.5f)}
                 "vip"->{c.drawRoundRect(2.5f,6f,21.5f,18f,6f,6f,p);p.textSize=6.6f;p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.DEFAULT_BOLD;c.drawText("VIP",12f,14.6f,p)}
-                "follow","friends"->{c.drawCircle(10f,8f,3.6f,p);path.moveTo(3.5f,20f);path.cubicTo(3.5f,12f,16.5f,12f,16.5f,20f);if(kind=="follow"){path.moveTo(16f,11.5f);path.lineTo(18f,13.5f);path.lineTo(21.5f,9.5f}else{path.moveTo(18f,20f);path.lineTo(15f,17f);path.quadTo(14f,14f,17f,15f);path.lineTo(18f,16f);path.lineTo(19f,15f);path.quadTo(22f,14f,21f,17f);path.close()}}
+                "follow","friends" -> {
+                    c.drawCircle(10f,8f,3.6f,p)
+                    path.moveTo(3.5f,20f)
+                    path.cubicTo(3.5f,12f,16.5f,12f,16.5f,20f)
+                    if(kind=="follow") {
+                        path.moveTo(16f,11.5f); path.lineTo(18f,13.5f); path.lineTo(21.5f,9.5f)
+                    } else {
+                        path.moveTo(18f,20f); path.lineTo(15f,17f)
+                        path.quadTo(14f,14f,17f,15f); path.lineTo(18f,16f)
+                        path.lineTo(19f,15f); path.quadTo(22f,14f,21f,17f); path.close()
+                    }
+                }
                 "car"->{path.moveTo(3.5f,16.5f);path.lineTo(3.5f,12.5f);path.lineTo(6f,8f);path.lineTo(18f,8f);path.lineTo(20.5f,12.5f);path.lineTo(20.5f,16.5f);path.close();c.drawCircle(7.5f,16.8f,1.9f,p);c.drawCircle(16.5f,16.8f,1.9f,p)}
                 "support"->{path.moveTo(4f,14f);path.lineTo(4f,12f);path.cubicTo(4f,1f,20f,1f,20f,12f);path.lineTo(20f,14f);c.drawRoundRect(3f,13f,7f,19f,1.5f,1.5f,p);c.drawRoundRect(17f,13f,21f,19f,1.5f,1.5f,p);path.moveTo(19f,19f);path.quadTo(18f,22f,14f,21f)}
                 "bubble"->{c.drawRoundRect(2.5f,6f,21.5f,18f,6f,6f,p);path.moveTo(10f,10f);path.lineTo(14f,10f);path.moveTo(12f,10f);path.lineTo(12f,14f);path.moveTo(17f,10f);path.lineTo(18.5f,10f);path.moveTo(17f,13.5f);path.lineTo(18.5f,13.5f)}
@@ -374,7 +385,13 @@ class SvipActivity : Activity() {
     private class BadgeView(c:android.content.Context):View(c){
         var level=1
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
-        private fun shade(c:Int,t:Float):Int { fun ch(v:Int)= (v + ((if(t>0)255 else 0)-v)*abs(t)).roundToInt().coerceIn(0,255); return Color.rgb(ch(Color.red(c)),ch(Color.green(c)),ch(Color.blue(c))) }
+        private fun shade(c:Int,t:Float):Int {
+            fun channel(v:Int):Int {
+                val target=if(t>0f) 255f else 0f
+                return (v+(target-v)*abs(t)).roundToInt().coerceIn(0,255)
+            }
+            return Color.rgb(channel(Color.red(c)),channel(Color.green(c)),channel(Color.blue(c)))
+        }
         private fun fill(shader:Shader?=null,color:Int=Color.WHITE){p.style=Paint.Style.FILL;p.shader=shader;p.color=color}
         private fun stroke(color:Int,w:Float){p.style=Paint.Style.STROKE;p.shader=null;p.color=color;p.strokeWidth=w;p.strokeJoin=Paint.Join.ROUND;p.strokeCap=Paint.Cap.ROUND}
         override fun onDraw(canvas:Canvas){
@@ -410,7 +427,7 @@ class SvipActivity : Activity() {
             fill(android.graphics.RadialGradient(120f,130f,48f,intArrayOf(Color.argb(150,Color.red(gem),Color.green(gem),Color.blue(gem)),Color.TRANSPARENT),null,Shader.TileMode.CLAMP));canvas.drawCircle(120f,130f,48f,p)
             val dia=Path().apply{moveTo(120f,88f);lineTo(152f,130f);lineTo(120f,172f);lineTo(88f,130f);close()}
             fill(LinearGradient(88f,88f,152f,172f,intArrayOf(gHi,gem,gLo),null,Shader.TileMode.CLAMP));canvas.drawPath(dia,p);stroke(hi,1.5f);canvas.drawPath(dia,p)
-            fill(ColorShader(Color.argb(45,255,255,255)));val facet=Path().apply{moveTo(120f,88f);lineTo(136f,130f);lineTo(120f,172f);close()};canvas.drawPath(facet,p)
+            fill(null,Color.argb(45,255,255,255));val facet=Path().apply{moveTo(120f,88f);lineTo(136f,130f);lineTo(120f,172f);close()};canvas.drawPath(facet,p)
             stroke(Color.argb(150,255,255,255),1f);canvas.drawLine(88f,130f,152f,130f,p)
             // ribbon tails and plate
             fill(null,rib);val tail=Path().apply{moveTo(54f,190f);lineTo(70f,182f);lineTo(70f,212f);lineTo(54f,212f);lineTo(63f,201f);close()};canvas.drawPath(tail,p);canvas.save();canvas.scale(-1f,1f,120f,0f);canvas.drawPath(tail,p);canvas.restore()
@@ -423,7 +440,6 @@ class SvipActivity : Activity() {
             points.take(3+level/2).forEachIndexed{i,pt->val x=pt.first;val y=pt.second;val sp=Path().apply{moveTo(x,y-5);lineTo(x+1.4f,y-1.4f);lineTo(x+5f,y);lineTo(x+1.4f,y+1.4f);lineTo(x,y+5);lineTo(x-1.4f,y+1.4f);lineTo(x-5f,y);lineTo(x-1.4f,y-1.4f);close()};canvas.drawPath(sp,p)}
             canvas.restore()
         }
-        private fun ColorShader(color:Int)=android.graphics.SolidColor(color)
         companion object { val SVIP_TIERS=arrayOf(
             intArrayOf(0xffc98a54.toInt(),0xffff9a4a.toInt(),0xff7a3b1a.toInt()),
             intArrayOf(0xffc3ccd8.toInt(),0xff5ec8ff.toInt(),0xff2c4a6b.toInt()),
