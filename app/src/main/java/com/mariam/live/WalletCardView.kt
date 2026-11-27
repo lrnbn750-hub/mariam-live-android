@@ -39,7 +39,7 @@ class WalletCardView(
     val labelView: TextView
 
     private val d = resources.displayMetrics.density
-    private val radius = 18f * d
+    private val radius = 15f * d
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val clip = Path()
@@ -47,9 +47,9 @@ class WalletCardView(
     private var gloss: LinearGradient? = null
 
     private val colors: IntArray = if (kind == WalletKind.COINS)
-        intArrayOf(0xFFFFC445.toInt(), 0xFFF29A1B.toInt(), 0xFFC9600A.toInt())
+        intArrayOf(Color.WHITE, Color.WHITE, Color.WHITE)
     else
-        intArrayOf(0xFF33D4F4.toInt(), 0xFF3A74EA.toInt(), 0xFF4A2DB5.toInt())
+        intArrayOf(Color.WHITE, Color.WHITE, Color.WHITE)
 
     private val watermark: Drawable? = ContextCompat.getDrawable(
         context, if (kind == WalletKind.COINS) R.drawable.ic_wallet_coin else R.drawable.ic_wallet_diamond
@@ -57,12 +57,12 @@ class WalletCardView(
 
     init {
         setWillNotDraw(false)
-        minimumHeight = (60f * d).toInt()
+        minimumHeight = (52f * d).toInt()
         isClickable = true
         isFocusable = true
         clipChildren = false
-        elevation = 3f * d
-        setPadding((10f * d).toInt(), (9f * d).toInt(), (10f * d).toInt(), (9f * d).toInt())
+        elevation = 1.5f * d
+        setPadding((8f * d).toInt(), (6f * d).toInt(), (8f * d).toInt(), (6f * d).toInt())
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setRoundRect(0, 0, view.width, view.height, radius)
@@ -78,45 +78,45 @@ class WalletCardView(
         val chip = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0x33FFFFFF)
-                setStroke((1f * d).toInt(), 0x55FFFFFF)
+                setColor(Color.WHITE)
+                setStroke((1f * d).toInt(), 0xFFE7EBEA.toInt())
             }
         }
         val icon = ImageView(context).apply {
             setImageResource(if (kind == WalletKind.COINS) R.drawable.ic_wallet_coin else R.drawable.ic_wallet_diamond)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        chip.addView(icon, LayoutParams((20f * d).toInt(), (20f * d).toInt(), Gravity.CENTER))
+        chip.addView(icon, LayoutParams((18f * d).toInt(), (18f * d).toInt(), Gravity.CENTER))
         val arrow = ImageView(context).apply {
             setImageResource(R.drawable.ic_profile_chevron)
-            setColorFilter(Color.WHITE)
+            setColorFilter(0xFF9AA5A3.toInt())
             setPadding((2f * d).toInt(), (2f * d).toInt(), (2f * d).toInt(), (2f * d).toInt())
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFF5F7F6.toInt()) }
         }
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         amountView = TextView(context).apply {
             text = "0"
-            setTextColor(Color.WHITE)
+            setTextColor(0xFF202B2A.toInt())
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            setShadowLayer(2f * d, 0f, 1f * d, 0x33000000)
+            setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
         }
-        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(amountView, 12, 19, 1, TypedValue.COMPLEX_UNIT_SP)
-        texts.addView(amountView, LinearLayout.LayoutParams(-1, (24f * d).toInt()))
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(amountView, 11, 17, 1, TypedValue.COMPLEX_UNIT_SP)
+        texts.addView(amountView, LinearLayout.LayoutParams(-1, (21f * d).toInt()))
         labelView = TextView(context).apply {
             text = labelText
-            setTextColor(0xE6FFFFFF.toInt())
-            textSize = 11f
+            setTextColor(0xFF788582.toInt())
+            textSize = 10f
             maxLines = 1
             gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
         }
         texts.addView(labelView, LinearLayout.LayoutParams(-1, -2))
-        content.addView(arrow, LinearLayout.LayoutParams((20f * d).toInt(), (20f * d).toInt()))
+        content.addView(arrow, LinearLayout.LayoutParams((17f * d).toInt(), (17f * d).toInt()))
         content.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply {
-            marginStart = (6f * d).toInt(); marginEnd = (8f * d).toInt()
+            marginStart = (5f * d).toInt(); marginEnd = (6f * d).toInt()
         })
-        content.addView(chip, LinearLayout.LayoutParams((32f * d).toInt(), (32f * d).toInt()))
+        content.addView(chip, LinearLayout.LayoutParams((28f * d).toInt(), (28f * d).toInt()))
         addView(content, LayoutParams(-1, -2))
     }
 
@@ -139,17 +139,17 @@ class WalletCardView(
         canvas.save()
         canvas.clipPath(clip)
         paint.shader = null
-        paint.color = 0x22FFFFFF
+        paint.color = 0x08FFFFFF
         canvas.drawCircle(14f * d, 6f * d, 44f * d, paint)
-        paint.color = 0x14FFFFFF
+        paint.color = 0x06FFFFFF
         canvas.drawCircle(w * 0.78f, h + 4f * d, 40f * d, paint)
 
         watermark?.let {
-            val size = (56f * d).toInt()
+            val size = (44f * d).toInt()
             val left = (-8f * d).toInt()
             val topY = (h - size * 0.7f).toInt()
             it.setBounds(left, topY, left + size, topY + size)
-            it.alpha = 44
+            it.alpha = 16
             canvas.save()
             canvas.rotate(-14f, left + size / 2f, topY + size / 2f)
             it.draw(canvas)
@@ -163,7 +163,7 @@ class WalletCardView(
         paint.shader = null
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 1f * d
-        paint.color = 0x55FFFFFF
+        paint.color = 0xFFE6ECEA.toInt()
         rect.set(0.5f * d, 0.5f * d, w - 0.5f * d, h - 0.5f * d)
         canvas.drawRoundRect(rect, radius, radius, paint)
     }
