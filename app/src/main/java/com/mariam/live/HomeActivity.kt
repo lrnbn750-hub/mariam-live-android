@@ -35,8 +35,8 @@ class HomeActivity : Activity() {
     private val executor = Executors.newFixedThreadPool(4)
     private val ink = Color.rgb(35,45,39)
     private val muted = Color.rgb(125,132,140)
-    private val gold = Color.rgb(35,158,92)
-    private val goldDark = Color.rgb(25,125,72)
+    private val gold = Color.rgb(37,166,112)
+    private val goldDark = Color.rgb(28,139,94)
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
     private lateinit var tabsRow: LinearLayout
@@ -154,12 +154,12 @@ class HomeActivity : Activity() {
         fun navItem(kind:String,title:String,selected:Boolean,onTap:()->Unit)=FrameLayout(this).apply{
             isClickable=true;isFocusable=true;contentDescription=title
             val col=LinearLayout(this@HomeActivity).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
-            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(25),dp(25)))
+            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(28),dp(28)))
             col.addView(TextView(this@HomeActivity).apply{
-                text=title;textSize=10.5f;gravity=Gravity.CENTER;setSingleLine(true)
+                text=title;textSize=11.5f;gravity=Gravity.CENTER;setSingleLine(true)
                 setTextColor(if(selected)goldDark else Color.rgb(110,118,114))
                 typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium",Typeface.NORMAL)
-            },LinearLayout.LayoutParams(-1,dp(16)))
+            },LinearLayout.LayoutParams(-1,dp(18)))
             addView(col,FrameLayout.LayoutParams(-1,-1))
             setOnClickListener{onTap()}
         }
@@ -185,12 +185,12 @@ class HomeActivity : Activity() {
         bar.addView(navItem("profile","حسابي",false){
             startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))
         },LinearLayout.LayoutParams(0,-1,1f))
-        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(54),Gravity.BOTTOM))
+        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(59),Gravity.BOTTOM))
 
         // الزر المركزي البارز (إنشاء غرفة)
         val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat()}
-        val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x66FFF1C4)}}
-        createSlot.addView(halo,FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
+        val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x3335B77A)}}
+        createSlot.addView(halo,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
             contentDescription="إنشاء غرفة"
             isClickable=true
@@ -200,21 +200,21 @@ class HomeActivity : Activity() {
             }
             setOnClickListener{showCreateRoomDialog()}
         }
-        createSlot.addView(create,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER))
+        createSlot.addView(create,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
         ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
 
-        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(72),Gravity.BOTTOM))
+        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(78),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
             val b=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val wrapLp=view.layoutParams
-            if(wrapLp.height!=dp(72)+b){wrapLp.height=dp(72)+b;view.layoutParams=wrapLp}
+            if(wrapLp.height!=dp(78)+b){wrapLp.height=dp(72)+b;view.layoutParams=wrapLp}
             val barLp=bar.layoutParams
-            if(barLp.height!=dp(54)+b){barLp.height=dp(54)+b;bar.layoutParams=barLp}
+            if(barLp.height!=dp(59)+b){barLp.height=dp(54)+b;bar.layoutParams=barLp}
             bar.setPadding(dp(5),dp(2),dp(5),b)
-            content.setPadding(dp(12),dp(6),dp(12),dp(88)+b)
+            content.setPadding(dp(12),dp(6),dp(12),dp(94)+b)
             insets
         }
         setContentView(root)
@@ -630,14 +630,14 @@ class HomeActivity : Activity() {
             canvas.save()
             canvas.translate((width-side)/2f,(height-side)/2f)
             canvas.scale(side/24f,side/24f)
-            val top=if(selected)Color.rgb(255,218,110) else Color.rgb(255,247,226)
-            val bottom=if(selected)Color.rgb(226,142,26) else Color.rgb(236,208,150)
+            val top=if(selected)Color.rgb(42,177,126) else Color.rgb(180,194,188)
+            val bottom=if(selected)Color.rgb(25,139,94) else Color.rgb(133,151,143)
             fill.shader=LinearGradient(0f,2f,0f,22f,top,bottom,Shader.TileMode.CLAMP)
-            line.color=if(selected)Color.rgb(150,88,10) else Color.rgb(176,138,76)
-            detail.color=if(selected)Color.rgb(255,252,238) else Color.rgb(176,138,76)
+            line.color=if(selected)Color.rgb(20,125,84) else Color.rgb(130,147,140)
+            detail.color=if(selected)Color.WHITE else Color.rgb(245,248,246)
             if(selected){
                 val glow=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-                    shader=RadialGradient(12f,12f,12f,0x55FFD36E,0x00FFD36E,Shader.TileMode.CLAMP)
+                    shader=RadialGradient(12f,12f,12f,0x4435B77A,0x0035B77A,Shader.TileMode.CLAMP)
                 }
                 canvas.drawCircle(12f,12f,12f,glow)
             }
@@ -696,17 +696,17 @@ class HomeActivity : Activity() {
         override fun onDraw(canvas:Canvas){
             super.onDraw(canvas)
             val cx=width/2f;val cy=height/2f;val r=minOf(width,height)/2f-1f*d
-            ring.shader=LinearGradient(cx-r,cy-r,cx+r,cy+r,Color.rgb(255,240,180),Color.rgb(214,142,30),Shader.TileMode.CLAMP)
+            ring.shader=LinearGradient(cx-r,cy-r,cx+r,cy+r,Color.rgb(220,250,236),Color.rgb(35,166,112),Shader.TileMode.CLAMP)
             canvas.drawCircle(cx,cy,r,ring)
-            inner.shader=LinearGradient(cx,cy-r,cx,cy+r,Color.rgb(255,214,110),Color.rgb(232,150,26),Shader.TileMode.CLAMP)
+            inner.shader=LinearGradient(cx,cy-r,cx,cy+r,Color.rgb(53,190,139),Color.rgb(24,139,94),Shader.TileMode.CLAMP)
             canvas.drawCircle(cx,cy,r*0.82f,inner)
             canvas.drawCircle(cx,cy,r*0.82f,rim)
-            drawMic(canvas,cx-r*0.04f,cy+r*0.02f+1.2f*d,r,Color.rgb(160,96,10))   // ظل
+            drawMic(canvas,cx-r*0.04f,cy+r*0.02f+1.2f*d,r,Color.rgb(18,110,75))   // ظل
             drawMic(canvas,cx-r*0.04f,cy+r*0.02f,r,Color.WHITE)
             // علامة +
             val bx=cx+r*0.40f;val by=cy+r*0.40f;val br=r*0.24f
             iconFill.color=Color.WHITE;canvas.drawCircle(bx,by,br,iconFill)
-            iconLine.color=Color.rgb(214,142,30);iconLine.strokeWidth=r*0.09f
+            iconLine.color=Color.rgb(25,139,94);iconLine.strokeWidth=r*0.09f
             canvas.drawLine(bx-br*0.5f,by,bx+br*0.5f,by,iconLine)
             canvas.drawLine(bx,by-br*0.5f,bx,by+br*0.5f,iconLine)
         }
