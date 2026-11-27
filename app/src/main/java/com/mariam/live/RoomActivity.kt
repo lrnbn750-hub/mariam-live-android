@@ -3295,10 +3295,14 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     if(response.status !in 200..299)throw Exception(response.body.optString("error","تعذر تحديث بيانات الملف"))
     val full=response.body.optJSONObject("user")?:response.body.optJSONObject("profile")?:response.body
     val merged=JSONObject(member.toString())
-    val keys=listOf("user_id","display_name","username","public_id","account_id","avatar_url","profile_image","total_xp","level","bio","fans_count","fans","followers_count","followersCount","following_count","following","follow_count","followings_count","diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent","diamonds_received","total_diamonds_received","received_diamonds","total_received")
+    val keys=listOf("user_id","display_name","username","public_id","account_id","avatar_url","profile_image","total_xp","level","bio","svip_level","svip_chat_bubble_asset_url","svip_entry_effect_asset_url","fans_count","fans","followers_count","followersCount","following_count","following","follow_count","followings_count","diamonds_sent","total_diamonds_sent","sent_diamonds","total_sent","diamonds_received","total_diamonds_received","received_diamonds","total_received")
     for(key in keys)if(full.has(key)&&full.opt(key)!=JSONObject.NULL)merged.put(key,full.opt(key))
     val nested=full.optJSONObject("stats")?:full.optJSONObject("statistics")?:full.optJSONObject("profile_stats")
     if(nested!=null)for(key in keys)if(nested.has(key)&&nested.opt(key)!=JSONObject.NULL)merged.put(key,nested.opt(key))
+    // Some room member snapshots omit SVIP fields; fall back to the cached seat membership.
+    val profileSvip=merged.optInt("svip_level",0).coerceIn(0,7)
+    val cachedSvip=svipLevelsByUser[uid]?:0
+    if(profileSvip<=0 && cachedSvip>0)merged.put("svip_level",cachedSvip)
     renderMemberProfile(merged)
    }catch(_:Exception){renderMemberProfile(member)}
   }
