@@ -82,16 +82,16 @@ class ProfileActivity : Activity() {
     private val muted = Color.rgb(143, 151, 164)
     private val border = Color.rgb(238, 240, 244)
     private val white = Color.WHITE
-    private val pageBg = Color.rgb(243, 244, 250)
+    private val pageBg = Color.WHITE
     private val heroTop = Color.rgb(20, 10, 48)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-        window.statusBarColor = heroTop              // same color as the top of the hero gradient
-        window.navigationBarColor = pageBg
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR // light status icons on the dark hero
+        window.statusBarColor = Color.WHITE
+        window.navigationBarColor = Color.WHITE
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         requestedProfileUserId = intent.getStringExtra("profile_user_id").orEmpty()
         isOwnProfile = requestedProfileUserId.isBlank()
         buildNativePage()
@@ -181,9 +181,9 @@ class ProfileActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255, 247, 224), Color.rgb(247, 210, 125))).apply {
+                intArrayOf(Color.WHITE, Color.WHITE)).apply {
                 cornerRadii = floatArrayOf(dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), dp(24f).toFloat(), 0f, 0f, 0f, 0f)
-                setStroke(dp(1f), 0x88E6B450.toInt())
+                setStroke(dp(1f), Color.rgb(235, 238, 236))
             }
             setPadding(dp(6f), dp(4f), dp(6f), 0)
             elevation = dp(8f).toFloat()
@@ -197,13 +197,13 @@ class ProfileActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
                     addView(HomeActivity.NavIcon(this@ProfileActivity, kind, selected),
-                        LinearLayout.LayoutParams(dp(30f), dp(30f)))
+                        LinearLayout.LayoutParams(dp(25f), dp(25f)))
                     addView(TextView(this@ProfileActivity).apply {
                         text = title
                         textSize = 10.5f
                         gravity = Gravity.CENTER
                         setSingleLine(true)
-                        setTextColor(if (selected) Color.rgb(150, 88, 10) else Color.rgb(160, 124, 66))
+                        setTextColor(if (selected) Color.rgb(25, 125, 72) else Color.rgb(110, 118, 114))
                         typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     }, LinearLayout.LayoutParams(-1, dp(16f)))
                 }
@@ -225,7 +225,7 @@ class ProfileActivity : Activity() {
                 setColor(0x66FFF1C4)
             }
         }
-        createSlot.addView(halo, FrameLayout.LayoutParams(dp(76f), dp(76f), Gravity.CENTER))
+        createSlot.addView(halo, FrameLayout.LayoutParams(dp(52f), dp(52f), Gravity.CENTER))
         val createButton = HomeActivity.CreateRoomButton(this).apply {
             contentDescription = "إنشاء غرفة"
             isClickable = true
@@ -250,13 +250,13 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this@ProfileActivity, MessagesActivity::class.java))
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
-        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(62f), Gravity.BOTTOM))
-        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(86f), Gravity.BOTTOM))
+        navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(54f), Gravity.BOTTOM))
+        root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(72f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
-            view.layoutParams = view.layoutParams.apply { height = dp(86f) + bottomInset }
-            bar.layoutParams = bar.layoutParams.apply { height = dp(62f) + bottomInset }
-            bar.setPadding(dp(6f), dp(4f), dp(6f), bottomInset)
+            view.layoutParams = view.layoutParams.apply { height = dp(72f) + bottomInset }
+            bar.layoutParams = bar.layoutParams.apply { height = dp(54f) + bottomInset }
+            bar.setPadding(dp(5f), dp(2f), dp(5f), bottomInset)
             page.setPadding(0, 0, 0, dp(110f) + bottomInset)
             insets
         }
