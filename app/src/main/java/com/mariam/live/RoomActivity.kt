@@ -3109,77 +3109,89 @@ class RoomActivity : Activity() {
   }
  }
  private fun showRoomMembers(){
-  val dialog=android.app.Dialog(this)
-  val root=sheetRoot()
-  val heading=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
-  heading.addView(label("الموجودون في الغرفة",17f,Color.WHITE,true),LinearLayout.LayoutParams(0,dp(34),1f))
-  heading.addView(label(roomMembers.length().toString(),12f,Color.rgb(255,226,151),true).apply{
-   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,64,129),Color.rgb(255,140,60))).apply{cornerRadius=dp(14).toFloat()}
-   setPadding(dp(12),dp(5),dp(12),dp(5))
-  })
-  root.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
-  val divider=View(this).apply{setBackgroundColor(Color.argb(30,255,255,255))}
-  root.addView(divider,LinearLayout.LayoutParams(-1,dp(1)).apply{bottomMargin=dp(10)})
-  val list=LinearLayout(this).apply{orientation=1}
-  if(roomMembers.length()==0)list.addView(label("لا يوجد أعضاء لعرضهم حالياً",13f,Color.LTGRAY))
-  for(i in 0 until roomMembers.length()){
-   val member=roomMembers.optJSONObject(i)?:continue
-   val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
-   val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
-   val isOwnerMember=member.optBoolean("is_owner")
-   val seat=member.optInt("seat_number",0)
-   val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
-   val roleColor=if(isOwnerMember)Color.rgb(255,213,124) else if(seat>0)Color.rgb(91,221,239) else Color.rgb(196,196,196)
-   val row=LinearLayout(this).apply{
-    orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
-    setPadding(dp(10),dp(9),dp(10),dp(9))
-    background=GradientDrawable().apply{
-     cornerRadius=dp(17).toFloat()
-     setColor(Color.argb(30,255,255,255))
-     setStroke(dp(1),Color.argb(36,255,255,255))
-    }
-    isClickable=true
-   }
-   val avatarFrame=FrameLayout(this).apply{
-    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(51,51,51));setStroke(dp(1.5f.toInt()),roleColor)}
-    clipToOutline=true
-   }
-   val avatar=ImageView(this).apply{
-    scaleType=ImageView.ScaleType.CENTER_CROP
-    setImageDrawable(VectorIcon("user",Color.WHITE,dp(22)))
-   }
-   avatarFrame.addView(avatar,FrameLayout.LayoutParams(dp(42),dp(42),Gravity.CENTER))
-   row.addView(avatarFrame,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(10)})
-   val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
-   if(url.isNotBlank())loadAvatarInto(avatar,url)
-   val info=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-   info.addView(label(name,14f,Color.WHITE,true).apply{gravity=Gravity.START;maxLines=1})
-   info.addView(label("ID: $account",10f,Color.rgb(185,185,185)).apply{gravity=Gravity.START;maxLines=1})
-   row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
-   row.addView(label(role,10f,roleColor,true).apply{
-    background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(Color.argb(45,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)));setStroke(dp(1),Color.argb(150,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
-    setPadding(dp(8),dp(5),dp(8),dp(5))
+   val dialog=android.app.Dialog(this)
+   val root=whiteSheetRoot()
+   val titleColor=Color.rgb(34,39,45)
+   val secondaryColor=Color.rgb(122,130,138)
+   val cardColor=Color.rgb(247,248,250)
+   val borderColor=Color.rgb(230,233,237)
+   val heading=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL}
+   heading.addView(label("الموجودون في الغرفة",17f,titleColor,true),LinearLayout.LayoutParams(0,dp(34),1f))
+   heading.addView(label(roomMembers.length().toString(),12f,Color.WHITE,true).apply{
+    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(255,64,129),Color.rgb(255,140,60))).apply{cornerRadius=dp(14).toFloat()}
+    setPadding(dp(12),dp(5),dp(12),dp(5))
    })
-   row.setOnClickListener{
-    dialog.dismiss()
-    if(isOwner && !isOwnerMember) showMemberModeration(member)
-    else showMemberProfile(member)
+   root.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
+   root.addView(View(this).apply{setBackgroundColor(borderColor)},LinearLayout.LayoutParams(-1,dp(1)).apply{bottomMargin=dp(12)})
+   val list=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+   if(roomMembers.length()==0)list.addView(label("لا يوجد أعضاء لعرضهم حالياً",13f,secondaryColor))
+   for(i in 0 until roomMembers.length()){
+    val member=roomMembers.optJSONObject(i)?:continue
+    val name=member.optString("display_name").ifBlank{member.optString("username","مستخدم")}
+    val account=member.optString("public_id").takeIf{it.isNotBlank()&&it!="null"}?:"—"
+    val isOwnerMember=member.optBoolean("is_owner")
+    val seat=member.optInt("seat_number",0)
+    val role=if(isOwnerMember)"صاحب الغرفة" else if(seat>0)"متحدث • مقعد $seat" else "مستمع"
+    val roleColor=if(isOwnerMember)Color.rgb(176,130,36) else if(seat>0)Color.rgb(27,139,166) else Color.rgb(111,119,128)
+    val roleBg=if(isOwnerMember)Color.rgb(255,247,224) else if(seat>0)Color.rgb(230,247,251) else Color.rgb(241,243,245)
+    val row=LinearLayout(this).apply{
+     orientation=LinearLayout.HORIZONTAL
+     gravity=Gravity.CENTER_VERTICAL
+     layoutDirection=View.LAYOUT_DIRECTION_LTR
+     setPadding(dp(11),dp(10),dp(11),dp(10))
+     background=GradientDrawable().apply{
+      cornerRadius=dp(17).toFloat()
+      setColor(cardColor)
+      setStroke(dp(1),borderColor)
+     }
+     isClickable=true
+     isFocusable=true
+    }
+    val avatarFrame=FrameLayout(this).apply{
+     background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(241,243,245));setStroke(dp(1),roleColor)}
+     clipToOutline=true
+    }
+    val avatar=ImageView(this).apply{
+     scaleType=ImageView.ScaleType.CENTER_CROP
+     setImageDrawable(VectorIcon("user",Color.rgb(150,158,166),dp(22)))
+    }
+    avatarFrame.addView(avatar,FrameLayout.LayoutParams(dp(42),dp(42),Gravity.CENTER))
+    row.addView(avatarFrame,LinearLayout.LayoutParams(dp(46),dp(46)).apply{marginEnd=dp(11)})
+    val nested=member.optJSONObject("user")?:member.optJSONObject("profile")
+    val url=member.optString("avatar_url").takeIf{it.isNotBlank()&&it!="null"}
+     ?:member.optString("profile_image").takeIf{it.isNotBlank()&&it!="null"}
+     ?:nested?.optString("avatar_url")?.takeIf{it.isNotBlank()&&it!="null"}
+     ?:nested?.optString("profile_image")?.takeIf{it.isNotBlank()&&it!="null"}
+    if(!url.isNullOrBlank())loadAvatarInto(avatar,url)
+    val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL}
+    info.addView(label(name,14f,titleColor,true).apply{gravity=Gravity.START;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END})
+    info.addView(label("ID: $account",10f,secondaryColor).apply{gravity=Gravity.START;maxLines=1})
+    row.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+    row.addView(label(role,10f,roleColor,true).apply{
+     background=GradientDrawable().apply{cornerRadius=dp(10).toFloat();setColor(roleBg);setStroke(dp(1),Color.argb(110,Color.red(roleColor),Color.green(roleColor),Color.blue(roleColor)))}
+     setPadding(dp(9),dp(6),dp(9),dp(6))
+    })
+    row.setOnClickListener{
+     dialog.dismiss()
+     if(isOwner && !isOwnerMember) showMemberModeration(member)
+     else showMemberProfile(member)
+    }
+    list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
    }
-   list.addView(row,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
+   val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(list)}
+   root.addView(scroll,LinearLayout.LayoutParams(-1,dp(330)))
+   val close=TextView(this).apply{
+    text="إغلاق";textSize=14f;gravity=Gravity.CENTER
+    setTextColor(Color.rgb(52,62,69));typeface=android.graphics.Typeface.DEFAULT_BOLD
+    background=GradientDrawable().apply{cornerRadius=dp(22).toFloat();setColor(Color.rgb(246,247,249));setStroke(dp(1),borderColor)}
+    setPadding(0,dp(11),0,dp(11))
+    isClickable=true
+    setOnClickListener{dialog.dismiss()}
+   }
+   root.addView(close,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(10)})
+   presentSheet(dialog,root)
   }
-  val scroll=ScrollView(this).apply{isFillViewport=false;overScrollMode=View.OVER_SCROLL_NEVER;addView(list)}
-  root.addView(scroll,LinearLayout.LayoutParams(-1,dp(330)))
-  val close=TextView(this).apply{
-   text="إغلاق";textSize=14f;gravity=Gravity.CENTER
-   setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   background=GradientDrawable().apply{cornerRadius=dp(22).toFloat();setColor(Color.argb(40,255,255,255));setStroke(dp(1),Color.argb(70,255,255,255))}
-   setPadding(0,dp(11),0,dp(11))
-   setOnClickListener{dialog.dismiss()}
-  }
-  root.addView(close,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(10)})
-  presentSheet(dialog,root)
- }
-   private fun showMemberModeration(member:JSONObject){
+ private fun showMemberModeration(member:JSONObject){
    if(!isOwner)return
    val userId=member.optString("user_id")
    if(userId.isBlank() || userId=="null" || userId==currentUserId)return
