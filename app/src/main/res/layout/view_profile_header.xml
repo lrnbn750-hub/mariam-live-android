@@ -100,13 +100,13 @@
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:text="جارٍ تحميل الاسم..."
-                    android:textColor="#FFFFFF"
+                    android:textColor="#17242A"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:shadowColor="#40000000"
+                    android:shadowColor="#00000000"
                     android:shadowDx="0"
-                    android:shadowDy="2"
-                    android:shadowRadius="4" />
+                    android:shadowDy="0"
+                    android:shadowRadius="0" />
 
             </LinearLayout>
 
@@ -147,7 +147,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
                         android:text="ID:"
-                        android:textColor="#B9C0E6"
+                        android:textColor="#53656D"
                         android:textSize="12sp" />
 
                     <TextView
@@ -230,7 +230,7 @@
             android:clickable="true"
             android:focusable="true">
             <TextView android:id="@+id/profileHeaderFansCount" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:singleLine="true" android:text="0" android:textColor="#FFFFFF" android:textSize="19sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:layout_marginTop="2dp" android:text="المعجبون" android:textColor="#AEB6DB" android:textSize="12sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:layout_marginTop="2dp" android:text="المعجبون" android:textColor="#66777D" android:textSize="12sp" />
         </LinearLayout>
 
         <View android:layout_width="1dp" android:layout_height="26dp" android:background="#2EFFFFFF" />
