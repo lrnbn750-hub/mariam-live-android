@@ -133,6 +133,26 @@ class HomeActivity : Activity() {
         column.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
 
 
+        // Compact SVIP promotional banner above the live-room feed.
+        val svipBanner=ImageView(this).apply{
+            setImageResource(R.drawable.svip_home_banner)
+            scaleType=ImageView.ScaleType.CENTER_CROP
+            contentDescription="كن من كبار الشخصيات - ترقية عضوية SVIP"
+            isClickable=true
+            isFocusable=true
+            background=GradientDrawable().apply{
+                setColor(Color.WHITE)
+                cornerRadius=dp(12).toFloat()
+            }
+            clipToOutline=true
+            setOnClickListener{
+                startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
+            }
+        }
+        content.addView(svipBanner,LinearLayout.LayoutParams(-1,dp(112)).apply{
+            bottomMargin=dp(10)
+        })
+
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2))
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
