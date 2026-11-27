@@ -50,6 +50,9 @@
         <activity android:name=".RoomBackgroundEditorActivity" android:exported="false" />
         <activity android:name=".WatchTogetherActivity" android:exported="false" />
         <activity android:name=".RoomActivity" android:exported="false" android:supportsPictureInPicture="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".SvipActivity" android:exported="false" />
+        <activity android:name=".SvipMemberActivity" android:exported="false" />
+        <activity android:name=".SvipPointsActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
         <activity android:name=".FollowListActivity" android:exported="false" />
