@@ -124,11 +124,13 @@ class SvipActivity : Activity() {
                 .getString("page_data", null) ?: return
             val data = JSONObject(cached)
             if (data.optJSONArray("packages") == null) return
-            if (!::webView.isInitialized || isFinishing || isDestroyed) return
-            webView.evaluateJavascript(
-                "window.applyNativeData(" + JSONObject.quote(data.toString()) + ");",
-                null
-            )
+            runOnUiThread {
+                if (!::webView.isInitialized || isFinishing || isDestroyed) return@runOnUiThread
+                webView.evaluateJavascript(
+                    "window.applyNativeData(" + JSONObject.quote(data.toString()) + ");",
+                    null
+                )
+            }
         } catch (_: Exception) {
             // A bad or outdated cache must never prevent the live refresh.
         }
