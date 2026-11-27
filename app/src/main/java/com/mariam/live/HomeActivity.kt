@@ -139,7 +139,7 @@ class HomeActivity : Activity() {
         content.addView(roomStatus,LinearLayout.LayoutParams(-1,dp(42)))
 
         // ───────────── القائمة السفلية ─────────────
-        val navWrap=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;clipChildren=false}
+        val navWrap=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;clipChildren=false;clipToPadding=false}
         val bar=LinearLayout(this).apply{
             orientation=LinearLayout.HORIZONTAL
             layoutDirection=View.LAYOUT_DIRECTION_RTL
@@ -188,7 +188,7 @@ class HomeActivity : Activity() {
         navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(59),Gravity.BOTTOM))
 
         // الزر المركزي البارز (إنشاء غرفة)
-        val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat()}
+        val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat();clipChildren=false;clipToPadding=false}
         val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x3335B77A)}}
         createSlot.addView(halo,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
@@ -201,10 +201,10 @@ class HomeActivity : Activity() {
             setOnClickListener{showCreateRoomDialog()}
         }
         createSlot.addView(create,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.CENTER))
-        ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+        ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
+        ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.02f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(68),dp(68),Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply{topMargin=-dp(7)})
 
         root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(78),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
@@ -620,7 +620,7 @@ class HomeActivity : Activity() {
     }
 
     /** أيقونات القائمة السفلية الذهبية: home / discover / messages / profile */
-    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){        private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
+    internal class NavIcon(context:android.content.Context,private val kind:String,private val selected:Boolean):View(context){        private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.8f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
         private val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeWidth=1.4f;strokeJoin=Paint.Join.ROUND;strokeCap=Paint.Cap.ROUND}
         private val detail=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(canvas:Canvas){
@@ -630,14 +630,14 @@ class HomeActivity : Activity() {
             canvas.save()
             canvas.translate((width-side)/2f,(height-side)/2f)
             canvas.scale(side/24f,side/24f)
-            val top=if(selected)Color.rgb(42,177,126) else Color.rgb(180,194,188)
-            val bottom=if(selected)Color.rgb(25,139,94) else Color.rgb(133,151,143)
+            val top=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
+            val bottom=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
             fill.shader=LinearGradient(0f,2f,0f,22f,top,bottom,Shader.TileMode.CLAMP)
-            line.color=if(selected)Color.rgb(20,125,84) else Color.rgb(130,147,140)
-            detail.color=if(selected)Color.WHITE else Color.rgb(245,248,246)
+            line.color=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
+            detail.color=if(selected)Color.rgb(30,155,105) else Color.rgb(116,132,126)
             if(selected){
                 val glow=Paint(Paint.ANTI_ALIAS_FLAG).apply{
-                    shader=RadialGradient(12f,12f,12f,0x4435B77A,0x0035B77A,Shader.TileMode.CLAMP)
+                    shader=RadialGradient(12f,12f,12f,0x2235B77A,0x0035B77A,Shader.TileMode.CLAMP)
                 }
                 canvas.drawCircle(12f,12f,12f,glow)
             }
