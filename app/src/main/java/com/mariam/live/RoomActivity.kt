@@ -298,8 +298,10 @@ class RoomActivity : Activity() {
   topRow.addView(headerIcon("leave","خروج من الغرفة"){leaveRoom()},LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(label("⌂",22f,Color.WHITE,true).apply{
    background=ctrlBg();isClickable=true;isFocusable=true
-   contentDescription="تصغير الغرفة والعودة للرئيسية مع استمرار الصوت والمقعد"
-   setOnClickListener{minimizeRoomToFloatingWindow()}
+   contentDescription="العودة إلى الصفحة الرئيسية مع استمرار الغرفة"
+   setOnClickListener{
+    startActivity(Intent(this@RoomActivity,HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   }
   },LinearLayout.LayoutParams(dp(38),dp(38)).apply{marginEnd=dp(6)})
   topRow.addView(buildPremiumRoomHeader(),LinearLayout.LayoutParams(0,dp(42),1f))
   top.addView(topRow,LinearLayout.LayoutParams(-1,dp(48)))
@@ -4186,8 +4188,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun leaveRoom(){
   if(leaving)return
   if(isOwner){
-   showChoiceSheet("إدارة الغرفة","اختر تصغير الغرفة لمواصلة البث بالخلفية، أو إغلاقها نهائياً.",listOf(
-    SheetOption("تصغير البث إلى نافذة صغيرة",0){minimizeRoomToFloatingWindow()},
+   showChoiceSheet("إدارة الغرفة","يمكنك العودة إلى الصفحة الرئيسية من زر البيت مع استمرار الغرفة، أو إغلاقها نهائياً.",listOf(
     SheetOption("إغلاق الغرفة نهائياً",1){closeRoomNow()},
     SheetOption("إلغاء",2){}))
   }else{
