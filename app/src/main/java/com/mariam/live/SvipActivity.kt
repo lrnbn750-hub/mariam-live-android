@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.util.Log
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -306,7 +307,15 @@ class SvipActivity : Activity() {
             loadData(r.body.optString("message","تم تفعيل عضوية SVIP $level بنجاح"))
         }catch(e:Exception){runOnUiThread{showToast(e.message?:"تعذر الاتصال بالخادم");render()}}
     }}
-    private fun applyCached(){try{val c=getSharedPreferences("SVIP_FAST_CACHE",MODE_PRIVATE).getString("page_data",null)?:return;applyData(JSONObject(c))}catch(_:Exception){}}
+    private fun applyCached(){
+        try{
+            val cached=getSharedPreferences("SVIP_FAST_CACHE",MODE_PRIVATE).getString("page_data",null)?:return
+            applyData(JSONObject(cached))
+        }catch(e:Exception){
+            Log.e("SvipActivity","Cached SVIP render failed",e)
+            bottomState.text="جار تحديث بيانات SVIP..."
+        }
+    }
     private fun responseData(body:JSONObject):JSONObject =
         body.optJSONObject("data") ?: body.optJSONObject("result") ?: body
 
@@ -385,8 +394,16 @@ class SvipActivity : Activity() {
                 runOnUiThread{
                     loading=false
                     if(!isFinishing&&!isDestroyed){
-                        applyData(data)
-                        if(!successMessage.isNullOrBlank())showToast(successMessage)
+                        try {
+                            applyData(data)
+                            if(!successMessage.isNullOrBlank())showToast(successMessage)
+                        } catch (uiError:Exception) {
+                            Log.e("SvipActivity","SVIP UI update failed",uiError)
+                            bottomState.text="تعذر عرض بيانات SVIP"
+                            bottomBack.text=uiError.message ?: uiError.javaClass.simpleName
+                            buy.isEnabled=false
+                            showToast("حدث خطأ أثناء عرض SVIP: ${uiError.message ?: uiError.javaClass.simpleName}")
+                        }
                     }
                 }
             }catch(e:Exception){
