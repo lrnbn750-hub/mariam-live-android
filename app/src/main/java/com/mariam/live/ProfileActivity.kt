@@ -252,7 +252,7 @@ class ProfileActivity : Activity() {
         }, LinearLayout.LayoutParams(0, -1, 1f))
         bar.addView(navItem("profile", "حسابي", true) {}, LinearLayout.LayoutParams(0, -1, 1f))
         navWrap.addView(bar, FrameLayout.LayoutParams(-1, dp(59f), Gravity.BOTTOM))
-        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = -dp(2f) })
+        navWrap.addView(createSlot, FrameLayout.LayoutParams(dp(62f), dp(62f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(5f) })
         root.addView(navWrap, FrameLayout.LayoutParams(-1, dp(78f), Gravity.BOTTOM))
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(navWrap) { view, insets ->
             val bottomInset = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
