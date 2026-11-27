@@ -37,7 +37,7 @@ class ProfileHeaderView(context: Context) : LinearLayout(context) {
         layoutDirection = View.LAYOUT_DIRECTION_LTR
         clipChildren = false
         clipToPadding = false
-        background = android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE)
+        background = HeroBackdropDrawable(context)
         LayoutInflater.from(context).inflate(R.layout.view_profile_header, this, true)
         avatarView = findViewById(R.id.profileHeaderAvatar)
         editAvatarView = findViewById(R.id.profileHeaderEditAvatar)
