@@ -338,6 +338,14 @@ class SvipActivity : Activity() {
             pressable()
         }
         pointsCard.addView(pointsHistoryButton, lp(-1, dp(42)).apply { topMargin = dp(12) })
+        val pointsCenterButton = label("فتح مركز النقاط والخدمات  ›", 12.5f, textPrimary, true).apply {
+            gravity = Gravity.CENTER
+            background = ripple(shape(0xFF29243A.toInt(), 14f, 0xFF76618F.toInt()), 14f)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setOnClickListener { startActivity(Intent(this@SvipActivity, SvipPointsActivity::class.java)) }
+            pressable()
+        }
+        pointsCard.addView(pointsCenterButton, lp(-1, dp(44)).apply { topMargin = dp(8) })
         content.addView(pointsCard, lp(-1, -2).apply {
             marginStart = sectionPad
             marginEnd = sectionPad
