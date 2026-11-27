@@ -586,8 +586,14 @@ window.applyNativeData=function(data){
     $('memberEntry').classList.toggle('show',state.owned>0);
     if(PACKAGES.length===0){toast('لا توجد مستويات SVIP متاحة حالياً');$('buyBtn').disabled=true;return;}
     $('buyBtn').disabled=false;
-    if(!PACKAGES.some(p=>p.level===state.selected)) state.selected=PACKAGES[0]?.level||1;
+    // Open directly on the member's active SVIP tier; new/expired members start at tier 1.
+    state.selected = PACKAGES.some(p=>p.level===state.owned)
+      ? state.owned
+      : (PACKAGES.some(p=>p.level===state.selected) ? state.selected : (PACKAGES[0]?.level||1));
     renderTabs(); render();
+    if(state.owned>0 && state.selected===state.owned){
+      requestAnimationFrame(()=>{$('tab'+state.selected)?.scrollIntoView({inline:'center',block:'nearest',behavior:'auto'});});
+    }
   }catch(e){toast('تعذر قراءة بيانات SVIP');}
 };
 window.onNativeLoadError=function(message){toast(message||'تعذر تحميل بيانات SVIP');};
