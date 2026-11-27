@@ -327,9 +327,9 @@ class SvipActivity : Activity() {
                 val mr=meFuture.get(20,TimeUnit.SECONDS)
                 val wr=walletFuture.get(20,TimeUnit.SECONDS)
 
-                if(hasApiError(lr)) throw IllegalStateException(lr.body.optString("error",lr.body.optString("message","تعذر تحميل مستويات SVIP (\${lr.status})")))
-                if(hasApiError(mr)) throw IllegalStateException(mr.body.optString("error",mr.body.optString("message","تعذر تحميل عضويتك الحالية (\${mr.status})")))
-                if(hasApiError(wr)) throw IllegalStateException(wr.body.optString("error",wr.body.optString("message","تعذر تحميل رصيد المحفظة (\${wr.status})")))
+                if(hasApiError(lr)) throw IllegalStateException(lr.body.optString("error",lr.body.optString("message","تعذر تحميل مستويات SVIP (${lr.status})")))
+                if(hasApiError(mr)) throw IllegalStateException(mr.body.optString("error",mr.body.optString("message","تعذر تحميل عضويتك الحالية (${mr.status})")))
+                if(hasApiError(wr)) throw IllegalStateException(wr.body.optString("error",wr.body.optString("message","تعذر تحميل رصيد المحفظة (${wr.status})")))
 
                 val levelBody=responseData(lr.body)
                 val raw=levelBody.optJSONArray("levels")
