@@ -188,13 +188,13 @@ class HomeActivity : Activity() {
         navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(59),Gravity.BOTTOM))
 
         // الزر المركزي البارز (إنشاء غرفة)
-        val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat();clipChildren=false;clipToPadding=false}
+        val createSlot=FrameLayout(this).apply{elevation=dp(14).toFloat();clipChildren=false;clipToPadding=false}
         val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x3335B77A)}}
         createSlot.addView(halo,FrameLayout.LayoutParams(dp(58),dp(58),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
             contentDescription="إنشاء غرفة"
             isClickable=true
-            elevation=dp(8).toFloat()
+            elevation=dp(16).toFloat()
             outlineProvider=object:android.view.ViewOutlineProvider(){
                 override fun getOutline(v:View,outline:android.graphics.Outline){outline.setOval(0,0,v.width,v.height)}
             }
@@ -210,9 +210,9 @@ class HomeActivity : Activity() {
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
             val b=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val wrapLp=view.layoutParams
-            if(wrapLp.height!=dp(78)+b){wrapLp.height=dp(72)+b;view.layoutParams=wrapLp}
+            if(wrapLp.height!=dp(78)+b){wrapLp.height=dp(78)+b;view.layoutParams=wrapLp}
             val barLp=bar.layoutParams
-            if(barLp.height!=dp(59)+b){barLp.height=dp(54)+b;bar.layoutParams=barLp}
+            if(barLp.height!=dp(59)+b){barLp.height=dp(59)+b;bar.layoutParams=barLp}
             bar.setPadding(dp(5),dp(2),dp(5),b)
             content.setPadding(dp(12),dp(6),dp(12),dp(94)+b)
             insets
