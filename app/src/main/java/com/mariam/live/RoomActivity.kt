@@ -148,7 +148,7 @@ class RoomActivity : Activity() {
  private val pendingJoinToasts=ArrayList<RoomJoinNotice>()
  private var joinToastShowing=false
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
- private fun defaultBackdrop():Drawable=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(58,40,30),Color.rgb(30,22,18),Color.rgb(12,10,9)))
+ private fun defaultBackdrop():Drawable=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(28,17,17),Color.rgb(18,13,16),Color.rgb(9,8,12)))
  private fun glassBg(alpha:Int=110,radius:Int=22,strokeAlpha:Int=60)=GradientDrawable().apply{
   setColor(Color.argb(alpha,16,12,30));cornerRadius=dp(radius).toFloat();setStroke(dp(1),Color.argb(strokeAlpha,255,255,255))
  }
@@ -1694,7 +1694,7 @@ class RoomActivity : Activity() {
  private fun applyAudioRoomBackdrop(){
   loadedBackgroundUrl="__fixed_audio_backdrop__"
   roomBackgroundView.scaleType=ImageView.ScaleType.CENTER_CROP
-  roomBackgroundView.setImageResource(R.drawable.bg_voice_room)
+  roomBackgroundView.setImageResource(R.drawable.bg_voice_room_gold)
  }
 
  private fun applyRoomBackground(url:String){
