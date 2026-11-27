@@ -1368,7 +1368,7 @@ class RoomActivity : Activity() {
       layoutDirection=View.LAYOUT_DIRECTION_LTR
       tag=if(useLocalSvipOneBubble)"local-svip-1" else svipBubbleUrl
       background=when{
-       useLocalSvipOneBubble->getDrawable(R.drawable.vip_01_bubble)
+       useLocalSvipOneBubble->getDrawable(R.drawable.svip1_gold_chat_bubble)
        !svipBubbleUrl.isNullOrBlank()->null
        !selectedBubbleStyle.isNullOrBlank()->ChatBubbleStyleDrawable(selectedBubbleStyle)
        else->ChatBubbleStyleDrawable("chat-bubble-dragon")
@@ -2208,7 +2208,7 @@ class RoomActivity : Activity() {
  }
  private fun addLocalSvipOneFrame(target:FrameLayout,sizePx:Int){
   val frame=ImageView(this).apply{
-   setImageResource(R.drawable.vip_01_frame)
+   setImageResource(R.drawable.svip1_gold_avatar_frame)
    scaleType=ImageView.ScaleType.FIT_XY
    isClickable=false
    isFocusable=false
@@ -3435,7 +3435,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   root.addView(avatar,FrameLayout.LayoutParams(dp(104),dp(104),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
   if(member.optInt("svip_level",svipLevelsByUser[uid]?:0)==1){
    root.addView(ImageView(this).apply{
-    setImageResource(R.drawable.vip_01_frame)
+    setImageResource(R.drawable.svip1_gold_avatar_frame)
     scaleType=ImageView.ScaleType.FIT_XY
     isClickable=false
     isFocusable=false
