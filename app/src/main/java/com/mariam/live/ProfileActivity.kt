@@ -219,7 +219,7 @@ class ProfileActivity : Activity() {
             startActivity(Intent(this@ProfileActivity, HomeActivity::class.java).putExtra("open_discover", true))
             finish()
         }, LinearLayout.LayoutParams(0, -1, 1f))
-        val createSlot = FrameLayout(this).apply { clipChildren = false; clipToPadding = false }
+        val createSlot = FrameLayout(this).apply { elevation = dp(14f).toFloat(); clipChildren = false; clipToPadding = false }
         val halo = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -230,7 +230,7 @@ class ProfileActivity : Activity() {
         val createButton = HomeActivity.CreateRoomButton(this).apply {
             contentDescription = "إنشاء غرفة"
             isClickable = true
-            elevation = dp(8f).toFloat()
+            elevation = dp(16f).toFloat()
             setOnClickListener { startActivity(Intent(this@ProfileActivity, RoomSetupActivity::class.java)) }
         }
         createSlot.addView(createButton, FrameLayout.LayoutParams(dp(68f), dp(68f), Gravity.CENTER))
