@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
 /**
@@ -306,32 +307,102 @@ class SvipActivity : Activity() {
         }catch(e:Exception){runOnUiThread{showToast(e.message?:"تعذر الاتصال بالخادم");render()}}
     }}
     private fun applyCached(){try{val c=getSharedPreferences("SVIP_FAST_CACHE",MODE_PRIVATE).getString("page_data",null)?:return;applyData(JSONObject(c))}catch(_:Exception){}}
+    private fun responseData(body:JSONObject):JSONObject =
+        body.optJSONObject("data") ?: body.optJSONObject("result") ?: body
+
+    private fun hasApiError(result:AuthApi.Result):Boolean =
+        result.status !in 200..299 || !result.body.optBoolean("success",true)
+
     private fun loadData(successMessage:String?=null){
         if(loading&&successMessage==null)return
         loading=true
-        io.execute{try{
-            val lf=CompletableFuture.supplyAsync{AuthApi.get("/api/svip/levels",token)}
-            val mf=CompletableFuture.supplyAsync{AuthApi.get("/api/svip/me",token)}
-            val wf=CompletableFuture.supplyAsync{AuthApi.get("/api/wallet",token)}
-            val lr=lf.get();val mr=mf.get();val wr=wf.get()
-            if(lr.status !in 200..299||!lr.body.optBoolean("success",false))throw IllegalStateException(lr.body.optString("error","تعذر تحميل مستويات SVIP"))
-            if(mr.status !in 200..299||!mr.body.optBoolean("success",false))throw IllegalStateException(mr.body.optString("error","تعذر تحميل عضويتك الحالية"))
-            if(wr.status !in 200..299)throw IllegalStateException(wr.body.optString("error","تعذر تحميل رصيد المحفظة"))
-            val raw=lr.body.optJSONArray("levels")?:lr.body.optJSONArray("packages")?:JSONArray();val arr=JSONArray()
-            for(i in 0 until raw.length()){
-                val x=raw.optJSONObject(i)?:continue
-                val n=x.optInt("level",x.optInt("vip_level",0))
-                val price=x.optLong("price_coins",x.optLong("price_diamonds",x.optLong("price",0)))
-                val active=x.optBoolean("active",true)&&x.optBoolean("is_active",true)&&price>0
-                if(n in 1..7)arr.put(JSONObject().put("level",n).put("price",price).put("active",active))
+        bottomState.text="جار تحميل الباقات..."
+        io.execute{
+            try{
+                // Keep the exact endpoints and authorization used by the original SVIP page.
+                val levelsFuture=CompletableFuture.supplyAsync{AuthApi.get("/api/svip/levels",token)}
+                val meFuture=CompletableFuture.supplyAsync{AuthApi.get("/api/svip/me",token)}
+                val walletFuture=CompletableFuture.supplyAsync{AuthApi.get("/api/wallet",token)}
+                val lr=levelsFuture.get(20,TimeUnit.SECONDS)
+                val mr=meFuture.get(20,TimeUnit.SECONDS)
+                val wr=walletFuture.get(20,TimeUnit.SECONDS)
+
+                if(hasApiError(lr)) throw IllegalStateException(lr.body.optString("error",lr.body.optString("message","تعذر تحميل مستويات SVIP (\${lr.status})")))
+                if(hasApiError(mr)) throw IllegalStateException(mr.body.optString("error",mr.body.optString("message","تعذر تحميل عضويتك الحالية (\${mr.status})")))
+                if(hasApiError(wr)) throw IllegalStateException(wr.body.optString("error",wr.body.optString("message","تعذر تحميل رصيد المحفظة (\${wr.status})")))
+
+                val levelBody=responseData(lr.body)
+                val raw=levelBody.optJSONArray("levels")
+                    ?:levelBody.optJSONArray("packages")
+                    ?:levelBody.optJSONArray("vip_levels")
+                    ?:lr.body.optJSONArray("levels")
+                    ?:lr.body.optJSONArray("packages")
+                    ?:JSONArray()
+                val arr=JSONArray()
+                for(i in 0 until raw.length()){
+                    val x=raw.optJSONObject(i)?:continue
+                    val n=x.optInt("level",x.optInt("vip_level",x.optInt("tier",0)))
+                    val price=x.optLong("price_coins",
+                        x.optLong("price_diamonds",x.optLong("price",x.optLong("coins",x.optLong("diamonds",0)))))
+                    val active=x.optBoolean("active",x.optBoolean("is_active",true)) && price>0
+                    if(n in 1..7){
+                        arr.put(JSONObject()
+                            .put("level",n)
+                            .put("price",price)
+                            .put("active",active)
+                            .put("name",x.optString("name","SVIP $n")))
+                    }
+                }
+
+                val meBody=responseData(mr.body)
+                val sub=meBody.optJSONObject("subscription")
+                    ?:meBody.optJSONObject("membership")
+                    ?:meBody.optJSONObject("svip")
+                    ?:mr.body.optJSONObject("subscription")
+                    ?:JSONObject()
+                val memberLevel=sub.optInt("level",sub.optInt("vip_level",
+                    meBody.optInt("vip_level",meBody.optInt("level",0))))
+                val membership=JSONObject()
+                    .put("vip_level",memberLevel)
+                    .put("expires_at",sub.optString("expires_at",meBody.optString("expires_at","")))
+
+                val walletBody=responseData(wr.body)
+                val wallet=walletBody.optJSONObject("wallet")?:walletBody
+                val balance=wallet.optLong("recharge_coins",
+                    wallet.optLong("diamonds",wallet.optLong("balance",wallet.optLong("coins",0))))
+
+                if(arr.length()==0) throw IllegalStateException("وصل رد مستويات SVIP لكن لم نعثر على باقات بأسعار صالحة")
+                val data=JSONObject()
+                    .put("packages",arr)
+                    .put("membership",membership)
+                    .put("balance",balance)
+
+                getSharedPreferences("SVIP_FAST_CACHE",MODE_PRIVATE).edit()
+                    .putString("page_data",data.toString())
+                    .putLong("saved_at",System.currentTimeMillis())
+                    .apply()
+
+                runOnUiThread{
+                    loading=false
+                    if(!isFinishing&&!isDestroyed){
+                        applyData(data)
+                        if(!successMessage.isNullOrBlank())showToast(successMessage)
+                    }
+                }
+            }catch(e:Exception){
+                val message=e.cause?.message?:e.message?:"تعذر تحميل بيانات SVIP"
+                runOnUiThread{
+                    loading=false
+                    if(!isFinishing&&!isDestroyed){
+                        bottomState.text="تعذر تحديث الباقات"
+                        bottomBack.text=message
+                        if(packs.isEmpty())buy.isEnabled=false
+                        showToast(message)
+                    }
+                }
             }
-            val sub=mr.body.optJSONObject("subscription")?:JSONObject()
-            val wallet=wr.body.optJSONObject("wallet")?:wr.body
-            val data=JSONObject().put("packages",arr).put("membership",JSONObject().put("vip_level",sub.optInt("level",0)).put("expires_at",sub.optString("expires_at",""))).put("balance",wallet.optLong("recharge_coins",0))
-            getSharedPreferences("SVIP_FAST_CACHE",MODE_PRIVATE).edit().putString("page_data",data.toString()).putLong("saved_at",System.currentTimeMillis()).apply()
-            runOnUiThread{loading=false;if(!isFinishing&&!isDestroyed){applyData(data);if(!successMessage.isNullOrBlank())showToast(successMessage)}}
-        }catch(e:Exception){runOnUiThread{loading=false;if(!isFinishing&&!isDestroyed)showToast(e.message?:"تعذر تحميل بيانات SVIP")}}
-    }}
+        }
+    }
     private fun applyData(data:JSONObject){
         val raw=data.optJSONArray("packages")?:JSONArray();val next= mutableListOf<Pack>()
         for(i in 0 until raw.length()){val p=raw.optJSONObject(i)?:continue;val n=p.optInt("level",p.optInt("vip_level",0));val price=p.optLong("price",p.optLong("price_diamonds",0));if(n in 1..7&&price>0)next.add(Pack(n,price,p.optBoolean("active",true)))}
