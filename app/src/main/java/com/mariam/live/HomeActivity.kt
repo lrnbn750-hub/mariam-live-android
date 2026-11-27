@@ -34,9 +34,9 @@ import java.util.concurrent.Executors
 class HomeActivity : Activity() {
     private val executor = Executors.newFixedThreadPool(4)
     private val ink = Color.rgb(35,45,39)
-    private val muted = Color.rgb(150,128,90)
-    private val gold = Color.rgb(224,152,24)
-    private val goldDark = Color.rgb(150,88,10)
+    private val muted = Color.rgb(125,132,140)
+    private val gold = Color.rgb(35,158,92)
+    private val goldDark = Color.rgb(25,125,72)
     private lateinit var grid: GridLayout
     private lateinit var roomStatus: TextView
     private lateinit var tabsRow: LinearLayout
@@ -63,9 +63,9 @@ class HomeActivity : Activity() {
         super.onCreate(savedInstanceState)
         // طلب إذن إشعارات Android 13+ بعد دخول المستخدم إلى الصفحة الرئيسية.
         PushTokenManager.requestNotificationPermission(this)
-        val pageBg=Color.rgb(255,253,247)
-        window.statusBarColor=Color.rgb(255,240,200)
-        window.navigationBarColor=Color.rgb(247,210,125)
+        val pageBg=Color.WHITE
+        window.statusBarColor=Color.WHITE
+        window.navigationBarColor=Color.WHITE
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         val root=FrameLayout(this).apply{layoutDirection=View.LAYOUT_DIRECTION_RTL;setBackgroundColor(pageBg)}
@@ -76,19 +76,19 @@ class HomeActivity : Activity() {
         val header=FrameLayout(this).apply{
             layoutDirection=View.LAYOUT_DIRECTION_LTR
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,240,200),Color.rgb(255,250,235)))
+                intArrayOf(Color.WHITE,Color.WHITE))
         }
         val appTitle=TextView(this).apply{
             text="BAK LIVE";textSize=22f;gravity=Gravity.CENTER
             typeface=Typeface.create("sans-serif",Typeface.BOLD_ITALIC)
-            setTextColor(Color.rgb(196,128,16))
+            setTextColor(Color.rgb(35,158,92))
             setShadowLayer(dp(2).toFloat(),0f,dp(1).toFloat(),0x88FFFFFF.toInt())
         }
         header.addView(appTitle,FrameLayout.LayoutParams(-2,-1,Gravity.RIGHT or Gravity.CENTER_VERTICAL).apply{rightMargin=dp(16)})
         appTitle.translationY=dp(18).toFloat()
         val goldLine=View(this).apply{
             background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(0x00E0A030,0xFFE0A030.toInt(),0x00E0A030))
+                intArrayOf(0x00DDE3E0,0xFFE3E8E5.toInt(),0x00DDE3E0))
         }
         header.addView(goldLine,FrameLayout.LayoutParams(-1,dp(2),Gravity.BOTTOM))
         fun headerIcon(kind:String,description:String)=LineIcon(this,kind,gold).apply{
@@ -133,100 +133,6 @@ class HomeActivity : Activity() {
         column.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
 
 
-        // Two-slide promotional carousel: SVIP + iPhone raffle.
-        val promoSlides=FrameLayout(this).apply{
-            clipChildren=true
-            clipToPadding=true
-            background=shape(Color.WHITE,12)
-        }
-        val promoFlipper=ViewFlipper(this).apply{
-            isAutoStart=false
-            flipInterval=2000
-            inAnimation=null
-            outAnimation=null
-        }
-        fun promoImage(resource:Int,description:String,onTap:()->Unit)=ImageView(this).apply{
-            setImageResource(resource)
-            scaleType=ImageView.ScaleType.CENTER_CROP
-            contentDescription=description
-            isClickable=false
-            isFocusable=false
-        }
-        promoFlipper.addView(promoImage(
-            R.drawable.svip_home_banner,
-            "كن من كبار الشخصيات - ترقية عضوية SVIP"
-        ){
-            startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
-        },FrameLayout.LayoutParams(-1,-1))
-        promoFlipper.addView(promoImage(
-            R.drawable.bak_live_iphone_raffle_banner,
-            "اشحن 5 دولار وادخل سحب آيفون 18 برو ماكس"
-        ){
-            // Open the recharge screen; raffle details can be linked here when its page is ready.
-            startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
-        },FrameLayout.LayoutParams(-1,-1))
-        promoSlides.addView(promoFlipper,FrameLayout.LayoutParams(-1,-1))
-        val promoDots=LinearLayout(this).apply{
-            orientation=LinearLayout.HORIZONTAL
-            gravity=Gravity.CENTER
-            layoutDirection=View.LAYOUT_DIRECTION_LTR
-            setPadding(dp(7),dp(3),dp(7),dp(3))
-            background=shape(0x66000000,20)
-        }
-        val dotViews=(0..1).map { index ->
-            View(this).apply{
-                background=shape(if(index==0)Color.WHITE else 0x88FFFFFF.toInt(),4)
-                promoDots.addView(this,LinearLayout.LayoutParams(dp(if(index==0)14 else 6),dp(6)).apply{
-                    setMargins(dp(3),0,dp(3),0)
-                })
-            }
-        }
-        fun updatePromoDots(active:Int){
-            dotViews.forEachIndexed { index,dot ->
-                dot.background=shape(if(index==active)Color.WHITE else 0x88FFFFFF.toInt(),4)
-                val lp=dot.layoutParams as LinearLayout.LayoutParams
-                lp.width=dp(if(index==active)14 else 6)
-                dot.layoutParams=lp
-            }
-        }
-        promoSlides.addView(promoDots,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{
-            bottomMargin=dp(7)
-        })
-        val promoHandler=android.os.Handler(android.os.Looper.getMainLooper())
-        val promoAutoTask=object:Runnable{
-            override fun run(){
-                if(!isFinishing && !isDestroyed && promoSlides.isAttachedToWindow){
-                    promoFlipper.showNext()
-                    updatePromoDots(promoFlipper.displayedChild)
-                    promoHandler.postDelayed(this,2000)
-                }
-            }
-        }
-        var promoDownX=0f
-        promoFlipper.setOnTouchListener { _,event ->
-            when(event.action){
-                android.view.MotionEvent.ACTION_DOWN->{promoDownX=event.x;true}
-                android.view.MotionEvent.ACTION_UP->{
-                    val dx=event.x-promoDownX
-                    if(kotlin.math.abs(dx)>dp(35)){
-                        if(dx>0)promoFlipper.showPrevious() else promoFlipper.showNext()
-                        updatePromoDots(promoFlipper.displayedChild)
-                        promoHandler.removeCallbacks(promoAutoTask)
-                        promoHandler.postDelayed(promoAutoTask,2000)
-                    }else{
-                        if(promoFlipper.displayedChild==0)startActivity(Intent(this@HomeActivity,SvipActivity::class.java))
-                        else startActivity(Intent(this@HomeActivity,WalletActivity::class.java))
-                    }
-                    true
-                }
-                else->true
-            }
-        }
-        content.addView(promoSlides,LinearLayout.LayoutParams(-1,dp(112)).apply{
-            bottomMargin=dp(10)
-        })
-        promoHandler.postDelayed(promoAutoTask,2000)
-
         grid=GridLayout(this).apply{columnCount=2;useDefaultMargins=false;layoutDirection=View.LAYOUT_DIRECTION_RTL}
         content.addView(grid,LinearLayout.LayoutParams(-1,-2))
         roomStatus=TextView(this).apply{text="جارٍ تحميل الغرف...";textSize=12f;setTextColor(muted);gravity=Gravity.CENTER}
@@ -239,8 +145,8 @@ class HomeActivity : Activity() {
             layoutDirection=View.LAYOUT_DIRECTION_RTL
             gravity=Gravity.CENTER
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(255,247,224),Color.rgb(247,210,125))).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
-                setStroke(dp(1),0x88E6B450.toInt())
+                intArrayOf(Color.WHITE,Color.WHITE)).apply{                cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)
+                setStroke(dp(1),Color.rgb(235,238,236))
             }
             setPadding(dp(6),dp(4),dp(6),0)
             elevation=dp(8).toFloat()
@@ -248,10 +154,10 @@ class HomeActivity : Activity() {
         fun navItem(kind:String,title:String,selected:Boolean,onTap:()->Unit)=FrameLayout(this).apply{
             isClickable=true;isFocusable=true;contentDescription=title
             val col=LinearLayout(this@HomeActivity).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
-            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(30),dp(30)))
+            col.addView(NavIcon(this@HomeActivity,kind,selected),LinearLayout.LayoutParams(dp(25),dp(25)))
             col.addView(TextView(this@HomeActivity).apply{
                 text=title;textSize=10.5f;gravity=Gravity.CENTER;setSingleLine(true)
-                setTextColor(if(selected)goldDark else Color.rgb(160,124,66))
+                setTextColor(if(selected)goldDark else Color.rgb(110,118,114))
                 typeface=if(selected)Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium",Typeface.NORMAL)
             },LinearLayout.LayoutParams(-1,dp(16)))
             addView(col,FrameLayout.LayoutParams(-1,-1))
@@ -279,12 +185,12 @@ class HomeActivity : Activity() {
         bar.addView(navItem("profile","حسابي",false){
             startActivity(Intent(this@HomeActivity,ProfileActivity::class.java))
         },LinearLayout.LayoutParams(0,-1,1f))
-        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(62),Gravity.BOTTOM))
+        navWrap.addView(bar,FrameLayout.LayoutParams(-1,dp(54),Gravity.BOTTOM))
 
         // الزر المركزي البارز (إنشاء غرفة)
         val createSlot=FrameLayout(this).apply{elevation=dp(12).toFloat()}
         val halo=View(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(0x66FFF1C4)}}
-        createSlot.addView(halo,FrameLayout.LayoutParams(dp(76),dp(76),Gravity.CENTER))
+        createSlot.addView(halo,FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER))
         val create=CreateRoomButton(this).apply{
             contentDescription="إنشاء غرفة"
             isClickable=true
@@ -298,17 +204,17 @@ class HomeActivity : Activity() {
         ObjectAnimator.ofFloat(create,View.SCALE_X,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(create,View.SCALE_Y,1f,1.055f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
         ObjectAnimator.ofFloat(halo,View.ALPHA,0.5f,1f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;start()}
-        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(76),dp(76),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        navWrap.addView(createSlot,FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
 
-        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(86),Gravity.BOTTOM))
+        root.addView(navWrap,FrameLayout.LayoutParams(-1,dp(72),Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(navWrap){ view,insets->
             val b=insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val wrapLp=view.layoutParams
-            if(wrapLp.height!=dp(86)+b){wrapLp.height=dp(86)+b;view.layoutParams=wrapLp}
+            if(wrapLp.height!=dp(72)+b){wrapLp.height=dp(72)+b;view.layoutParams=wrapLp}
             val barLp=bar.layoutParams
-            if(barLp.height!=dp(62)+b){barLp.height=dp(62)+b;bar.layoutParams=barLp}
-            bar.setPadding(dp(6),dp(4),dp(6),b)
-            content.setPadding(dp(12),dp(6),dp(12),dp(110)+b)
+            if(barLp.height!=dp(54)+b){barLp.height=dp(54)+b;bar.layoutParams=barLp}
+            bar.setPadding(dp(5),dp(2),dp(5),b)
+            content.setPadding(dp(12),dp(6),dp(12),dp(88)+b)
             insets
         }
         setContentView(root)
