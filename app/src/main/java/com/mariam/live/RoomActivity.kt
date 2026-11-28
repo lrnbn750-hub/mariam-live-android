@@ -50,6 +50,7 @@ import com.opensource.svgaplayer.SVGAParser
 import com.opensource.svgaplayer.SVGAVideoEntity
 import java.io.ByteArrayInputStream
 import java.net.URL
+import java.util.Locale
 import io.livekit.android.events.collect
 
 class RoomActivity : Activity() {
@@ -4123,7 +4124,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   val root=LinearLayout(this).apply{orientation=1;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(18),dp(12),dp(18),dp(16));background=GradientDrawable().apply{setColor(Color.rgb(24,25,34));cornerRadius=dp(24).toFloat();setStroke(dp(1),Color.argb(55,255,255,255))}}
   root.addView(label("مكتبة موسيقى الهاتف",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(34)))
   root.addView(label("اختر أغنية من الملفات الصوتية الموجودة على جهازك",11f,Color.LTGRAY),LinearLayout.LayoutParams(-1,dp(25)))
-  val search=EditText(this).apply{hint="ابحث عن أغنية أو فنان";setHintTextColor(Color.GRAY);setTextColor(Color.WHITE);textSize=13f;singleLine=true;setPadding(dp(13),0,dp(13),0);background=GradientDrawable().apply{setColor(Color.rgb(39,41,53));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(72,75,91))}}
+  val search=EditText(this).apply{hint="ابحث عن أغنية أو فنان";setHintTextColor(Color.GRAY);setTextColor(Color.WHITE);textSize=13f;setSingleLine(true);setPadding(dp(13),0,dp(13),0);background=GradientDrawable().apply{setColor(Color.rgb(39,41,53));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(72,75,91))}}
   root.addView(search,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(12);bottomMargin=dp(8)})
   val status=label("جارٍ تحميل الأغاني…",13f,Color.LTGRAY);root.addView(status,LinearLayout.LayoutParams(-1,dp(42)))
   val list=ListView(this).apply{divider=android.graphics.drawable.ColorDrawable(Color.argb(35,255,255,255));dividerHeight=dp(1);isFastScrollEnabled=true;cacheColorHint=Color.TRANSPARENT}
