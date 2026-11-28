@@ -187,7 +187,27 @@ class RoomMusicMixer(
         var codec: MediaCodec? = null
         try {
             extractor = MediaExtractor()
-            extractor.setDataSource(appContext, uri, null)
+            // Some Android document/media providers fail the URI overload with
+            // "Failed to instantiate extractor". Retry through an opened file
+            // descriptor, preserving the provider's declared byte range.
+            try {
+                extractor.setDataSource(appContext, uri, null)
+            } catch (uriError: Exception) {
+                val afd = appContext.contentResolver.openAssetFileDescriptor(uri, "r")
+                    ?: throw IllegalArgumentException("تعذر فتح ملف الأغنية من الاستديو", uriError)
+                try {
+                    val length = if (afd.declaredLength >= 0L) afd.declaredLength else -1L
+                    extractor.setDataSource(afd.fileDescriptor, afd.startOffset, length)
+                } catch (fdError: Exception) {
+                    fdError.addSuppressed(uriError)
+                    throw IllegalArgumentException(
+                        "تعذر قراءة هذا الملف الصوتي. جرّب اختيار ملف MP3 أو M4A آخر",
+                        fdError
+                    )
+                } finally {
+                    try { afd.close() } catch (_: Exception) {}
+                }
+            }
 
             var selectedFormat: MediaFormat? = null
             for (index in 0 until extractor.trackCount) {
