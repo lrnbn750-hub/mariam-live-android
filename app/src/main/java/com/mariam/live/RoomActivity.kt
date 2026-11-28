@@ -4217,7 +4217,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    setTextColor(Color.rgb(205,226,190))
   }
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
-  chip.addView(disc,LinearLayout.LayoutParams(dp(18),dp(18)).apply{marginEnd=dp(4)})
+  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)).apply{marginEnd=dp(5)})
   val name=TextView(this).apply{
    text=displayTitle;textSize=9f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
    maxWidth=dp(68);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
