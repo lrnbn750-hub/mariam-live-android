@@ -40,7 +40,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
-import io.livekit.android.room.participant.DataPublishReliability
+import io.livekit.android.room.track.DataPublishReliability
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
 import com.mariam.live.data.GiftRepository
