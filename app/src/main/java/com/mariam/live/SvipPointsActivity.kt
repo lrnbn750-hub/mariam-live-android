@@ -1,6 +1,7 @@
 package com.mariam.live
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -127,16 +128,16 @@ class SvipPointsActivity : Activity() {
         val content = col()
 
         val unban = section("فك الحظر المؤقت",
-            "حتى 7 أيام: 20 نقطة • أكثر من 7 أيام: 50 نقطة. يمكن فك الحظر عن حسابك أنت فقط.")
-        ownPublicId = input("أدخل رقمك العام Public ID")
+            "أدخل Public ID لأي حساب محظور مؤقتاً. افحص تفاصيل الحظر ورصيدك أولاً، ثم أكّد فك الحظر.")
+        ownPublicId = input("Public ID للحساب المراد فك حظره")
         unban.addView(ownPublicId, lp(-1, dp(48)).apply { topMargin = dp(12) })
-        unban.addView(actionButton("فحص وفك الحظر", ::requestUnban),
+        unban.addView(actionButton("معاينة الحظر والتكلفة", ::previewUnban),
             lp(-1, dp(48)).apply { topMargin = dp(10) })
         content.addView(unban, lp(-1, -2).apply { bottomMargin = dp(10) })
 
         val review = section("مراجعة الحظر الدائم",
-            "قدّم طلب مراجعة دون خصم. إذا وافق المشرف فقط تُخصم 75 نقطة. عند الرفض لا تُخصم نقاط.")
-        review.addView(actionButton("إرسال طلب مراجعة", ::requestBanReview),
+            "يمكنك تقديم طلب مراجعة لحظر دائم عن طريق Public ID. لا تُخصم 75 نقطة عند الإرسال؛ الخصم فقط بعد موافقة المشرف.")
+        review.addView(actionButton("معاينة الحظر وإرسال مراجعة", ::previewBanReview),
             lp(-1, dp(48)).apply { topMargin = dp(12) })
         content.addView(review, lp(-1, -2).apply { bottomMargin = dp(10) })
 
@@ -191,19 +192,90 @@ class SvipPointsActivity : Activity() {
         }
     }
 
-    private fun requestUnban() {
-        val id = ownPublicId.text.toString().trim()
-        if (id.isBlank()) { showMessage("أدخل رقمك العام أولاً", true); return }
-        runAction("/api/svip/points/unban", JSONObject().put("public_id", id)) {
-            "تم فك الحظر. النقاط المستخدمة: " + it.optString("points_spent", "حسب مدة الحظر")
-        }
-    }
+    private fun previewUnban() = previewBanAction(permanent = false)
 
-    private fun requestBanReview() {
+    private fun previewBanReview() = previewBanAction(permanent = true)
+
+    /** Preview is read-only: it never deducts points or changes the ban. */
+    private fun previewBanAction(permanent: Boolean) {
         val id = ownPublicId.text.toString().trim()
-        if (id.isBlank()) { showMessage("أدخل رقمك العام أولاً", true); return }
-        runAction("/api/svip/points/ban-review", JSONObject().put("public_id", id)) {
-            "تم إرسال طلب المراجعة. لا تُخصم النقاط إلا عند الموافقة."
+        if (id.isBlank()) { showMessage("أدخل Public ID للحساب أولاً", true); return }
+        hideKeyboard()
+        statusView.text = "جارٍ فحص الحظر والرصيد…"
+        statusView.setTextColor(muted)
+        io.execute {
+            try {
+                val encoded = java.net.URLEncoder.encode(id, "UTF-8")
+                val result = AuthApi.get("/api/svip/points/unban-preview?public_id=" + encoded, token)
+                if (result.status !in 200..299 || !result.body.optBoolean("success", false)) {
+                    val error = result.body.optString("error", "تعذر جلب تفاصيل الحظر")
+                    runOnUiThread { if (!isFinishing && !isDestroyed) showMessage(error, true) }
+                    return@execute
+                }
+                val body = result.body
+                val ban = body.optJSONObject("ban") ?: JSONObject()
+                val target = body.optJSONObject("target") ?: JSONObject()
+                val action = body.optString("action", if (permanent) "review" else "unban")
+                val isPermanent = action == "review" || permanent
+                val required = body.optLong("required_points", if (isPermanent) 75 else 0)
+                val available = body.optLong("available_points", 0)
+                val banId = ban.optLong("id", body.optLong("ban_id", 0))
+                val type = ban.optString("ban_type", if (isPermanent) "permanent" else "temporary")
+                val reason = ban.optString("reason").ifBlank { "لم يُذكر سبب" }
+                val created = ban.optString("created_at").ifBlank { "غير متوفر" }
+                val expires = ban.optString("expires_at").ifBlank {
+                    if (isPermanent) "دائم / بدون تاريخ انتهاء" else "غير متوفر"
+                }
+                val targetName = target.optString("username").ifBlank { id }
+                val targetId = target.optString("public_id").ifBlank { id }
+                val sufficient = body.optBoolean("points_sufficient", available >= required)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (banId <= 0L) {
+                        showMessage("لم يتم العثور على حظر نشط لهذا الحساب", true)
+                        return@runOnUiThread
+                    }
+                    val details = "الحساب: $targetName ($targetId)\n" +
+                        "نوع الحظر: $type\n" +
+                        "السبب: $reason\n" +
+                        "تاريخ الحظر: $created\n" +
+                        "الانتهاء: $expires\n\n" +
+                        "النقاط المطلوبة: ${fmt(required)}\n" +
+                        "رصيدك الحالي: ${fmt(available)}\n\n" +
+                        if (isPermanent)
+                            "سيُرسل طلب مراجعة فقط. لا يوجد خصم عند الإرسال؛ تُخصم 75 نقطة فقط إذا وافق المشرف."
+                        else
+                            "لن يتم الخصم أو فك الحظر عند المعاينة. الخصم وفك الحظر يحدثان فقط بعد تأكيدك."
+                    val dialog = AlertDialog.Builder(this)
+                        .setTitle(if (isPermanent) "معاينة مراجعة الحظر الدائم" else "معاينة فك الحظر")
+                        .setMessage(details)
+                        .setNegativeButton("إلغاء", null)
+                    if (!sufficient) {
+                        dialog.setPositiveButton("رصيد غير كافٍ", null)
+                    } else if (isPermanent) {
+                        dialog.setPositiveButton("إرسال طلب المراجعة") { _, _ ->
+                            runAction("/api/svip/points/ban-review",
+                                JSONObject().put("public_id", targetId).put("ban_id", banId)) {
+                                "تم إرسال طلب المراجعة. لا تُخصم النقاط إلا بعد موافقة المشرف."
+                            }
+                        }
+                    } else {
+                        dialog.setPositiveButton("تأكيد فك الحظر وخصم النقاط") { _, _ ->
+                            runAction("/api/svip/points/unban",
+                                JSONObject().put("public_id", targetId).put("ban_id", banId)) {
+                                "تم فك الحظر. النقاط المستخدمة: " + it.optString("points_spent", fmt(required))
+                            }
+                        }
+                    }
+                    dialog.show()
+                    if (!sufficient) showMessage("رصيدك غير كافٍ لإتمام هذا الإجراء", true)
+                    else showMessage("تم عرض تفاصيل الحظر دون خصم نقاط", false)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) showMessage(e.message ?: "تعذر الاتصال بالخادم", true)
+                }
+            }
         }
     }
 
