@@ -14,6 +14,7 @@ on:
       - feature/svip-perks-latest-audio-8-15
       - feature/bak-live-svip-points-current-2026-11-28
       - feature/bak-live-svip-ban-preview-2026-11-28
+      - feature/bak-live-room-music-chat-fix-2026-11-28
       - feature/bak-live-white-room-tools-aladdin-svga
       - branding/bak-live-package
       - feature/live-room-chat-bubbles
