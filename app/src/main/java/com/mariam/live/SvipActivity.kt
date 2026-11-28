@@ -111,6 +111,7 @@ class SvipActivity : Activity() {
     private lateinit var tabRow: LinearLayout
     private lateinit var balanceText: TextView
     private lateinit var pointsBalanceText: TextView
+    private lateinit var pointsCardView: View
     private lateinit var memberEntry: TextView
     private lateinit var perksCounter: TextView
     private lateinit var grid: LinearLayout
@@ -318,6 +319,8 @@ class SvipActivity : Activity() {
             background = shape(surface, 18f, 0xFF4B4260.toInt())
             setPadding(dp(16), dp(14), dp(16), dp(14))
         }
+        pointsCardView = pointsCard
+        pointsCard.visibility = View.GONE // Shown only after membership is confirmed.
         val pointsHead = row()
         pointsHead.addView(label("نقاط SVIP", 15f, gold, true), lp(0, dp(28), 1f))
         pointsHead.addView(label("✦", 18f, gold, true))
@@ -487,9 +490,10 @@ class SvipActivity : Activity() {
     private fun renderPerks() {
         val tier = TIERS[(selected - 1).coerceIn(0, 6)]
         val gem = tier[1]
-        val unlocked = perks.count { selected >= it.min }
+        // Selected tier is a preview; active labels reflect the membership actually owned.
+        val unlocked = perks.count { owned >= it.min }
         perksCounter.text = "$unlocked / ${perks.size} مفعّلة"
-        val eliteOn = selected >= 4
+        val eliteOn = owned >= 4
         elite.alpha = if (eliteOn) 1f else .6f
         eliteIcon.active = eliteOn; eliteIcon.invalidate()
         eliteState.text = if (eliteOn) "مفعّلة في هذا المستوى" else "تبدأ من SVIP4"
@@ -499,7 +503,7 @@ class SvipActivity : Activity() {
         perks.chunked(3).forEach { chunk ->
             val r = row().apply { gravity = Gravity.CENTER }
             chunk.forEach { perk ->
-                val active = selected >= perk.min
+                val active = owned >= perk.min
                 val card = column().apply {
                     gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(4), dp(14), dp(4), dp(12))
                     background = if (active)
@@ -804,6 +808,7 @@ class SvipActivity : Activity() {
         pointsBalanceText.text = fmt(pointsBalance)
         val m = data.optJSONObject("membership") ?: JSONObject()
         owned = m.optInt("vip_level", m.optInt("level", 0)); expiresAt = m.optString("expires_at", "")
+        pointsCardView.visibility = if (owned in 1..7) View.VISIBLE else View.GONE
         if (packs.isNotEmpty()) {
             selected = when {
                 !userPicked && packs.any { it.level == owned } -> owned
