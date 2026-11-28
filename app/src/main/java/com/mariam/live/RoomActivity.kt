@@ -1299,7 +1299,7 @@ class RoomActivity : Activity() {
     val nowForBubbleSync=System.currentTimeMillis()
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
-     val visibleStart=(messages.length()-4).coerceAtLeast(0)
+     val visibleStart=(messages.length()-8).coerceAtLeast(0)
      for(index in visibleStart until messages.length()){
       val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { msg.optString("sender_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } } }.orEmpty()
       if(senderId.isNotBlank())senderIds.add(senderId)
@@ -1346,7 +1346,7 @@ class RoomActivity : Activity() {
     }?:true
     chatMessages.removeAllViews()
     // Keep the live overlay compact so chat never climbs into the eighth seat.
-    val visibleMessageStart=(messages.length()-4).coerceAtLeast(0)
+    val visibleMessageStart=(messages.length()-8).coerceAtLeast(0)
     for(i in visibleMessageStart until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
