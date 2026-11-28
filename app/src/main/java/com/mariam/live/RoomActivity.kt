@@ -4224,8 +4224,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
   chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)))
-  val params=FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP or Gravity.LEFT).apply{
-   leftMargin=dp(10)
+  val params=FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP or Gravity.RIGHT).apply{
+   rightMargin=dp(10)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
   }
   host.addView(chip,params)
