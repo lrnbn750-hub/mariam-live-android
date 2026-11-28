@@ -40,6 +40,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
+import io.livekit.android.room.participant.DataPublishReliability
 import io.livekit.android.events.RoomEvent
 import kotlinx.coroutines.*
 import com.mariam.live.data.GiftRepository
@@ -119,6 +120,8 @@ class RoomActivity : Activity() {
  private var musicMixer:RoomMusicMixer?=null
  private var roomMusicIndicator:View?=null
  private var roomMusicDiscAnimator:android.animation.ObjectAnimator?=null
+ private var roomMusicSyncJob:Job?=null
+ private var remoteRoomMusicTitle:String?=null
  private lateinit var chatPanel:LinearLayout
  private lateinit var roomComposer:LinearLayout
  private var chatPoll:Job?=null
@@ -2532,6 +2535,17 @@ class RoomActivity : Activity() {
        val identity=event.participant.identity?.value
        if(identity!=null && event.track is VideoTrack){cameraTracks.remove(identity);drawSeats()}
       }
+      is RoomEvent.DataReceived->{
+       if(event.topic=="bak.room.music"){
+        try{
+         val payload=JSONObject(event.data.toString(Charsets.UTF_8))
+         when(payload.optString("action")){
+          "play"->{val title=payload.optString("title").ifBlank{"موسيقى الغرفة"};remoteRoomMusicTitle=title;showRoomMusicIndicator(title)}
+          "stop"->{remoteRoomMusicTitle=null;hideRoomMusicIndicator()}
+         }
+        }catch(e:Exception){android.util.Log.w("BAK_ROOM_MUSIC","Invalid room music event",e)}
+       }
+      }
       is RoomEvent.ActiveSpeakersChanged->{
       val fresh=HashMap<String,Float>()
       for(participant in event.speakers){
@@ -4174,15 +4188,11 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   return result
  }
 
- private fun showRoomMusicIndicator(uri:Uri){
+ private fun showRoomMusicIndicator(songTitle:String){
   val host=roomOverlayLayer
   if(!::roomOverlayLayer.isInitialized)return
   hideRoomMusicIndicator()
-  val songTitle=try{
-   contentResolver.query(uri,arrayOf(MediaStore.Audio.Media.TITLE),null,null,null)?.use{cur->
-    if(cur.moveToFirst())cur.getString(0).orEmpty() else ""
-   }.orEmpty().ifBlank{"موسيقى الغرفة"}
-  }catch(_:Exception){"موسيقى الغرفة"}
+  val displayTitle=songTitle.ifBlank{"موسيقى الغرفة"}
   val chip=LinearLayout(this).apply{
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
@@ -4209,7 +4219,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
   chip.addView(disc,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(8)})
   val name=TextView(this).apply{
-   text=songTitle;textSize=11.5f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   text=displayTitle;textSize=11.5f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
    maxWidth=dp(118);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
@@ -4222,6 +4232,24 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   roomMusicIndicator=chip
   roomMusicDiscAnimator=android.animation.ObjectAnimator.ofFloat(disc,View.ROTATION,0f,360f).apply{
    duration=3200L;repeatCount=android.animation.ValueAnimator.INFINITE;interpolator=android.view.animation.LinearInterpolator();start()
+  }
+ }
+ private fun readRoomMusicTitle(uri:Uri):String{
+  return try{contentResolver.query(uri,arrayOf(MediaStore.Audio.Media.TITLE),null,null,null)?.use{cur->if(cur.moveToFirst())cur.getString(0).orEmpty() else ""}.orEmpty().ifBlank{"موسيقى الغرفة"}}catch(_:Exception){"موسيقى الغرفة"}
+ }
+ private fun broadcastRoomMusic(action:String,title:String=""){
+  if(!::room.isInitialized||!connected||!isOwner)return
+  scope.launch{
+   try{
+    val payload=JSONObject().put("action",action).put("title",title).toString()
+    room.localParticipant.publishData(payload.toByteArray(Charsets.UTF_8),DataPublishReliability.RELIABLE,"bak.room.music").getOrThrow()
+   }catch(e:Exception){android.util.Log.w("BAK_ROOM_MUSIC","Could not sync room music state",e)}
+  }
+ }
+ private fun startRoomMusicHeartbeat(){
+  roomMusicSyncJob?.cancel()
+  roomMusicSyncJob=scope.launch{
+   while(isActive&&musicMixer!=null){delay(8000);val title=remoteRoomMusicTitle?:continue;broadcastRoomMusic("play",title)}
   }
  }
  private fun hideRoomMusicIndicator(){
@@ -4255,7 +4283,11 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     )
     mixer.microphoneEnabled=microphoneEnabled
     musicMixer=mixer
-    showRoomMusicIndicator(uri)
+    val songTitle=readRoomMusicTitle(uri)
+    remoteRoomMusicTitle=songTitle
+    showRoomMusicIndicator(songTitle)
+    broadcastRoomMusic("play",songTitle)
+    startRoomMusicHeartbeat()
     track.setAudioBufferCallback(mixer)
     mixer.start()
     Toast.makeText(this@RoomActivity,"بدأ إرسال الموسيقى إلى الغرفة",Toast.LENGTH_SHORT).show()
@@ -4269,6 +4301,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun stopRoomMusic(restoreMic:Boolean=true){
   val mixer=musicMixer
   musicMixer=null
+  roomMusicSyncJob?.cancel();roomMusicSyncJob=null
+  if(mixer!=null){broadcastRoomMusic("stop");remoteRoomMusicTitle=null}
   hideRoomMusicIndicator()
   try{
    val track=if(::room.isInitialized) room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack else null
