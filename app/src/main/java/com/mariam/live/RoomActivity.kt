@@ -4048,6 +4048,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   root.addView(label("استوديو موسيقى الغرفة",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
   root.addView(label("الموسيقى تُرسل داخل الغرفة عبر اتصال الصوت الحالي",11f,Color.argb(170,255,255,255)),LinearLayout.LayoutParams(-1,dp(24)))
   val mixer=musicMixer
+  if(mixer==null){chooseRoomMusic();return}
   val playing=mixer!=null
   val statusCard=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(10),dp(12),dp(10))
@@ -4121,15 +4122,15 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  }
  private fun showRoomAudioLibrary(){
   val dialog=android.app.Dialog(this)
-  val root=LinearLayout(this).apply{orientation=1;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(18),dp(12),dp(18),dp(16));background=GradientDrawable().apply{setColor(Color.rgb(24,25,34));cornerRadius=dp(24).toFloat();setStroke(dp(1),Color.argb(55,255,255,255))}}
-  root.addView(label("مكتبة موسيقى الهاتف",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(34)))
-  root.addView(label("اختر أغنية من الملفات الصوتية الموجودة على جهازك",11f,Color.LTGRAY),LinearLayout.LayoutParams(-1,dp(25)))
-  val search=EditText(this).apply{hint="ابحث عن أغنية أو فنان";setHintTextColor(Color.GRAY);setTextColor(Color.WHITE);textSize=13f;setSingleLine(true);setPadding(dp(13),0,dp(13),0);background=GradientDrawable().apply{setColor(Color.rgb(39,41,53));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(72,75,91))}}
+  val root=LinearLayout(this).apply{orientation=1;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(18),dp(12),dp(18),dp(16));background=GradientDrawable().apply{setColor(Color.WHITE);cornerRadius=dp(24).toFloat();setStroke(dp(1),Color.rgb(225,227,233))}}
+  root.addView(label("موسيقى الغرفة",19f,Color.rgb(28,30,38),true),LinearLayout.LayoutParams(-1,dp(34)))
+  root.addView(label("كل الملفات الصوتية الموجودة على جهازك",11f,Color.rgb(110,114,124)),LinearLayout.LayoutParams(-1,dp(25)))
+  val search=EditText(this).apply{hint="ابحث عن أغنية أو فنان";setHintTextColor(Color.rgb(145,148,157));setTextColor(Color.rgb(28,30,38));textSize=13f;setSingleLine(true);setPadding(dp(13),0,dp(13),0);background=GradientDrawable().apply{setColor(Color.rgb(246,247,249));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(225,227,233))}}
   root.addView(search,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(12);bottomMargin=dp(8)})
-  val status=label("جارٍ تحميل الأغاني…",13f,Color.LTGRAY);root.addView(status,LinearLayout.LayoutParams(-1,dp(42)))
-  val list=ListView(this).apply{divider=android.graphics.drawable.ColorDrawable(Color.argb(35,255,255,255));dividerHeight=dp(1);isFastScrollEnabled=true;cacheColorHint=Color.TRANSPARENT}
+  val status=label("جارٍ تحميل الملفات الصوتية…",13f,Color.rgb(105,109,118));root.addView(status,LinearLayout.LayoutParams(-1,dp(42)))
+  val list=ListView(this).apply{divider=android.graphics.drawable.ColorDrawable(Color.rgb(235,236,240));dividerHeight=dp(1);isFastScrollEnabled=true;cacheColorHint=Color.WHITE;setBackgroundColor(Color.WHITE)}
   root.addView(list,LinearLayout.LayoutParams(-1,0,1f))
-  val close=TextView(this).apply{text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=GradientDrawable().apply{setColor(Color.rgb(48,49,61));cornerRadius=dp(13).toFloat()};setOnClickListener{dialog.dismiss()}}
+  val close=TextView(this).apply{text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.rgb(45,48,57));background=GradientDrawable().apply{setColor(Color.rgb(242,243,246));cornerRadius=dp(13).toFloat()};setOnClickListener{dialog.dismiss()}}
   root.addView(close,LinearLayout.LayoutParams(-1,dp(43)).apply{topMargin=dp(9)})
   dialog.setContentView(root);dialog.show();dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.window?.setLayout(resources.displayMetrics.widthPixels-dp(28),(resources.displayMetrics.heightPixels*.78f).toInt())
   scope.launch(Dispatchers.IO){
@@ -4144,10 +4145,10 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
      override fun getItemId(position:Int)=position.toLong()
      override fun getView(position:Int,convertView:View?,parent:android.view.ViewGroup?):View{
       val item=getItem(position);val row=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(10),dp(7),dp(10),dp(7))}
-      row.addView(label("♫",22f,Color.rgb(242,205,117),true),LinearLayout.LayoutParams(dp(42),dp(42)))
+      row.addView(label("♫",22f,Color.rgb(191,145,42),true),LinearLayout.LayoutParams(dp(42),dp(42)))
       val texts=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-      texts.addView(label(item.title,13f,Color.WHITE,true).apply{gravity=Gravity.RIGHT;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LinearLayout.LayoutParams(-1,dp(23)))
-      texts.addView(label(item.artist+" • "+item.duration,10.5f,Color.LTGRAY).apply{gravity=Gravity.RIGHT;maxLines=1},LinearLayout.LayoutParams(-1,dp(20)))
+      texts.addView(label(item.title,13f,Color.rgb(28,30,38),true).apply{gravity=Gravity.RIGHT;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LinearLayout.LayoutParams(-1,dp(23)))
+      texts.addView(label(item.artist+" • "+item.duration,10.5f,Color.rgb(112,116,126)).apply{gravity=Gravity.RIGHT;maxLines=1},LinearLayout.LayoutParams(-1,dp(20)))
       row.addView(texts,LinearLayout.LayoutParams(0,-2,1f));return row
      }
     }
@@ -4164,7 +4165,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun loadRoomAudioItems():List<RoomAudioItem>{
   val result=ArrayList<RoomAudioItem>();val uri=MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
   val cols=arrayOf(MediaStore.Audio.Media._ID,MediaStore.Audio.Media.TITLE,MediaStore.Audio.Media.ARTIST,MediaStore.Audio.Media.DURATION)
-  try{contentResolver.query(uri,cols,MediaStore.Audio.Media.IS_MUSIC+" != 0",null,MediaStore.Audio.Media.TITLE+" COLLATE NOCASE ASC")?.use{cur->
+  try{contentResolver.query(uri,cols,null,null,MediaStore.Audio.Media.TITLE+" COLLATE NOCASE ASC")?.use{cur->
    val id=cur.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);val title=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);val artist=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);val duration=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
    while(cur.moveToNext()){val songId=cur.getLong(id);val name=cur.getString(title).orEmpty().ifBlank{"مقطع صوتي"};val by=cur.getString(artist).orEmpty().let{if(it.isBlank()||it=="<unknown>")"فنان غير معروف" else it};val ms=cur.getLong(duration).coerceAtLeast(0L);val time=String.format(Locale.getDefault(),"%d:%02d",ms/60000,(ms/1000)%60);result.add(RoomAudioItem(name,by,time,Uri.withAppendedPath(uri,songId.toString())))}
   }}catch(e:Exception){android.util.Log.e("BAK_ROOM_MUSIC","Audio query failed",e)}
