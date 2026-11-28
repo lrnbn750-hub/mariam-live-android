@@ -1299,7 +1299,8 @@ class RoomActivity : Activity() {
     val nowForBubbleSync=System.currentTimeMillis()
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
-     for(index in 0 until messages.length()){
+     val visibleStart=(messages.length()-4).coerceAtLeast(0)
+     for(index in visibleStart until messages.length()){
       val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { msg.optString("sender_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } } }.orEmpty()
       if(senderId.isNotBlank())senderIds.add(senderId)
      }
@@ -1345,7 +1346,8 @@ class RoomActivity : Activity() {
     }?:true
     chatMessages.removeAllViews()
     // Keep the live overlay compact so chat never climbs into the eighth seat.
-    for(i in 0 until messages.length()){
+    val visibleMessageStart=(messages.length()-4).coerceAtLeast(0)
+    for(i in visibleMessageStart until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
      val body=item.optString("message")
@@ -4196,7 +4198,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
    layoutDirection=View.LAYOUT_DIRECTION_LTR
-   setPadding(dp(5),dp(3),dp(8),dp(3))
+   setPadding(dp(4),dp(2),dp(6),dp(2))
    background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(25,48,39),Color.rgb(75,25,39))).apply{
     cornerRadius=dp(20).toFloat()
     setStroke(dp(1),Color.rgb(119,76,70))
@@ -4211,19 +4213,19 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
   }
   val grooves=TextView(this).apply{
-   text="♫";textSize=15f;gravity=Gravity.CENTER
+   text="♫";textSize=11f;gravity=Gravity.CENTER
    setTextColor(Color.rgb(205,226,190))
   }
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
-  chip.addView(disc,LinearLayout.LayoutParams(dp(24),dp(24)).apply{marginEnd=dp(6)})
+  chip.addView(disc,LinearLayout.LayoutParams(dp(18),dp(18)).apply{marginEnd=dp(4)})
   val name=TextView(this).apply{
-   text=displayTitle;textSize=10f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   maxWidth=dp(88);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
+   text=displayTitle;textSize=9f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   maxWidth=dp(68);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
-  chip.addView(name,LinearLayout.LayoutParams(dp(88),dp(22)))
-  val params=FrameLayout.LayoutParams(-2,dp(30),Gravity.TOP or Gravity.LEFT).apply{
-   leftMargin=dp(12)
+  chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)))
+  val params=FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP or Gravity.LEFT).apply{
+   leftMargin=dp(10)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
   }
   host.addView(chip,params)
