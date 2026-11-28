@@ -1289,7 +1289,7 @@ class RoomActivity : Activity() {
     }
     val messages=result.body.optJSONArray("messages")?:JSONArray()
      // Fetch SVIP assets for the four visible chat senders once per room session.
-     val svipStart=(messages.length()-4).coerceAtLeast(0)
+     val svipStart=(messages.length()-8).coerceAtLeast(0)
      for(index in svipStart until messages.length()){
       val msg=messages.optJSONObject(index)?:continue
       val sender=msg.optString("user_id").ifBlank{msg.optString("sender_id").ifBlank{(msg.optJSONObject("user")?:msg.optJSONObject("sender"))?.optString("id").orEmpty()}}
@@ -1299,7 +1299,7 @@ class RoomActivity : Activity() {
     val nowForBubbleSync=System.currentTimeMillis()
     if(nowForBubbleSync-chatBubbleSelectionRefreshAt>15000L && messages.length()>0){
      val senderIds=LinkedHashSet<String>()
-     for(index in 0 until messages.length()){
+     for(index in (messages.length()-8).coerceAtLeast(0) until messages.length()){
       val senderId=messages.optJSONObject(index)?.let { msg -> msg.optString("user_id").ifBlank { msg.optString("sender_id").ifBlank { (msg.optJSONObject("user") ?: msg.optJSONObject("sender"))?.optString("id").orEmpty() } } }.orEmpty()
       if(senderId.isNotBlank())senderIds.add(senderId)
      }
@@ -1344,8 +1344,9 @@ class RoomActivity : Activity() {
      chatScroll.scrollY+chatScroll.height>=it.height-dp(28)
     }?:true
     chatMessages.removeAllViews()
-    // Keep the live overlay compact so chat never climbs into the eighth seat.
-    for(i in 0 until messages.length()){
+    // Show the latest eight chat messages in the room overlay.
+    val visibleMessageStart=(messages.length()-8).coerceAtLeast(0)
+    for(i in visibleMessageStart until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
      val body=item.optString("message")
@@ -4215,15 +4216,16 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    setTextColor(Color.rgb(205,226,190))
   }
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
-  chip.addView(disc,LinearLayout.LayoutParams(dp(24),dp(24)).apply{marginEnd=dp(6)})
   val name=TextView(this).apply{
    text=displayTitle;textSize=10f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
    maxWidth=dp(88);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
-  chip.addView(name,LinearLayout.LayoutParams(dp(88),dp(22)))
-  val params=FrameLayout.LayoutParams(-2,dp(30),Gravity.TOP or Gravity.LEFT).apply{
-   leftMargin=dp(12)
+  // LTR ordering keeps the song title on the left and the rotating disc on the right.
+  chip.addView(name,LinearLayout.LayoutParams(dp(88),dp(22)).apply{marginEnd=dp(6)})
+  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)))
+  val params=FrameLayout.LayoutParams(-2,dp(34),Gravity.TOP or Gravity.RIGHT).apply{
+   rightMargin=dp(10)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
   }
   host.addView(chip,params)
