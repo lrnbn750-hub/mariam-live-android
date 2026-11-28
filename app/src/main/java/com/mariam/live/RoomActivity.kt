@@ -8,6 +8,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
+import android.provider.MediaStore
 import android.view.WindowManager
 import android.graphics.*
 import android.graphics.drawable.Drawable
@@ -4110,13 +4111,63 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    .show()
  }
 
+ private data class RoomAudioItem(val title:String,val artist:String,val duration:String,val uri:Uri)
  private fun chooseRoomMusic(){
-  val picker=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
-   addCategory(Intent.CATEGORY_OPENABLE)
-   type="audio/*"
+  if(!isOwner||!connected)return
+  val permission=if(Build.VERSION.SDK_INT>=33)"android.permission.READ_MEDIA_AUDIO" else Manifest.permission.READ_EXTERNAL_STORAGE
+  if(Build.VERSION.SDK_INT>=23&&checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(permission),4203);return}
+  showRoomAudioLibrary()
+ }
+ private fun showRoomAudioLibrary(){
+  val dialog=android.app.Dialog(this)
+  val root=LinearLayout(this).apply{orientation=1;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(18),dp(12),dp(18),dp(16));background=GradientDrawable().apply{setColor(Color.rgb(24,25,34));cornerRadius=dp(24).toFloat();setStroke(dp(1),Color.argb(55,255,255,255))}}
+  root.addView(label("مكتبة موسيقى الهاتف",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(34)))
+  root.addView(label("اختر أغنية من الملفات الصوتية الموجودة على جهازك",11f,Color.LTGRAY),LinearLayout.LayoutParams(-1,dp(25)))
+  val search=EditText(this).apply{hint="ابحث عن أغنية أو فنان";setHintTextColor(Color.GRAY);setTextColor(Color.WHITE);textSize=13f;singleLine=true;setPadding(dp(13),0,dp(13),0);background=GradientDrawable().apply{setColor(Color.rgb(39,41,53));cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(72,75,91))}}
+  root.addView(search,LinearLayout.LayoutParams(-1,dp(46)).apply{topMargin=dp(12);bottomMargin=dp(8)})
+  val status=label("جارٍ تحميل الأغاني…",13f,Color.LTGRAY);root.addView(status,LinearLayout.LayoutParams(-1,dp(42)))
+  val list=ListView(this).apply{divider=android.graphics.drawable.ColorDrawable(Color.argb(35,255,255,255));dividerHeight=dp(1);isFastScrollEnabled=true;cacheColorHint=Color.TRANSPARENT}
+  root.addView(list,LinearLayout.LayoutParams(-1,0,1f))
+  val close=TextView(this).apply{text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.WHITE);background=GradientDrawable().apply{setColor(Color.rgb(48,49,61));cornerRadius=dp(13).toFloat()};setOnClickListener{dialog.dismiss()}}
+  root.addView(close,LinearLayout.LayoutParams(-1,dp(43)).apply{topMargin=dp(9)})
+  dialog.setContentView(root);dialog.show();dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.window?.setLayout(resources.displayMetrics.widthPixels-dp(28),(resources.displayMetrics.heightPixels*.78f).toInt())
+  scope.launch(Dispatchers.IO){
+   val songs=loadRoomAudioItems()
+   withContext(Dispatchers.Main){
+    if(isFinishing||isDestroyed||!dialog.isShowing)return@withContext
+    if(songs.isEmpty()){status.text="ما لقينا ملفات صوتية على الجهاز";return@withContext}
+    val filtered=songs.toMutableList();status.text="تم العثور على \${songs.size} ملف صوتي"
+    val adapter=object:android.widget.BaseAdapter(){
+     override fun getCount()=filtered.size
+     override fun getItem(position:Int)=filtered[position]
+     override fun getItemId(position:Int)=position.toLong()
+     override fun getView(position:Int,convertView:View?,parent:android.view.ViewGroup?):View{
+      val item=getItem(position);val row=LinearLayout(this@RoomActivity).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_RTL;setPadding(dp(10),dp(7),dp(10),dp(7))}
+      row.addView(label("♫",22f,Color.rgb(242,205,117),true),LinearLayout.LayoutParams(dp(42),dp(42)))
+      val texts=LinearLayout(this@RoomActivity).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
+      texts.addView(label(item.title,13f,Color.WHITE,true).apply{gravity=Gravity.RIGHT;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LinearLayout.LayoutParams(-1,dp(23)))
+      texts.addView(label(item.artist+" • "+item.duration,10.5f,Color.LTGRAY).apply{gravity=Gravity.RIGHT;maxLines=1},LinearLayout.LayoutParams(-1,dp(20)))
+      row.addView(texts,LinearLayout.LayoutParams(0,-2,1f));return row
+     }
+    }
+    list.adapter=adapter
+    list.setOnItemClickListener{_,_,position,_->val song=filtered[position];dialog.dismiss();startRoomMusic(song.uri)}
+    search.addTextChangedListener(object:android.text.TextWatcher{
+     override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
+     override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){val q=s?.toString()?.trim().orEmpty();filtered.clear();filtered.addAll(if(q.isBlank())songs else songs.filter{it.title.contains(q,true)||it.artist.contains(q,true)});adapter.notifyDataSetChanged();status.text=if(filtered.isEmpty())"لا توجد نتائج مطابقة" else "\${filtered.size} أغنية"}
+     override fun afterTextChanged(s:android.text.Editable?){}
+    })
+   }
   }
-  try{startActivityForResult(picker,4201)}
-  catch(_:Exception){Toast.makeText(this,"تعذر فتح ملفات الهاتف",Toast.LENGTH_SHORT).show()}
+ }
+ private fun loadRoomAudioItems():List<RoomAudioItem>{
+  val result=ArrayList<RoomAudioItem>();val uri=MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+  val cols=arrayOf(MediaStore.Audio.Media._ID,MediaStore.Audio.Media.TITLE,MediaStore.Audio.Media.ARTIST,MediaStore.Audio.Media.DURATION)
+  try{contentResolver.query(uri,cols,MediaStore.Audio.Media.IS_MUSIC+" != 0",null,MediaStore.Audio.Media.TITLE+" COLLATE NOCASE ASC")?.use{cur->
+   val id=cur.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);val title=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);val artist=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);val duration=cur.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+   while(cur.moveToNext()){val songId=cur.getLong(id);val name=cur.getString(title).orEmpty().ifBlank{"مقطع صوتي"};val by=cur.getString(artist).orEmpty().let{if(it.isBlank()||it=="<unknown>")"فنان غير معروف" else it};val ms=cur.getLong(duration).coerceAtLeast(0L);val time=String.format(Locale.getDefault(),"%d:%02d",ms/60000,(ms/1000)%60);result.add(RoomAudioItem(name,by,time,Uri.withAppendedPath(uri,songId.toString())))}
+  }}catch(e:Exception){android.util.Log.e("BAK_ROOM_MUSIC","Audio query failed",e)}
+  return result
  }
 
  private fun startRoomMusic(uri:Uri){
@@ -4186,7 +4237,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    uploadRoomBackground(uri)
   }
  }
- @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}else if(requestCode==4103){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)toggleCamera() else Toast.makeText(this,"يجب السماح باستخدام الكاميرا",Toast.LENGTH_SHORT).show()}}
+ @Deprecated("Deprecated in Android") override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==4102){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)connect() else status.text="يجب السماح باستخدام المايك"}else if(requestCode==4103){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)toggleCamera() else Toast.makeText(this,"يجب السماح باستخدام الكاميرا",Toast.LENGTH_SHORT).show()}else if(requestCode==4203){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)showRoomAudioLibrary() else Toast.makeText(this,"اسمح بالوصول إلى الملفات الصوتية لعرض مكتبة الموسيقى",Toast.LENGTH_LONG).show()}}
  private fun shareRoom(){
   if(roomId.isBlank())return
   val roomName=intent.getStringExtra("room_name").orEmpty().ifBlank{"غرفة صوتية"}
