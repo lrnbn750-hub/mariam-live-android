@@ -4217,13 +4217,14 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    setTextColor(Color.rgb(205,226,190))
   }
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
-  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)).apply{marginEnd=dp(5)})
   val name=TextView(this).apply{
    text=displayTitle;textSize=9f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
    maxWidth=dp(68);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
-  chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)))
+  // LTR row: title first (left), rotating disc last (right).
+  chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)).apply{marginEnd=dp(5)})
+  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)))
   val params=FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP or Gravity.RIGHT).apply{
    rightMargin=dp(10)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
