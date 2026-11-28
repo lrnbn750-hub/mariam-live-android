@@ -1345,8 +1345,7 @@ class RoomActivity : Activity() {
     }?:true
     chatMessages.removeAllViews()
     // Keep the live overlay compact so chat never climbs into the eighth seat.
-    val firstVisibleMessage=(messages.length()-4).coerceAtLeast(0)
-    for(i in firstVisibleMessage until messages.length()){
+    for(i in 0 until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
      val body=item.optString("message")
@@ -4197,34 +4196,33 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    orientation=LinearLayout.HORIZONTAL
    gravity=Gravity.CENTER_VERTICAL
    layoutDirection=View.LAYOUT_DIRECTION_LTR
-   setPadding(dp(7),dp(5),dp(11),dp(5))
-   background=GradientDrawable().apply{
-    setColor(Color.argb(225,24,25,34))
-    cornerRadius=dp(24).toFloat()
-    setStroke(dp(1),Color.argb(150,232,195,112))
+   setPadding(dp(5),dp(3),dp(8),dp(3))
+   background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(25,48,39),Color.rgb(75,25,39))).apply{
+    cornerRadius=dp(20).toFloat()
+    setStroke(dp(1),Color.rgb(119,76,70))
    }
    elevation=dp(5).toFloat()
   }
   val disc=FrameLayout(this).apply{
    background=GradientDrawable().apply{
     shape=GradientDrawable.OVAL
-    setColor(Color.rgb(34,35,42))
-    setStroke(dp(2),Color.rgb(222,184,95))
+    setColor(Color.rgb(31,68,51))
+    setStroke(dp(1),Color.rgb(139,76,81))
    }
   }
   val grooves=TextView(this).apply{
-   text="♫";textSize=19f;gravity=Gravity.CENTER
-   setTextColor(Color.rgb(242,205,117))
+   text="♫";textSize=15f;gravity=Gravity.CENTER
+   setTextColor(Color.rgb(205,226,190))
   }
   disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
-  chip.addView(disc,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(8)})
+  chip.addView(disc,LinearLayout.LayoutParams(dp(24),dp(24)).apply{marginEnd=dp(6)})
   val name=TextView(this).apply{
-   text=displayTitle;textSize=11.5f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   maxWidth=dp(118);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
+   text=displayTitle;textSize=10f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   maxWidth=dp(88);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
-  chip.addView(name,LinearLayout.LayoutParams(dp(118),dp(28)))
-  val params=FrameLayout.LayoutParams(-2,dp(44),Gravity.TOP or Gravity.LEFT).apply{
+  chip.addView(name,LinearLayout.LayoutParams(dp(88),dp(22)))
+  val params=FrameLayout.LayoutParams(-2,dp(30),Gravity.TOP or Gravity.LEFT).apply{
    leftMargin=dp(12)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
   }
