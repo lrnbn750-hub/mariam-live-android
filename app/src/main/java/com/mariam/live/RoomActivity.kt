@@ -108,6 +108,8 @@ class RoomActivity : Activity() {
  private lateinit var cameraControl:ImageView
  private lateinit var musicButton:LinearLayout
  private var musicMixer:RoomMusicMixer?=null
+ private var musicNowPlayingView:LinearLayout?=null
+ private var musicDiscAnimator:android.animation.ObjectAnimator?=null
  private lateinit var chatPanel:LinearLayout
  private lateinit var roomComposer:LinearLayout
  private var chatPoll:Job?=null
@@ -1329,7 +1331,8 @@ class RoomActivity : Activity() {
     }?:true
     chatMessages.removeAllViews()
     // Keep the live overlay compact so chat never climbs into the eighth seat.
-    val firstVisibleMessage=(messages.length()-4).coerceAtLeast(0)
+    // Keep the latest eight chat comments visible together in the room overlay.
+    val firstVisibleMessage=(messages.length()-8).coerceAtLeast(0)
     for(i in firstVisibleMessage until messages.length()){
      val item=messages.optJSONObject(i)?:continue
      val sender=item.optString("display_name").ifBlank{item.optString("username","مستخدم")}
@@ -3881,30 +3884,97 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   micControl.background=if(microphoneEnabled)ctrlBg() else ctrlBg(danger=true)
   micControl.contentDescription=if(microphoneEnabled)"إيقاف المايك" else "تشغيل المايك"
  }
+ private fun showMusicNowPlaying(uri:Uri){
+  val overlay=roomOverlayLayer
+  musicDiscAnimator?.cancel()
+  musicNowPlayingView?.let{overlay.removeView(it)}
+  val rawName=try{
+   contentResolver.query(uri,arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),null,null,null)?.use{cursor->
+    if(cursor.moveToFirst())cursor.getString(0).orEmpty() else ""
+   }.orEmpty()
+  }catch(_:Exception){""}
+  val trackName=rawName.substringBeforeLast('.',rawName).ifBlank{"موسيقى الغرفة"}
+  val disc=TextView(this).apply{
+   text="♫";textSize=19f;gravity=Gravity.CENTER
+   setTextColor(Color.rgb(247,207,105))
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(38,34,27));setStroke(dp(1),Color.rgb(199,164,83))}
+  }
+  val pill=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(9),dp(5),dp(14),dp(5))
+   background=GradientDrawable().apply{
+    cornerRadius=dp(25).toFloat()
+    setColor(Color.rgb(28,27,36))
+    setStroke(dp(1),Color.rgb(183,151,75))
+   }
+   elevation=dp(5).toFloat()
+   addView(disc,LinearLayout.LayoutParams(dp(34),dp(34)).apply{marginEnd=dp(9)})
+   addView(TextView(this@RoomActivity).apply{
+    text=trackName
+    textSize=12.5f
+    setTextColor(Color.WHITE)
+    typeface=android.graphics.Typeface.DEFAULT_BOLD
+    maxLines=1
+    ellipsize=android.text.TextUtils.TruncateAt.MIDDLE
+   },LinearLayout.LayoutParams(dp(150),dp(34)))
+   isClickable=true
+   isFocusable=true
+   contentDescription="فتح تحكم موسيقى الغرفة"
+   setOnClickListener{showMusicOptions()}
+  }
+  musicNowPlayingView=pill
+  val params=FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP or Gravity.END).apply{rightMargin=dp(14)}
+  overlay.addView(pill,params)
+  overlay.post{
+   if(pill.parent!==overlay)return@post
+   val gridPos=IntArray(2);val overlayPos=IntArray(2)
+   grid.getLocationOnScreen(gridPos);overlay.getLocationOnScreen(overlayPos)
+   val updated=pill.layoutParams as FrameLayout.LayoutParams
+   updated.topMargin=(gridPos[1]+grid.height-overlayPos[1]+dp(14)).coerceAtLeast(dp(150))
+   pill.layoutParams=updated
+  }
+  musicDiscAnimator=android.animation.ObjectAnimator.ofFloat(disc,View.ROTATION,0f,360f).apply{
+   duration=4200L;repeatCount=android.animation.ValueAnimator.INFINITE
+   interpolator=android.view.animation.LinearInterpolator()
+   start()
+  }
+ }
+ private fun hideMusicNowPlaying(){
+  musicDiscAnimator?.cancel();musicDiscAnimator=null
+  musicNowPlayingView?.let{if(::roomOverlayLayer.isInitialized)roomOverlayLayer.removeView(it)}
+  musicNowPlayingView=null
+ }
  private fun showMusicOptions(){
   if(!isOwner || !connected){
    Toast.makeText(this,"الموسيقى متاحة لصاحب الغرفة بعد الاتصال",Toast.LENGTH_SHORT).show()
    return
   }
   val dialog=android.app.Dialog(this)
-  val root=sheetRoot()
-  root.addView(label("استوديو موسيقى الغرفة",19f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(30)))
-  root.addView(label("الموسيقى تُرسل داخل الغرفة عبر اتصال الصوت الحالي",11f,Color.argb(170,255,255,255)),LinearLayout.LayoutParams(-1,dp(24)))
+  val root=sheetRoot().apply{
+   background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(250,250,252),Color.rgb(238,239,243))).apply{
+    cornerRadii=floatArrayOf(dp(28).toFloat(),dp(28).toFloat(),dp(28).toFloat(),dp(28).toFloat(),0f,0f,0f,0f)
+   }
+  }
+  root.getChildAt(0)?.background=GradientDrawable().apply{cornerRadius=dp(3).toFloat();setColor(Color.rgb(155,157,164))}
+  root.addView(label("استوديو موسيقى الغرفة",19f,Color.rgb(35,36,42),true),LinearLayout.LayoutParams(-1,dp(30)))
+  root.addView(label("الموسيقى تُرسل داخل الغرفة عبر اتصال الصوت الحالي",11f,Color.rgb(112,114,122)),LinearLayout.LayoutParams(-1,dp(24)))
   val mixer=musicMixer
   val playing=mixer!=null
   val statusCard=LinearLayout(this).apply{
    orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(10),dp(12),dp(10))
-   background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(30,255,255,255));setStroke(dp(1),Color.argb(40,255,255,255))}
+   background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.WHITE);setStroke(dp(1),Color.rgb(224,226,231))}
   }
   statusCard.addView(label(if(playing)"● الموسيقى تعمل" else "○ لا توجد موسيقى تعمل",13f,
-   if(playing)Color.rgb(132,231,174) else Color.argb(210,255,255,255),true),LinearLayout.LayoutParams(0,dp(28),1f))
-  statusCard.addView(label(if(playing)"متصلة بالغرفة" else "اختر ملفاً من جهازك",10f,Color.argb(160,255,255,255)))
+   if(playing)Color.rgb(36,151,99) else Color.rgb(112,114,122),true),LinearLayout.LayoutParams(0,dp(28),1f))
+  statusCard.addView(label(if(playing)"متصلة بالغرفة" else "اختر ملفاً من جهازك",10f,Color.rgb(112,114,122)))
   root.addView(statusCard,LinearLayout.LayoutParams(-1,dp(49)).apply{topMargin=dp(12);bottomMargin=dp(10)})
   fun option(title:String,detail:String,icon:String,accent:Int,action:()->Unit){
    val row=LinearLayout(this).apply{
     orientation=0;gravity=Gravity.CENTER_VERTICAL;layoutDirection=View.LAYOUT_DIRECTION_LTR
     setPadding(dp(12),dp(9),dp(12),dp(9))
-    background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.argb(30,255,255,255));setStroke(dp(1),Color.argb(95,Color.red(accent),Color.green(accent),Color.blue(accent)))}
+    background=GradientDrawable().apply{cornerRadius=dp(15).toFloat();setColor(Color.WHITE);setStroke(dp(1),Color.argb(90,Color.red(accent),Color.green(accent),Color.blue(accent)))}
     isClickable=true;isFocusable=true
    }
    val iconBox=FrameLayout(this).apply{
@@ -3913,8 +3983,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    }
    row.addView(iconBox,LinearLayout.LayoutParams(dp(40),dp(40)).apply{marginEnd=dp(10)})
    val labels=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_VERTICAL}
-   labels.addView(label(title,13.5f,Color.WHITE,true),LinearLayout.LayoutParams(-1,dp(21)))
-   labels.addView(label(detail,10f,Color.argb(160,255,255,255)),LinearLayout.LayoutParams(-1,dp(17)))
+   labels.addView(label(title,13.5f,Color.rgb(38,39,45),true),LinearLayout.LayoutParams(-1,dp(21)))
+   labels.addView(label(detail,10f,Color.rgb(119,121,129)),LinearLayout.LayoutParams(-1,dp(17)))
    row.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
    row.setOnClickListener{dialog.dismiss();action()}
    root.addView(row,LinearLayout.LayoutParams(-1,dp(60)).apply{bottomMargin=dp(7)})
@@ -3926,6 +3996,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     if(mixer.paused)"متابعة تشغيل المقطع الحالي" else "إيقاف مؤقت دون إنهاء المقطع",
     if(mixer.paused)"play" else "pause",Color.rgb(132,224,171)){
      mixer.paused=!mixer.paused
+     if(mixer.paused)musicDiscAnimator?.pause() else musicDiscAnimator?.resume()
      Toast.makeText(this,if(mixer.paused)"تم إيقاف الموسيقى مؤقتاً" else "استؤنفت الموسيقى",Toast.LENGTH_SHORT).show()
     }
    option("مستوى الصوت","تعديل مستوى الموسيقى المرسلة للغرفة","volume-2",Color.rgb(111,198,232)){showMusicVolume(mixer)}
@@ -3933,8 +4004,8 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    option("إيقاف الموسيقى","إنهاء مشاركة الموسيقى في الغرفة","square",Color.rgb(239,132,132)){stopRoomMusic()}
   }
   val close=TextView(this).apply{
-   text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.WHITE)
-   background=GradientDrawable().apply{cornerRadius=dp(14).toFloat();setColor(Color.argb(45,255,255,255))}
+   text="إغلاق";textSize=13f;gravity=Gravity.CENTER;setTextColor(Color.rgb(48,49,56))
+   background=GradientDrawable().apply{cornerRadius=dp(14).toFloat();setColor(Color.rgb(225,227,232))}
    setPadding(0,dp(10),0,dp(10));setOnClickListener{dialog.dismiss()}
   }
   root.addView(close,LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(4)})
@@ -3992,6 +4063,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     musicMixer=mixer
     track.setAudioBufferCallback(mixer)
     mixer.start()
+    showMusicNowPlaying(uri)
     Toast.makeText(this@RoomActivity,"بدأ إرسال الموسيقى إلى الغرفة",Toast.LENGTH_SHORT).show()
    }catch(_:Exception){
     stopRoomMusic()
@@ -4003,6 +4075,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun stopRoomMusic(restoreMic:Boolean=true){
   val mixer=musicMixer
   musicMixer=null
+  hideMusicNowPlaying()
   try{
    val track=if(::room.isInitialized) room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack else null
    track?.setAudioBufferCallback(null)
