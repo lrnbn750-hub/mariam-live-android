@@ -187,7 +187,22 @@ class RoomMusicMixer(
         var codec: MediaCodec? = null
         try {
             extractor = MediaExtractor()
-            extractor.setDataSource(appContext, uri, null)
+            try {
+                extractor.setDataSource(appContext, uri, null)
+            } catch (uriError: Exception) {
+                // Some gallery/document providers expose audio through a file descriptor only.
+                val descriptor = appContext.contentResolver.openAssetFileDescriptor(uri, "r")
+                    ?: throw IllegalArgumentException("تعذر فتح ملف الأغنية من الاستديو", uriError)
+                try {
+                    val length = descriptor.declaredLength.takeIf { it >= 0L } ?: -1L
+                    extractor.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, length)
+                } catch (descriptorError: Exception) {
+                    descriptorError.addSuppressed(uriError)
+                    throw descriptorError
+                } finally {
+                    descriptor.close()
+                }
+            }
 
             var selectedFormat: MediaFormat? = null
             for (index in 0 until extractor.trackCount) {
