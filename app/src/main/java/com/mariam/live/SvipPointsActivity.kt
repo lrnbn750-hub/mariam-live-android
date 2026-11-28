@@ -14,6 +14,8 @@ import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -38,6 +40,30 @@ class SvipPointsActivity : Activity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun fmt(v: Long) = NumberFormat.getNumberInstance(Locale.US).format(v)
+
+    private fun formatBanDate(value: String, fallback: String = "غير متوفر"): String {
+        val raw = value.trim()
+        if (raw.isBlank() || raw == "null") return fallback
+        val patterns = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+            "yyyy-MM-dd'T'HH:mm:ssX",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'"
+        )
+        for (pattern in patterns) {
+            try {
+                val parser = SimpleDateFormat(pattern, Locale.US).apply {
+                    isLenient = false
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }
+                val date: Date = parser.parse(raw) ?: continue
+                return SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(date)
+            } catch (_: Exception) {
+                // Try the next ISO-8601 variant.
+            }
+        }
+        return raw
+    }
     private fun panelBg(radius: Int = 18) = GradientDrawable().apply {
         setColor(panel); cornerRadius = dp(radius).toFloat(); setStroke(dp(1), line)
     }
@@ -222,10 +248,11 @@ class SvipPointsActivity : Activity() {
                 val banId = ban.optString("id", body.optString("ban_id", "")).takeIf { it.isNotBlank() && it != "null" }.orEmpty()
                 val type = ban.optString("ban_type", if (isPermanent) "permanent" else "temporary")
                 val reason = ban.optString("reason").ifBlank { "لم يُذكر سبب" }
-                val created = ban.optString("created_at").ifBlank { "غير متوفر" }
-                val expires = ban.optString("expires_at").ifBlank {
+                val created = formatBanDate(ban.optString("created_at"))
+                val expires = formatBanDate(
+                    ban.optString("expires_at"),
                     if (isPermanent) "دائم / بدون تاريخ انتهاء" else "غير متوفر"
-                }
+                )
                 val targetName = target.optString("username").ifBlank { id }
                 val targetId = target.optString("public_id").ifBlank { id }
                 val sufficient = body.optBoolean("points_sufficient", available >= required)
