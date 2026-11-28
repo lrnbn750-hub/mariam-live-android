@@ -219,7 +219,7 @@ class SvipPointsActivity : Activity() {
                 val isPermanent = action == "review" || permanent
                 val required = body.optLong("required_points", if (isPermanent) 75 else 0)
                 val available = body.optLong("available_points", 0)
-                val banId = ban.optLong("id", body.optLong("ban_id", 0))
+                val banId = ban.optString("id", body.optString("ban_id", "")).takeIf { it.isNotBlank() && it != "null" }.orEmpty()
                 val type = ban.optString("ban_type", if (isPermanent) "permanent" else "temporary")
                 val reason = ban.optString("reason").ifBlank { "لم يُذكر سبب" }
                 val created = ban.optString("created_at").ifBlank { "غير متوفر" }
@@ -231,7 +231,7 @@ class SvipPointsActivity : Activity() {
                 val sufficient = body.optBoolean("points_sufficient", available >= required)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    if (banId <= 0L) {
+                    if (banId.isBlank()) {
                         showMessage("لم يتم العثور على حظر نشط لهذا الحساب", true)
                         return@runOnUiThread
                     }
