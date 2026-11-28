@@ -117,6 +117,8 @@ class RoomActivity : Activity() {
  private lateinit var cameraControl:ImageView
  private lateinit var musicButton:LinearLayout
  private var musicMixer:RoomMusicMixer?=null
+ private var roomMusicIndicator:View?=null
+ private var roomMusicDiscAnimator:android.animation.ObjectAnimator?=null
  private lateinit var chatPanel:LinearLayout
  private lateinit var roomComposer:LinearLayout
  private var chatPoll:Job?=null
@@ -4172,6 +4174,61 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
   return result
  }
 
+ private fun showRoomMusicIndicator(uri:Uri){
+  val host=roomOverlayLayer
+  if(!::roomOverlayLayer.isInitialized)return
+  hideRoomMusicIndicator()
+  val songTitle=try{
+   contentResolver.query(uri,arrayOf(MediaStore.Audio.Media.TITLE),null,null,null)?.use{cur->
+    if(cur.moveToFirst())cur.getString(0).orEmpty() else ""
+   }.orEmpty().ifBlank{"موسيقى الغرفة"}
+  }catch(_:Exception){"موسيقى الغرفة"}
+  val chip=LinearLayout(this).apply{
+   orientation=LinearLayout.HORIZONTAL
+   gravity=Gravity.CENTER_VERTICAL
+   layoutDirection=View.LAYOUT_DIRECTION_LTR
+   setPadding(dp(7),dp(5),dp(11),dp(5))
+   background=GradientDrawable().apply{
+    setColor(Color.argb(225,24,25,34))
+    cornerRadius=dp(24).toFloat()
+    setStroke(dp(1),Color.argb(150,232,195,112))
+   }
+   elevation=dp(5).toFloat()
+  }
+  val disc=FrameLayout(this).apply{
+   background=GradientDrawable().apply{
+    shape=GradientDrawable.OVAL
+    setColor(Color.rgb(34,35,42))
+    setStroke(dp(2),Color.rgb(222,184,95))
+   }
+  }
+  val grooves=TextView(this).apply{
+   text="♫";textSize=19f;gravity=Gravity.CENTER
+   setTextColor(Color.rgb(242,205,117))
+  }
+  disc.addView(grooves,FrameLayout.LayoutParams(-1,-1))
+  chip.addView(disc,LinearLayout.LayoutParams(dp(32),dp(32)).apply{marginEnd=dp(8)})
+  val name=TextView(this).apply{
+   text=songTitle;textSize=11.5f;setTextColor(Color.WHITE);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   maxWidth=dp(118);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
+   marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
+  }
+  chip.addView(name,LinearLayout.LayoutParams(dp(118),dp(28)))
+  val params=FrameLayout.LayoutParams(-2,dp(44),Gravity.TOP or Gravity.LEFT).apply{
+   leftMargin=dp(12)
+   topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
+  }
+  host.addView(chip,params)
+  roomMusicIndicator=chip
+  roomMusicDiscAnimator=android.animation.ObjectAnimator.ofFloat(disc,View.ROTATION,0f,360f).apply{
+   duration=3200L;repeatCount=android.animation.ValueAnimator.INFINITE;interpolator=android.view.animation.LinearInterpolator();start()
+  }
+ }
+ private fun hideRoomMusicIndicator(){
+  roomMusicDiscAnimator?.cancel();roomMusicDiscAnimator=null
+  roomMusicIndicator?.let{(it.parent as? android.view.ViewGroup)?.removeView(it)}
+  roomMusicIndicator=null
+ }
  private fun startRoomMusic(uri:Uri){
   if(!isOwner || !connected)return
   scope.launch{
@@ -4198,6 +4255,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
     )
     mixer.microphoneEnabled=microphoneEnabled
     musicMixer=mixer
+    showRoomMusicIndicator(uri)
     track.setAudioBufferCallback(mixer)
     mixer.start()
     Toast.makeText(this@RoomActivity,"بدأ إرسال الموسيقى إلى الغرفة",Toast.LENGTH_SHORT).show()
@@ -4211,6 +4269,7 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
  private fun stopRoomMusic(restoreMic:Boolean=true){
   val mixer=musicMixer
   musicMixer=null
+  hideRoomMusicIndicator()
   try{
    val track=if(::room.isInitialized) room.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack else null
    track?.setAudioBufferCallback(null)
