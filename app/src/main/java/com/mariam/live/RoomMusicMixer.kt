@@ -191,6 +191,7 @@ class RoomMusicMixer(
                 extractor.setDataSource(appContext, uri, null)
             } catch (uriError: Exception) {
                 // Some gallery/document providers expose audio through a file descriptor only.
+                // Keep this fallback local to the decoder so playback permissions remain unchanged.
                 val descriptor = appContext.contentResolver.openAssetFileDescriptor(uri, "r")
                     ?: throw IllegalArgumentException("تعذر فتح ملف الأغنية من الاستديو", uriError)
                 try {
