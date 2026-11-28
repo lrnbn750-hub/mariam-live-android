@@ -4222,9 +4222,9 @@ private fun memberLevelColors(level:Int):IntArray = when(level){
    maxWidth=dp(68);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.MARQUEE
    marqueeRepeatLimit=-1;isSingleLine=true;isSelected=true
   }
-  // LTR row: title first (left), rotating disc last (right).
-  chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)).apply{marginEnd=dp(5)})
-  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)))
+  // LTR row: rotating disc first (left), title second (right).
+  chip.addView(disc,LinearLayout.LayoutParams(dp(28),dp(28)).apply{marginEnd=dp(5)})
+  chip.addView(name,LinearLayout.LayoutParams(dp(68),dp(18)))
   val params=FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP or Gravity.RIGHT).apply{
    rightMargin=dp(10)
    topMargin=(resources.displayMetrics.heightPixels*0.46f).toInt().coerceAtLeast(dp(300))
