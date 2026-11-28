@@ -6,6 +6,7 @@ on:
       - main
       - feature/mariam-live-development
       - feature/bak-live-camera-modes-on-build465
+      - feature/bak-live-svip-points-ban-trend-2026-11-28
   pull_request:
     branches:
       - main
